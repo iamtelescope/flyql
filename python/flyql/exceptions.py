@@ -1,0 +1,2 @@
+class FlyqlError(Exception):
+    pass

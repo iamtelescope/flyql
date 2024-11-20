@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flyql"
+version = "0.0.2"
+dependencies = []
+license = { text = "MIT License" }
+authors = [
+    { name = "Ilia (HumanUser) Khomutov" }
+]
+description = "fly query language gode generators"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/iamtelescope/flyql/tree/main/python/flyql"
+
+[project.optional-dependencies]
+test = [
+    "black",
+    "parameterized",
+]
+

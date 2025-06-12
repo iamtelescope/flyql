@@ -9,9 +9,9 @@ A query consists of one or more conditions connected by boolean operators (**and
 ```(flyql)
 status=200 and (service!=api or user="john doe")
 ```
-- `status=200` - `status` field is exactly `200`
-- `service=api` - `service` field is not equals to `api`
-- `user=~"John.*"` - `user` field is equals to regex
+- `status = 200` - `status` field is exactly `200`
+- `service = api` - `service` field is not equals to `api`
+- `user =~ "John.*"` - `user` field is equals to regex
 
 Parentheses determine that the condition (`service!=api or user="john doe"`) is evaluated as a group.
 

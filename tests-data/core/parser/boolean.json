@@ -1,0 +1,422 @@
+{
+  "version": "1.0",
+  "description": "Boolean operators and grouping test cases extracted from test_boolean.py",
+  "test_suite": "boolean",
+  "tests": [
+    {
+      "name": "and_operator",
+      "input": "key1=value1 and key2=value2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key1",
+            "operator": "=",
+            "value": "value1",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key2",
+            "operator": "=",
+            "value": "value2",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "or_operator",
+      "input": "status=200 or status=404",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 404.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "multiple_and",
+      "input": "a=1 and b=2 and c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "a",
+              "operator": "=",
+              "value": 1.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "b",
+              "operator": "=",
+              "value": 2.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "c",
+            "operator": "=",
+            "value": 3.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "multiple_or",
+      "input": "x=1 or y=2 or z=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "x",
+              "operator": "=",
+              "value": 1.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "y",
+              "operator": "=",
+              "value": 2.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "z",
+            "operator": "=",
+            "value": 3.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "simple_grouping",
+      "input": "(key=value)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "group_with_and",
+      "input": "(a=1 and b=2)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "group_with_or",
+      "input": "(x=1 or y=2)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "x",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "y",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "mixed_operators_with_groups",
+      "input": "status=200 and (service=api or service=web)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "service",
+              "operator": "=",
+              "value": "api",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "service",
+              "operator": "=",
+              "value": "web",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "nested_groups",
+      "input": "((a=1 and b=2) or (c=3 and d=4))",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "a",
+              "operator": "=",
+              "value": 1.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "b",
+              "operator": "=",
+              "value": 2.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "c",
+              "operator": "=",
+              "value": 3.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "d",
+              "operator": "=",
+              "value": 4.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "complex_nested_groups",
+      "input": "status=200 and ((service=api and version>1.0) or (service=web and active=true))",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "service",
+                "operator": "=",
+                "value": "api",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "version",
+                "operator": ">",
+                "value": 1.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "and",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "service",
+                "operator": "=",
+                "value": "web",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "active",
+                "operator": "=",
+                "value": "true",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            }
+          }
+        }
+      }
+    }
+  ]
+}

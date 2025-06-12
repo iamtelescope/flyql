@@ -1,0 +1,417 @@
+{
+  "version": "1.0",
+  "description": "Whitespace handling test cases extracted from test_whitespace.py",
+  "test_suite": "whitespace",
+  "tests": [
+    {
+      "name": "spaces_around_equals",
+      "input": "key = value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_before_equals",
+      "input": "key =value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_after_equals",
+      "input": "key= value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "multiple_spaces_around_equals",
+      "input": "key   =   value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_greater_than",
+      "input": "count > 10",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": ">",
+          "value": 10.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_less_than",
+      "input": "price < 100.50",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": "<",
+          "value": 100.50,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_greater_or_equals",
+      "input": "age >= 18",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "age",
+          "operator": ">=",
+          "value": 18.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_less_or_equals",
+      "input": "score <= 90",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "score",
+          "operator": "<=",
+          "value": 90.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_not_equals",
+      "input": "status != 404",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "!=",
+          "value": 404.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_regex_match",
+      "input": "message =~ hello.*",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "=~",
+          "value": "hello.*",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_regex_not_match",
+      "input": "message !~ test",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "!~",
+          "value": "test",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_single_quoted_values",
+      "input": "name = 'john doe'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "john doe",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_with_double_quoted_values",
+      "input": "message = \"hello world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "=",
+          "value": "hello world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_in_boolean_expressions",
+      "input": "key1 = value1 and key2 = value2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key1",
+            "operator": "=",
+            "value": "value1",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key2",
+            "operator": "=",
+            "value": "value2",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "spaces_in_grouped_expressions",
+      "input": "(key=value)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "mixed_spacing_styles",
+      "input": "key1=value1 and key2 = value2 or key3= value3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "key1",
+              "operator": "=",
+              "value": "value1",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "key2",
+              "operator": "=",
+              "value": "value2",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key3",
+            "operator": "=",
+            "value": "value3",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "complex_expression_with_spaces",
+      "input": "status = 200 and ( service != api or user = 'john doe' )",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "service",
+              "operator": "!=",
+              "value": "api",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "user",
+              "operator": "=",
+              "value": "john doe",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "spaces_with_nested_keys",
+      "input": "user:name = john",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "user:name",
+          "operator": "=",
+          "value": "john",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "backward_compatibility_no_spaces",
+      "input": "key=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "backward_compatibility_complex_no_spaces",
+      "input": "status=200 and service!=api",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "service",
+            "operator": "!=",
+            "value": "api",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    }
+  ]
+}

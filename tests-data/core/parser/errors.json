@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "description": "Error handling test cases extracted from test_errors.py",
+  "test_suite": "errors",
+  "tests": [
+    {
+      "name": "empty_input",
+      "input": "",
+      "expected_result": "error",
+      "expected_error": {
+        "errno_options": [24, 25, 26],
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "invalid_character_in_key",
+      "input": "ke@y=value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 3,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "invalid_operator",
+      "input": "key==value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 10,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unmatched_parentheses_open",
+      "input": "(key=value",
+      "expected_result": "error",
+      "expected_error": {
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "unmatched_parentheses_close",
+      "input": "key=value)",
+      "expected_result": "error",
+      "expected_error": {
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "invalid_boolean_operator",
+      "input": "a=1 invalid b=2",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 20,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "missing_boolean_operator_delimiter",
+      "input": "a=1 andb=2",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 23,
+        "message_contains": "expected delimiter after bool operator"
+      }
+    },
+    {
+      "name": "unexpected_delimiter_in_key",
+      "input": "ke y=value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 28,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unexpected_delimiter_in_operator",
+      "input": "key= =value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 29,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "only_whitespace",
+      "input": "   ",
+      "expected_result": "error",
+      "expected_error": {
+        "errno_options": [24, 26],
+        "message_contains": ""
+      }
+    }
+  ]
+}

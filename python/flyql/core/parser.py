@@ -213,8 +213,7 @@ class Parser:
             return
 
         if self.char.is_delimiter():
-            self.set_error_state("unexpected delimiter in key", 2)
-            return
+            self.set_state(State.EXPECT_OPERATOR)
         elif self.char.is_key():
             self.extend_key()
         elif self.char.is_op():
@@ -224,12 +223,27 @@ class Parser:
             self.set_error_state("invalid character", 3)
             return
 
+    def in_state_expect_operator(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_delimiter():
+            return
+        elif self.char.is_op():
+            self.extend_key_value_operator()
+            self.set_state(State.KEY_VALUE_OPERATOR)
+        else:
+            self.set_error_state("expected operator", 28)
+
     def in_state_key_value_operator(self) -> None:
         if not self.char:
             return
 
         if self.char.is_delimiter():
-            self.set_error_state("unexpected delimiter in operator", 4)
+            if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
+                self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
+            else:
+                self.set_state(State.EXPECT_VALUE)
         elif self.char.is_op():
             self.extend_key_value_operator()
         elif self.char.is_value():
@@ -252,6 +266,24 @@ class Parser:
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
         else:
             self.set_error_state("invalid character", 4)
+
+    def in_state_expect_value(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_delimiter():
+            return
+        elif self.char.is_value():
+            self.set_state(State.VALUE)
+            self.extend_value()
+        elif self.char.is_single_quote():
+            self.set_value_is_string()
+            self.set_state(State.SINGLE_QUOTED_VALUE)
+        elif self.char.is_double_quote():
+            self.set_value_is_string()
+            self.set_state(State.DOUBLE_QUOTED_VALUE)
+        else:
+            self.set_error_state("expected value", 29)
 
     def in_state_value(self) -> None:
         if not self.char:
@@ -385,7 +417,12 @@ class Parser:
     def in_state_last_char(self) -> None:
         if self.state == State.INITIAL and not self.nodes_stack:
             self.set_error_state("empty input", 24)
-        elif self.state in (State.INITIAL, State.KEY):
+        elif self.state in (
+            State.INITIAL,
+            State.KEY,
+            State.EXPECT_OPERATOR,
+            State.EXPECT_VALUE,
+        ):
             self.set_error_state("unexpected EOF", 25)
         elif self.state in (
             State.VALUE,
@@ -419,8 +456,12 @@ class Parser:
                     self.in_state_initial()
                 case State.KEY:
                     self.in_state_key()
+                case State.EXPECT_OPERATOR:
+                    self.in_state_expect_operator()
                 case State.VALUE:
                     self.in_state_value()
+                case State.EXPECT_VALUE:
+                    self.in_state_expect_value()
                 case State.SINGLE_QUOTED_VALUE:
                     self.in_state_single_quoted_value()
                 case State.DOUBLE_QUOTED_VALUE:

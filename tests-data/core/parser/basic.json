@@ -1,0 +1,370 @@
+{
+  "version": "1.0",
+  "description": "Basic FlyQL parser test cases extracted from test_basic.py",
+  "test_suite": "basic",
+  "tests": [
+    {
+      "name": "simple_equals",
+      "input": "key=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "simple_not_equals",
+      "input": "status!=200",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "!=",
+          "value": 200.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "simple_regex",
+      "input": "message=~hello.*",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "=~",
+          "value": "hello.*",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "simple_not_regex",
+      "input": "message!~test",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "!~",
+          "value": "test",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "greater_than",
+      "input": "count>10",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": ">",
+          "value": 10.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "less_than",
+      "input": "price<100.50",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": "<",
+          "value": 100.50,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "greater_or_equals",
+      "input": "age>=18",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "age",
+          "operator": ">=",
+          "value": 18.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "less_or_equals",
+      "input": "score<=90",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "score",
+          "operator": "<=",
+          "value": 90.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "string_value",
+      "input": "name=john",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "john",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "numeric_integer",
+      "input": "count=42",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": "=",
+          "value": 42.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "numeric_float",
+      "input": "price=19.99",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": "=",
+          "value": 19.99,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "single_quoted_value",
+      "input": "name='john doe'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "john doe",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "double_quoted_value",
+      "input": "message=\"hello world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "message",
+          "operator": "=",
+          "value": "hello world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "empty_value",
+      "input": "field=",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_single_quotes",
+      "input": "text='john\\'s book'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "text",
+          "operator": "=",
+          "value": "john\\'s book",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_double_quotes",
+      "input": "text=\"say \\\"hello\\\"\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "text",
+          "operator": "=",
+          "value": "say \\\"hello\\\"",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "key_with_underscore",
+      "input": "user_name=john",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "user_name",
+          "operator": "=",
+          "value": "john",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "key_with_dot",
+      "input": "user.name=john",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "user.name",
+          "operator": "=",
+          "value": "john",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "key_with_colon",
+      "input": "user:name=john",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "user:name",
+          "operator": "=",
+          "value": "john",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "key_with_slash",
+      "input": "path/to/field=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "path/to/field",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "complex_key",
+      "input": "nested.object:field_name/sub=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "nested.object:field_name/sub",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "auto_detect_number",
+      "input": "count=123",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": "=",
+          "value": 123.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_number_as_string",
+      "input": "count='123'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": "=",
+          "value": "123",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

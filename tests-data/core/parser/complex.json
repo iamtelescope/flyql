@@ -1,0 +1,449 @@
+{
+  "version": "1.0",
+  "description": "Complex expressions test cases extracted from test_complex.py",
+  "test_suite": "complex",
+  "tests": [
+    {
+      "name": "real_world_query_1",
+      "input": "status=200 and method=\"GET\" and (path=\"/api/users\" or path=\"/api/orders\")",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "status",
+              "operator": "=",
+              "value": 200.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "method",
+              "operator": "=",
+              "value": "GET",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "path",
+              "operator": "=",
+              "value": "/api/users",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "path",
+              "operator": "=",
+              "value": "/api/orders",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "real_world_query_2",
+      "input": "level=ERROR and (service=payment or service=auth) and message=~\".*timeout.*\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "level",
+              "operator": "=",
+              "value": "ERROR",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "or",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "service",
+                "operator": "=",
+                "value": "payment",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "service",
+                "operator": "=",
+                "value": "auth",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            }
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "message",
+            "operator": "=~",
+            "value": ".*timeout.*",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "real_world_query_3",
+      "input": "user:id>1000 and user:status=active and (created_at>=2023-01-01 or updated_at>=2023-01-01)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "user:id",
+              "operator": ">",
+              "value": 1000.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "user:status",
+              "operator": "=",
+              "value": "active",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "created_at",
+              "operator": ">=",
+              "value": "2023-01-01",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "updated_at",
+              "operator": ">=",
+              "value": "2023-01-01",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "numeric_comparisons",
+      "input": "cpu_usage>80.5 and memory_usage<90 and disk_space>=100",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "expression": {
+              "key": "cpu_usage",
+              "operator": ">",
+              "value": 80.5,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "memory_usage",
+              "operator": "<",
+              "value": 90.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "disk_space",
+            "operator": ">=",
+            "value": 100.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "regex_patterns",
+      "input": "email=~\".*@example\\\\.com$\" and phone!~\"^\\\\+1\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "email",
+            "operator": "=~",
+            "value": ".*@example\\\\.com$",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "phone",
+            "operator": "!~",
+            "value": "^\\\\+1",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "deeply_nested_groups",
+      "input": "((a=1 and b=2) or (c=3 and d=4)) and ((e=5 or f=6) and (g=7 or h=8))",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "a",
+                "operator": "=",
+                "value": 1.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "b",
+                "operator": "=",
+                "value": 2.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "and",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "c",
+                "operator": "=",
+                "value": 3.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "d",
+                "operator": "=",
+                "value": 4.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            }
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "or",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "e",
+                "operator": "=",
+                "value": 5.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "f",
+                "operator": "=",
+                "value": 6.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "or",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "g",
+                "operator": "=",
+                "value": 7.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "h",
+                "operator": "=",
+                "value": 8.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "mixed_quoted_unquoted_values",
+      "input": "status=200 and message=\"hello world\" and count=42 and flag=true",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "expression": {
+                "key": "status",
+                "operator": "=",
+                "value": 200.0,
+                "value_type": "number"
+              },
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "expression": {
+                "key": "message",
+                "operator": "=",
+                "value": "hello world",
+                "value_type": "string"
+              },
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "",
+            "expression": {
+              "key": "count",
+              "operator": "=",
+              "value": 42.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "flag",
+            "operator": "=",
+            "value": "true",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    }
+  ]
+}

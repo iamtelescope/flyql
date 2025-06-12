@@ -1,0 +1,203 @@
+{
+  "version": "1.0",
+  "description": "Syntax test cases extracted from test_syntax.py",
+  "test_suite": "syntax",
+  "tests": [
+    {
+      "name": "no_spaces",
+      "input": "key=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "spaces_around_boolean_operators",
+      "input": "a=1 and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "multiple_spaces",
+      "input": "a=1   and   b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "spaces_in_groups",
+      "input": "( a=1 and b=2 )",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "newlines_simple",
+      "input": "a=1 and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "single_character_key_value",
+      "input": "a=b",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": "=",
+          "value": "b",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "numeric_key",
+      "input": "123=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "123",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "special_characters_in_quoted_values",
+      "input": "text=\"!@#$%^&*()\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "text",
+          "operator": "=",
+          "value": "!@#$%^&*()",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "consecutive_boolean_operators",
+      "input": "a=1 and or b=2",
+      "expected_result": "error",
+      "expected_error": {
+        "message_contains": ""
+      }
+    }
+  ]
+}

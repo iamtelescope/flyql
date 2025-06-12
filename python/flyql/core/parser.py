@@ -1,25 +1,25 @@
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from flyql.tree import Node
-from flyql.expression import Expression
-from flyql.char import Char
-from flyql.state import State
-from flyql.exceptions import FlyqlError
-from flyql.constants import VALID_BOOL_OPERATORS
-from flyql.constants import VALID_KEY_VALUE_OPERATORS
-from flyql.constants import VALID_BOOL_OPERATORS_CHARS
+from flyql.core.tree import Node
+from flyql.core.expression import Expression
+from flyql.core.char import Char
+from flyql.core.state import State
+from flyql.core.exceptions import FlyqlError
+from flyql.core.constants import VALID_BOOL_OPERATORS
+from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
+from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 
 
 class ParserError(FlyqlError):
-    def __init__(self, message: str, errno: int):
-        self.message = message
+    def __init__(self, message: str, errno: int) -> None:
+        super().__init__(message)
         self.errno = errno
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
 
@@ -30,10 +30,10 @@ class Parser:
         self.line_pos = 0
         self.text: str = ""
         self.state: State = State.INITIAL
-        self.char: Optional[Char]
+        self.char: Optional[Char] = None
         self.key: str = ""
         self.value: str = ""
-        self.value_is_string: bool | None = None
+        self.value_is_string: Union[bool, None] = None
         self.key_value_operator: str = ""
         self.bool_operator: str = "and"
         self.current_node: Optional[Node] = None
@@ -41,7 +41,7 @@ class Parser:
         self.bool_op_stack: List[str] = []
         self.error_text: str = ""
         self.errno: int = 0
-        self.root: Node | None = None
+        self.root: Union[Node, None] = None
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -92,16 +92,20 @@ class Parser:
         self.bool_operator = ""
 
     def extend_key(self) -> None:
-        self.key += self.char.value
+        if self.char:
+            self.key += self.char.value
 
     def extend_value(self) -> None:
-        self.value += self.char.value
+        if self.char:
+            self.value += self.char.value
 
     def extend_key_value_operator(self) -> None:
-        self.key_value_operator += self.char.value
+        if self.char:
+            self.key_value_operator += self.char.value
 
     def extend_bool_operator(self) -> None:
-        self.bool_operator += self.char.value
+        if self.char:
+            self.bool_operator += self.char.value
 
     def extend_nodes_stack(self) -> None:
         if self.current_node:
@@ -113,9 +117,9 @@ class Parser:
     def new_node(
         self,
         bool_operator: str,
-        expression: Expression | None,
-        left: Node | None,
-        right: Node | None,
+        expression: Union[Expression, None],
+        left: Union[Node, None],
+        right: Union[Node, None],
     ) -> Node:
         return Node(
             bool_operator=bool_operator, expression=expression, left=left, right=right
@@ -179,6 +183,9 @@ class Parser:
             self.set_current_node(new_node)
 
     def in_state_initial(self) -> None:
+        if not self.char:
+            return
+
         self.reset_data()
         self.set_current_node(
             self.new_node(
@@ -202,6 +209,9 @@ class Parser:
             return
 
     def in_state_key(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_delimiter():
             self.set_error_state("unexpected delimiter in key", 2)
             return
@@ -215,6 +225,9 @@ class Parser:
             return
 
     def in_state_key_value_operator(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_delimiter():
             self.set_error_state("unexpected delimiter in operator", 4)
         elif self.char.is_op():
@@ -241,6 +254,9 @@ class Parser:
             self.set_error_state("invalid character", 4)
 
     def in_state_value(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_value():
             self.extend_value()
         elif self.char.is_delimiter():
@@ -265,11 +281,14 @@ class Parser:
             return
 
     def in_state_single_quoted_value(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_single_quoted_value():
             self.extend_value()
         elif self.char.is_single_quote():
             prev_pos = self.char.pos - 1
-            if self.text[prev_pos] == "\\":
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
             else:
                 self.set_state(State.EXPECT_BOOL_OP)
@@ -281,11 +300,14 @@ class Parser:
             return
 
     def in_state_double_quoted_value(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_double_quoted_value():
             self.extend_value()
         elif self.char.is_double_quote():
             prev_pos = self.char.pos - 1
-            if self.text[prev_pos] == "\\":
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
             else:
                 self.set_state(State.EXPECT_BOOL_OP)
@@ -297,6 +319,9 @@ class Parser:
             return
 
     def in_state_bool_op_delimiter(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_delimiter():
             return
         elif self.char.is_key():
@@ -307,18 +332,22 @@ class Parser:
             self.extend_bool_op_stack()
             self.set_state(State.INITIAL)
         elif self.char.is_group_close():
-            if self.nodes_stack:
+            if not self.nodes_stack:
                 self.set_error_state("unmatched parenthesis", 15)
                 return
             else:
                 self.reset_data()
-                self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
+                if self.bool_op_stack:
+                    self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
                 self.set_state(State.EXPECT_BOOL_OP)
         else:
             self.set_error_state("invalid character", 18)
             return
 
     def in_state_expect_bool_op(self) -> None:
+        if not self.char:
+            return
+
         if self.char.is_delimiter():
             return
         elif self.char.is_group_close():
@@ -330,7 +359,8 @@ class Parser:
                     self.extend_tree()
                 self.reset_data()
                 self.reset_bool_operator()
-                self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
+                if self.bool_op_stack:
+                    self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
                 self.set_state(State.EXPECT_BOOL_OP)
         else:
             self.extend_bool_operator()
@@ -355,18 +385,16 @@ class Parser:
     def in_state_last_char(self) -> None:
         if self.state == State.INITIAL and not self.nodes_stack:
             self.set_error_state("empty input", 24)
-        elif self.state == State.INITIAL or self.state == State.KEY:
+        elif self.state in (State.INITIAL, State.KEY):
             self.set_error_state("unexpected EOF", 25)
-        elif (
-            self.state == State.VALUE
-            or self.state == State.DOUBLE_QUOTED_VALUE
-            or self.state == State.SINGLE_QUOTED_VALUE
+        elif self.state in (
+            State.VALUE,
+            State.DOUBLE_QUOTED_VALUE,
+            State.SINGLE_QUOTED_VALUE,
         ):
             self.extend_tree()
             self.reset_bool_operator()
-        elif (
-            self.state == State.BOOL_OP_DELIMITER and self.state != State.EXPECT_BOOL_OP
-        ):
+        elif self.state == State.BOOL_OP_DELIMITER:
             self.set_error_state("unexpected EOF", 26)
             return
 
@@ -380,7 +408,7 @@ class Parser:
             if self.state == State.ERROR:
                 break
             self.set_char(Char(c, self.pos, self.line, self.line_pos))
-            if self.char.is_newline():
+            if self.char and self.char.is_newline():
                 self.line += 1
                 self.line_pos = 0
                 self.pos += 1
@@ -404,7 +432,11 @@ class Parser:
                 case State.EXPECT_BOOL_OP:
                     self.in_state_expect_bool_op()
                 case _:
-                    self.set_error_state(f"Unknown state: {self.state}", 1)
+                    self.set_error_state(f"Unknown state: {self.state}", 1)  # type: ignore[unreachable]
+
+            if self.state == State.ERROR:  # type: ignore[comparison-overlap]
+                break  # type: ignore[unreachable]
+
             self.pos += 1
             self.line_pos += 1
 
@@ -416,7 +448,7 @@ class Parser:
 
         self.in_state_last_char()
 
-        if self.state == State.ERROR:
+        if self.state == State.ERROR:  # type: ignore[comparison-overlap]
             raise ParserError(
                 message=self.error_text,
                 errno=self.errno,

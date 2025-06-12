@@ -4,25 +4,69 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flyql"
-version = "0.0.2"
+version = "0.0.4"
 dependencies = []
+requires-python = ">=3.10"
 license = { text = "MIT License" }
 authors = [
     { name = "Ilia (HumanUser) Khomutov" }
 ]
-description = "fly query language gode generators"
+description = "A simple query language with parser that transforms queries into Abstract Syntax Tree (AST)"
+readme = "README.md"
+keywords = ["query", "parser", "ast", "sql", "clickhouse", "filter"]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Database",
+    "Topic :: Text Processing :: Linguistic",
 ]
 
 [project.urls]
-Homepage = "https://github.com/iamtelescope/flyql/tree/main/python/flyql"
+Homepage = "https://github.com/iamtelescope/flyql"
+Repository = "https://github.com/iamtelescope/flyql.git"
+Issues = "https://github.com/iamtelescope/flyql/issues"
+Documentation = "https://github.com/iamtelescope/flyql#readme"
 
 [project.optional-dependencies]
 test = [
-    "black",
-    "parameterized",
+    "pytest>=8.4",
+    "black>=25.1",
+    "mypy>=1.16",
+
+]
+dev = [
+    "pytest>=8.4",
+    "black>=25.1",
+    "mypy>=1.16",
 ]
 
+testpaths = ["tests"]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
+python_files = ["test_*.py", "tests_*.py"]
+#addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true

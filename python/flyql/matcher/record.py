@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Dict, Optional, Tuple
 
 from flyql.matcher.key import Key
 
@@ -7,13 +7,13 @@ from flyql.matcher.key import Key
 class Record:
     def __init__(
         self,
-        data: dict[str, Any],
-    ):
+        data: Dict[str, Any],
+    ) -> None:
         self.data = data
 
     def is_propbably_jsonstring(
         self,
-        value,
+        value: Any,
     ) -> bool:
         if not isinstance(value, str):
             return False
@@ -25,9 +25,9 @@ class Record:
 
     def extract_path(
         self,
-        value: dict[str, Any],
-        path: tuple,
-    ):
+        value: Dict[str, Any],
+        path: Tuple[str, ...],
+    ) -> Any:
         for key in path:
             if isinstance(value, dict) and key in value:
                 value = value[key]
@@ -38,7 +38,7 @@ class Record:
     def get_value(
         self,
         key: Key,
-    ):
+    ) -> Any:
         value = self.data[key.value]
         if not key.path:
             return value
@@ -50,4 +50,4 @@ class Record:
                     return None
             elif not isinstance(value, dict):
                 return None
-            return self.extract_path(value, key.path)
+            return self.extract_path(value, tuple(key.path))

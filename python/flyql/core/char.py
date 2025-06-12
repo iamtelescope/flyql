@@ -23,16 +23,16 @@ class Char:
         pos: int,
         line: int,
         line_pos: int,
-    ):
+    ) -> None:
         self.value = value
         self.pos = pos
         self.line = line
         self.line_pos = line_pos
 
-    def is_delimiter(self):
+    def is_delimiter(self) -> bool:
         return self.value == DELIMITER
 
-    def is_key(self):
+    def is_key(self) -> bool:
         return (
             self.value.isalnum()
             or self.value == UNDERSCORE
@@ -41,7 +41,7 @@ class Char:
             or self.value == SLASH
         )
 
-    def is_op(self):
+    def is_op(self) -> bool:
         return (
             self.value == EQUAL_SIGN
             or self.value == EXCL_MARK
@@ -50,31 +50,31 @@ class Char:
             or self.value == GREATER_THAN
         )
 
-    def is_group_open(self):
+    def is_group_open(self) -> bool:
         return self.value == BRACKET_OPEN
 
-    def is_group_close(self):
+    def is_group_close(self) -> bool:
         return self.value == BRACKET_CLOSE
 
-    def is_double_quote(self):
+    def is_double_quote(self) -> bool:
         return self.value == DOUBLE_QUOTE
 
-    def is_double_quoted_value(self):
+    def is_double_quoted_value(self) -> bool:
         return not self.is_double_quote()
 
-    def is_single_quote(self):
+    def is_single_quote(self) -> bool:
         return self.value == SINGLE_QUOTE
 
-    def is_single_quoted_value(self):
+    def is_single_quoted_value(self) -> bool:
         return not self.is_single_quote()
 
-    def is_backslash(self):
+    def is_backslash(self) -> bool:
         return self.value == BACKSLASH
 
-    def is_equals(self):
+    def is_equals(self) -> bool:
         return self.value == EQUAL_SIGN
 
-    def is_value(self):
+    def is_value(self) -> bool:
         return (
             not self.is_double_quote()
             and not self.is_single_quote()
@@ -84,5 +84,5 @@ class Char:
             and not self.is_equals()
         )
 
-    def is_newline(self):
+    def is_newline(self) -> bool:
         return self.value == NEWLINE

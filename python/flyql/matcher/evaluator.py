@@ -1,10 +1,10 @@
 import re
-from typing import Optional, Any
+from typing import Optional, Any, Dict, Pattern
 
-from flyql.constants import Operator, BoolOperator
-from flyql.expression import Expression
-from flyql.exceptions import FlyqlError
-from flyql.tree import Node
+from flyql.core.constants import Operator, BoolOperator
+from flyql.core.expression import Expression
+from flyql.core.exceptions import FlyqlError
+from flyql.core.tree import Node
 
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
@@ -13,8 +13,8 @@ from flyql.matcher.record import Record
 class Evaluator:
     def __init__(
         self,
-    ):
-        self.cache: dict[str, Any] = {}
+    ) -> None:
+        self.cache: Dict[str, Pattern[str]] = {}
 
     def evaluate(
         self,
@@ -25,14 +25,14 @@ class Evaluator:
         if root.expression:
             return self._eval_expression(root.expression, record)
 
-        left = None
-        right = None
+        left: Optional[bool] = None
+        right: Optional[bool] = None
 
         if root.left is not None:
             left = self.evaluate(root.left, record)
 
         if root.right is not None:
-            left = self.evaluate(root.right, record)
+            right = self.evaluate(root.right, record)
 
         if left is not None and right is not None:
             if root.bool_operator == BoolOperator.AND.value:
@@ -51,7 +51,7 @@ class Evaluator:
     def _get_regex(
         self,
         value: str,
-    ) -> re.Pattern:
+    ) -> Pattern[str]:
         regex = self.cache.get(value)
         if regex is None:
             try:
@@ -71,26 +71,32 @@ class Evaluator:
         key = Key(expression.key)
         value = record.get_value(key)
 
+        regex: Optional[Pattern[str]] = None
         if (
             expression.operator == Operator.EQUALS_REGEX.value
             or expression.operator == Operator.NOT_EQUALS_REGEX.value
         ):
             regex = self._get_regex(str(expression.value))
+
         if expression.operator == Operator.EQUALS.value:
-            return value == expression.value
+            return bool(value == expression.value)
         elif expression.operator == Operator.NOT_EQUALS.value:
-            return value != expression.value
+            return bool(value != expression.value)
         elif expression.operator == Operator.EQUALS_REGEX.value:
+            if regex is None:
+                return False
             return bool(regex.search(str(value)))
         elif expression.operator == Operator.NOT_EQUALS_REGEX.value:
-            return not regex.search(str(value))
+            if regex is None:
+                return True
+            return not bool(regex.search(str(value)))
         elif expression.operator == Operator.GREATER_THAN.value:
-            return value > expression.value
+            return bool(value > expression.value)
         elif expression.operator == Operator.LOWER_THAN.value:
-            return value < expression.value
+            return bool(value < expression.value)
         elif expression.operator == Operator.GREATER_OR_EQUALS_THAN.value:
-            return value >= expression.value
+            return bool(value >= expression.value)
         elif expression.operator == Operator.LOWER_OR_EQUALS_THAN.value:
-            return value <= expression.value
+            return bool(value <= expression.value)
         else:
             raise FlyqlError(f"Unknown expression operator: {expression.operator}")

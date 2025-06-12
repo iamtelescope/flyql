@@ -1,0 +1,61 @@
+{
+  "name": "flyql",
+  "version": "0.0.4",
+  "description": "A simple query language with parser that transforms queries into Abstract Syntax Tree (AST)",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": {
+      "import": "./src/index.js"
+    },
+    "./core": {
+      "import": "./src/core/index.js"
+    },
+    "./monaco": {
+      "import": "./src/monaco/index.js"
+    }
+  },
+  "files": [
+    "src/**/*.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "test-script": "node test-script.js",
+    "lint": "eslint src/ test/",
+    "format": "prettier --write src/ test/"
+  },
+  "keywords": [
+    "query",
+    "parser",
+    "ast",
+    "sql",
+    "filter",
+    "vue",
+    "javascript"
+  ],
+  "author": "Ilia (HumanUser) Khomutov",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iamtelescope/flyql.git",
+    "directory": "javascript"
+  },
+  "bugs": {
+    "url": "https://github.com/iamtelescope/flyql/issues"
+  },
+  "homepage": "https://github.com/iamtelescope/flyql#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "vitest": "^2.c.1.0"
+  }
+}

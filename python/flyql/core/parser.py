@@ -9,6 +9,7 @@ from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_BOOL_OPERATORS
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
+from flyql.core.constants import CharType
 
 
 class ParserError(FlyqlError):
@@ -42,6 +43,7 @@ class Parser:
         self.error_text: str = ""
         self.errno: int = 0
         self.root: Union[Node, None] = None
+        self.typed_chars: List[tuple[Char, CharType]] = []
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -113,6 +115,10 @@ class Parser:
 
     def extend_bool_op_stack(self) -> None:
         self.bool_op_stack.append(self.bool_operator)
+
+    def store_typed_char(self, char_type: CharType) -> None:
+        if self.char is not None:
+            self.typed_chars.append((self.char, char_type))
 
     def new_node(
         self,
@@ -199,11 +205,14 @@ class Parser:
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
             self.set_state(State.INITIAL)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_delimiter():
             self.set_state(State.BOOL_OP_DELIMITER)
+            self.store_typed_char(CharType.SPACE)
         elif self.char.is_key():
             self.extend_key()
             self.set_state(State.KEY)
+            self.store_typed_char(CharType.KEY)
         else:
             self.set_error_state("invalid character", 1)
             return
@@ -214,11 +223,14 @@ class Parser:
 
         if self.char.is_delimiter():
             self.set_state(State.EXPECT_OPERATOR)
+            self.store_typed_char(CharType.SPACE)
         elif self.char.is_key():
             self.extend_key()
+            self.store_typed_char(CharType.KEY)
         elif self.char.is_op():
             self.extend_key_value_operator()
             self.set_state(State.KEY_VALUE_OPERATOR)
+            self.store_typed_char(CharType.OPERATOR)
         else:
             self.set_error_state("invalid character", 3)
             return
@@ -228,10 +240,12 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_op():
             self.extend_key_value_operator()
             self.set_state(State.KEY_VALUE_OPERATOR)
+            self.store_typed_char(CharType.OPERATOR)
         else:
             self.set_error_state("expected operator", 28)
 
@@ -240,30 +254,35 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
             else:
                 self.set_state(State.EXPECT_VALUE)
         elif self.char.is_op():
             self.extend_key_value_operator()
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_value():
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
             else:
                 self.set_state(State.VALUE)
                 self.extend_value()
+                self.store_typed_char(CharType.VALUE)
         elif self.char.is_single_quote():
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
             else:
                 self.set_value_is_string()
                 self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
         elif self.char.is_double_quote():
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
             else:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
         else:
             self.set_error_state("invalid character", 4)
 
@@ -272,16 +291,20 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_value():
             self.set_state(State.VALUE)
             self.extend_value()
+            self.store_typed_char(CharType.VALUE)
         elif self.char.is_single_quote():
             self.set_value_is_string()
             self.set_state(State.SINGLE_QUOTED_VALUE)
+            self.store_typed_char(CharType.VALUE)
         elif self.char.is_double_quote():
             self.set_value_is_string()
             self.set_state(State.DOUBLE_QUOTED_VALUE)
+            self.store_typed_char(CharType.VALUE)
         else:
             self.set_error_state("expected value", 29)
 
@@ -291,11 +314,13 @@ class Parser:
 
         if self.char.is_value():
             self.extend_value()
+            self.store_typed_char(CharType.VALUE)
         elif self.char.is_delimiter():
             self.set_state(State.EXPECT_BOOL_OP)
             self.extend_tree()
             self.reset_data()
             self.reset_bool_operator()
+            self.store_typed_char(CharType.SPACE)
         elif self.char.is_group_close():
             if not self.nodes_stack:
                 self.set_error_state("unmatched parenthesis", 9)
@@ -308,6 +333,7 @@ class Parser:
                 self.extend_tree_from_stack(bool_operator=self.bool_operator)
                 self.reset_bool_operator()
                 self.set_state(State.EXPECT_BOOL_OP)
+                self.store_typed_char(CharType.OPERATOR)
         else:
             self.set_error_state("invalid character", 10)
             return
@@ -318,7 +344,9 @@ class Parser:
 
         if self.char.is_single_quoted_value():
             self.extend_value()
+            self.store_typed_char(CharType.VALUE)
         elif self.char.is_single_quote():
+            self.store_typed_char(CharType.VALUE)
             prev_pos = self.char.pos - 1
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
@@ -337,7 +365,9 @@ class Parser:
 
         if self.char.is_double_quoted_value():
             self.extend_value()
+            self.store_typed_char(CharType.VALUE)
         elif self.char.is_double_quote():
+            self.store_typed_char(CharType.VALUE)
             prev_pos = self.char.pos - 1
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
@@ -355,14 +385,17 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_key():
             self.set_state(State.KEY)
             self.extend_key()
+            self.store_typed_char(CharType.KEY)
         elif self.char.is_group_open():
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
             self.set_state(State.INITIAL)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_group_close():
             if not self.nodes_stack:
                 self.set_error_state("unmatched parenthesis", 15)
@@ -372,6 +405,7 @@ class Parser:
                 if self.bool_op_stack:
                     self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
                 self.set_state(State.EXPECT_BOOL_OP)
+                self.store_typed_char(CharType.OPERATOR)
         else:
             self.set_error_state("invalid character", 18)
             return
@@ -381,6 +415,7 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_group_close():
             if not self.nodes_stack:
@@ -394,8 +429,10 @@ class Parser:
                 if self.bool_op_stack:
                     self.extend_tree_from_stack(bool_operator=self.bool_op_stack.pop())
                 self.set_state(State.EXPECT_BOOL_OP)
+                self.store_typed_char(CharType.OPERATOR)
         else:
             self.extend_bool_operator()
+            self.store_typed_char(CharType.OPERATOR)
             if (
                 len(self.bool_operator) > 3
                 or self.char.value not in VALID_BOOL_OPERATORS_CHARS

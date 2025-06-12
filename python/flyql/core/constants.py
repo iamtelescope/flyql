@@ -1,6 +1,15 @@
 from enum import Enum
 
 
+class CharType(Enum):
+    KEY = "flyqlKey"
+    VALUE = "flyqlValue"
+    OPERATOR = "flyqlOperator"
+    NUMBER = "number"
+    STRING = "string"
+    SPACE = "space"
+
+
 class Operator(Enum):
     EQUALS = "="
     NOT_EQUALS = "!="

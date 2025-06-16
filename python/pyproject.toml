@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flyql"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = []
 requires-python = ">=3.10"
 license = { text = "MIT License" }
@@ -39,7 +39,6 @@ test = [
     "pytest>=8.4",
     "black>=25.1",
     "mypy>=1.16",
-
 ]
 dev = [
     "pytest>=8.4",
@@ -47,14 +46,14 @@ dev = [
     "mypy>=1.16",
 ]
 
-testpaths = ["tests"]
-
 [tool.pytest.ini_options]
 pythonpath = [
     "."
 ]
 python_files = ["test_*.py", "tests_*.py"]
-#addopts = "-v --tb=short"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -70,6 +69,3 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-
-[tool.setuptools]
-packages.find = {}

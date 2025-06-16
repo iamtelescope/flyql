@@ -119,7 +119,7 @@ class TestExpressionToSQL:
     def test_int_comparison(self, fields):
         expr = Expression("count", Operator.GREATER_THAN.value, 10, False)
         result = expression_to_sql(expr, fields)
-        assert result == "count > 10.0"
+        assert result == "count > 10"
 
     def test_float_comparison(self, fields):
         expr = Expression("price", Operator.LOWER_THAN.value, 99.99, False)
@@ -129,7 +129,7 @@ class TestExpressionToSQL:
     def test_bool_equals(self, fields):
         expr = Expression("active", Operator.EQUALS.value, True, False)
         result = expression_to_sql(expr, fields)
-        assert result == "active = '1.0'"
+        assert result == "active = '1'"
 
     def test_like_pattern(self, fields):
         expr = Expression("message", Operator.EQUALS.value, "hello*", True)
@@ -179,7 +179,7 @@ class TestNewJSONFields:
     def test_json_field_number_value(self, fields):
         expr = Expression("new_json:age", Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
-        expected = "new_json.age = 25.0"
+        expected = "new_json.age = 25"
         assert result == expected
 
     def test_json_field_underscore_in_name(self, fields):
@@ -307,7 +307,7 @@ class TestTreeToSQL:
         root_node = Node("and", None, left_node, right_node)
 
         result = to_sql(root_node, fields)
-        assert result == "(message = 'hello' and count > 10.0)"
+        assert result == "(message = 'hello' and count > 10)"
 
     def test_or_operation(self, fields):
         left_expr = Expression("message", Operator.EQUALS.value, "hello", True)
@@ -333,16 +333,16 @@ class TestTreeToSQL:
         root_node = Node("or", None, and_node, node3)
 
         result = to_sql(root_node, fields)
-        assert result == "((message = 'hello' and count > 10.0) or active = '1.0')"
+        assert result == "((message = 'hello' and count > 10) or active = '1')"
 
 
 @pytest.mark.parametrize(
     "field_name,operator,value,value_is_string,expected",
     [
         ("message", Operator.EQUALS.value, "test", True, "message = 'test'"),
-        ("count", Operator.NOT_EQUALS.value, 42, False, "count != '42.0'"),
+        ("count", Operator.NOT_EQUALS.value, 42, False, "count != '42'"),
         ("price", Operator.GREATER_OR_EQUALS_THAN.value, 10.5, False, "price >= 10.5"),
-        ("active", Operator.EQUALS.value, True, False, "active = '1.0'"),
+        ("active", Operator.EQUALS.value, True, False, "active = '1'"),
         (
             "created_at",
             Operator.LOWER_OR_EQUALS_THAN.value,

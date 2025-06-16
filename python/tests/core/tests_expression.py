@@ -36,8 +36,8 @@ def test_string_value():
 
 def test_numeric_value_conversion():
     e = Expression(key="count", operator="=", value="123", value_is_string=False)
-    assert e.value == 123.0
-    assert isinstance(e.value, float)
+    assert e.value == 123
+    assert isinstance(e.value, int)
 
     e = Expression(key="price", operator="=", value="12.34", value_is_string=False)
     assert e.value == 12.34
@@ -52,8 +52,8 @@ def test_non_numeric_value_stays_string():
 
 def test_none_value_is_string_defaults_to_conversion():
     e = Expression(key="count", operator="=", value="123", value_is_string=None)
-    assert e.value == 123.0
-    assert isinstance(e.value, float)
+    assert e.value == 123
+    assert isinstance(e.value, int)
 
     e = Expression(key="name", operator="=", value="abc", value_is_string=None)
     assert e.value == "abc"

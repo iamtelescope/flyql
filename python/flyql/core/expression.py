@@ -5,12 +5,12 @@ from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
 
 def try_convert_to_number(value: str) -> Union[float, int, str]:
     try:
-        return float(value)
+        f = float(value)
+        if f.is_integer():
+            return int(f)
+        return f
     except ValueError:
-        try:
-            return int(value)
-        except ValueError:
-            return value
+        return value
 
 
 class Expression:

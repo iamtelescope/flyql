@@ -24,8 +24,6 @@ export const CharType = Object.freeze({
     SPACE: 'space',
 })
 
-export const tokenTypes = [CharType.KEY, CharType.VALUE, CharType.OPERATOR, CharType.NUMBER, CharType.STRING]
-
 export const State = Object.freeze({
     INITIAL: 'Initial',
     ERROR: 'Error',

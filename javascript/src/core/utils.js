@@ -10,6 +10,9 @@ export function tryConvertToNumber(value) {
 
     if (!isNaN(value) && !isNaN(parseFloat(value))) {
         const num = parseFloat(value)
+        if (Number.isInteger(num)) {
+            return parseInt(value)
+        }
         return num
     }
 

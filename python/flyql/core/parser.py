@@ -476,7 +476,17 @@ class Parser:
             self.set_error_state("unmatched parenthesis", 27)
             return
 
-    def parse(self, text: str) -> None:
+    def parse(
+        self, text: str, raise_error: bool = True, ignore_last_char: bool = False
+    ) -> None:
+        """
+        Parse the given text.
+
+        Args:
+            text: The text to parse
+            raise_error: If True, raise ParserError on error. If False, set error state and return.
+            ignore_last_char: If True, skip final state validation (inStateLastChar)
+        """
         self.set_text(text)
         for c in text:
             if self.state == State.ERROR:
@@ -519,23 +529,40 @@ class Parser:
             self.line_pos += 1
 
         if self.state == State.ERROR:
-            raise ParserError(
-                message=self.error_text,
-                errno=self.errno,
-            )
+            if raise_error:
+                raise ParserError(
+                    message=self.error_text,
+                    errno=self.errno,
+                )
+            else:
+                return
 
-        self.in_state_last_char()
+        if not ignore_last_char:
+            self.in_state_last_char()
 
         if self.state == State.ERROR:  # type: ignore[comparison-overlap]
-            raise ParserError(
-                message=self.error_text,
-                errno=self.errno,
-            )
+            if raise_error:  # type: ignore[unreachable]
+                raise ParserError(
+                    message=self.error_text,
+                    errno=self.errno,
+                )
+            else:
+                return
 
         self.root = self.current_node
 
 
-def parse(text: str) -> Parser:
+def parse(
+    text: str, raise_error: bool = True, ignore_last_char: bool = False
+) -> Parser:
+    """
+    Parse the given text and return a Parser instance.
+
+    Args:
+        text: The text to parse
+        raise_error: If True, raise ParserError on error. If False, set error state and return.
+        ignore_last_char: If True, skip final state validation
+    """
     parser = Parser()
-    parser.parse(text)
+    parser.parse(text, raise_error, ignore_last_char)
     return parser

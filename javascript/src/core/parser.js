@@ -175,7 +175,6 @@ export class Parser {
         this.setCurrentNode(
             this.newNode(this.boolOperator, null, null, null)
         )
-
         if (this.char.isGroupOpen()) {
             this.extendNodesStack()
             this.extendBoolOpStack()
@@ -494,7 +493,7 @@ export class Parser {
         }
     }
 
-    parse(text) {
+    parse(text, raiseError = true, ignoreLastChar = false) {
         this.setText(text)
 
         for (let c of text) {
@@ -555,21 +554,31 @@ export class Parser {
         }
 
         if (this.state === State.ERROR) {
-            throw new ParserError(this.errorText, this.errno)
+            if (raiseError) {
+                throw new ParserError(this.errorText, this.errno)
+            } else {
+                return
+            }
         }
 
-        this.inStateLastChar()
+        if (!ignoreLastChar) {
+            this.inStateLastChar()
+        }
 
         if (this.state === State.ERROR) {
-            throw new ParserError(this.errorText, this.errno)
+            if (raiseError) {
+                throw new ParserError(this.errorText, this.errno)
+            } else {
+                return
+            }
         }
 
         this.root = this.currentNode
     }
 }
 
-export function parse(text) {
+export function parse(text, raiseError = true, ignoreLastChar = false) {
     const parser = new Parser()
-    parser.parse(text)
+    parser.parse(text, raiseError, ignoreLastChar)
     return parser
 }

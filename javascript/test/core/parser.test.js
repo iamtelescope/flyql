@@ -107,3 +107,13 @@ describe('Parser Error Tests', () => {
         })
     })
 })
+
+describe('Parser Quoted Keys Tests', () => {
+    const testData = loadTestData('quoted_keys.json')
+
+    testData.tests.forEach(testCase => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})

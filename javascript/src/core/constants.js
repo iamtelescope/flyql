@@ -28,6 +28,8 @@ export const State = Object.freeze({
     INITIAL: 'Initial',
     ERROR: 'Error',
     KEY: 'Key',
+    SINGLE_QUOTED_KEY: 'SingleQuotedKey',
+    DOUBLE_QUOTED_KEY: 'DoubleQuotedKey',
     EXPECT_OPERATOR: 'ExpectOperator',
     VALUE: 'Value',
     EXPECT_VALUE: 'ExpectValue',

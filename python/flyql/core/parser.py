@@ -213,6 +213,14 @@ class Parser:
             self.extend_key()
             self.set_state(State.KEY)
             self.store_typed_char(CharType.KEY)
+        elif self.char.is_single_quote():
+            self.extend_key()
+            self.set_state(State.SINGLE_QUOTED_KEY)
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_double_quote():
+            self.extend_key()
+            self.set_state(State.DOUBLE_QUOTED_KEY)
+            self.store_typed_char(CharType.KEY)
         else:
             self.set_error_state("invalid character", 1)
             return
@@ -226,6 +234,14 @@ class Parser:
             self.store_typed_char(CharType.SPACE)
         elif self.char.is_key():
             self.extend_key()
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_single_quote():
+            self.extend_key()
+            self.set_state(State.SINGLE_QUOTED_KEY)
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_double_quote():
+            self.extend_key()
+            self.set_state(State.DOUBLE_QUOTED_KEY)
             self.store_typed_char(CharType.KEY)
         elif self.char.is_op():
             self.extend_key_value_operator()
@@ -380,6 +396,44 @@ class Parser:
             self.set_error_state("invalid character", 11)
             return
 
+    def in_state_single_quoted_key(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_single_quoted_value():
+            self.extend_key()
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_single_quote():
+            self.store_typed_char(CharType.KEY)
+            prev_pos = self.char.pos - 1
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
+                self.extend_key()
+            else:
+                self.extend_key()
+                self.set_state(State.KEY)
+        else:
+            self.set_error_state("invalid character in quoted key", 30)
+            return
+
+    def in_state_double_quoted_key(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_double_quoted_value():
+            self.extend_key()
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_double_quote():
+            self.store_typed_char(CharType.KEY)
+            prev_pos = self.char.pos - 1
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
+                self.extend_key()
+            else:
+                self.extend_key()
+                self.set_state(State.KEY)
+        else:
+            self.set_error_state("invalid character in quoted key", 31)
+            return
+
     def in_state_bool_op_delimiter(self) -> None:
         if not self.char:
             return
@@ -390,6 +444,14 @@ class Parser:
         elif self.char.is_key():
             self.set_state(State.KEY)
             self.extend_key()
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_single_quote():
+            self.extend_key()
+            self.set_state(State.SINGLE_QUOTED_KEY)
+            self.store_typed_char(CharType.KEY)
+        elif self.char.is_double_quote():
+            self.extend_key()
+            self.set_state(State.DOUBLE_QUOTED_KEY)
             self.store_typed_char(CharType.KEY)
         elif self.char.is_group_open():
             self.extend_nodes_stack()
@@ -457,6 +519,8 @@ class Parser:
         elif self.state in (
             State.INITIAL,
             State.KEY,
+            State.SINGLE_QUOTED_KEY,
+            State.DOUBLE_QUOTED_KEY,
             State.EXPECT_OPERATOR,
             State.EXPECT_VALUE,
         ):
@@ -517,6 +581,10 @@ class Parser:
                     self.in_state_key_value_operator()
                 case State.BOOL_OP_DELIMITER:
                     self.in_state_bool_op_delimiter()
+                case State.SINGLE_QUOTED_KEY:
+                    self.in_state_single_quoted_key()
+                case State.DOUBLE_QUOTED_KEY:
+                    self.in_state_double_quoted_key()
                 case State.EXPECT_BOOL_OP:
                     self.in_state_expect_bool_op()
                 case _:

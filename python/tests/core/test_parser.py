@@ -63,3 +63,8 @@ def test_whitespace_parsing(test_case):
 @pytest.mark.parametrize("test_case", load_test_data("errors.json")["tests"])
 def test_errors_parsing(test_case):
     run_test_case(test_case)
+
+
+@pytest.mark.parametrize("test_case", load_test_data("quoted_keys.json")["tests"])
+def test_quoted_keys_parsing(test_case):
+    run_test_case(test_case)

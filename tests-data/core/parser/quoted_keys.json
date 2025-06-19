@@ -1,0 +1,166 @@
+{
+  "version": "1.0",
+  "description": "FlyQL parser test cases for quoted key segments",
+  "test_suite": "quoted_keys",
+  "tests": [
+    {
+      "name": "single_quoted_key_segment",
+      "input": "key:'part:with:semicolon':just:simple:part = 123",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key:'part:with:semicolon':just:simple:part",
+          "operator": "=",
+          "value": 123.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "double_quoted_key_segment",
+      "input": "key:\"part:with:semicolon\":just:simple:part = 456",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key:\"part:with:semicolon\":just:simple:part",
+          "operator": "=",
+          "value": 456.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "mixed_quotes_in_key",
+      "input": "key:'single':and:\"double\":parts = 'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key:'single':and:\"double\":parts",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_single_quote_in_key",
+      "input": "key:'part\\'s:value':test = 789",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key:'part\\'s:value':test",
+          "operator": "=",
+          "value": 789.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_double_quote_in_key",
+      "input": "key:\"part\\\"s:value\":test = 999",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key:\"part\\\"s:value\":test",
+          "operator": "=",
+          "value": 999.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "normal_key_still_works",
+      "input": "normal:key:path = 'test'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "normal:key:path",
+          "operator": "=",
+          "value": "test",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_key_with_boolean_operator",
+      "input": "key:'part:with:colon':test = 1 and normal:key = 2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key:'part:with:colon':test",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "normal:key",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "quoted_key_starting_with_quote",
+      "input": "'key:with:colons' = value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "'key:with:colons'",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "double_quoted_key_starting_with_quote",
+      "input": "\"key:with:colons\" = value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "\"key:with:colons\"",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

@@ -187,6 +187,14 @@ export class Parser {
             this.extendKey()
             this.setState(State.KEY)
             this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isSingleQuote()) {
+            this.extendKey()
+            this.setState(State.SINGLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isDoubleQuote()) {
+            this.extendKey()
+            this.setState(State.DOUBLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
         } else {
             this.setErrorState('invalid character', 1)
         }
@@ -202,6 +210,14 @@ export class Parser {
             this.storeTypedChar(CharType.SPACE)
         } else if (this.char.isKey()) {
             this.extendKey()
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isSingleQuote()) {
+            this.extendKey()
+            this.setState(State.SINGLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isDoubleQuote()) {
+            this.extendKey()
+            this.setState(State.DOUBLE_QUOTED_KEY)
             this.storeTypedChar(CharType.KEY)
         } else if (this.char.isOp()) {
             this.extendKeyValueOperator()
@@ -380,6 +396,50 @@ export class Parser {
         }
     }
 
+    inStateSingleQuotedKey() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isSingleQuotedValue()) {
+            this.extendKey()
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isSingleQuote()) {
+            this.storeTypedChar(CharType.KEY)
+            const prevPos = this.char.pos - 1
+            if (prevPos >= 0 && this.text[prevPos] === '\\') {
+                this.extendKey()
+            } else {
+                this.extendKey()
+                this.setState(State.KEY)
+            }
+        } else {
+            this.setErrorState('invalid character in quoted key', 30)
+        }
+    }
+
+    inStateDoubleQuotedKey() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDoubleQuotedValue()) {
+            this.extendKey()
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isDoubleQuote()) {
+            this.storeTypedChar(CharType.KEY)
+            const prevPos = this.char.pos - 1
+            if (prevPos >= 0 && this.text[prevPos] === '\\') {
+                this.extendKey()
+            } else {
+                this.extendKey()
+                this.setState(State.KEY)
+            }
+        } else {
+            this.setErrorState('invalid character in quoted key', 31)
+        }
+    }
+
     inStateBoolOpDelimiter() {
         if (!this.char) {
             return
@@ -391,6 +451,14 @@ export class Parser {
         } else if (this.char.isKey()) {
             this.setState(State.KEY)
             this.extendKey()
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isSingleQuote()) {
+            this.extendKey()
+            this.setState(State.SINGLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isDoubleQuote()) {
+            this.extendKey()
+            this.setState(State.DOUBLE_QUOTED_KEY)
             this.storeTypedChar(CharType.KEY)
         } else if (this.char.isGroupOpen()) {
             this.extendNodesStack()
@@ -472,6 +540,8 @@ export class Parser {
         } else if (
             this.state === State.INITIAL ||
             this.state === State.KEY ||
+            this.state === State.SINGLE_QUOTED_KEY ||
+            this.state === State.DOUBLE_QUOTED_KEY ||
             this.state === State.EXPECT_OPERATOR ||
             this.state === State.EXPECT_VALUE
         ) {
@@ -516,6 +586,12 @@ export class Parser {
                     break
                 case State.KEY:
                     this.inStateKey()
+                    break
+                case State.SINGLE_QUOTED_KEY:
+                    this.inStateSingleQuotedKey()
+                    break
+                case State.DOUBLE_QUOTED_KEY:
+                    this.inStateDoubleQuotedKey()
                     break
                 case State.EXPECT_OPERATOR:
                     this.inStateExpectOperator()

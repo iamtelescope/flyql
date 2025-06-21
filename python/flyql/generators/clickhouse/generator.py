@@ -140,7 +140,7 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = ".".join(json_path)
+            json_path_str = ".".join(f"`{part}`" for part in json_path)
             value = escape_param(expression.value)
             text = f"{field.name}.{json_path_str} {expression.operator} {value}"
         elif field.is_map:

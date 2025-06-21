@@ -184,7 +184,7 @@ class TestNewJSONFields:
             parse_key("new_json:name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "new_json.name = 'test'"
+        expected = "new_json.`name` = 'test'"
         assert result == expected
 
     def test_json_field_nested_path(self, fields):
@@ -192,13 +192,13 @@ class TestNewJSONFields:
             parse_key("new_json:user:name"), Operator.EQUALS.value, "john", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "new_json.user.name = 'john'"
+        expected = "new_json.`user`.`name` = 'john'"
         assert result == expected
 
     def test_json_field_number_value(self, fields):
         expr = Expression(parse_key("new_json:age"), Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
-        expected = "new_json.age = 25"
+        expected = "new_json.`age` = 25"
         assert result == expected
 
     def test_json_field_underscore_in_name(self, fields):
@@ -206,28 +206,28 @@ class TestNewJSONFields:
             parse_key("new_json:field_name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "new_json.field_name = 'test'"
+        assert result == "new_json.`field_name` = 'test'"
 
     def test_json_field_hyphen_in_name(self, fields):
         expr = Expression(
             parse_key("new_json:field-name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "new_json.field-name = 'test'"
+        assert result == "new_json.`field-name` = 'test'"
 
     def test_json_field_with_dots(self, fields):
         expr = Expression(
             parse_key("new_json:field.subfield"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "new_json.field.subfield = 'test'"
+        assert result == "new_json.`field.subfield` = 'test'"
 
     def test_json_field_starting_with_underscore(self, fields):
         expr = Expression(
             parse_key("new_json:_private"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "new_json._private = 'test'"
+        assert result == "new_json.`_private` = 'test'"
 
 
 class TestJSONFieldValidationErrors:

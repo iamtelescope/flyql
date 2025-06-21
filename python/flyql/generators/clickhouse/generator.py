@@ -99,13 +99,12 @@ def prepare_like_pattern_value(value: str) -> Tuple[bool, str]:
 def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
     text = ""
 
-    if ":" in expression.key:
+    if expression.key.is_segmented:
         reverse_operator = ""
         if expression.operator == Operator.NOT_EQUALS_REGEX.value:
             reverse_operator = "not "
         func = OPERATOR_TO_CLICKHOUSE_FUNC[expression.operator]
-        spl = expression.key.split(":")
-        field_name = spl[0]
+        field_name = expression.key.segments[0]
         if field_name not in fields:
             raise FlyqlError(f"unknown field: {field_name}")
         field = fields[field_name]
@@ -116,7 +115,7 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             )
 
         if field.jsonstring:
-            json_path = spl[1:]
+            json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
 
             str_value = escape_param(expression.value)
@@ -138,18 +137,18 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             multi_if_str = ",".join(multi_if)
             text = f"{reverse_operator}multiIf({multi_if_str})"
         elif field.is_json:
-            json_path = spl[1:]
+            json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(json_path)
             value = escape_param(expression.value)
             text = f"{field.name}.{json_path_str} {expression.operator} {value}"
         elif field.is_map:
-            map_key = ":".join(spl[1:])
+            map_key = ":".join(expression.key.segments[1:])
             value = escape_param(expression.value)
             text = f"{reverse_operator}{func}({field.name}['{map_key}'], {value})"
         elif field.is_array:
-            array_index_str = ":".join(spl[1:])
+            array_index_str = ":".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
             except Exception:
@@ -162,10 +161,11 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             raise FlyqlError("path search for unsupported field type")
 
     else:
-        if expression.key not in fields:
-            raise FlyqlError(f"unknown field: {expression.key}")
+        field_name = expression.key.segments[0]
+        if field_name not in fields:
+            raise FlyqlError(f"unknown field: {field_name}")
 
-        field = fields[expression.key]
+        field = fields[field_name]
 
         if field.values and str(expression.value) not in field.values:
             raise FlyqlError(f"unknown value: {expression.value}")

@@ -3,6 +3,7 @@ from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
 from flyql.core.constants import Operator
 from flyql.core.tree import Node
+from flyql.core.key import parse_key
 from flyql.generators.clickhouse.field import Field
 from flyql.generators.clickhouse.generator import (
     expression_to_sql,
@@ -97,67 +98,81 @@ class TestPrepareLikePattern:
 class TestExpressionToSQL:
 
     def test_string_equals(self, fields):
-        expr = Expression("message", Operator.EQUALS.value, "hello", True)
+        expr = Expression(parse_key("message"), Operator.EQUALS.value, "hello", True)
         result = expression_to_sql(expr, fields)
         assert result == "message = 'hello'"
 
     def test_string_not_equals(self, fields):
-        expr = Expression("message", Operator.NOT_EQUALS.value, "hello", True)
+        expr = Expression(
+            parse_key("message"), Operator.NOT_EQUALS.value, "hello", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "message != 'hello'"
 
     def test_string_regex(self, fields):
-        expr = Expression("message", Operator.EQUALS_REGEX.value, "test.*", True)
+        expr = Expression(
+            parse_key("message"), Operator.EQUALS_REGEX.value, "test.*", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "match(message, 'test.*')"
 
     def test_string_not_regex(self, fields):
-        expr = Expression("message", Operator.NOT_EQUALS_REGEX.value, "test.*", True)
+        expr = Expression(
+            parse_key("message"), Operator.NOT_EQUALS_REGEX.value, "test.*", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "not match(message, 'test.*')"
 
     def test_int_comparison(self, fields):
-        expr = Expression("count", Operator.GREATER_THAN.value, 10, False)
+        expr = Expression(parse_key("count"), Operator.GREATER_THAN.value, 10, False)
         result = expression_to_sql(expr, fields)
         assert result == "count > 10"
 
     def test_float_comparison(self, fields):
-        expr = Expression("price", Operator.LOWER_THAN.value, 99.99, False)
+        expr = Expression(parse_key("price"), Operator.LOWER_THAN.value, 99.99, False)
         result = expression_to_sql(expr, fields)
         assert result == "price < 99.99"
 
     def test_bool_equals(self, fields):
-        expr = Expression("active", Operator.EQUALS.value, True, False)
+        expr = Expression(parse_key("active"), Operator.EQUALS.value, True, False)
         result = expression_to_sql(expr, fields)
         assert result == "active = '1'"
 
     def test_like_pattern(self, fields):
-        expr = Expression("message", Operator.EQUALS.value, "hello*", True)
+        expr = Expression(parse_key("message"), Operator.EQUALS.value, "hello*", True)
         result = expression_to_sql(expr, fields)
         assert result == "message LIKE 'hello%'"
 
     def test_not_like_pattern(self, fields):
-        expr = Expression("message", Operator.NOT_EQUALS.value, "hello*", True)
+        expr = Expression(
+            parse_key("message"), Operator.NOT_EQUALS.value, "hello*", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "message NOT LIKE 'hello%'"
 
     def test_enum_field_valid_value(self, fields):
-        expr = Expression("enum_field", Operator.EQUALS.value, "value1", True)
+        expr = Expression(
+            parse_key("enum_field"), Operator.EQUALS.value, "value1", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "enum_field = 'value1'"
 
     def test_enum_field_invalid_value(self, fields):
-        expr = Expression("enum_field", Operator.EQUALS.value, "invalid", True)
+        expr = Expression(
+            parse_key("enum_field"), Operator.EQUALS.value, "invalid", True
+        )
         with pytest.raises(FlyqlError, match="unknown value"):
             expression_to_sql(expr, fields)
 
     def test_unknown_field(self, fields):
-        expr = Expression("unknown_field", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("unknown_field"), Operator.EQUALS.value, "test", True
+        )
         with pytest.raises(FlyqlError, match="unknown field"):
             expression_to_sql(expr, fields)
 
     def test_forbidden_operation(self, fields):
-        expr = Expression("count", Operator.EQUALS_REGEX.value, "test", True)
+        expr = Expression(parse_key("count"), Operator.EQUALS_REGEX.value, "test", True)
         with pytest.raises(FlyqlError, match="operation not allowed"):
             expression_to_sql(expr, fields)
 
@@ -165,42 +180,52 @@ class TestExpressionToSQL:
 class TestNewJSONFields:
 
     def test_json_field_simple_path(self, fields):
-        expr = Expression("new_json:name", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:name"), Operator.EQUALS.value, "test", True
+        )
         result = expression_to_sql(expr, fields)
         expected = "new_json.name = 'test'"
         assert result == expected
 
     def test_json_field_nested_path(self, fields):
-        expr = Expression("new_json:user:name", Operator.EQUALS.value, "john", True)
+        expr = Expression(
+            parse_key("new_json:user:name"), Operator.EQUALS.value, "john", True
+        )
         result = expression_to_sql(expr, fields)
         expected = "new_json.user.name = 'john'"
         assert result == expected
 
     def test_json_field_number_value(self, fields):
-        expr = Expression("new_json:age", Operator.EQUALS.value, 25, False)
+        expr = Expression(parse_key("new_json:age"), Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
         expected = "new_json.age = 25"
         assert result == expected
 
     def test_json_field_underscore_in_name(self, fields):
-        expr = Expression("new_json:field_name", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:field_name"), Operator.EQUALS.value, "test", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "new_json.field_name = 'test'"
 
     def test_json_field_hyphen_in_name(self, fields):
-        expr = Expression("new_json:field-name", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:field-name"), Operator.EQUALS.value, "test", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "new_json.field-name = 'test'"
 
     def test_json_field_with_dots(self, fields):
         expr = Expression(
-            "new_json:field.subfield", Operator.EQUALS.value, "test", True
+            parse_key("new_json:field.subfield"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
         assert result == "new_json.field.subfield = 'test'"
 
     def test_json_field_starting_with_underscore(self, fields):
-        expr = Expression("new_json:_private", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:_private"), Operator.EQUALS.value, "test", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "new_json._private = 'test'"
 
@@ -209,35 +234,46 @@ class TestJSONFieldValidationErrors:
 
     def test_json_field_with_quotes(self, fields):
         expr = Expression(
-            'new_json:field"with"quotes', Operator.EQUALS.value, "test", True
+            parse_key("new_json:'field\"with\"quotes'"),
+            Operator.EQUALS.value,
+            "test",
+            True,
         )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
     def test_json_field_with_spaces(self, fields):
         expr = Expression(
-            "new_json:field with spaces", Operator.EQUALS.value, "test", True
+            parse_key("new_json:field with spaces"), Operator.EQUALS.value, "test", True
         )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
     def test_json_field_with_special_chars(self, fields):
-        expr = Expression("new_json:field@special", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:field@special"), Operator.EQUALS.value, "test", True
+        )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
     def test_json_field_starting_with_digit(self, fields):
-        expr = Expression("new_json:123field", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:123field"), Operator.EQUALS.value, "test", True
+        )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
     def test_json_field_starting_with_hyphen(self, fields):
-        expr = Expression("new_json:-invalid", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:-invalid"), Operator.EQUALS.value, "test", True
+        )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
     def test_json_field_empty_path_part(self, fields):
-        expr = Expression("new_json:user::field", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("new_json:user::field"), Operator.EQUALS.value, "test", True
+        )
         with pytest.raises(FlyqlError, match="Invalid JSON path part"):
             expression_to_sql(expr, fields)
 
@@ -245,19 +281,23 @@ class TestJSONFieldValidationErrors:
 class TestJSONFields:
 
     def test_json_field_string_extraction(self, fields):
-        expr = Expression("json_field:name", Operator.EQUALS.value, "test", True)
+        expr = Expression(
+            parse_key("json_field:name"), Operator.EQUALS.value, "test", True
+        )
         result = expression_to_sql(expr, fields)
         expected = "multiIf(JSONType(json_field, 'name') = 'String', equals(JSONExtractString(json_field, 'name'), 'test'),0)"
         assert result == expected
 
     def test_json_field_nested_path(self, fields):
-        expr = Expression("json_field:user:name", Operator.EQUALS.value, "john", True)
+        expr = Expression(
+            parse_key("json_field:user:name"), Operator.EQUALS.value, "john", True
+        )
         result = expression_to_sql(expr, fields)
         expected = "multiIf(JSONType(json_field, 'user', 'name') = 'String', equals(JSONExtractString(json_field, 'user', 'name'), 'john'),0)"
         assert result == expected
 
     def test_json_field_number_value(self, fields):
-        expr = Expression("json_field:age", Operator.EQUALS.value, 25, False)
+        expr = Expression(parse_key("json_field:age"), Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
         assert "JSONExtractInt" in result
         assert "JSONExtractFloat" in result
@@ -267,12 +307,16 @@ class TestJSONFields:
 class TestMapFields:
 
     def test_map_field_access(self, fields):
-        expr = Expression("metadata:key1", Operator.EQUALS.value, "value1", True)
+        expr = Expression(
+            parse_key("metadata:key1"), Operator.EQUALS.value, "value1", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "equals(metadata['key1'], 'value1')"
 
     def test_map_field_nested_key(self, fields):
-        expr = Expression("metadata:nested:key", Operator.EQUALS.value, "value", True)
+        expr = Expression(
+            parse_key("metadata:nested:key"), Operator.EQUALS.value, "value", True
+        )
         result = expression_to_sql(expr, fields)
         assert result == "equals(metadata['nested:key'], 'value')"
 
@@ -280,12 +324,14 @@ class TestMapFields:
 class TestArrayFields:
 
     def test_array_field_access(self, fields):
-        expr = Expression("tags:0", Operator.EQUALS.value, "tag1", True)
+        expr = Expression(parse_key("tags:0"), Operator.EQUALS.value, "tag1", True)
         result = expression_to_sql(expr, fields)
         assert result == "equals(tags[0], 'tag1')"
 
     def test_array_field_invalid_index(self, fields):
-        expr = Expression("tags:invalid", Operator.EQUALS.value, "tag1", True)
+        expr = Expression(
+            parse_key("tags:invalid"), Operator.EQUALS.value, "tag1", True
+        )
         with pytest.raises(FlyqlError, match="invalid array index"):
             expression_to_sql(expr, fields)
 
@@ -293,14 +339,18 @@ class TestArrayFields:
 class TestTreeToSQL:
 
     def test_simple_expression(self, fields):
-        expr = Expression("message", Operator.EQUALS.value, "hello", True)
+        expr = Expression(parse_key("message"), Operator.EQUALS.value, "hello", True)
         node = Node("", expr, None, None)
         result = to_sql(node, fields)
         assert result == "message = 'hello'"
 
     def test_and_operation(self, fields):
-        left_expr = Expression("message", Operator.EQUALS.value, "hello", True)
-        right_expr = Expression("count", Operator.GREATER_THAN.value, 10, False)
+        left_expr = Expression(
+            parse_key("message"), Operator.EQUALS.value, "hello", True
+        )
+        right_expr = Expression(
+            parse_key("count"), Operator.GREATER_THAN.value, 10, False
+        )
 
         left_node = Node("", left_expr, None, None)
         right_node = Node("", right_expr, None, None)
@@ -310,8 +360,12 @@ class TestTreeToSQL:
         assert result == "(message = 'hello' and count > 10)"
 
     def test_or_operation(self, fields):
-        left_expr = Expression("message", Operator.EQUALS.value, "hello", True)
-        right_expr = Expression("message", Operator.EQUALS.value, "world", True)
+        left_expr = Expression(
+            parse_key("message"), Operator.EQUALS.value, "hello", True
+        )
+        right_expr = Expression(
+            parse_key("message"), Operator.EQUALS.value, "world", True
+        )
 
         left_node = Node("", left_expr, None, None)
         right_node = Node("", right_expr, None, None)
@@ -321,9 +375,9 @@ class TestTreeToSQL:
         assert result == "(message = 'hello' or message = 'world')"
 
     def test_complex_tree(self, fields):
-        expr1 = Expression("message", Operator.EQUALS.value, "hello", True)
-        expr2 = Expression("count", Operator.GREATER_THAN.value, 10, False)
-        expr3 = Expression("active", Operator.EQUALS.value, True, False)
+        expr1 = Expression(parse_key("message"), Operator.EQUALS.value, "hello", True)
+        expr2 = Expression(parse_key("count"), Operator.GREATER_THAN.value, 10, False)
+        expr3 = Expression(parse_key("active"), Operator.EQUALS.value, True, False)
 
         node1 = Node("", expr1, None, None)
         node2 = Node("", expr2, None, None)
@@ -355,6 +409,6 @@ class TestTreeToSQL:
 def test_various_field_operations(
     fields, field_name, operator, value, value_is_string, expected
 ):
-    expr = Expression(field_name, operator, value, value_is_string)
+    expr = Expression(parse_key(field_name), operator, value, value_is_string)
     result = expression_to_sql(expr, fields)
     assert result == expected

@@ -51,7 +51,7 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
 
     if node.expression is not None:
         result["expression"] = {
-            "key": node.expression.key,
+            "key": node.expression.key.raw,
             "operator": node.expression.operator,
             "value": node.expression.value,
             "value_type": (

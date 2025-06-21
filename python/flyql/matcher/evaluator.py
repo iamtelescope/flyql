@@ -68,7 +68,7 @@ class Evaluator:
         record: Record,
     ) -> bool:
 
-        key = Key(expression.key)
+        key = Key(expression.key.raw)
         value = record.get_value(key)
 
         regex: Optional[Pattern[str]] = None

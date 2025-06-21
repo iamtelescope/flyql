@@ -1,98 +1,98 @@
 import {
-    DELIMITER,
-    DOT,
-    UNDERSCORE,
-    COLON,
-    SLASH,
-    BACKSLASH,
-    BRACKET_OPEN,
-    BRACKET_CLOSE,
-    EQUAL_SIGN,
-    EXCL_MARK,
-    TILDE,
-    LOWER_THAN,
-    GREATER_THAN,
-    DOUBLE_QUOTE,
-    SINGLE_QUOTE,
-    NEWLINE,
-} from './constants.js'
+  DELIMITER,
+  DOT,
+  UNDERSCORE,
+  COLON,
+  SLASH,
+  BACKSLASH,
+  BRACKET_OPEN,
+  BRACKET_CLOSE,
+  EQUAL_SIGN,
+  EXCL_MARK,
+  TILDE,
+  LOWER_THAN,
+  GREATER_THAN,
+  DOUBLE_QUOTE,
+  SINGLE_QUOTE,
+  NEWLINE,
+} from "./constants.js";
 
 export class Char {
-    constructor(value, pos, line, linePos) {
-        this.value = value
-        this.pos = pos
-        this.line = line
-        this.linePos = linePos
-    }
+  constructor(value, pos, line, linePos) {
+    this.value = value;
+    this.pos = pos;
+    this.line = line;
+    this.linePos = linePos;
+  }
 
-    isDelimiter() {
-        return this.value === DELIMITER
-    }
+  isDelimiter() {
+    return this.value === DELIMITER;
+  }
 
-    isKey() {
-        return (
-            /^[a-zA-Z0-9]$/.test(this.value) ||
-            this.value === UNDERSCORE ||
-            this.value === DOT ||
-            this.value === COLON ||
-            this.value === SLASH
-        )
-    }
+  isKey() {
+    return (
+      /^[a-zA-Z0-9]$/.test(this.value) ||
+      this.value === UNDERSCORE ||
+      this.value === DOT ||
+      this.value === COLON ||
+      this.value === SLASH
+    );
+  }
 
-    isOp() {
-        return (
-            this.value === EQUAL_SIGN ||
-            this.value === EXCL_MARK ||
-            this.value === TILDE ||
-            this.value === LOWER_THAN ||
-            this.value === GREATER_THAN
-        )
-    }
+  isOp() {
+    return (
+      this.value === EQUAL_SIGN ||
+      this.value === EXCL_MARK ||
+      this.value === TILDE ||
+      this.value === LOWER_THAN ||
+      this.value === GREATER_THAN
+    );
+  }
 
-    isGroupOpen() {
-        return this.value === BRACKET_OPEN
-    }
+  isGroupOpen() {
+    return this.value === BRACKET_OPEN;
+  }
 
-    isGroupClose() {
-        return this.value === BRACKET_CLOSE
-    }
+  isGroupClose() {
+    return this.value === BRACKET_CLOSE;
+  }
 
-    isDoubleQuote() {
-        return this.value === DOUBLE_QUOTE
-    }
+  isDoubleQuote() {
+    return this.value === DOUBLE_QUOTE;
+  }
 
-    isDoubleQuotedValue() {
-        return !this.isDoubleQuote()
-    }
+  isDoubleQuotedValue() {
+    return !this.isDoubleQuote();
+  }
 
-    isSingleQuote() {
-        return this.value === SINGLE_QUOTE
-    }
+  isSingleQuote() {
+    return this.value === SINGLE_QUOTE;
+  }
 
-    isSingleQuotedValue() {
-        return !this.isSingleQuote()
-    }
+  isSingleQuotedValue() {
+    return !this.isSingleQuote();
+  }
 
-    isBackslash() {
-        return this.value === BACKSLASH
-    }
+  isBackslash() {
+    return this.value === BACKSLASH;
+  }
 
-    isEquals() {
-        return this.value === EQUAL_SIGN
-    }
+  isEquals() {
+    return this.value === EQUAL_SIGN;
+  }
 
-    isValue() {
-        return (
-            !this.isDoubleQuote() &&
-            !this.isSingleQuote() &&
-            !this.isDelimiter() &&
-            !this.isGroupOpen() &&
-            !this.isGroupClose() &&
-            !this.isEquals()
-        )
-    }
+  isValue() {
+    return (
+      !this.isDoubleQuote() &&
+      !this.isSingleQuote() &&
+      !this.isDelimiter() &&
+      !this.isGroupOpen() &&
+      !this.isGroupClose() &&
+      !this.isEquals()
+    );
+  }
 
-    isNewline() {
-        return this.value === NEWLINE
-    }
+  isNewline() {
+    return this.value === NEWLINE;
+  }
 }

@@ -1,0 +1,248 @@
+{
+  "version": "1.0",
+  "description": "Key parsing test cases for FlyQL Key class and parser",
+  "test_suite": "key",
+  "tests": [
+    {
+      "name": "empty_string",
+      "input": "",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": [],
+        "is_segmented": false,
+        "raw": ""
+      }
+    },
+    {
+      "name": "single_segment",
+      "input": "test",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["test"],
+        "is_segmented": false,
+        "raw": "test"
+      }
+    },
+    {
+      "name": "multiple_segments",
+      "input": "key:some:path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some", "path"],
+        "is_segmented": true,
+        "raw": "key:some:path"
+      }
+    },
+    {
+      "name": "quoted_segment_simple",
+      "input": "key:'some:key':path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some:key", "path"],
+        "is_segmented": true,
+        "raw": "key:'some:key':path"
+      }
+    },
+    {
+      "name": "quoted_segment_only",
+      "input": "'quoted:key'",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["quoted:key"],
+        "is_segmented": false,
+        "raw": "'quoted:key'"
+      }
+    },
+    {
+      "name": "multiple_quoted_segments",
+      "input": "'first:part':'second:part':normal",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["first:part", "second:part", "normal"],
+        "is_segmented": true,
+        "raw": "'first:part':'second:part':normal"
+      }
+    },
+    {
+      "name": "escaped_quote_in_quoted_segment",
+      "input": "key:'some\\'quoted':path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some'quoted", "path"],
+        "is_segmented": true,
+        "raw": "key:'some\\'quoted':path"
+      }
+    },
+    {
+      "name": "escaped_backslash",
+      "input": "key:'some\\\\path':end",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some\\path", "end"],
+        "is_segmented": true,
+        "raw": "key:'some\\\\path':end"
+      }
+    },
+    {
+      "name": "escaped_colon_in_normal_segment",
+      "input": "key\\:with\\:colons:normal",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key:with:colons", "normal"],
+        "is_segmented": true,
+        "raw": "key\\:with\\:colons:normal"
+      }
+    },
+    {
+      "name": "empty_segments",
+      "input": ":::",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["", "", "", ""],
+        "is_segmented": true,
+        "raw": ":::"
+      }
+    },
+    {
+      "name": "empty_quoted_segment",
+      "input": "key:'':path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "", "path"],
+        "is_segmented": true,
+        "raw": "key:'':path"
+      }
+    },
+    {
+      "name": "trailing_colon",
+      "input": "key:path:",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "path", ""],
+        "is_segmented": true,
+        "raw": "key:path:"
+      }
+    },
+    {
+      "name": "leading_colon",
+      "input": ":key:path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["", "key", "path"],
+        "is_segmented": true,
+        "raw": ":key:path"
+      }
+    },
+    {
+      "name": "complex_escaping",
+      "input": "'key\\'s:value':'path\\nwith\\nnewlines':normal\\:segment",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key's:value", "path\nwith\nnewlines", "normal:segment"],
+        "is_segmented": true,
+        "raw": "'key\\'s:value':'path\\nwith\\nnewlines':normal\\:segment"
+      }
+    },
+    {
+      "name": "tab_and_newline_escapes",
+      "input": "'line1\\nline2\\ttab'",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["line1\nline2\ttab"],
+        "is_segmented": false,
+        "raw": "'line1\\nline2\\ttab'"
+      }
+    },
+    {
+      "name": "unterminated_quote_error",
+      "input": "key:'unterminated",
+      "expected_result": "error",
+      "expected_error_type": "FlyqlError",
+      "expected_error_message": "Key parsing error: Unterminated quoted segment"
+    },
+    {
+      "name": "incomplete_escape_error",
+      "input": "key:segment\\",
+      "expected_result": "error",
+      "expected_error_type": "FlyqlError",
+      "expected_error_message": "Key parsing error: Incomplete escape sequence"
+    },
+    {
+      "name": "double_quoted_segment_simple",
+      "input": "key:\"some:key\":path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some:key", "path"],
+        "is_segmented": true,
+        "raw": "key:\"some:key\":path"
+      }
+    },
+    {
+      "name": "double_quoted_segment_only",
+      "input": "\"quoted:key\"",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["quoted:key"],
+        "is_segmented": false,
+        "raw": "\"quoted:key\""
+      }
+    },
+    {
+      "name": "mixed_single_and_double_quotes",
+      "input": "'single:part':\"double:part\":normal",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["single:part", "double:part", "normal"],
+        "is_segmented": true,
+        "raw": "'single:part':\"double:part\":normal"
+      }
+    },
+    {
+      "name": "escaped_double_quote_in_double_quoted_segment",
+      "input": "key:\"some\\\"quoted\":path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["key", "some\"quoted", "path"],
+        "is_segmented": true,
+        "raw": "key:\"some\\\"quoted\":path"
+      }
+    },
+    {
+      "name": "json_key_with_quotes",
+      "input": "some:'key\"with\"quotes':path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["some", "key\"with\"quotes", "path"],
+        "is_segmented": true,
+        "raw": "some:'key\"with\"quotes':path"
+      }
+    },
+    {
+      "name": "json_key_with_quotes_and_colons",
+      "input": "some:'key\"with\"quotes:and:columns':path",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["some", "key\"with\"quotes:and:columns", "path"],
+        "is_segmented": true,
+        "raw": "some:'key\"with\"quotes:and:columns':path"
+      }
+    },
+    {
+      "name": "empty_double_quoted_segments",
+      "input": "value:\"\"a:b:c\"\":key",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["value", "a", "b", "c", "key"],
+        "is_segmented": true,
+        "raw": "value:\"\"a:b:c\"\":key"
+      }
+    },
+    {
+      "name": "unterminated_double_quote_error",
+      "input": "key:\"unterminated",
+      "expected_result": "error",
+      "expected_error_type": "FlyqlError",
+      "expected_error_message": "Key parsing error: Unterminated quoted segment"
+    }
+  ]
+}

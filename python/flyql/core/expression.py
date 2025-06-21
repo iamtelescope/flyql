@@ -1,6 +1,7 @@
 from typing import Union, Any
 from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
+from flyql.core.key import Key
 
 
 def try_convert_to_number(value: str) -> Union[float, int, str]:
@@ -16,7 +17,7 @@ def try_convert_to_number(value: str) -> Union[float, int, str]:
 class Expression:
     def __init__(
         self,
-        key: str,
+        key: Key,
         operator: str,
         value: str,
         value_is_string: Union[bool, None],
@@ -24,7 +25,7 @@ class Expression:
         if operator not in VALID_KEY_VALUE_OPERATORS:
             raise FlyqlError(f"invalid operator: {operator}")
 
-        if not key:
+        if not key.segments:
             raise FlyqlError("emtpy key")
 
         self.key = key
@@ -35,4 +36,4 @@ class Expression:
             self.value = value
 
     def __str__(self) -> str:
-        return f"{self.key}{self.operator}{self.value}"
+        return f"{self.key.raw}{self.operator}{self.value}"

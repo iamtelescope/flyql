@@ -4,13 +4,14 @@ from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.constants import VALID_BOOL_OPERATORS
 from flyql.core.exceptions import FlyqlError
+from flyql.core.key import Key
 
 
 INVALID_OPERATOR_VALUE = "INVALID_OPERATOR"
 
 
 def get_valid_expression() -> Expression:
-    return Expression(key="a", operator="=", value="b", value_is_string=None)
+    return Expression(key=Key(["a"]), operator="=", value="b", value_is_string=None)
 
 
 def get_valid_node() -> Node:

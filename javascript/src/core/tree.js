@@ -1,34 +1,34 @@
-import { FlyqlError } from './exceptions.js'
-import { VALID_BOOL_OPERATORS } from './constants.js'
+import { FlyqlError } from "./exceptions.js";
+import { VALID_BOOL_OPERATORS } from "./constants.js";
 
 export class Node {
-    constructor(boolOperator, expression, left, right) {
-        if ((left || right) && expression) {
-            throw new FlyqlError('either (left or right) or expression at same time')
-        }
-
-        this.boolOperator = boolOperator
-        this.expression = expression
-        this.left = left
-        this.right = right
+  constructor(boolOperator, expression, left, right) {
+    if ((left || right) && expression) {
+      throw new FlyqlError("either (left or right) or expression at same time");
     }
 
-    setBoolOperator(boolOperator) {
-        if (!VALID_BOOL_OPERATORS.includes(boolOperator)) {
-            throw new FlyqlError(`invalid bool operator: ${boolOperator}`)
-        }
-        this.boolOperator = boolOperator
-    }
+    this.boolOperator = boolOperator;
+    this.expression = expression;
+    this.left = left;
+    this.right = right;
+  }
 
-    setLeft(node) {
-        this.left = node
+  setBoolOperator(boolOperator) {
+    if (!VALID_BOOL_OPERATORS.includes(boolOperator)) {
+      throw new FlyqlError(`invalid bool operator: ${boolOperator}`);
     }
+    this.boolOperator = boolOperator;
+  }
 
-    setRight(node) {
-        this.right = node
-    }
+  setLeft(node) {
+    this.left = node;
+  }
 
-    setExpression(expression) {
-        this.expression = expression
-    }
+  setRight(node) {
+    this.right = node;
+  }
+
+  setExpression(expression) {
+    this.expression = expression;
+  }
 }

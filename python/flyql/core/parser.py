@@ -10,6 +10,7 @@ from flyql.core.constants import VALID_BOOL_OPERATORS
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
+from flyql.core.key import parse_key
 
 
 class ParserError(FlyqlError):
@@ -133,7 +134,7 @@ class Parser:
 
     def new_expression(self) -> Expression:
         return Expression(
-            key=self.key,
+            key=parse_key(self.key),
             operator=self.key_value_operator,
             value=self.value,
             value_is_string=self.value_is_string,

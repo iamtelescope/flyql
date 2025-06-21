@@ -1,2 +1,2 @@
-export * from "./core/index.js";
-export * from "./utils/monaco.js";
+export * from './core/index.js'
+export * from './utils/monaco.js'

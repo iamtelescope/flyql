@@ -1,6 +1,6 @@
 {
   "name": "flyql",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A simple query language with parser that transforms queries into Abstract Syntax Tree (AST)",
   "type": "module",
   "main": "./src/index.js",

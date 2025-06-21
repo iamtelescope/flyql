@@ -1,4 +1,4 @@
-all: fmt-test pytest type-test
+all: test
 fmt:
 	black .
 fmt-test:

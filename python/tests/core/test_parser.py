@@ -68,3 +68,18 @@ def test_errors_parsing(test_case):
 @pytest.mark.parametrize("test_case", load_test_data("quoted_keys.json")["tests"])
 def test_quoted_keys_parsing(test_case):
     run_test_case(test_case)
+
+
+def test_unquoted_hyphen_keys():
+    """Test that unquoted keys with hyphens are parsed correctly"""
+    # Test simple hyphenated key
+    result = parse("user-id = 123")
+    assert result.errno == 0
+    assert result.root.left.expression.key.segments == ["user-id"]
+    assert result.root.left.expression.value == 123
+
+    # Test multi-segment key with hyphens
+    result = parse('data:user-identifier = "john-doe"')
+    assert result.errno == 0
+    assert result.root.left.expression.key.segments == ["data", "user-identifier"]
+    assert result.root.left.expression.value == "john-doe"

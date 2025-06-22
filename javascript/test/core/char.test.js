@@ -19,7 +19,7 @@ describe('Char', () => {
     })
 
     it('should identify key characters', () => {
-        const validKeyChars = ['a', 'A', '1', '_', '.', ':', '/']
+        const validKeyChars = ['a', 'A', '1', '_', '.', ':', '/', '-']
         validKeyChars.forEach((value) => {
             const char = new Char(value, 0, 0, 0)
             expect(char.isKey()).toBe(true)

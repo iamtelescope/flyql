@@ -4,6 +4,7 @@ import {
     UNDERSCORE,
     COLON,
     SLASH,
+    HYPHEN,
     BACKSLASH,
     BRACKET_OPEN,
     BRACKET_CLOSE,
@@ -35,7 +36,8 @@ export class Char {
             this.value === UNDERSCORE ||
             this.value === DOT ||
             this.value === COLON ||
-            this.value === SLASH
+            this.value === SLASH ||
+            this.value === HYPHEN
         )
     }
 

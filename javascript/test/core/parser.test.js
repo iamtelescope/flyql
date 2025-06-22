@@ -106,3 +106,19 @@ describe('Parser Quoted Keys Tests', () => {
         })
     })
 })
+
+describe('Parser Hyphen Keys Tests', () => {
+    it('should parse unquoted keys with hyphens correctly', () => {
+        // Test simple hyphenated key
+        const result1 = parse('user-id = 123')
+        expect(result1.errno).toBe(0)
+        expect(result1.root.left.expression.key.segments).toEqual(['user-id'])
+        expect(result1.root.left.expression.value).toBe(123)
+
+        // Test multi-segment key with hyphens
+        const result2 = parse('data:user-identifier = "john-doe"')
+        expect(result2.errno).toBe(0)
+        expect(result2.root.left.expression.key.segments).toEqual(['data', 'user-identifier'])
+        expect(result2.root.left.expression.value).toBe('john-doe')
+    })
+})

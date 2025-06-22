@@ -3,6 +3,7 @@ DOT = "."
 UNDERSCORE = "_"
 COLON = ":"
 SLASH = "/"
+HYPHEN = "-"
 BACKSLASH = "\\"
 BRACKET_OPEN = "("
 BRACKET_CLOSE = ")"
@@ -39,6 +40,7 @@ class Char:
             or self.value == DOT
             or self.value == COLON
             or self.value == SLASH
+            or self.value == HYPHEN
         )
 
     def is_op(self) -> bool:

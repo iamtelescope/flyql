@@ -1,0 +1,1 @@
+flyql @ git+https://github.com/iamtelescope/flyql.git@2c5333b8ca19b127e84261b7d72253df9226b06e#subdirectory=python

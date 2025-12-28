@@ -1,0 +1,30 @@
+{
+  "timestamp": {
+    "type": "DateTime64"
+  },
+  "status": {
+    "type": "Int32"
+  },
+  "method": {
+    "type": "String",
+    "values": ["GET", "POST", "PUT", "DELETE", "PATCH"]
+  },
+  "path": {
+    "type": "String"
+  },
+  "duration_ms": {
+    "type": "Int64"
+  },
+  "user_id": {
+    "type": "String"
+  },
+  "message": {
+    "type": "String"
+  },
+  "error": {
+    "type": "Boolean"
+  },
+  "tags": {
+    "type": "Array(String)"
+  }
+}

@@ -15,6 +15,9 @@ const (
 	OpGreaterOrEquals = ">="
 	OpLessOrEquals    = "<="
 	OpTruthy          = "truthy"
+	OpIn              = "in"
+	OpNotIn           = "not in"
 )
 
 const NotKeyword = "not"
+const InKeyword = "in"

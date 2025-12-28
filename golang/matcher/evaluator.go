@@ -136,6 +136,16 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 		return compareGreaterOrEqual(value, expr.Value)
 	case flyql.OpLessOrEquals:
 		return compareLessOrEqual(value, expr.Value)
+	case flyql.OpIn:
+		if len(expr.Values) == 0 {
+			return false
+		}
+		return valueInList(value, expr.Values)
+	case flyql.OpNotIn:
+		if len(expr.Values) == 0 {
+			return true
+		}
+		return !valueInList(value, expr.Values)
 	default:
 		return false
 	}
@@ -220,6 +230,15 @@ func compareLessOrEqual(a, b any) bool {
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
 		return aFloat <= bFloat
+	}
+	return false
+}
+
+func valueInList(value any, list []any) bool {
+	for _, item := range list {
+		if compareEqual(value, item) {
+			return true
+		}
 	}
 	return false
 }

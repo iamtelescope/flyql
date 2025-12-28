@@ -65,3 +65,35 @@ func ValidateOperation(value any, fieldNormalizedType string, operator string) e
 
 	return nil
 }
+
+var inCompatibleTypes = map[string]map[string]bool{
+	NormalizedTypeString: {"string": true},
+	NormalizedTypeInt:    {"int": true, "float": true},
+	NormalizedTypeFloat:  {"int": true, "float": true},
+	NormalizedTypeBool:   {"bool": true, "int": true},
+	NormalizedTypeDate:   {"string": true},
+}
+
+func ValidateInListTypes(values []any, fieldNormalizedType string) error {
+	if fieldNormalizedType == "" {
+		return nil
+	}
+
+	if len(values) == 0 {
+		return nil
+	}
+
+	allowedTypes, ok := inCompatibleTypes[fieldNormalizedType]
+	if !ok {
+		return nil
+	}
+
+	for _, value := range values {
+		valueType := getValueType(value)
+		if valueType != "" && !allowedTypes[valueType] {
+			return fmt.Errorf("type mismatch in IN list: %s field cannot contain %s values", fieldNormalizedType, valueType)
+		}
+	}
+
+	return nil
+}

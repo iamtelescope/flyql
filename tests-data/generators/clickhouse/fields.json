@@ -97,6 +97,18 @@
       "jsonstring": false,
       "type": "String",
       "values": null
+    },
+    "name": {
+      "name": "name",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
     }
   }
 }

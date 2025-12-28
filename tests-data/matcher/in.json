@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "description": "IN operator matcher test cases",
+  "test_suite": "in",
+  "tests": [
+    {
+      "name": "in_integer_match",
+      "query": "status in [200, 201, 202]",
+      "data": {"status": 200},
+      "expected": true
+    },
+    {
+      "name": "in_integer_no_match",
+      "query": "status in [200, 201, 202]",
+      "data": {"status": 404},
+      "expected": false
+    },
+    {
+      "name": "in_string_match",
+      "query": "name in ['alice', 'bob', 'charlie']",
+      "data": {"name": "bob"},
+      "expected": true
+    },
+    {
+      "name": "in_string_no_match",
+      "query": "name in ['alice', 'bob', 'charlie']",
+      "data": {"name": "david"},
+      "expected": false
+    },
+    {
+      "name": "in_empty_list_always_false",
+      "query": "status in []",
+      "data": {"status": 200},
+      "expected": false
+    },
+    {
+      "name": "in_single_value_match",
+      "query": "status in [200]",
+      "data": {"status": 200},
+      "expected": true
+    },
+    {
+      "name": "in_single_value_no_match",
+      "query": "status in [200]",
+      "data": {"status": 201},
+      "expected": false
+    },
+    {
+      "name": "not_in_integer_match",
+      "query": "status not in [400, 500]",
+      "data": {"status": 200},
+      "expected": true
+    },
+    {
+      "name": "not_in_integer_no_match",
+      "query": "status not in [400, 500]",
+      "data": {"status": 400},
+      "expected": false
+    },
+    {
+      "name": "not_in_string_match",
+      "query": "env not in ['prod', 'staging']",
+      "data": {"env": "dev"},
+      "expected": true
+    },
+    {
+      "name": "not_in_string_no_match",
+      "query": "env not in ['prod', 'staging']",
+      "data": {"env": "prod"},
+      "expected": false
+    },
+    {
+      "name": "not_in_empty_list_always_true",
+      "query": "status not in []",
+      "data": {"status": 200},
+      "expected": true
+    },
+    {
+      "name": "in_float_match",
+      "query": "price in [9.99, 19.99, 29.99]",
+      "data": {"price": 19.99},
+      "expected": true
+    },
+    {
+      "name": "in_float_no_match",
+      "query": "price in [9.99, 19.99, 29.99]",
+      "data": {"price": 39.99},
+      "expected": false
+    },
+    {
+      "name": "in_nested_key_match",
+      "query": "user:role in ['admin', 'moderator']",
+      "data": {"user": {"role": "admin"}},
+      "expected": true
+    },
+    {
+      "name": "in_nested_key_no_match",
+      "query": "user:role in ['admin', 'moderator']",
+      "data": {"user": {"role": "viewer"}},
+      "expected": false
+    },
+    {
+      "name": "in_missing_field",
+      "query": "status in [200, 201]",
+      "data": {"other": "value"},
+      "expected": false
+    },
+    {
+      "name": "not_in_missing_field",
+      "query": "status not in [200, 201]",
+      "data": {"other": "value"},
+      "expected": true
+    },
+    {
+      "name": "in_with_and_both_match",
+      "query": "status in [200, 201] and active",
+      "data": {"status": 200, "active": true},
+      "expected": true
+    },
+    {
+      "name": "in_with_and_first_fails",
+      "query": "status in [200, 201] and active",
+      "data": {"status": 404, "active": true},
+      "expected": false
+    },
+    {
+      "name": "in_with_or",
+      "query": "status in [200, 201] or error",
+      "data": {"status": 404, "error": "something"},
+      "expected": true
+    },
+    {
+      "name": "in_string_type_mismatch",
+      "query": "status in ['200', '201']",
+      "data": {"status": 200},
+      "expected": false
+    },
+    {
+      "name": "in_number_type_mismatch",
+      "query": "status in [200, 201]",
+      "data": {"status": "200"},
+      "expected": false
+    }
+  ]
+}

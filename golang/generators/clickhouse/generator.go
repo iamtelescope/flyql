@@ -29,6 +29,8 @@ var validOperators = map[string]bool{
 	flyql.OpLess:            true,
 	flyql.OpGreaterOrEquals: true,
 	flyql.OpLessOrEquals:    true,
+	flyql.OpIn:              true,
+	flyql.OpNotIn:           true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -163,6 +165,9 @@ func ExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, 
 	if expr.Operator == flyql.OpTruthy {
 		return truthyExpressionToSQL(expr, fields)
 	}
+	if expr.Operator == flyql.OpIn || expr.Operator == flyql.OpNotIn {
+		return inExpressionToSQL(expr, fields)
+	}
 	if err := validateOperator(expr.Operator); err != nil {
 		return "", err
 	}
@@ -170,6 +175,91 @@ func ExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, 
 		return expressionToSQLSegmented(expr, fields)
 	}
 	return expressionToSQLSimple(expr, fields)
+}
+
+func inExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, error) {
+	isNotIn := expr.Operator == flyql.OpNotIn
+
+	if len(expr.Values) == 0 {
+		if isNotIn {
+			return "1", nil
+		}
+		return "0", nil
+	}
+
+	fieldName := expr.Key.Segments[0]
+	field, ok := fields[fieldName]
+	if !ok {
+		return "", fmt.Errorf("unknown field: %s", fieldName)
+	}
+
+	if field.NormalizedType != "" && !expr.Key.IsSegmented() {
+		if err := ValidateInListTypes(expr.Values, field.NormalizedType); err != nil {
+			return "", err
+		}
+	}
+
+	valueParts := make([]string, len(expr.Values))
+	for i, v := range expr.Values {
+		escaped, err := EscapeParam(v)
+		if err != nil {
+			return "", err
+		}
+		valueParts[i] = escaped
+	}
+	valuesSQL := strings.Join(valueParts, ", ")
+
+	sqlOp := "IN"
+	if isNotIn {
+		sqlOp = "NOT IN"
+	}
+
+	if expr.Key.IsSegmented() {
+		if field.IsJSON {
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = fmt.Sprintf("$.%s", part)
+			}
+			jsonPathStr := strings.Join(pathParts, ".")
+			return fmt.Sprintf("JSON_VALUE(%s, '%s') %s (%s)", field.Name, jsonPathStr, sqlOp, valuesSQL), nil
+		} else if field.JSONString {
+			jsonPath := expr.Key.Segments[1:]
+			jsonPathParts := make([]string, len(jsonPath))
+			for i, p := range jsonPath {
+				escaped, err := EscapeParam(p)
+				if err != nil {
+					return "", err
+				}
+				jsonPathParts[i] = escaped
+			}
+			jsonPathStr := strings.Join(jsonPathParts, ", ")
+			return fmt.Sprintf("JSONExtractString(%s, %s) %s (%s)", field.Name, jsonPathStr, sqlOp, valuesSQL), nil
+		} else if field.IsMap {
+			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			escapedMapKey, err := EscapeParam(mapKey)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("%s[%s] %s (%s)", field.Name, escapedMapKey, sqlOp, valuesSQL), nil
+		} else if field.IsArray {
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndex, err := strconv.Atoi(arrayIndexStr)
+			if err != nil {
+				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
+			}
+			return fmt.Sprintf("%s[%d] %s (%s)", field.Name, arrayIndex, sqlOp, valuesSQL), nil
+		} else {
+			return "", fmt.Errorf("path search for unsupported field type")
+		}
+	}
+
+	return fmt.Sprintf("%s %s (%s)", field.Name, sqlOp, valuesSQL), nil
 }
 
 func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, error) {

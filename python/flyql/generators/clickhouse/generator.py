@@ -11,7 +11,10 @@ from flyql.core.constants import (
 from flyql.core.tree import Node
 
 from flyql.generators.clickhouse.field import Field
-from flyql.generators.clickhouse.helpers import validate_operation
+from flyql.generators.clickhouse.helpers import (
+    validate_operation,
+    validate_in_list_types,
+)
 from flyql.generators.clickhouse.constants import (
     NORMALIZED_TYPE_STRING,
     NORMALIZED_TYPE_INT,
@@ -249,10 +252,61 @@ def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field])
             return f"({field.name} IS NULL)"
 
 
+def in_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+    field_name = expression.key.segments[0]
+    if field_name not in fields:
+        raise FlyqlError(f"unknown field: {field_name}")
+
+    field = fields[field_name]
+    is_not_in = expression.operator == Operator.NOT_IN.value
+
+    if not expression.values:
+        return "1" if is_not_in else "0"
+
+    if field.normalized_type is not None and not expression.key.is_segmented:
+        validate_in_list_types(expression.values, field.normalized_type)
+
+    values_sql = ", ".join(escape_param(v) for v in expression.values)
+    sql_op = "NOT IN" if is_not_in else "IN"
+
+    if expression.key.is_segmented:
+        if field.is_json:
+            json_path = expression.key.segments[1:]
+            for part in json_path:
+                validate_json_path_part(part)
+            json_path_str = ".".join(f"$.{part}" for part in json_path)
+            return (
+                f"JSON_VALUE({field.name}, '{json_path_str}') {sql_op} ({values_sql})"
+            )
+        elif field.jsonstring:
+            json_path = expression.key.segments[1:]
+            json_path_str = ", ".join([escape_param(x) for x in json_path])
+            return f"JSONExtractString({field.name}, {json_path_str}) {sql_op} ({values_sql})"
+        elif field.is_map:
+            map_key = ":".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
+            return f"{field.name}[{escaped_map_key}] {sql_op} ({values_sql})"
+        elif field.is_array:
+            array_index_str = ":".join(expression.key.segments[1:])
+            try:
+                array_index = int(array_index_str)
+            except Exception as err:
+                raise FlyqlError(
+                    f"invalid array index, expected number: {array_index_str}"
+                ) from err
+            return f"{field.name}[{array_index}] {sql_op} ({values_sql})"
+        else:
+            raise FlyqlError("path search for unsupported field type")
+    else:
+        return f"{field.name} {sql_op} ({values_sql})"
+
+
 def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
-    # Handle truthy operator (standalone key check)
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql(expression, fields)
+
+    if expression.operator in (Operator.IN.value, Operator.NOT_IN.value):
+        return in_expression_to_sql(expression, fields)
 
     validate_operator(expression.operator)
     text = ""

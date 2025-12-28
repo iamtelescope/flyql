@@ -146,5 +146,13 @@ class Evaluator:
             return bool(value >= expression.value)
         elif expression.operator == Operator.LOWER_OR_EQUALS_THAN.value:
             return bool(value <= expression.value)
+        elif expression.operator == Operator.IN.value:
+            if not expression.values:
+                return False
+            return value in expression.values
+        elif expression.operator == Operator.NOT_IN.value:
+            if not expression.values:
+                return True
+            return value not in expression.values
         else:
             raise FlyqlError(f"Unknown expression operator: {expression.operator}")

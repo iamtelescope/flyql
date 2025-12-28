@@ -1,16 +1,47 @@
 import pytest
 
 from flyql.core.expression import Expression
-from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
+from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.exceptions import FlyqlError
 from flyql.core.key import Key
 
 
+LIST_OPERATORS = {Operator.IN.value, Operator.NOT_IN.value, Operator.TRUTHY.value}
+
+
 def test_valid_init():
     for op in VALID_KEY_VALUE_OPERATORS:
+        if op in LIST_OPERATORS:
+            continue
         key = Key(["a"])
         e = Expression(key=key, operator=op, value="b", value_is_string=None)
         assert str(e) == f"a{op}b"
+
+
+def test_in_expression_str():
+    key = Key(["status"])
+    e = Expression(
+        key=key,
+        operator=Operator.IN.value,
+        value="",
+        value_is_string=None,
+        values=[200, 300],
+        values_type="number",
+    )
+    assert str(e) == "status in [200, 300]"
+
+
+def test_not_in_expression_str():
+    key = Key(["status"])
+    e = Expression(
+        key=key,
+        operator=Operator.NOT_IN.value,
+        value="",
+        value_is_string=None,
+        values=[400, 500],
+        values_type="number",
+    )
+    assert str(e) == "status not in [400, 500]"
 
 
 def test_invalid_operator_init():

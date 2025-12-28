@@ -1,0 +1,254 @@
+{
+  "version": "1.0",
+  "description": "IN operator parser test cases",
+  "test_suite": "in",
+  "tests": [
+    {
+      "name": "in_integers",
+      "input": "status in [200, 300, 400]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [200.0, 300.0, 400.0],
+          "values_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_strings",
+      "input": "name in [\"alice\", \"bob\", \"charlie\"]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": ["alice", "bob", "charlie"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_single_quoted_strings",
+      "input": "name in ['alice', 'bob']",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": ["alice", "bob"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_single_value",
+      "input": "status in [200]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [200.0],
+          "values_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_empty_list",
+      "input": "status in []",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [],
+          "values_type": null
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_in_integers",
+      "input": "status not in [400, 500]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "not in",
+          "value": null,
+          "value_type": null,
+          "values": [400.0, 500.0],
+          "values_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_in_strings",
+      "input": "env not in ['prod', 'staging']",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "env",
+          "operator": "not in",
+          "value": null,
+          "value_type": null,
+          "values": ["prod", "staging"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_with_spaces",
+      "input": "status in [ 200 , 300 ]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [200.0, 300.0],
+          "values_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_with_and",
+      "input": "status in [200, 201] and active",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "in",
+            "value": null,
+            "value_type": null,
+            "values": [200.0, 201.0],
+            "values_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "active",
+            "operator": "truthy",
+            "value": "",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "in_floats",
+      "input": "price in [9.99, 19.99, 29.99]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [9.99, 19.99, 29.99],
+          "values_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_nested_key",
+      "input": "user:role in ['admin', 'moderator']",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "user:role",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": ["admin", "moderator"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_mixed_types_error",
+      "input": "status in [200, 'error']",
+      "expected_result": "error",
+      "expected_error": "mixed types in list"
+    },
+    {
+      "name": "in_unclosed_bracket",
+      "input": "status in [200, 300",
+      "expected_result": "error",
+      "expected_error": "unclosed bracket"
+    },
+    {
+      "name": "in_missing_bracket",
+      "input": "status in 200",
+      "expected_result": "error",
+      "expected_error": "expected ["
+    },
+    {
+      "name": "in_word_not_keyword",
+      "input": "inner=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "inner",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

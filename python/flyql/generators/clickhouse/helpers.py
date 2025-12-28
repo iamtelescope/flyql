@@ -1,4 +1,4 @@
-from typing import Set, Tuple, Any, Optional
+from typing import Set, Tuple, Any, Optional, List
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import Operator
@@ -15,6 +15,15 @@ def get_value_type(value: Any) -> str:
         return "string"
     else:
         return ""
+
+
+IN_COMPATIBLE_TYPES: dict[str, set[str]] = {
+    "string": {"string"},
+    "int": {"int", "float"},
+    "float": {"int", "float"},
+    "bool": {"bool", "int"},
+    "date": {"string"},
+}
 
 
 FORBIDDEN_OPERATIONS: Set[Tuple[str, str, str]] = {
@@ -50,3 +59,24 @@ def validate_operation(
         raise FlyqlError(
             f"operation not allowed: {field_normalized_type} field with '{operator}' operator"
         )
+
+
+def validate_in_list_types(
+    values: List[Any], field_normalized_type: Optional[str]
+) -> None:
+    if field_normalized_type is None:
+        return
+
+    if not values:
+        return
+
+    allowed_types = IN_COMPATIBLE_TYPES.get(field_normalized_type)
+    if allowed_types is None:
+        return
+
+    for value in values:
+        value_type = get_value_type(value)
+        if value_type and value_type not in allowed_types:
+            raise FlyqlError(
+                f"type mismatch in IN list: {field_normalized_type} field cannot contain {value_type} values"
+            )

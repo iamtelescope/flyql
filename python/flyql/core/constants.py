@@ -20,6 +20,8 @@ class Operator(Enum):
     GREATER_OR_EQUALS_THAN = ">="
     LOWER_OR_EQUALS_THAN = "<="
     TRUTHY = "truthy"
+    IN = "in"
+    NOT_IN = "not in"
 
 
 class BoolOperator(Enum):
@@ -37,7 +39,11 @@ VALID_KEY_VALUE_OPERATORS = (
     Operator.GREATER_OR_EQUALS_THAN.value,
     Operator.LOWER_OR_EQUALS_THAN.value,
     Operator.TRUTHY.value,
+    Operator.IN.value,
+    Operator.NOT_IN.value,
 )
+
+IN_KEYWORD = "in"
 
 NOT_KEYWORD = "not"
 

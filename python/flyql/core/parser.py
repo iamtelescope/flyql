@@ -1,7 +1,7 @@
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any
 
 from flyql.core.tree import Node
-from flyql.core.expression import Expression
+from flyql.core.expression import Expression, try_convert_to_number
 from flyql.core.char import Char
 from flyql.core.state import State
 from flyql.core.exceptions import FlyqlError
@@ -10,6 +10,7 @@ from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
 from flyql.core.constants import NOT_KEYWORD
+from flyql.core.constants import IN_KEYWORD
 from flyql.core.constants import Operator
 from flyql.core.key import parse_key
 
@@ -48,6 +49,11 @@ class Parser:
         self.typed_chars: List[tuple[Char, CharType]] = []
         self.pending_negation: bool = False
         self.negation_stack: List[bool] = []
+        self.in_list_values: List[Any] = []
+        self.in_list_current_value: str = ""
+        self.in_list_current_value_is_string: Union[bool, None] = None
+        self.in_list_values_type: Optional[str] = None
+        self.is_not_in: bool = False
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -70,7 +76,7 @@ class Parser:
         self.errno = errno
         if self.char:
             self.error_text += (
-                f" [char {self.char.value} at {self.char.pos}], errno={errno}"
+                f" [char '{self.char.value}' at {self.char.pos}], errno={errno}"
             )
 
     def reset_pos(self) -> None:
@@ -93,6 +99,43 @@ class Parser:
         self.reset_key()
         self.reset_value()
         self.reset_key_value_operator()
+        self.reset_in_list_data()
+
+    def reset_in_list_data(self) -> None:
+        self.in_list_values = []
+        self.in_list_current_value = ""
+        self.in_list_current_value_is_string = None
+        self.in_list_values_type = None
+        self.is_not_in = False
+
+    def extend_in_list_current_value(self) -> None:
+        if self.char:
+            self.in_list_current_value += self.char.value
+
+    def finalize_in_list_value(self) -> bool:
+        if (
+            not self.in_list_current_value
+            and self.in_list_current_value_is_string is None
+        ):
+            return True
+
+        if self.in_list_current_value_is_string:
+            value: Any = self.in_list_current_value
+            value_type = "string"
+        else:
+            value = try_convert_to_number(self.in_list_current_value)
+            value_type = "number" if isinstance(value, (int, float)) else "string"
+
+        if self.in_list_values_type is None:
+            self.in_list_values_type = value_type
+        elif self.in_list_values_type != value_type:
+            self.set_error_state("mixed types in list", 40)
+            return False
+
+        self.in_list_values.append(value)
+        self.in_list_current_value = ""
+        self.in_list_current_value_is_string = None
+        return True
 
     def reset_bool_operator(self) -> None:
         self.bool_operator = ""
@@ -155,6 +198,18 @@ class Parser:
             operator=Operator.TRUTHY.value,
             value="",
             value_is_string=True,
+        )
+
+    def new_in_expression(self) -> Expression:
+        """Create an IN or NOT IN expression"""
+        operator = Operator.NOT_IN.value if self.is_not_in else Operator.IN.value
+        return Expression(
+            key=parse_key(self.key),
+            operator=operator,
+            value="",
+            value_is_string=None,
+            values=self.in_list_values,
+            values_type=self.in_list_values_type,
         )
 
     def toggle_pending_negation(self) -> None:
@@ -345,7 +400,23 @@ class Parser:
         if not self.char:
             return
 
-        if self.char.is_delimiter():
+        if self.key_value_operator == "i" and self.char.value == "n":
+            self.key_value_operator = "in"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "in":
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = ""
+                self.is_not_in = False
+                self.set_state(State.EXPECT_LIST_START)
+            elif self.char.value == "[":
+                self.store_typed_char(CharType.OPERATOR)
+                self.key_value_operator = ""
+                self.is_not_in = False
+                self.set_state(State.EXPECT_LIST_VALUE)
+            else:
+                self.set_error_state("expected '[' after 'in'", 47)
+        elif self.char.is_delimiter():
             self.store_typed_char(CharType.SPACE)
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
@@ -589,21 +660,18 @@ class Parser:
                             self.set_state(State.BOOL_OP_DELIMITER)
 
     def in_state_key_or_bool_op(self) -> None:
-        """After a key and delimiter, determine if truthy expression or has operator coming."""
+        """After a key and delimiter, determine if truthy expression, has operator, or in/not in."""
         if not self.char:
             return
 
         if self.char.is_delimiter():
-            # More whitespace, stay in this state
             self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_op():
-            # Has operator, standard flow
             self.extend_key_value_operator()
             self.set_state(State.KEY_VALUE_OPERATOR)
             self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_group_close():
-            # No operator, this is a truthy expression
             if not self.nodes_stack:
                 self.set_error_state("unmatched parenthesis", 9)
                 return
@@ -615,8 +683,15 @@ class Parser:
             self.reset_bool_operator()
             self.set_state(State.EXPECT_BOOL_OP)
             self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "i":
+            self.key_value_operator = "i"
+            self.set_state(State.KEY_VALUE_OPERATOR)
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "n":
+            self.key_value_operator = "n"
+            self.set_state(State.EXPECT_IN_KEYWORD)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.value in VALID_BOOL_OPERATORS_CHARS:
-            # Start of bool operator (and/or), this is a truthy expression
             self.extend_tree(self.new_truthy_expression())
             self.reset_data()
             self.reset_bool_operator()
@@ -633,7 +708,6 @@ class Parser:
             return
 
         if self.char.is_delimiter():
-            # Skip whitespace
             self.store_typed_char(CharType.SPACE)
             return
         elif self.char.is_key():
@@ -649,16 +723,180 @@ class Parser:
             self.set_state(State.DOUBLE_QUOTED_KEY)
             self.store_typed_char(CharType.KEY)
         elif self.char.is_group_open():
-            # not (...) - push current node and store negation for the group
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
-            # Store the pending negation to apply when group closes
             self.negation_stack.append(self.consume_pending_negation())
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         else:
             self.set_error_state("expected key or ( after 'not'", 33)
             return
+
+    def in_state_expect_in_keyword(self) -> None:
+        """After 'n' in KEY_OR_BOOL_OP state, determine if 'not in', 'not', or something else."""
+        if not self.char:
+            return
+
+        if self.key_value_operator == "n":
+            if self.char.value == "o":
+                self.key_value_operator += "o"
+                self.store_typed_char(CharType.OPERATOR)
+            else:
+                self.set_error_state("expected 'not' or 'in' keyword", 41)
+        elif self.key_value_operator == "no":
+            if self.char.value == "t":
+                self.key_value_operator += "t"
+                self.store_typed_char(CharType.OPERATOR)
+            else:
+                self.set_error_state("expected 'not' keyword", 41)
+        elif self.key_value_operator == "not":
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = ""
+                self.is_not_in = True
+                self.set_state(State.EXPECT_LIST_START)
+            else:
+                self.set_error_state("expected space after 'not'", 41)
+        else:
+            self.set_error_state("unexpected state in expect_in_keyword", 41)
+
+    def in_state_expect_list_start(self) -> None:
+        """After 'in' or 'not in' keyword, expect '[' to start list."""
+        if not self.char:
+            return
+
+        if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+            return
+        elif self.char.value == "i":
+            self.key_value_operator = "i"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "i" and self.char.value == "n":
+            self.key_value_operator = ""
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "[":
+            self.store_typed_char(CharType.OPERATOR)
+            self.set_state(State.EXPECT_LIST_VALUE)
+        else:
+            self.set_error_state("expected '['", 42)
+
+    def in_state_expect_list_value(self) -> None:
+        """Inside list, expecting a value or ']'."""
+        if not self.char:
+            return
+
+        if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+            return
+        elif self.char.value == "]":
+            self.store_typed_char(CharType.OPERATOR)
+            self.extend_tree(self.new_in_expression())
+            self.reset_data()
+            self.reset_bool_operator()
+            self.set_state(State.EXPECT_BOOL_OP)
+        elif self.char.is_single_quote():
+            self.in_list_current_value_is_string = True
+            self.store_typed_char(CharType.VALUE)
+            self.set_state(State.IN_LIST_SINGLE_QUOTED_VALUE)
+        elif self.char.is_double_quote():
+            self.in_list_current_value_is_string = True
+            self.store_typed_char(CharType.VALUE)
+            self.set_state(State.IN_LIST_DOUBLE_QUOTED_VALUE)
+        elif self.char.is_value():
+            self.extend_in_list_current_value()
+            self.store_typed_char(CharType.VALUE)
+            self.set_state(State.IN_LIST_VALUE)
+        else:
+            self.set_error_state("expected value in list", 43)
+
+    def in_state_in_list_value(self) -> None:
+        """Parsing an unquoted value inside a list."""
+        if not self.char:
+            return
+
+        if self.char.is_value() and self.char.value not in (",", "]"):
+            self.extend_in_list_current_value()
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_delimiter():
+            if not self.finalize_in_list_value():
+                return
+            self.store_typed_char(CharType.SPACE)
+            self.set_state(State.EXPECT_LIST_COMMA_OR_END)
+        elif self.char.value == ",":
+            if not self.finalize_in_list_value():
+                return
+            self.store_typed_char(CharType.OPERATOR)
+            self.set_state(State.EXPECT_LIST_VALUE)
+        elif self.char.value == "]":
+            if not self.finalize_in_list_value():
+                return
+            self.store_typed_char(CharType.OPERATOR)
+            self.extend_tree(self.new_in_expression())
+            self.reset_data()
+            self.reset_bool_operator()
+            self.set_state(State.EXPECT_BOOL_OP)
+        else:
+            self.set_error_state("unexpected character in list value", 44)
+
+    def in_state_in_list_single_quoted_value(self) -> None:
+        """Parsing a single-quoted value inside a list."""
+        if not self.char:
+            return
+
+        if self.char.is_single_quoted_value():
+            self.extend_in_list_current_value()
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_single_quote():
+            self.store_typed_char(CharType.VALUE)
+            prev_pos = self.char.pos - 1
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
+                self.extend_in_list_current_value()
+            else:
+                if not self.finalize_in_list_value():
+                    return
+                self.set_state(State.EXPECT_LIST_COMMA_OR_END)
+        else:
+            self.set_error_state("invalid character in quoted value", 45)
+
+    def in_state_in_list_double_quoted_value(self) -> None:
+        """Parsing a double-quoted value inside a list."""
+        if not self.char:
+            return
+
+        if self.char.is_double_quoted_value():
+            self.extend_in_list_current_value()
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_double_quote():
+            self.store_typed_char(CharType.VALUE)
+            prev_pos = self.char.pos - 1
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
+                self.extend_in_list_current_value()
+            else:
+                if not self.finalize_in_list_value():
+                    return
+                self.set_state(State.EXPECT_LIST_COMMA_OR_END)
+        else:
+            self.set_error_state("invalid character in quoted value", 45)
+
+    def in_state_expect_list_comma_or_end(self) -> None:
+        """After a value in list, expect ',' or ']'."""
+        if not self.char:
+            return
+
+        if self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+            return
+        elif self.char.value == ",":
+            self.store_typed_char(CharType.OPERATOR)
+            self.set_state(State.EXPECT_LIST_VALUE)
+        elif self.char.value == "]":
+            self.store_typed_char(CharType.OPERATOR)
+            self.extend_tree(self.new_in_expression())
+            self.reset_data()
+            self.reset_bool_operator()
+            self.set_state(State.EXPECT_BOOL_OP)
+        else:
+            self.set_error_state("expected ',' or ']'", 46)
 
     def in_state_last_char(self) -> None:
         if self.state == State.INITIAL and not self.nodes_stack:
@@ -670,6 +908,13 @@ class Parser:
             State.EXPECT_OPERATOR,
             State.EXPECT_VALUE,
             State.EXPECT_NOT_TARGET,
+            State.EXPECT_IN_KEYWORD,
+            State.EXPECT_LIST_START,
+            State.EXPECT_LIST_VALUE,
+            State.IN_LIST_VALUE,
+            State.IN_LIST_SINGLE_QUOTED_VALUE,
+            State.IN_LIST_DOUBLE_QUOTED_VALUE,
+            State.EXPECT_LIST_COMMA_OR_END,
         ):
             self.set_error_state("unexpected EOF", 25)
         elif self.state == State.KEY:
@@ -747,6 +992,20 @@ class Parser:
                     self.in_state_key_or_bool_op()
                 case State.EXPECT_NOT_TARGET:
                     self.in_state_expect_not_target()
+                case State.EXPECT_IN_KEYWORD:
+                    self.in_state_expect_in_keyword()
+                case State.EXPECT_LIST_START:
+                    self.in_state_expect_list_start()
+                case State.EXPECT_LIST_VALUE:
+                    self.in_state_expect_list_value()
+                case State.IN_LIST_VALUE:
+                    self.in_state_in_list_value()
+                case State.IN_LIST_SINGLE_QUOTED_VALUE:
+                    self.in_state_in_list_single_quoted_value()
+                case State.IN_LIST_DOUBLE_QUOTED_VALUE:
+                    self.in_state_in_list_double_quoted_value()
+                case State.EXPECT_LIST_COMMA_OR_END:
+                    self.in_state_expect_list_comma_or_end()
                 case _:
                     self.set_error_state(f"Unknown state: {self.state}", 1)  # type: ignore[unreachable]
 

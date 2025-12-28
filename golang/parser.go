@@ -1,5 +1,7 @@
 package flyql
 
+import "fmt"
+
 var validKeyValueOperators = map[string]bool{
 	OpEquals:          true,
 	OpNotEquals:       true,
@@ -9,6 +11,8 @@ var validKeyValueOperators = map[string]bool{
 	OpLess:            true,
 	OpGreaterOrEquals: true,
 	OpLessOrEquals:    true,
+	OpIn:              true,
+	OpNotIn:           true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -44,6 +48,11 @@ type Parser struct {
 	Root             *Node
 	pendingNegation  bool
 	negationStack    []bool
+	inListValues               []any
+	inListCurrentValue         string
+	inListCurrentValueIsString *bool
+	inListValuesType           *ValueType
+	isNotIn                    bool
 }
 
 func NewParser() *Parser {
@@ -58,7 +67,7 @@ func (p *Parser) setErrorState(errorText string, errno int) {
 	p.errorText = errorText
 	p.errno = errno
 	if p.char != nil {
-		p.errorText += " [char " + string(p.char.value) + " at pos " + string(rune('0'+p.char.pos)) + "]"
+		p.errorText += fmt.Sprintf(" [char '%c' at %d], errno=%d", p.char.value, p.char.pos, errno)
 	}
 }
 
@@ -79,6 +88,54 @@ func (p *Parser) resetData() {
 	p.resetKey()
 	p.resetValue()
 	p.resetKeyValueOperator()
+	p.resetInListData()
+}
+
+func (p *Parser) resetInListData() {
+	p.inListValues = nil
+	p.inListCurrentValue = ""
+	p.inListCurrentValueIsString = nil
+	p.inListValuesType = nil
+	p.isNotIn = false
+}
+
+func (p *Parser) extendInListCurrentValue() {
+	if p.char != nil {
+		p.inListCurrentValue += string(p.char.value)
+	}
+}
+
+func (p *Parser) setInListCurrentValueIsString() {
+	t := true
+	p.inListCurrentValueIsString = &t
+}
+
+func (p *Parser) finalizeInListValue() bool {
+	if p.inListCurrentValue == "" && p.inListCurrentValueIsString == nil {
+		return true
+	}
+
+	var value any
+	var valueType ValueType
+
+	if p.inListCurrentValueIsString != nil && *p.inListCurrentValueIsString {
+		value = p.inListCurrentValue
+		valueType = ValueTypeString
+	} else {
+		value, valueType = tryConvertToNumber(p.inListCurrentValue)
+	}
+
+	if p.inListValuesType == nil {
+		p.inListValuesType = &valueType
+	} else if *p.inListValuesType != valueType {
+		p.setErrorState("mixed types in list", 40)
+		return false
+	}
+
+	p.inListValues = append(p.inListValues, value)
+	p.inListCurrentValue = ""
+	p.inListCurrentValueIsString = nil
+	return true
 }
 
 func (p *Parser) resetBoolOperator() {
@@ -133,6 +190,15 @@ func (p *Parser) newExpression() *Expression {
 func (p *Parser) newTruthyExpression() *Expression {
 	key, _ := ParseKey(p.key)
 	return NewExpression(key, OpTruthy, "", true)
+}
+
+func (p *Parser) newInExpression() *Expression {
+	key, _ := ParseKey(p.key)
+	operator := OpIn
+	if p.isNotIn {
+		operator = OpNotIn
+	}
+	return NewInExpression(key, operator, p.inListValues, p.inListValuesType)
 }
 
 func (p *Parser) togglePendingNegation() {
@@ -300,6 +366,24 @@ func (p *Parser) inStateExpectOperator() {
 
 func (p *Parser) inStateKeyValueOperator() {
 	if p.char == nil {
+		return
+	}
+
+	if p.keyValueOperator == "i" && p.char.value == 'n' {
+		p.keyValueOperator = "in"
+		return
+	} else if p.keyValueOperator == "in" {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = ""
+			p.isNotIn = false
+			p.state = stateExpectListStart
+		} else if p.char.value == '[' {
+			p.keyValueOperator = ""
+			p.isNotIn = false
+			p.state = stateExpectListValue
+		} else {
+			p.setErrorState("expected '[' after 'in'", 47)
+		}
 		return
 	}
 
@@ -572,6 +656,12 @@ func (p *Parser) inStateKeyOrBoolOp() {
 		}
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
+	} else if p.char.value == 'i' {
+		p.keyValueOperator = "i"
+		p.state = stateKeyValueOperator
+	} else if p.char.value == 'n' {
+		p.keyValueOperator = "n"
+		p.state = stateExpectInKeyword
 	} else if validBoolOperatorChars[p.char.value] {
 		p.extendTreeWithExpression(p.newTruthyExpression())
 		p.resetData()
@@ -621,6 +711,169 @@ func (p *Parser) inStateExpectNotTarget() {
 	}
 }
 
+func (p *Parser) inStateExpectInKeyword() {
+	if p.char == nil {
+		return
+	}
+
+	if p.keyValueOperator == "n" {
+		if p.char.value == 'o' {
+			p.keyValueOperator += "o"
+		} else {
+			p.setErrorState("expected 'not' or 'in' keyword", 41)
+		}
+	} else if p.keyValueOperator == "no" {
+		if p.char.value == 't' {
+			p.keyValueOperator += "t"
+		} else {
+			p.setErrorState("expected 'not' keyword", 41)
+		}
+	} else if p.keyValueOperator == "not" {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = ""
+			p.isNotIn = true
+			p.state = stateExpectListStart
+		} else {
+			p.setErrorState("expected space after 'not'", 41)
+		}
+	} else {
+		p.setErrorState("unexpected state in expect_in_keyword", 41)
+	}
+}
+
+func (p *Parser) inStateExpectListStart() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.value == 'i' {
+		p.keyValueOperator = "i"
+	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
+		p.keyValueOperator = ""
+	} else if p.char.value == '[' {
+		p.state = stateExpectListValue
+	} else {
+		p.setErrorState("expected '['", 42)
+	}
+}
+
+func (p *Parser) inStateExpectListValue() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.value == ']' {
+		p.extendTreeWithExpression(p.newInExpression())
+		p.resetData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else if p.char.isSingleQuote() {
+		p.setInListCurrentValueIsString()
+		p.state = stateInListSingleQuotedValue
+	} else if p.char.isDoubleQuote() {
+		p.setInListCurrentValueIsString()
+		p.state = stateInListDoubleQuotedValue
+	} else if p.char.isValue() && p.char.value != ',' && p.char.value != ']' {
+		p.extendInListCurrentValue()
+		p.state = stateInListValue
+	} else {
+		p.setErrorState("expected value in list", 43)
+	}
+}
+
+func (p *Parser) inStateInListValue() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isValue() && p.char.value != ',' && p.char.value != ']' {
+		p.extendInListCurrentValue()
+	} else if p.char.isDelimiter() {
+		if !p.finalizeInListValue() {
+			return
+		}
+		p.state = stateExpectListCommaOrEnd
+	} else if p.char.value == ',' {
+		if !p.finalizeInListValue() {
+			return
+		}
+		p.state = stateExpectListValue
+	} else if p.char.value == ']' {
+		if !p.finalizeInListValue() {
+			return
+		}
+		p.extendTreeWithExpression(p.newInExpression())
+		p.resetData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else {
+		p.setErrorState("unexpected character in list value", 44)
+	}
+}
+
+func (p *Parser) inStateInListSingleQuotedValue() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isSingleQuote() {
+		p.extendInListCurrentValue()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendInListCurrentValue()
+		} else {
+			if !p.finalizeInListValue() {
+				return
+			}
+			p.state = stateExpectListCommaOrEnd
+		}
+	}
+}
+
+func (p *Parser) inStateInListDoubleQuotedValue() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isDoubleQuote() {
+		p.extendInListCurrentValue()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendInListCurrentValue()
+		} else {
+			if !p.finalizeInListValue() {
+				return
+			}
+			p.state = stateExpectListCommaOrEnd
+		}
+	}
+}
+
+func (p *Parser) inStateExpectListCommaOrEnd() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.value == ',' {
+		p.state = stateExpectListValue
+	} else if p.char.value == ']' {
+		p.extendTreeWithExpression(p.newInExpression())
+		p.resetData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else {
+		p.setErrorState("expected ',' or ']'", 46)
+	}
+}
+
 func (p *Parser) inStateLastChar() {
 	if p.state == stateInitial && len(p.nodesStack) == 0 {
 		p.setErrorState("empty input", 24)
@@ -629,7 +882,14 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateDoubleQuotedKey ||
 		p.state == stateExpectOperator ||
 		p.state == stateExpectValue ||
-		p.state == stateExpectNotTarget {
+		p.state == stateExpectNotTarget ||
+		p.state == stateExpectInKeyword ||
+		p.state == stateExpectListStart ||
+		p.state == stateExpectListValue ||
+		p.state == stateInListValue ||
+		p.state == stateInListSingleQuotedValue ||
+		p.state == stateInListDoubleQuotedValue ||
+		p.state == stateExpectListCommaOrEnd {
 		p.setErrorState("unexpected EOF", 25)
 	} else if p.state == stateKey {
 		if p.key == NotKeyword {
@@ -714,6 +974,20 @@ func (p *Parser) Parse(text string) error {
 			p.inStateKeyOrBoolOp()
 		case stateExpectNotTarget:
 			p.inStateExpectNotTarget()
+		case stateExpectInKeyword:
+			p.inStateExpectInKeyword()
+		case stateExpectListStart:
+			p.inStateExpectListStart()
+		case stateExpectListValue:
+			p.inStateExpectListValue()
+		case stateInListValue:
+			p.inStateInListValue()
+		case stateInListSingleQuotedValue:
+			p.inStateInListSingleQuotedValue()
+		case stateInListDoubleQuotedValue:
+			p.inStateInListDoubleQuotedValue()
+		case stateExpectListCommaOrEnd:
+			p.inStateExpectListCommaOrEnd()
 		default:
 			p.setErrorState("unknown state", 1)
 		}

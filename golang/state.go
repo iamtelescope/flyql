@@ -18,4 +18,11 @@ const (
 	stateExpectBoolOp
 	stateKeyOrBoolOp
 	stateExpectNotTarget
+	stateExpectInKeyword
+	stateExpectListStart
+	stateExpectListValue
+	stateInListValue
+	stateInListSingleQuotedValue
+	stateInListDoubleQuotedValue
+	stateExpectListCommaOrEnd
 )

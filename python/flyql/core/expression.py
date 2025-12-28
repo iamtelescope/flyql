@@ -1,6 +1,6 @@
-from typing import Union, Any
+from typing import Union, Any, List, Optional
 from flyql.core.exceptions import FlyqlError
-from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
+from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.key import Key
 
 
@@ -21,6 +21,8 @@ class Expression:
         operator: str,
         value: str,
         value_is_string: Union[bool, None],
+        values: Optional[List[Any]] = None,
+        values_type: Optional[str] = None,
     ) -> None:
         if operator not in VALID_KEY_VALUE_OPERATORS:
             raise FlyqlError(f"invalid operator: {operator}")
@@ -30,10 +32,17 @@ class Expression:
 
         self.key = key
         self.operator = operator
-        if not value_is_string:
-            self.value: Any = try_convert_to_number(value)
+        self.values: Optional[List[Any]] = values
+        self.values_type: Optional[str] = values_type
+
+        if operator in (Operator.IN.value, Operator.NOT_IN.value):
+            self.value: Any = None
+        elif not value_is_string:
+            self.value = try_convert_to_number(value)
         else:
             self.value = value
 
     def __str__(self) -> str:
+        if self.operator in (Operator.IN.value, Operator.NOT_IN.value):
+            return f"{self.key.raw} {self.operator} [{', '.join(str(v) for v in (self.values or []))}]"
         return f"{self.key.raw}{self.operator}{self.value}"

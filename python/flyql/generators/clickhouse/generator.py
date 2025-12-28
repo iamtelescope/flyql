@@ -173,8 +173,12 @@ def truthy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported field type")
     else:
-        # Simple field - type-aware truthy check
-        if field.normalized_type == NORMALIZED_TYPE_BOOL:
+        if field.jsonstring:
+            return (
+                f"({field.name} IS NOT NULL AND {field.name} != '' AND "
+                f"JSONLength({field.name}) > 0)"
+            )
+        elif field.normalized_type == NORMALIZED_TYPE_BOOL:
             return field.name
         elif field.normalized_type == NORMALIZED_TYPE_STRING:
             return f"({field.name} IS NOT NULL AND {field.name} != '')"
@@ -183,7 +187,6 @@ def truthy_expression_to_sql(
         elif field.normalized_type == NORMALIZED_TYPE_DATE:
             return f"({field.name} IS NOT NULL)"
         else:
-            # Fallback for other types - just check not null
             return f"({field.name} IS NOT NULL)"
 
 
@@ -238,8 +241,12 @@ def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field])
         else:
             raise FlyqlError("path search for unsupported field type")
     else:
-        # Simple field - type-aware falsy check
-        if field.normalized_type == NORMALIZED_TYPE_BOOL:
+        if field.jsonstring:
+            return (
+                f"({field.name} IS NULL OR {field.name} = '' OR "
+                f"JSONLength({field.name}) = 0)"
+            )
+        elif field.normalized_type == NORMALIZED_TYPE_BOOL:
             return f"NOT {field.name}"
         elif field.normalized_type == NORMALIZED_TYPE_STRING:
             return f"({field.name} IS NULL OR {field.name} = '')"
@@ -248,7 +255,6 @@ def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field])
         elif field.normalized_type == NORMALIZED_TYPE_DATE:
             return f"({field.name} IS NULL)"
         else:
-            # Fallback for other types - just check null
             return f"({field.name} IS NULL)"
 
 

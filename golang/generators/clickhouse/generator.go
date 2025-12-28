@@ -323,7 +323,11 @@ func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (st
 		}
 	}
 
-	// Simple field - type-aware truthy check
+	if field.JSONString {
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != '' AND JSONLength(%s) > 0)",
+			field.Name, field.Name, field.Name), nil
+	}
+
 	switch field.NormalizedType {
 	case NormalizedTypeBool:
 		return field.Name, nil
@@ -334,7 +338,6 @@ func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (st
 	case NormalizedTypeDate:
 		return fmt.Sprintf("(%s IS NOT NULL)", field.Name), nil
 	default:
-		// Fallback for other types - just check not null
 		return fmt.Sprintf("(%s IS NOT NULL)", field.Name), nil
 	}
 }
@@ -400,7 +403,11 @@ func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (str
 		}
 	}
 
-	// Simple field - type-aware falsy check
+	if field.JSONString {
+		return fmt.Sprintf("(%s IS NULL OR %s = '' OR JSONLength(%s) = 0)",
+			field.Name, field.Name, field.Name), nil
+	}
+
 	switch field.NormalizedType {
 	case NormalizedTypeBool:
 		return fmt.Sprintf("NOT %s", field.Name), nil
@@ -411,7 +418,6 @@ func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (str
 	case NormalizedTypeDate:
 		return fmt.Sprintf("(%s IS NULL)", field.Name), nil
 	default:
-		// Fallback for other types - just check null
 		return fmt.Sprintf("(%s IS NULL)", field.Name), nil
 	}
 }

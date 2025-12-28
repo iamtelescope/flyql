@@ -1,12 +1,17 @@
 import { describe, it, expect } from 'vitest'
-import { Expression, Key, FlyqlError, VALID_KEY_VALUE_OPERATORS } from '../../src/index.js'
+import { Expression, Key, FlyqlError, VALID_KEY_VALUE_OPERATORS, Operator } from '../../src/index.js'
 
 describe('Expression', () => {
     it('should create valid expressions with all operators', () => {
         VALID_KEY_VALUE_OPERATORS.forEach((operator) => {
             const key = new Key(['key'])
-            const expr = new Expression(key, operator, 'value', null)
-            expect(expr.toString()).toBe(`key${operator}value`)
+            if (operator === Operator.IN || operator === Operator.NOT_IN) {
+                const expr = new Expression(key, operator, '', null, [1, 2, 3], 'number')
+                expect(expr.toString()).toBe(`key ${operator} [1, 2, 3]`)
+            } else {
+                const expr = new Expression(key, operator, 'value', null)
+                expect(expr.toString()).toBe(`key${operator}value`)
+            }
         })
     })
 

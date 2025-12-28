@@ -68,6 +68,12 @@
       "input": "not message~error",
       "expected_result": "success",
       "expected_sql": "NOT (match(message, 'error'))"
+    },
+    {
+      "name": "not_truthy_jsonstring",
+      "input": "not json_field",
+      "expected_result": "success",
+      "expected_sql": "(json_field IS NULL OR json_field = '' OR JSONLength(json_field) = 0)"
     }
   ]
 }

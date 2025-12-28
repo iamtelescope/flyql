@@ -11,6 +11,7 @@ import {
     VALID_BOOL_OPERATORS_CHARS,
     Operator,
     NOT_KEYWORD,
+    IN_KEYWORD,
 } from './constants.js'
 
 export class Parser {
@@ -35,6 +36,11 @@ export class Parser {
         this.typedChars = []
         this.pendingNegation = false
         this.negationStack = []
+        this.inListValues = []
+        this.inListCurrentValue = ''
+        this.inListCurrentValueIsString = null
+        this.inListValuesType = null
+        this.isNotIn = false
     }
 
     setState(state) {
@@ -91,6 +97,55 @@ export class Parser {
         this.resetKey()
         this.resetValue()
         this.resetKeyValueOperator()
+        this.resetInListData()
+    }
+
+    resetInListData() {
+        this.inListValues = []
+        this.inListCurrentValue = ''
+        this.inListCurrentValueIsString = null
+        this.inListValuesType = null
+        this.isNotIn = false
+    }
+
+    extendInListCurrentValue() {
+        if (this.char) {
+            this.inListCurrentValue += this.char.value
+        }
+    }
+
+    finalizeInListValue() {
+        if (!this.inListCurrentValue && this.inListCurrentValueIsString === null) {
+            return true
+        }
+
+        let value
+        let valueType
+        if (this.inListCurrentValueIsString) {
+            value = this.inListCurrentValue
+            valueType = 'string'
+        } else {
+            const numValue = Number(this.inListCurrentValue)
+            if (!isNaN(numValue)) {
+                value = numValue
+                valueType = 'number'
+            } else {
+                value = this.inListCurrentValue
+                valueType = 'string'
+            }
+        }
+
+        if (this.inListValuesType === null) {
+            this.inListValuesType = valueType
+        } else if (this.inListValuesType !== valueType) {
+            this.setErrorState('mixed types in list', 40)
+            return false
+        }
+
+        this.inListValues.push(value)
+        this.inListCurrentValue = ''
+        this.inListCurrentValueIsString = null
+        return true
     }
 
     resetBoolOperator() {
@@ -145,6 +200,11 @@ export class Parser {
 
     newTruthyExpression() {
         return new Expression(parseKey(this.key), Operator.TRUTHY, null, null)
+    }
+
+    newInExpression() {
+        const operator = this.isNotIn ? Operator.NOT_IN : Operator.IN
+        return new Expression(parseKey(this.key), operator, '', null, this.inListValues, this.inListValuesType)
     }
 
     togglePendingNegation() {
@@ -322,13 +382,6 @@ export class Parser {
             this.extendKeyValueOperator()
             this.setState(State.KEY_VALUE_OPERATOR)
             this.storeTypedChar(CharType.OPERATOR)
-        } else if (this.char.isBoolOpChar()) {
-            this.extendTreeWithExpression(this.newTruthyExpression())
-            this.resetData()
-            this.resetBoolOperator()
-            this.extendBoolOperator()
-            this.storeTypedChar(CharType.OPERATOR)
-            this.setState(State.EXPECT_BOOL_OP)
         } else if (this.char.isGroupClose()) {
             if (!this.nodesStack.length) {
                 this.setErrorState('unmatched parenthesis', 32)
@@ -344,8 +397,23 @@ export class Parser {
             this.resetBoolOperator()
             this.setState(State.EXPECT_BOOL_OP)
             this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === 'i') {
+            this.keyValueOperator = 'i'
+            this.setState(State.KEY_VALUE_OPERATOR)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === 'n') {
+            this.keyValueOperator = 'n'
+            this.setState(State.EXPECT_IN_KEYWORD)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.isBoolOpChar()) {
+            this.extendTreeWithExpression(this.newTruthyExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.extendBoolOperator()
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_BOOL_OP)
         } else {
-            this.setErrorState('invalid character', 32)
+            this.setErrorState('expected operator or boolean operator', 32)
         }
     }
 
@@ -387,6 +455,29 @@ export class Parser {
 
     inStateKeyValueOperator() {
         if (!this.char) {
+            return
+        }
+
+        if (this.keyValueOperator === 'i' && this.char.value === 'n') {
+            this.keyValueOperator = 'in'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'in') {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = ''
+                this.isNotIn = false
+                this.setState(State.EXPECT_LIST_START)
+            } else if (this.char.value === '[') {
+                this.storeTypedChar(CharType.OPERATOR)
+                this.keyValueOperator = ''
+                this.isNotIn = false
+                this.setState(State.EXPECT_LIST_VALUE)
+            } else {
+                this.setErrorState("expected '[' after 'in'", 47)
+            }
             return
         }
 
@@ -674,6 +765,196 @@ export class Parser {
         }
     }
 
+    inStateExpectInKeyword() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.keyValueOperator === 'n') {
+            if (this.char.value === 'o') {
+                this.keyValueOperator += 'o'
+                this.storeTypedChar(CharType.OPERATOR)
+            } else {
+                this.setErrorState("expected 'not' or 'in' keyword", 41)
+            }
+        } else if (this.keyValueOperator === 'no') {
+            if (this.char.value === 't') {
+                this.keyValueOperator += 't'
+                this.storeTypedChar(CharType.OPERATOR)
+            } else {
+                this.setErrorState("expected 'not' keyword", 41)
+            }
+        } else if (this.keyValueOperator === 'not') {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = ''
+                this.isNotIn = true
+                this.setState(State.EXPECT_LIST_START)
+            } else {
+                this.setErrorState("expected space after 'not'", 41)
+            }
+        } else {
+            this.setErrorState('unexpected state in expect_in_keyword', 41)
+        }
+    }
+
+    inStateExpectListStart() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+            return
+        } else if (this.char.value === 'i') {
+            this.keyValueOperator = 'i'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'i' && this.char.value === 'n') {
+            this.keyValueOperator = ''
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === '[') {
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_LIST_VALUE)
+        } else {
+            this.setErrorState("expected '['", 42)
+        }
+    }
+
+    inStateExpectListValue() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+            return
+        } else if (this.char.value === ']') {
+            this.storeTypedChar(CharType.OPERATOR)
+            this.extendTreeWithExpression(this.newInExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
+        } else if (this.char.isSingleQuote()) {
+            this.inListCurrentValueIsString = true
+            this.storeTypedChar(CharType.VALUE)
+            this.setState(State.IN_LIST_SINGLE_QUOTED_VALUE)
+        } else if (this.char.isDoubleQuote()) {
+            this.inListCurrentValueIsString = true
+            this.storeTypedChar(CharType.VALUE)
+            this.setState(State.IN_LIST_DOUBLE_QUOTED_VALUE)
+        } else if (this.char.isValue()) {
+            this.extendInListCurrentValue()
+            this.storeTypedChar(CharType.VALUE)
+            this.setState(State.IN_LIST_VALUE)
+        } else {
+            this.setErrorState('expected value in list', 43)
+        }
+    }
+
+    inStateInListValue() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isValue() && this.char.value !== ',' && this.char.value !== ']') {
+            this.extendInListCurrentValue()
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDelimiter()) {
+            if (!this.finalizeInListValue()) {
+                return
+            }
+            this.storeTypedChar(CharType.SPACE)
+            this.setState(State.EXPECT_LIST_COMMA_OR_END)
+        } else if (this.char.value === ',') {
+            if (!this.finalizeInListValue()) {
+                return
+            }
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_LIST_VALUE)
+        } else if (this.char.value === ']') {
+            if (!this.finalizeInListValue()) {
+                return
+            }
+            this.storeTypedChar(CharType.OPERATOR)
+            this.extendTreeWithExpression(this.newInExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
+        } else {
+            this.setErrorState('unexpected character in list value', 44)
+        }
+    }
+
+    inStateInListSingleQuotedValue() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isSingleQuotedValue()) {
+            this.extendInListCurrentValue()
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isSingleQuote()) {
+            this.storeTypedChar(CharType.VALUE)
+            const prevPos = this.char.pos - 1
+            if (prevPos >= 0 && this.text[prevPos] === '\\') {
+                this.extendInListCurrentValue()
+            } else {
+                if (!this.finalizeInListValue()) {
+                    return
+                }
+                this.setState(State.EXPECT_LIST_COMMA_OR_END)
+            }
+        } else {
+            this.setErrorState('invalid character in quoted value', 45)
+        }
+    }
+
+    inStateInListDoubleQuotedValue() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDoubleQuotedValue()) {
+            this.extendInListCurrentValue()
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDoubleQuote()) {
+            this.storeTypedChar(CharType.VALUE)
+            const prevPos = this.char.pos - 1
+            if (prevPos >= 0 && this.text[prevPos] === '\\') {
+                this.extendInListCurrentValue()
+            } else {
+                if (!this.finalizeInListValue()) {
+                    return
+                }
+                this.setState(State.EXPECT_LIST_COMMA_OR_END)
+            }
+        } else {
+            this.setErrorState('invalid character in quoted value', 45)
+        }
+    }
+
+    inStateExpectListCommaOrEnd() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+            return
+        } else if (this.char.value === ',') {
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_LIST_VALUE)
+        } else if (this.char.value === ']') {
+            this.storeTypedChar(CharType.OPERATOR)
+            this.extendTreeWithExpression(this.newInExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
+        } else {
+            this.setErrorState("expected ',' or ']'", 46)
+        }
+    }
+
     inStateLastChar() {
         if (this.state === State.INITIAL && !this.nodesStack.length) {
             this.setErrorState('empty input', 24)
@@ -682,7 +963,15 @@ export class Parser {
             this.state === State.SINGLE_QUOTED_KEY ||
             this.state === State.DOUBLE_QUOTED_KEY ||
             this.state === State.EXPECT_OPERATOR ||
-            this.state === State.EXPECT_VALUE
+            this.state === State.EXPECT_VALUE ||
+            this.state === State.EXPECT_NOT_TARGET ||
+            this.state === State.EXPECT_IN_KEYWORD ||
+            this.state === State.EXPECT_LIST_START ||
+            this.state === State.EXPECT_LIST_VALUE ||
+            this.state === State.IN_LIST_VALUE ||
+            this.state === State.IN_LIST_SINGLE_QUOTED_VALUE ||
+            this.state === State.IN_LIST_DOUBLE_QUOTED_VALUE ||
+            this.state === State.EXPECT_LIST_COMMA_OR_END
         ) {
             this.setErrorState('unexpected EOF', 25)
         } else if (this.state === State.KEY) {
@@ -702,7 +991,7 @@ export class Parser {
         ) {
             this.extendTree()
             this.resetBoolOperator()
-        } else if (this.state === State.BOOL_OP_DELIMITER || this.state === State.EXPECT_NOT_TARGET) {
+        } else if (this.state === State.BOOL_OP_DELIMITER) {
             this.setErrorState('unexpected EOF', 26)
             return
         }
@@ -771,6 +1060,27 @@ export class Parser {
                     break
                 case State.EXPECT_NOT_TARGET:
                     this.inStateExpectNotTarget()
+                    break
+                case State.EXPECT_IN_KEYWORD:
+                    this.inStateExpectInKeyword()
+                    break
+                case State.EXPECT_LIST_START:
+                    this.inStateExpectListStart()
+                    break
+                case State.EXPECT_LIST_VALUE:
+                    this.inStateExpectListValue()
+                    break
+                case State.IN_LIST_VALUE:
+                    this.inStateInListValue()
+                    break
+                case State.IN_LIST_SINGLE_QUOTED_VALUE:
+                    this.inStateInListSingleQuotedValue()
+                    break
+                case State.IN_LIST_DOUBLE_QUOTED_VALUE:
+                    this.inStateInListDoubleQuotedValue()
+                    break
+                case State.EXPECT_LIST_COMMA_OR_END:
+                    this.inStateExpectListCommaOrEnd()
                     break
                 default:
                     this.setErrorState(`Unknown state: ${this.state}`, 1)

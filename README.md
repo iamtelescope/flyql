@@ -4,16 +4,21 @@ A simple query language accompanied by a parser that transforms input queries in
 
 ## Basic Query Structure
 
-A query consists of one or more conditions connected by boolean operators (**and**, **or**). Each condition compares a **key** with a **value** using a specific **operator**.
+A query consists of one or more conditions connected by boolean operators (**and**, **or**, **not**). Conditions can be comparisons or truthy checks.
 
-```(flyql)
-status=200 and (service!=api or user="john doe")
 ```
-- `status = 200` - `status` field is exactly `200`
-- `service = api` - `service` field is not equals to `api`
-- `user =~ "John.*"` - `user` field is equals to regex
+status=200 and active and not archived
+```
+- `status=200` - `status` field equals `200`
+- `active` - `active` field has a truthy value
+- `not archived` - `archived` field is falsy (null, empty, zero, or false)
 
-Parentheses determine that the condition (`service!=api or user="john doe"`) is evaluated as a group.
+More examples:
+```
+service!=api or user="john doe"     # comparisons with or
+message=~"error.*" and not debug    # regex match and negation
+(a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
+```
 
 ## Syntax
 
@@ -30,13 +35,45 @@ FlyQL supports the following comparison operators:
 - **Greater or equals than** - `>=`
 - **Lower or equals than** - `<=`
 
+### Truthy Checks
+
+A standalone key without an operator checks if the field has a truthy value:
+
+```
+active
+message and status
+```
+
+A value is considered **falsy** if it is:
+- `null` / `None` / missing
+- Empty string `""`
+- Zero `0`
+- Boolean `false`
+
+Everything else is **truthy**.
+
+### Negation Operator
+
+Use `not` to negate any expression:
+
+```
+not active                  # field is falsy
+not status=200              # status is not 200
+not (a=1 and b=2)           # negates the grouped expression
+active and not archived     # combine with other conditions
+```
+
+Double negation cancels out: `not not active` is equivalent to `active`.
+
 ### Boolean Operators and Parentheses
 - **Boolean operators** - Use `and` to require all conditions to be true and `or` to allow for either condition.
+- **Negation** - Use `not` before any expression to negate it.
 - **Parentheses** - Use `(` and `)` to group conditions and set the precedence of operations (parentheses must be matched on both sides to avoid errors).
 
 ### General Query Syntax Rules
-- **No spaces** - There must be no spaces between the key, operator, and value.
-- **Mandatory Operator and Value** - Every key must be immediately followed by a valid operator and a corresponding value.
+- **Standalone keys** - A key without an operator is treated as a truthy check.
+- **Comparisons** - A key with an operator must have a corresponding value.
+- **Spaces** - Spaces around operators are allowed (`status=200` and `status = 200` are equivalent).
 
 ### Handling values
 - **Without spaces** - If the value contains no spaces, you can write it directly (e.g., `status=200`).

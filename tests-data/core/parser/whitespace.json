@@ -412,6 +412,37 @@
           "right": null
         }
       }
+    },
+    {
+      "name": "newline_between_expressions",
+      "input": "a=1 and \nb=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
     }
   ]
 }

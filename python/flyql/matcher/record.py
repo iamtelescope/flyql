@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 from flyql.matcher.key import Key
 
@@ -46,7 +46,7 @@ class Record:
             if self.is_propbably_jsonstring(value):
                 try:
                     value = json.loads(value)
-                except Exception as err:
+                except Exception:  # pylint: disable=broad-exception-caught
                     return None
             elif not isinstance(value, dict):
                 return None

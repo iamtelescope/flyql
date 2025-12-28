@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List, Optional, Union
 
 from flyql.core.tree import Node
@@ -485,8 +484,6 @@ class Parser:
                 self.set_error_state("unmatched parenthesis", 19)
                 return
             else:
-                if self.key and self.value and self.key_value_operator:
-                    self.extend_tree()
                 self.reset_data()
                 self.reset_bool_operator()
                 if self.bool_op_stack:

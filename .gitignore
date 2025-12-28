@@ -42,6 +42,9 @@ htmlcov/
 .nox/
 .coverage
 .coverage.*
+javascript/coverage
+golang/coverage.out
+golang/coverage.html
 .cache
 nosetests.xml
 coverage.xml

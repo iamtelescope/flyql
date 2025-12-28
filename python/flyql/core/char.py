@@ -16,6 +16,9 @@ DOUBLE_QUOTE = '"'
 SINGLE_QUOTE = "'"
 NEWLINE = "\n"
 
+OPERATOR_CHARS = {EQUAL_SIGN, EXCL_MARK, TILDE, LOWER_THAN, GREATER_THAN}
+KEY_CHARS = {UNDERSCORE, DOT, COLON, SLASH, HYPHEN}
+
 
 class Char:
     def __init__(
@@ -34,23 +37,10 @@ class Char:
         return self.value == DELIMITER
 
     def is_key(self) -> bool:
-        return (
-            self.value.isalnum()
-            or self.value == UNDERSCORE
-            or self.value == DOT
-            or self.value == COLON
-            or self.value == SLASH
-            or self.value == HYPHEN
-        )
+        return self.value.isalnum() or self.value in KEY_CHARS
 
     def is_op(self) -> bool:
-        return (
-            self.value == EQUAL_SIGN
-            or self.value == EXCL_MARK
-            or self.value == TILDE
-            or self.value == LOWER_THAN
-            or self.value == GREATER_THAN
-        )
+        return self.value in OPERATOR_CHARS
 
     def is_group_open(self) -> bool:
         return self.value == BRACKET_OPEN

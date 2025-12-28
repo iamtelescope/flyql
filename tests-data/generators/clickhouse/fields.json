@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "description": "Field definitions for ClickHouse generator tests",
+  "fields": {
+    "message": {
+      "name": "message",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "jsonstring": false,
+      "type": "Int64",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "jsonstring": false,
+      "type": "Float64",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "jsonstring": false,
+      "type": "Date",
+      "values": null
+    },
+    "json_field": {
+      "name": "json_field",
+      "jsonstring": true,
+      "type": "String",
+      "values": null
+    },
+    "new_json": {
+      "name": "new_json",
+      "jsonstring": false,
+      "type": "JSON",
+      "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "jsonstring": false,
+      "type": "Array(String)",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "jsonstring": false,
+      "type": "Map(String, String)",
+      "values": null
+    },
+    "enum_field": {
+      "name": "enum_field",
+      "jsonstring": false,
+      "type": "Enum8",
+      "values": ["value1", "value2"]
+    },
+    "status": {
+      "name": "status",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "description": "Error cases for ClickHouse generator",
+  "test_suite": "errors",
+  "tests": [
+    {
+      "name": "unknown_field",
+      "input": "unknown_field='test'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown field"
+    },
+    {
+      "name": "unknown_field_segmented",
+      "input": "unknown:path='test'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown field"
+    },
+    {
+      "name": "enum_invalid_value",
+      "input": "enum_field='invalid_value'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "array_invalid_index",
+      "input": "tags:invalid='test'",
+      "expected_result": "error",
+      "expected_error_contains": "invalid array index"
+    },
+    {
+      "name": "int_field_regex_operation",
+      "input": "count=~'test'",
+      "expected_result": "error",
+      "expected_error_contains": "operation not allowed"
+    },
+    {
+      "name": "float_field_regex_operation",
+      "input": "price=~'test'",
+      "expected_result": "error",
+      "expected_error_contains": "operation not allowed"
+    },
+    {
+      "name": "native_json_invalid_path_starts_with_digit",
+      "input": "new_json:123field='test'",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    },
+    {
+      "name": "native_json_empty_path_part",
+      "input": "new_json:user::field='test'",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    }
+  ]
+}

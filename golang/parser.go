@@ -1,0 +1,583 @@
+package flyql
+
+var validKeyValueOperators = map[string]bool{
+	OpEquals:          true,
+	OpNotEquals:       true,
+	OpRegexMatch:      true,
+	OpRegexNotMatch:   true,
+	OpGreater:         true,
+	OpLess:            true,
+	OpGreaterOrEquals: true,
+	OpLessOrEquals:    true,
+}
+
+var validBoolOperators = map[string]bool{
+	BoolOpAnd: true,
+	BoolOpOr:  true,
+}
+
+var validBoolOperatorChars = map[rune]bool{
+	'a': true,
+	'n': true,
+	'd': true,
+	'o': true,
+	'r': true,
+}
+
+type Parser struct {
+	pos              int
+	line             int
+	linePos          int
+	text             string
+	state            state
+	char             *char
+	key              string
+	value            string
+	valueIsString    *bool
+	keyValueOperator string
+	boolOperator     string
+	currentNode      *Node
+	nodesStack       []*Node
+	boolOpStack      []string
+	errorText        string
+	errno            int
+	Root             *Node
+}
+
+func NewParser() *Parser {
+	return &Parser{
+		boolOperator: BoolOpAnd,
+		state:        stateInitial,
+	}
+}
+
+func (p *Parser) setErrorState(errorText string, errno int) {
+	p.state = stateError
+	p.errorText = errorText
+	p.errno = errno
+	if p.char != nil {
+		p.errorText += " [char " + string(p.char.value) + " at pos " + string(rune('0'+p.char.pos)) + "]"
+	}
+}
+
+func (p *Parser) resetKey() {
+	p.key = ""
+}
+
+func (p *Parser) resetValue() {
+	p.value = ""
+	p.valueIsString = nil
+}
+
+func (p *Parser) resetKeyValueOperator() {
+	p.keyValueOperator = ""
+}
+
+func (p *Parser) resetData() {
+	p.resetKey()
+	p.resetValue()
+	p.resetKeyValueOperator()
+}
+
+func (p *Parser) resetBoolOperator() {
+	p.boolOperator = ""
+}
+
+func (p *Parser) setValueIsString() {
+	t := true
+	p.valueIsString = &t
+}
+
+func (p *Parser) extendKey() {
+	if p.char != nil {
+		p.key += string(p.char.value)
+	}
+}
+
+func (p *Parser) extendValue() {
+	if p.char != nil {
+		p.value += string(p.char.value)
+	}
+}
+
+func (p *Parser) extendKeyValueOperator() {
+	if p.char != nil {
+		p.keyValueOperator += string(p.char.value)
+	}
+}
+
+func (p *Parser) extendBoolOperator() {
+	if p.char != nil {
+		p.boolOperator += string(p.char.value)
+	}
+}
+
+func (p *Parser) extendNodesStack() {
+	if p.currentNode != nil {
+		p.nodesStack = append(p.nodesStack, p.currentNode)
+	}
+}
+
+func (p *Parser) extendBoolOpStack() {
+	p.boolOpStack = append(p.boolOpStack, p.boolOperator)
+}
+
+func (p *Parser) newExpression() *Expression {
+	key, _ := ParseKey(p.key)
+	valueIsString := p.valueIsString != nil && *p.valueIsString
+	return NewExpression(key, p.keyValueOperator, p.value, valueIsString)
+}
+
+func (p *Parser) extendTree() {
+	if p.currentNode != nil && p.currentNode.Left == nil {
+		node := NewExpressionNode(p.newExpression())
+		p.currentNode.Left = node
+		p.currentNode.BoolOperator = p.boolOperator
+	} else if p.currentNode != nil && p.currentNode.Right == nil {
+		node := NewExpressionNode(p.newExpression())
+		p.currentNode.Right = node
+		p.currentNode.BoolOperator = p.boolOperator
+	} else {
+		right := NewExpressionNode(p.newExpression())
+		node := NewBranchNode(p.boolOperator, p.currentNode, right)
+		p.currentNode = node
+	}
+}
+
+func (p *Parser) extendTreeFromStack(boolOperator string) {
+	if len(p.nodesStack) == 0 {
+		return
+	}
+	node := p.nodesStack[len(p.nodesStack)-1]
+	p.nodesStack = p.nodesStack[:len(p.nodesStack)-1]
+
+	if node.Right == nil {
+		node.Right = p.currentNode
+		node.BoolOperator = boolOperator
+		p.currentNode = node
+	} else {
+		newNode := NewBranchNode(boolOperator, node, p.currentNode)
+		p.currentNode = newNode
+	}
+}
+
+func (p *Parser) inStateInitial() {
+	if p.char == nil {
+		return
+	}
+
+	p.resetData()
+	p.currentNode = NewNode(p.boolOperator, nil, nil, nil)
+
+	if p.char.isGroupOpen() {
+		p.extendNodesStack()
+		p.extendBoolOpStack()
+		p.state = stateInitial
+	} else if p.char.isDelimiter() {
+		p.state = stateBoolOpDelimiter
+	} else if p.char.isKey() {
+		p.extendKey()
+		p.state = stateKey
+	} else if p.char.isSingleQuote() {
+		p.extendKey()
+		p.state = stateSingleQuotedKey
+	} else if p.char.isDoubleQuote() {
+		p.extendKey()
+		p.state = stateDoubleQuotedKey
+	} else {
+		p.setErrorState("invalid character", 1)
+	}
+}
+
+func (p *Parser) inStateKey() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		p.state = stateExpectOperator
+	} else if p.char.isKey() {
+		p.extendKey()
+	} else if p.char.isSingleQuote() {
+		p.extendKey()
+		p.state = stateSingleQuotedKey
+	} else if p.char.isDoubleQuote() {
+		p.extendKey()
+		p.state = stateDoubleQuotedKey
+	} else if p.char.isOp() {
+		p.extendKeyValueOperator()
+		p.state = stateKeyValueOperator
+	} else {
+		p.setErrorState("invalid character", 3)
+	}
+}
+
+func (p *Parser) inStateExpectOperator() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isOp() {
+		p.extendKeyValueOperator()
+		p.state = stateKeyValueOperator
+	} else {
+		p.setErrorState("expected operator", 28)
+	}
+}
+
+func (p *Parser) inStateKeyValueOperator() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		if !validKeyValueOperators[p.keyValueOperator] {
+			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+		} else {
+			p.state = stateExpectValue
+		}
+	} else if p.char.isOp() {
+		p.extendKeyValueOperator()
+	} else if p.char.isValue() {
+		if !validKeyValueOperators[p.keyValueOperator] {
+			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+		} else {
+			p.state = stateValue
+			p.extendValue()
+		}
+	} else if p.char.isSingleQuote() {
+		if !validKeyValueOperators[p.keyValueOperator] {
+			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+		} else {
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		}
+	} else if p.char.isDoubleQuote() {
+		if !validKeyValueOperators[p.keyValueOperator] {
+			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+		} else {
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		}
+	} else {
+		p.setErrorState("invalid character", 4)
+	}
+}
+
+func (p *Parser) inStateExpectValue() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isValue() {
+		p.state = stateValue
+		p.extendValue()
+	} else if p.char.isSingleQuote() {
+		p.setValueIsString()
+		p.state = stateSingleQuotedValue
+	} else if p.char.isDoubleQuote() {
+		p.setValueIsString()
+		p.state = stateDoubleQuotedValue
+	} else {
+		p.setErrorState("expected value", 29)
+	}
+}
+
+func (p *Parser) inStateValue() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isValue() {
+		p.extendValue()
+	} else if p.char.isDelimiter() {
+		p.state = stateExpectBoolOp
+		p.extendTree()
+		p.resetData()
+		p.resetBoolOperator()
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 9)
+			return
+		}
+		p.extendTree()
+		p.resetData()
+		if len(p.boolOpStack) > 0 {
+			p.boolOperator = p.boolOpStack[len(p.boolOpStack)-1]
+			p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+		}
+		p.extendTreeFromStack(p.boolOperator)
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else {
+		p.setErrorState("invalid character", 10)
+	}
+}
+
+func (p *Parser) inStateSingleQuotedValue() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isSingleQuote() {
+		p.extendValue()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendValue()
+		} else {
+			p.state = stateExpectBoolOp
+			p.extendTree()
+			p.resetData()
+			p.resetBoolOperator()
+		}
+	}
+}
+
+func (p *Parser) inStateDoubleQuotedValue() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isDoubleQuote() {
+		p.extendValue()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendValue()
+		} else {
+			p.state = stateExpectBoolOp
+			p.extendTree()
+			p.resetData()
+			p.resetBoolOperator()
+		}
+	}
+}
+
+func (p *Parser) inStateSingleQuotedKey() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isSingleQuote() {
+		p.extendKey()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendKey()
+		} else {
+			p.extendKey()
+			p.state = stateKey
+		}
+	}
+}
+
+func (p *Parser) inStateDoubleQuotedKey() {
+	if p.char == nil {
+		return
+	}
+
+	if !p.char.isDoubleQuote() {
+		p.extendKey()
+	} else {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.extendKey()
+		} else {
+			p.extendKey()
+			p.state = stateKey
+		}
+	}
+}
+
+func (p *Parser) inStateBoolOpDelimiter() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isKey() {
+		p.state = stateKey
+		p.extendKey()
+	} else if p.char.isSingleQuote() {
+		p.extendKey()
+		p.state = stateSingleQuotedKey
+	} else if p.char.isDoubleQuote() {
+		p.extendKey()
+		p.state = stateDoubleQuotedKey
+	} else if p.char.isGroupOpen() {
+		p.extendNodesStack()
+		p.extendBoolOpStack()
+		p.state = stateInitial
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 15)
+			return
+		}
+		p.resetData()
+		if len(p.boolOpStack) > 0 {
+			boolOp := p.boolOpStack[len(p.boolOpStack)-1]
+			p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+			p.extendTreeFromStack(boolOp)
+		}
+		p.state = stateExpectBoolOp
+	} else {
+		p.setErrorState("invalid character", 18)
+	}
+}
+
+func (p *Parser) inStateExpectBoolOp() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 19)
+			return
+		}
+		p.resetData()
+		p.resetBoolOperator()
+		if len(p.boolOpStack) > 0 {
+			boolOp := p.boolOpStack[len(p.boolOpStack)-1]
+			p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+			p.extendTreeFromStack(boolOp)
+		}
+		p.state = stateExpectBoolOp
+	} else {
+		p.extendBoolOperator()
+		if len(p.boolOperator) > 3 || !validBoolOperatorChars[p.char.value] {
+			p.setErrorState("invalid character", 20)
+		} else {
+			if validBoolOperators[p.boolOperator] {
+				nextPos := p.char.pos + 1
+				if nextPos < len(p.text) {
+					nextChar := newChar(rune(p.text[nextPos]), nextPos, 0, 0)
+					if !nextChar.isDelimiter() {
+						p.setErrorState("expected delimiter after bool operator", 23)
+						return
+					}
+					p.state = stateBoolOpDelimiter
+				}
+			}
+		}
+	}
+}
+
+func (p *Parser) inStateLastChar() {
+	if p.state == stateInitial && len(p.nodesStack) == 0 {
+		p.setErrorState("empty input", 24)
+	} else if p.state == stateInitial ||
+		p.state == stateKey ||
+		p.state == stateSingleQuotedKey ||
+		p.state == stateDoubleQuotedKey ||
+		p.state == stateExpectOperator ||
+		p.state == stateExpectValue {
+		p.setErrorState("unexpected EOF", 25)
+	} else if p.state == stateValue ||
+		p.state == stateDoubleQuotedValue ||
+		p.state == stateSingleQuotedValue {
+		p.extendTree()
+		p.resetBoolOperator()
+	} else if p.state == stateBoolOpDelimiter {
+		p.setErrorState("unexpected EOF", 26)
+		return
+	}
+
+	if p.state != stateError && len(p.nodesStack) > 0 {
+		p.setErrorState("unmatched parenthesis", 27)
+	}
+}
+
+func (p *Parser) Parse(text string) error {
+	p.text = text
+	p.pos = 0
+	p.line = 0
+	p.linePos = 0
+	p.state = stateInitial
+	p.boolOperator = BoolOpAnd
+	p.currentNode = nil
+	p.nodesStack = nil
+	p.boolOpStack = nil
+	p.Root = nil
+
+	for _, c := range text {
+		if p.state == stateError {
+			break
+		}
+
+		ch := newChar(c, p.pos, p.line, p.linePos)
+		p.char = &ch
+
+		if p.char.isNewline() {
+			p.line++
+			p.linePos = 0
+			p.pos++
+			continue
+		}
+
+		switch p.state {
+		case stateInitial:
+			p.inStateInitial()
+		case stateKey:
+			p.inStateKey()
+		case stateExpectOperator:
+			p.inStateExpectOperator()
+		case stateValue:
+			p.inStateValue()
+		case stateExpectValue:
+			p.inStateExpectValue()
+		case stateSingleQuotedValue:
+			p.inStateSingleQuotedValue()
+		case stateDoubleQuotedValue:
+			p.inStateDoubleQuotedValue()
+		case stateKeyValueOperator:
+			p.inStateKeyValueOperator()
+		case stateBoolOpDelimiter:
+			p.inStateBoolOpDelimiter()
+		case stateSingleQuotedKey:
+			p.inStateSingleQuotedKey()
+		case stateDoubleQuotedKey:
+			p.inStateDoubleQuotedKey()
+		case stateExpectBoolOp:
+			p.inStateExpectBoolOp()
+		default:
+			p.setErrorState("unknown state", 1)
+		}
+
+		if p.state == stateError {
+			break
+		}
+
+		p.pos++
+		p.linePos++
+	}
+
+	if p.state == stateError {
+		return &ParseError{
+			Code:    p.errno,
+			Message: p.errorText,
+			Pos:     p.pos,
+		}
+	}
+
+	p.inStateLastChar()
+
+	if p.state == stateError {
+		return &ParseError{
+			Code:    p.errno,
+			Message: p.errorText,
+			Pos:     p.pos,
+		}
+	}
+
+	p.Root = p.currentNode
+	return nil
+}

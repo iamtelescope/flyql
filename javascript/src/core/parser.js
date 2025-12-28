@@ -494,9 +494,6 @@ export class Parser {
                 this.setErrorState('unmatched parenthesis', 19)
                 return
             } else {
-                if (this.key && this.value && this.keyValueOperator) {
-                    this.extendTree()
-                }
                 this.resetData()
                 this.resetBoolOperator()
                 if (this.boolOpStack.length) {

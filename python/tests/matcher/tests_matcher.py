@@ -1,7 +1,12 @@
 import pytest
 
 from flyql.core.parser import parse
-from flyql.matcher.evaluator import Evaluator
+from flyql.core.exceptions import FlyqlError
+from flyql.matcher.evaluator import (
+    Evaluator,
+    REGEX_ENGINE_RE2,
+    REGEX_ENGINE_PYTHON_STD,
+)
 from flyql.matcher.record import Record
 
 
@@ -90,3 +95,81 @@ def test_matcher_with_comparison_operators():
     record = Record(data=data)
     result = evaluator.evaluate(root, record)
     assert result is True
+
+
+def test_regex_engine_re2_default():
+    """Test that RE2 is used by default"""
+    query = "message=~^hello"
+    data = {"message": "hello world"}
+    root = parse(query).root
+    evaluator = Evaluator()  # Default is re2
+    record = Record(data=data)
+    result = evaluator.evaluate(root, record)
+    assert result is True
+    assert evaluator.regex_engine == REGEX_ENGINE_RE2
+
+
+def test_regex_engine_re2_explicit():
+    """Test explicit RE2 engine selection"""
+    query = "message=~world$"
+    data = {"message": "hello world"}
+    root = parse(query).root
+    evaluator = Evaluator(regex_engine=REGEX_ENGINE_RE2)
+    record = Record(data=data)
+    result = evaluator.evaluate(root, record)
+    assert result is True
+
+
+def test_regex_engine_python_std():
+    """Test Python standard library re engine"""
+    query = "message=~^hello.*world$"
+    data = {"message": "hello beautiful world"}
+    root = parse(query).root
+    evaluator = Evaluator(regex_engine=REGEX_ENGINE_PYTHON_STD)
+    record = Record(data=data)
+    result = evaluator.evaluate(root, record)
+    assert result is True
+
+
+def test_regex_engine_python_std_backreference():
+    """Test Python re with backreference (not supported in RE2)"""
+    query = r'message=~"(\w+)\s+\1"'  # Match repeated word like "hello hello"
+    data = {"message": "hello hello"}
+    root = parse(query).root
+    evaluator = Evaluator(regex_engine=REGEX_ENGINE_PYTHON_STD)
+    record = Record(data=data)
+    result = evaluator.evaluate(root, record)
+    assert result is True
+
+
+def test_regex_engine_python_std_backreference_fails_re2():
+    """Test that RE2 doesn't support backreferences"""
+    query = r'message=~"(\w+)\s+\1"'  # Backreference not supported in RE2
+    data = {"message": "hello hello"}
+    root = parse(query).root
+    evaluator = Evaluator(regex_engine=REGEX_ENGINE_RE2)
+    record = Record(data=data)
+
+    # RE2 will fail to compile or not match correctly
+    with pytest.raises(FlyqlError, match="invalid regex"):
+        evaluator.evaluate(root, record)
+
+
+def test_regex_engine_cache_isolation():
+    """Test that regex caches are isolated between engines"""
+    query = "message=~hello"
+    data = {"message": "hello world"}
+    root = parse(query).root
+
+    evaluator_re2 = Evaluator(regex_engine=REGEX_ENGINE_RE2)
+    evaluator_pystd = Evaluator(regex_engine=REGEX_ENGINE_PYTHON_STD)
+
+    record = Record(data=data)
+
+    # Both should work and have separate caches
+    assert evaluator_re2.evaluate(root, record) is True
+    assert evaluator_pystd.evaluate(root, record) is True
+
+    # Caches should be independent
+    assert len(evaluator_re2.cache) > 0
+    assert len(evaluator_pystd.cache) > 0

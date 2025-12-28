@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flyql"
-version = "0.0.10"
-dependencies = []
+version = "0.0.11"
+dependencies = ["google-re2>=1.1"]
 requires-python = ">=3.10"
 license = { text = "MIT License" }
 authors = [
@@ -44,6 +44,38 @@ dev = [
     "pytest>=8.4",
     "black>=25.1",
     "mypy>=1.16",
+    "pylint>=3.0",
+]
+
+[tool.pylint.master]
+ignore = [
+    "build",
+    "dist",
+    ".eggs",
+    "*.egg-info",
+    "venv",
+    ".venv",
+    "tests",
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",      # C0114
+    "missing-function-docstring",    # C0116
+    "missing-class-docstring",       # C0115
+    "duplicate-code",                # R0801
+    "no-else-return",                # R1705
+    "no-else-raise",                 # R1720
+    "too-few-public-methods",        # R0903
+    "too-many-instance-attributes",  # R0902
+    "too-many-branches",             # R0912
+    "too-many-statements",           # R0915
+    "too-many-return-statements",    # R0911
+    "too-many-public-methods",       # R0904
+    "too-many-locals",               # R0914
 ]
 
 [tool.pytest.ini_options]

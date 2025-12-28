@@ -6,3 +6,5 @@ fmt-test:
 vitest:
 	npm run test:run
 test: fmt-test vitest
+coverage:
+	npm run test:coverage

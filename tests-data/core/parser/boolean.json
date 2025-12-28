@@ -417,6 +417,38 @@
           }
         }
       }
+    },
+    {
+      "name": "nested_group_close_after_bool_op",
+      "input": "((a=1) and )",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": "=",
+          "value": 1.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "group_close_after_bool_op_empty_stack",
+      "input": "(a=1 and )",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": "=",
+          "value": 1.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
     }
   ]
 }

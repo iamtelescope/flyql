@@ -90,6 +90,33 @@
         "errno_options": [24, 26],
         "message_contains": ""
       }
+    },
+    {
+      "name": "invalid_char_after_bool_op",
+      "input": "a=1 and @",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 18,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unmatched_parentheses_after_bool_op",
+      "input": "a=1 and )",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 15,
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "unmatched_parentheses_in_expect_bool_op",
+      "input": "a=1 )",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 19,
+        "message_contains": "unmatched parenthesis"
+      }
     }
   ]
 }

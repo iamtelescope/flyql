@@ -1,5 +1,7 @@
+from typing import Any, Optional, Dict, Literal, Final
 import re
-from typing import Optional, Any, Dict, Pattern
+
+import re2  # type: ignore[import-untyped]
 
 from flyql.core.constants import Operator, BoolOperator
 from flyql.core.expression import Expression
@@ -9,12 +11,29 @@ from flyql.core.tree import Node
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
 
+# Regex engine constants
+REGEX_ENGINE_RE2: Final = "re2"
+REGEX_ENGINE_PYTHON_STD: Final = "python-std"
+
+RegexEngine = Literal["re2", "python-std"]  # Must match constants above
+
+REGEX_OPERATORS = {Operator.EQUALS_REGEX.value, Operator.NOT_EQUALS_REGEX.value}
+
 
 class Evaluator:
     def __init__(
         self,
+        regex_engine: RegexEngine = REGEX_ENGINE_RE2,
     ) -> None:
-        self.cache: Dict[str, Pattern[str]] = {}
+        self.cache: Dict[str, Any] = {}
+        self.regex_engine = regex_engine
+
+        # Select regex module
+        # REGEX_ENGINE_PYTHON_STD uses Python's standard re module
+        if regex_engine == REGEX_ENGINE_PYTHON_STD:
+            self._regex_module: Any = re
+        else:
+            self._regex_module = re2
 
     def evaluate(
         self,
@@ -51,13 +70,13 @@ class Evaluator:
     def _get_regex(
         self,
         value: str,
-    ) -> Pattern[str]:
+    ) -> Any:
         regex = self.cache.get(value)
         if regex is None:
             try:
-                regex = re.compile(value)
+                regex = self._regex_module.compile(value)
             except Exception as err:
-                raise FlyqlError(f"invalid regex given: {value} -> {err}")
+                raise FlyqlError(f"invalid regex given: {value} -> {err}") from err
             else:
                 self.cache[value] = regex
         return regex
@@ -71,11 +90,8 @@ class Evaluator:
         key = Key(expression.key.raw)
         value = record.get_value(key)
 
-        regex: Optional[Pattern[str]] = None
-        if (
-            expression.operator == Operator.EQUALS_REGEX.value
-            or expression.operator == Operator.NOT_EQUALS_REGEX.value
-        ):
+        regex: Optional[Any] = None
+        if expression.operator in REGEX_OPERATORS:
             regex = self._get_regex(str(expression.value))
 
         if expression.operator == Operator.EQUALS.value:

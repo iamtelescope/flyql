@@ -1,0 +1,188 @@
+package matcher
+
+import (
+	"fmt"
+	"regexp"
+
+	flyql "github.com/iamtelescope/flyql"
+)
+
+type Evaluator struct {
+	regexCache map[string]*regexp.Regexp
+}
+
+func NewEvaluator() *Evaluator {
+	return &Evaluator{
+		regexCache: make(map[string]*regexp.Regexp),
+	}
+}
+
+func (e *Evaluator) getRegex(pattern string) (*regexp.Regexp, error) {
+	if cached, ok := e.regexCache[pattern]; ok {
+		return cached, nil
+	}
+
+	regex, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regex: %s -> %w", pattern, err)
+	}
+
+	e.regexCache[pattern] = regex
+	return regex, nil
+}
+
+func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
+	if node == nil {
+		return false
+	}
+
+	if node.Expression != nil {
+		return e.evalExpression(node.Expression, record)
+	}
+
+	var left, right *bool
+
+	if node.Left != nil {
+		result := e.Evaluate(node.Left, record)
+		left = &result
+	}
+
+	if node.Right != nil {
+		result := e.Evaluate(node.Right, record)
+		right = &result
+	}
+
+	if left != nil && right != nil {
+		switch node.BoolOperator {
+		case flyql.BoolOpAnd:
+			return *left && *right
+		case flyql.BoolOpOr:
+			return *left || *right
+		default:
+			return false
+		}
+	} else if left != nil {
+		return *left
+	} else if right != nil {
+		return *right
+	}
+
+	return false
+}
+
+func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool {
+	key := NewKey(expr.Key.Raw)
+	value := record.GetValue(key)
+
+	switch expr.Operator {
+	case flyql.OpEquals:
+		return compareEqual(value, expr.Value)
+	case flyql.OpNotEquals:
+		return !compareEqual(value, expr.Value)
+	case flyql.OpRegexMatch:
+		regex, err := e.getRegex(toString(expr.Value))
+		if err != nil {
+			return false
+		}
+		return regex.MatchString(toString(value))
+	case flyql.OpRegexNotMatch:
+		regex, err := e.getRegex(toString(expr.Value))
+		if err != nil {
+			return true
+		}
+		return !regex.MatchString(toString(value))
+	case flyql.OpGreater:
+		return compareGreater(value, expr.Value)
+	case flyql.OpLess:
+		return compareLess(value, expr.Value)
+	case flyql.OpGreaterOrEquals:
+		return compareGreaterOrEqual(value, expr.Value)
+	case flyql.OpLessOrEquals:
+		return compareLessOrEqual(value, expr.Value)
+	default:
+		return false
+	}
+}
+
+func toString(v any) string {
+	if v == nil {
+		return ""
+	}
+	switch val := v.(type) {
+	case string:
+		return val
+	case float64:
+		return fmt.Sprintf("%v", val)
+	case int:
+		return fmt.Sprintf("%d", val)
+	default:
+		return fmt.Sprintf("%v", val)
+	}
+}
+
+func toFloat(v any) (float64, bool) {
+	switch val := v.(type) {
+	case float64:
+		return val, true
+	case int:
+		return float64(val), true
+	case int64:
+		return float64(val), true
+	default:
+		return 0, false
+	}
+}
+
+func compareEqual(a, b any) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	aFloat, aIsNum := toFloat(a)
+	bFloat, bIsNum := toFloat(b)
+
+	if aIsNum && bIsNum {
+		return aFloat == bFloat
+	}
+
+	return a == b
+}
+
+func compareGreater(a, b any) bool {
+	aFloat, aOk := toFloat(a)
+	bFloat, bOk := toFloat(b)
+	if aOk && bOk {
+		return aFloat > bFloat
+	}
+	return false
+}
+
+func compareLess(a, b any) bool {
+	aFloat, aOk := toFloat(a)
+	bFloat, bOk := toFloat(b)
+	if aOk && bOk {
+		return aFloat < bFloat
+	}
+	return false
+}
+
+func compareGreaterOrEqual(a, b any) bool {
+	aFloat, aOk := toFloat(a)
+	bFloat, bOk := toFloat(b)
+	if aOk && bOk {
+		return aFloat >= bFloat
+	}
+	return false
+}
+
+func compareLessOrEqual(a, b any) bool {
+	aFloat, aOk := toFloat(a)
+	bFloat, bOk := toFloat(b)
+	if aOk && bOk {
+		return aFloat <= bFloat
+	}
+	return false
+}

@@ -1,9 +1,13 @@
 import re
-from typing import List, Mapping, Optional, Tuple, Union, Any
+from typing import Mapping, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
-from flyql.core.constants import Operator
+from flyql.core.constants import (
+    Operator,
+    VALID_KEY_VALUE_OPERATORS,
+    VALID_BOOL_OPERATORS,
+)
 from flyql.core.tree import Node
 
 from flyql.generators.clickhouse.field import Field
@@ -45,17 +49,27 @@ def validate_json_path_part(part: str) -> None:
         raise FlyqlError("Invalid JSON path part")
 
 
+def validate_operator(op: str) -> None:
+    if op not in VALID_KEY_VALUE_OPERATORS:
+        raise FlyqlError(f"invalid operator: {op}")
+
+
+def validate_bool_operator(op: str) -> None:
+    if op not in VALID_BOOL_OPERATORS:
+        raise FlyqlError(f"invalid bool operator: {op}")
+
+
 def escape_param(item: Any) -> str:
     if item is None:
         return "NULL"
     elif isinstance(item, str):
-        return "'%s'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in item)
+        return f"'{''.join(ESCAPE_CHARS_MAP.get(c, c) for c in item)}'"
     elif isinstance(item, bool):
         return str(item)
     elif isinstance(item, (int, float)):
         return str(item)
     else:
-        return str(item)
+        raise FlyqlError(f"unsupported type for escape_param: {type(item).__name__}")
 
 
 def is_number(value: Any) -> bool:
@@ -97,6 +111,7 @@ def prepare_like_pattern_value(value: str) -> Tuple[bool, str]:
 
 
 def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+    validate_operator(expression.operator)
     text = ""
 
     if expression.key.is_segmented:
@@ -120,7 +135,7 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
 
             str_value = escape_param(expression.value)
             multi_if = [
-                f"JSONType({field.name}, {json_path_str}) = 'String', {func}(JSONExtractString({field.name}, {json_path_str}), {str_value})"
+                f"JSONType({field.name}, {json_path_str}) = 'String', {func}(JSONExtractString({field.name}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
             ]
             if is_number(expression.value) and expression.operator not in [
                 Operator.EQUALS_REGEX.value,
@@ -128,9 +143,9 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             ]:
                 multi_if.extend(
                     [
-                        f"JSONType({field.name}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({field.name}, {json_path_str}), {expression.value})",
-                        f"JSONType({field.name}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({field.name}, {json_path_str}), {expression.value})",
-                        f"JSONType({field.name}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({field.name}, {json_path_str}), {expression.value})",
+                        f"JSONType({field.name}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({field.name}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({field.name}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
                     ]
                 )
             multi_if.append("0")
@@ -145,16 +160,17 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             text = f"{field.name}.{json_path_str} {expression.operator} {value}"
         elif field.is_map:
             map_key = ":".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
             value = escape_param(expression.value)
-            text = f"{reverse_operator}{func}({field.name}['{map_key}'], {value})"
+            text = f"{reverse_operator}{func}({field.name}[{escaped_map_key}], {value})"
         elif field.is_array:
             array_index_str = ":".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
-            except Exception:
+            except Exception as err:
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
-                )
+                ) from err
             value = escape_param(expression.value)
             text = f"{reverse_operator}{func}({field.name}[{array_index}], {value})"
         else:
@@ -218,6 +234,7 @@ def to_sql(root: Node, fields: Mapping[str, Field]) -> str:
         right = to_sql(root=root.right, fields=fields)
 
     if len(left) > 0 and len(right) > 0:
+        validate_bool_operator(root.bool_operator)
         text = f"({left} {root.bool_operator} {right})"
     elif len(left) > 0:
         text = left

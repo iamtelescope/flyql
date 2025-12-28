@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	flyql "github.com/iamtelescope/flyql"
-	"github.com/iamtelescope/flyql/generators/clickhouse"
-	"github.com/iamtelescope/flyql/matcher"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+	"github.com/iamtelescope/flyql/golang/matcher"
 )
 
 func main() {

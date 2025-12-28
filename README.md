@@ -18,6 +18,7 @@ More examples:
 service!=api or user="john doe"     # comparisons with or
 message~"error.*" and not debug     # regex match and negation
 (a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
+status in [200, 201] and method not in ['DELETE', 'PUT']  # list membership
 ```
 
 ## Syntax
@@ -34,6 +35,24 @@ FlyQL supports the following comparison operators:
 - **Lower than** - `<`
 - **Greater or equals than** - `>=`
 - **Lower or equals than** - `<=`
+- **In list** - `in`
+- **Not in list** - `not in`
+
+### List Operators
+
+Use `in` and `not in` to check if a value is in a list:
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+Rules:
+- Values are enclosed in square brackets `[]` and separated by commas
+- All values in the list must be the same type (all strings or all numbers)
+- String values must be quoted: `['a', 'b']`
+- Number values are unquoted: `[1, 2, 3]`
+- Empty list `[]` is allowed (`in []` is always false, `not in []` is always true)
 
 ### Truthy Checks
 

@@ -29,25 +29,25 @@ var validBoolOperatorChars = map[rune]bool{
 }
 
 type Parser struct {
-	pos              int
-	line             int
-	linePos          int
-	text             string
-	state            state
-	char             *char
-	key              string
-	value            string
-	valueIsString    *bool
-	keyValueOperator string
-	boolOperator     string
-	currentNode      *Node
-	nodesStack       []*Node
-	boolOpStack      []string
-	errorText        string
-	errno            int
-	Root             *Node
-	pendingNegation  bool
-	negationStack    []bool
+	pos                        int
+	line                       int
+	linePos                    int
+	text                       string
+	state                      state
+	char                       *char
+	key                        string
+	value                      string
+	valueIsString              *bool
+	keyValueOperator           string
+	boolOperator               string
+	currentNode                *Node
+	nodesStack                 []*Node
+	boolOpStack                []string
+	errorText                  string
+	errno                      int
+	Root                       *Node
+	pendingNegation            bool
+	negationStack              []bool
 	inListValues               []any
 	inListCurrentValue         string
 	inListCurrentValueIsString *bool

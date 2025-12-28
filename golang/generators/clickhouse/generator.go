@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	flyql "github.com/iamtelescope/flyql"
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 var operatorToClickHouseFunc = map[string]string{

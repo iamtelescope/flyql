@@ -3,7 +3,7 @@ package clickhouse
 import (
 	"fmt"
 
-	flyql "github.com/iamtelescope/flyql"
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 type forbiddenOp struct {

@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	flyql "github.com/iamtelescope/flyql"
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 func getTestDataDir() string {

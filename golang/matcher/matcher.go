@@ -1,7 +1,7 @@
 package matcher
 
 import (
-	flyql "github.com/iamtelescope/flyql"
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 func Match(query string, data map[string]any) (bool, error) {

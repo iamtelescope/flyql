@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	flyql "github.com/iamtelescope/flyql"
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 type Evaluator struct {

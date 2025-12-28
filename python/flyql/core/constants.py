@@ -13,8 +13,8 @@ class CharType(Enum):
 class Operator(Enum):
     EQUALS = "="
     NOT_EQUALS = "!="
-    EQUALS_REGEX = "=~"
-    NOT_EQUALS_REGEX = "!~"
+    REGEX = "~"
+    NOT_REGEX = "!~"
     GREATER_THAN = ">"
     LOWER_THAN = "<"
     GREATER_OR_EQUALS_THAN = ">="
@@ -30,8 +30,8 @@ class BoolOperator(Enum):
 VALID_KEY_VALUE_OPERATORS = (
     Operator.EQUALS.value,
     Operator.NOT_EQUALS.value,
-    Operator.EQUALS_REGEX.value,
-    Operator.NOT_EQUALS_REGEX.value,
+    Operator.REGEX.value,
+    Operator.NOT_REGEX.value,
     Operator.GREATER_THAN.value,
     Operator.LOWER_THAN.value,
     Operator.GREATER_OR_EQUALS_THAN.value,

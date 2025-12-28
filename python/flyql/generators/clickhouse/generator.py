@@ -23,8 +23,8 @@ from flyql.generators.clickhouse.constants import (
 OPERATOR_TO_CLICKHOUSE_FUNC = {
     Operator.EQUALS.value: "equals",
     Operator.NOT_EQUALS.value: "notEquals",
-    Operator.EQUALS_REGEX.value: "match",
-    Operator.NOT_EQUALS_REGEX.value: "match",
+    Operator.REGEX.value: "match",
+    Operator.NOT_REGEX.value: "match",
     Operator.GREATER_THAN.value: "greater",
     Operator.LOWER_THAN.value: "less",
     Operator.GREATER_OR_EQUALS_THAN.value: "greaterOrEquals",
@@ -259,7 +259,7 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
 
     if expression.key.is_segmented:
         reverse_operator = ""
-        if expression.operator == Operator.NOT_EQUALS_REGEX.value:
+        if expression.operator == Operator.NOT_REGEX.value:
             reverse_operator = "not "
         func = OPERATOR_TO_CLICKHOUSE_FUNC[expression.operator]
         field_name = expression.key.segments[0]
@@ -281,8 +281,8 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
                 f"JSONType({field.name}, {json_path_str}) = 'String', {func}(JSONExtractString({field.name}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
             ]
             if is_number(expression.value) and expression.operator not in [
-                Operator.EQUALS_REGEX.value,
-                Operator.NOT_EQUALS_REGEX.value,
+                Operator.REGEX.value,
+                Operator.NOT_REGEX.value,
             ]:
                 multi_if.extend(
                     [
@@ -334,10 +334,10 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
                 expression.value, field.normalized_type, expression.operator
             )
 
-        if expression.operator == Operator.EQUALS_REGEX.value:
+        if expression.operator == Operator.REGEX.value:
             value = escape_param(str(expression.value))
             text = f"match({field.name}, {value})"
-        elif expression.operator == Operator.NOT_EQUALS_REGEX.value:
+        elif expression.operator == Operator.NOT_REGEX.value:
             value = escape_param(str(expression.value))
             text = f"not match({field.name}, {value})"
         elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:

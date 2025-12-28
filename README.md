@@ -16,7 +16,7 @@ status=200 and active and not archived
 More examples:
 ```
 service!=api or user="john doe"     # comparisons with or
-message=~"error.*" and not debug    # regex match and negation
+message~"error.*" and not debug     # regex match and negation
 (a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
 ```
 
@@ -28,8 +28,8 @@ FlyQL supports the following comparison operators:
 
 - **Equals** - `=`
 - **Not equals** - `!=`
-- **Equals regex** - `=~`
-- **Not equals regex** - `!~`
+- **Regex match** - `~`
+- **Not regex match** - `!~`
 - **Greater than** - `>`
 - **Lower than** - `<`
 - **Greater or equals than** - `>=`

@@ -12,8 +12,8 @@ import (
 var operatorToClickHouseFunc = map[string]string{
 	flyql.OpEquals:          "equals",
 	flyql.OpNotEquals:       "notEquals",
-	flyql.OpRegexMatch:      "match",
-	flyql.OpRegexNotMatch:   "match",
+	flyql.OpRegex:           "match",
+	flyql.OpNotRegex:        "match",
 	flyql.OpGreater:         "greater",
 	flyql.OpLess:            "less",
 	flyql.OpGreaterOrEquals: "greaterOrEquals",
@@ -23,8 +23,8 @@ var operatorToClickHouseFunc = map[string]string{
 var validOperators = map[string]bool{
 	flyql.OpEquals:          true,
 	flyql.OpNotEquals:       true,
-	flyql.OpRegexMatch:      true,
-	flyql.OpRegexNotMatch:   true,
+	flyql.OpRegex:           true,
+	flyql.OpNotRegex:        true,
 	flyql.OpGreater:         true,
 	flyql.OpLess:            true,
 	flyql.OpGreaterOrEquals: true,
@@ -328,7 +328,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (str
 
 func expressionToSQLSegmented(expr *flyql.Expression, fields map[string]*Field) (string, error) {
 	reverseOperator := ""
-	if expr.Operator == flyql.OpRegexNotMatch {
+	if expr.Operator == flyql.OpNotRegex {
 		reverseOperator = "not "
 	}
 
@@ -367,7 +367,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, fields map[string]*Field) 
 				field.Name, jsonPathStr, funcName, field.Name, jsonPathStr, strValue),
 		}
 
-		if IsNumber(expr.Value) && expr.Operator != flyql.OpRegexMatch && expr.Operator != flyql.OpRegexNotMatch {
+		if IsNumber(expr.Value) && expr.Operator != flyql.OpRegex && expr.Operator != flyql.OpNotRegex {
 			numValue := fmt.Sprintf("%v", expr.Value)
 			multiIf = append(multiIf,
 				fmt.Sprintf("JSONType(%s, %s) = 'Int64', %s(JSONExtractInt(%s, %s), %s)",
@@ -457,14 +457,14 @@ func expressionToSQLSimple(expr *flyql.Expression, fields map[string]*Field) (st
 	}
 
 	switch expr.Operator {
-	case flyql.OpRegexMatch:
+	case flyql.OpRegex:
 		value, err := EscapeParam(fmt.Sprintf("%v", expr.Value))
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("match(%s, %s)", field.Name, value), nil
 
-	case flyql.OpRegexNotMatch:
+	case flyql.OpNotRegex:
 		value, err := EscapeParam(fmt.Sprintf("%v", expr.Value))
 		if err != nil {
 			return "", err

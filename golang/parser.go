@@ -3,8 +3,8 @@ package flyql
 var validKeyValueOperators = map[string]bool{
 	OpEquals:          true,
 	OpNotEquals:       true,
-	OpRegexMatch:      true,
-	OpRegexNotMatch:   true,
+	OpRegex:           true,
+	OpNotRegex:        true,
 	OpGreater:         true,
 	OpLess:            true,
 	OpGreaterOrEquals: true,

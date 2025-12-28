@@ -116,12 +116,11 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle regex operators', () => {
-        const parser = parse('msg=~pattern')
+        const parser = parse('msg~pattern')
 
         const operatorChars = parser.typedChars.filter(([_, type]) => type === CharType.OPERATOR)
-        expect(operatorChars).toHaveLength(2) // =~
-        expect(operatorChars[0][0].value).toBe('=')
-        expect(operatorChars[1][0].value).toBe('~')
+        expect(operatorChars).toHaveLength(1)
+        expect(operatorChars[0][0].value).toBe('~')
     })
 
     it('should handle complex query', () => {

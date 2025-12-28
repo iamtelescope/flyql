@@ -77,7 +77,7 @@
     },
     {
       "name": "jsonstring_regex_match",
-      "input": "json_field:message=~'error.*'",
+      "input": "json_field:message~'error.*'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_field, 'message') = 'String', match(JSONExtractString(json_field, 'message'), 'error.*'),0)"
     },

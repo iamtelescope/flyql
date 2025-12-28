@@ -28,10 +28,10 @@ FORBIDDEN_OPERATIONS: Set[Tuple[str, str, str]] = {
     ("string", Operator.LOWER_OR_EQUALS_THAN.value, "int"),
     ("string", Operator.LOWER_OR_EQUALS_THAN.value, "float"),
     # Numbers with regex
-    ("int", Operator.EQUALS_REGEX.value, "string"),
-    ("float", Operator.EQUALS_REGEX.value, "string"),
-    ("int", Operator.NOT_EQUALS_REGEX.value, "string"),
-    ("float", Operator.NOT_EQUALS_REGEX.value, "string"),
+    ("int", Operator.REGEX.value, "string"),
+    ("float", Operator.REGEX.value, "string"),
+    ("int", Operator.NOT_REGEX.value, "string"),
+    ("float", Operator.NOT_REGEX.value, "string"),
     # Bool with comparison
     ("bool", Operator.LOWER_THAN.value, "bool"),
     ("bool", Operator.GREATER_THAN.value, "bool"),

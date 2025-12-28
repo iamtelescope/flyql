@@ -8,8 +8,8 @@ const (
 const (
 	OpEquals          = "="
 	OpNotEquals       = "!="
-	OpRegexMatch      = "=~"
-	OpRegexNotMatch   = "!~"
+	OpRegex           = "~"
+	OpNotRegex        = "!~"
 	OpGreater         = ">"
 	OpLess            = "<"
 	OpGreaterOrEquals = ">="

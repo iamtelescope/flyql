@@ -17,7 +17,7 @@ REGEX_ENGINE_PYTHON_STD: Final = "python-std"
 
 RegexEngine = Literal["re2", "python-std"]  # Must match constants above
 
-REGEX_OPERATORS = {Operator.EQUALS_REGEX.value, Operator.NOT_EQUALS_REGEX.value}
+REGEX_OPERATORS = {Operator.REGEX.value, Operator.NOT_REGEX.value}
 
 
 def is_falsy(value: Any) -> bool:
@@ -130,11 +130,11 @@ class Evaluator:
             return bool(value == expression.value)
         elif expression.operator == Operator.NOT_EQUALS.value:
             return bool(value != expression.value)
-        elif expression.operator == Operator.EQUALS_REGEX.value:
+        elif expression.operator == Operator.REGEX.value:
             if regex is None:
                 return False
             return bool(regex.search(str(value)))
-        elif expression.operator == Operator.NOT_EQUALS_REGEX.value:
+        elif expression.operator == Operator.NOT_REGEX.value:
             if regex is None:
                 return True
             return not bool(regex.search(str(value)))

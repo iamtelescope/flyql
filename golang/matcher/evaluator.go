@@ -116,13 +116,13 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 		return compareEqual(value, expr.Value)
 	case flyql.OpNotEquals:
 		return !compareEqual(value, expr.Value)
-	case flyql.OpRegexMatch:
+	case flyql.OpRegex:
 		regex, err := e.getRegex(toString(expr.Value))
 		if err != nil {
 			return false
 		}
 		return regex.MatchString(toString(value))
-	case flyql.OpRegexNotMatch:
+	case flyql.OpNotRegex:
 		regex, err := e.getRegex(toString(expr.Value))
 		if err != nil {
 			return true

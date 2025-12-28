@@ -40,7 +40,7 @@ func TestMatcherEvaluatesCorrectly(t *testing.T) {
 		{"equals_string_no_match", "message=hello", map[string]any{"message": "hllo"}, false},
 		{"not_equals_no_match", "message!=hello", map[string]any{"message": "hello"}, false},
 		{"not_equals_match", "message!=hello", map[string]any{"message": "hellohello"}, true},
-		{"regex_match", "message=~hello", map[string]any{"message": "hello"}, true},
+		{"regex_match", "message~hello", map[string]any{"message": "hello"}, true},
 		{"regex_not_match", "message!~hello", map[string]any{"message": "hello"}, false},
 		{"equals_int", "message=1", map[string]any{"message": 1}, true},
 		{"quoted_string_vs_int_no_match", "message='1'", map[string]any{"message": 1}, false},
@@ -141,7 +141,7 @@ func TestMatcherWithJSONString(t *testing.T) {
 }
 
 func TestMatcherWithRegex(t *testing.T) {
-	query := "message=~^hello.*world$"
+	query := "message~^hello.*world$"
 	data := map[string]any{"message": "hello beautiful world"}
 
 	result, err := flyql.Parse(query)

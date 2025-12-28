@@ -37,13 +37,13 @@
     },
     {
       "name": "simple_regex",
-      "input": "message=~hello.*",
+      "input": "message~hello.*",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
           "key": "message",
-          "operator": "=~",
+          "operator": "~",
           "value": "hello.*",
           "value_type": "string"
         },

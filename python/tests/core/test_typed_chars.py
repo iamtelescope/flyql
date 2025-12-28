@@ -108,16 +108,15 @@ class TestTypedChars:
         assert operator_chars[1][0].value == "="
 
     def test_regex_operators(self):
-        parser = parse("msg=~pattern")
+        parser = parse("msg~pattern")
 
         operator_chars = [
             (char, char_type)
             for char, char_type in parser.typed_chars
             if char_type == CharType.OPERATOR
         ]
-        assert len(operator_chars) == 2  # '=~'
-        assert operator_chars[0][0].value == "="
-        assert operator_chars[1][0].value == "~"
+        assert len(operator_chars) == 1
+        assert operator_chars[0][0].value == "~"
 
     def test_not_regex_operator(self):
         parser = parse("msg!~pattern")

@@ -51,8 +51,8 @@ export const BoolOperator = Object.freeze({
 export const Operator = Object.freeze({
     EQUALS: '=',
     NOT_EQUALS: '!=',
-    EQUALS_REGEX: '=~',
-    NOT_EQUALS_REGEX: '!~',
+    REGEX: '~',
+    NOT_REGEX: '!~',
     GREATER_THAN: '>',
     LOWER_THAN: '<',
     GREATER_OR_EQUALS_THAN: '>=',
@@ -65,8 +65,8 @@ export const NOT_KEYWORD = 'not'
 export const VALID_KEY_VALUE_OPERATORS = [
     Operator.EQUALS,
     Operator.NOT_EQUALS,
-    Operator.EQUALS_REGEX,
-    Operator.NOT_EQUALS_REGEX,
+    Operator.REGEX,
+    Operator.NOT_REGEX,
     Operator.GREATER_THAN,
     Operator.LOWER_THAN,
     Operator.GREATER_OR_EQUALS_THAN,

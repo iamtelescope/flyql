@@ -66,7 +66,7 @@
     },
     {
       "name": "real_world_query_2",
-      "input": "level=ERROR and (service=payment or service=auth) and message=~\".*timeout.*\"",
+      "input": "level=ERROR and (service=payment or service=auth) and message~\".*timeout.*\"",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -116,7 +116,7 @@
           "bool_operator": "",
           "expression": {
             "key": "message",
-            "operator": "=~",
+            "operator": "~",
             "value": ".*timeout.*",
             "value_type": "string"
           },
@@ -234,7 +234,7 @@
     },
     {
       "name": "regex_patterns",
-      "input": "email=~\".*@example\\\\.com$\" and phone!~\"^\\\\+1\"",
+      "input": "email~\".*@example\\\\.com$\" and phone!~\"^\\\\+1\"",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -243,7 +243,7 @@
           "bool_operator": "",
           "expression": {
             "key": "email",
-            "operator": "=~",
+            "operator": "~",
             "value": ".*@example\\\\.com$",
             "value_type": "string"
           },

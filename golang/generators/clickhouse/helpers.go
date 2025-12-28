@@ -22,10 +22,10 @@ var forbiddenOperations = map[forbiddenOp]bool{
 	{NormalizedTypeString, flyql.OpLessOrEquals, "int"}:      true,
 	{NormalizedTypeString, flyql.OpLessOrEquals, "float"}:    true,
 
-	{NormalizedTypeInt, flyql.OpRegexMatch, "string"}:      true,
-	{NormalizedTypeFloat, flyql.OpRegexMatch, "string"}:    true,
-	{NormalizedTypeInt, flyql.OpRegexNotMatch, "string"}:   true,
-	{NormalizedTypeFloat, flyql.OpRegexNotMatch, "string"}: true,
+	{NormalizedTypeInt, flyql.OpRegex, "string"}:      true,
+	{NormalizedTypeFloat, flyql.OpRegex, "string"}:    true,
+	{NormalizedTypeInt, flyql.OpNotRegex, "string"}:   true,
+	{NormalizedTypeFloat, flyql.OpNotRegex, "string"}: true,
 
 	{NormalizedTypeBool, flyql.OpLess, "bool"}:            true,
 	{NormalizedTypeBool, flyql.OpGreater, "bool"}:         true,

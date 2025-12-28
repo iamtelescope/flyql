@@ -29,13 +29,13 @@
     },
     {
       "name": "int_field_regex_operation",
-      "input": "count=~'test'",
+      "input": "count~'test'",
       "expected_result": "error",
       "expected_error_contains": "operation not allowed"
     },
     {
       "name": "float_field_regex_operation",
-      "input": "price=~'test'",
+      "input": "price~'test'",
       "expected_result": "error",
       "expected_error_contains": "operation not allowed"
     },

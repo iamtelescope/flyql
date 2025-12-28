@@ -23,7 +23,7 @@
     },
     {
       "name": "map_regex_match",
-      "input": "metadata:pattern=~'test.*'",
+      "input": "metadata:pattern~'test.*'",
       "expected_result": "success",
       "expected_sql": "match(metadata['pattern'], 'test.*')"
     },
@@ -53,7 +53,7 @@
     },
     {
       "name": "array_regex_match",
-      "input": "tags:0=~'tag.*'",
+      "input": "tags:0~'tag.*'",
       "expected_result": "success",
       "expected_sql": "match(tags[0], 'tag.*')"
     },

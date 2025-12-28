@@ -243,14 +243,14 @@
     },
     {
       "name": "not_with_regex",
-      "input": "not message=~error.*",
+      "input": "not message~error.*",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "negated": true,
         "expression": {
           "key": "message",
-          "operator": "=~",
+          "operator": "~",
           "value": "error.*",
           "value_type": "string"
         },

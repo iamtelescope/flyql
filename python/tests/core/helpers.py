@@ -44,6 +44,7 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
 
     result = {
         "bool_operator": node.bool_operator,
+        "negated": getattr(node, "negated", False),
         "expression": None,
         "left": None,
         "right": None,
@@ -84,6 +85,7 @@ def normalize_ast_for_comparison(node_dict) -> Optional[Dict[str, Any]]:
     ):
         return {
             "bool_operator": "",
+            "negated": node_dict["left"].get("negated", False),
             "expression": node_dict["left"]["expression"],
             "left": None,
             "right": None,
@@ -128,6 +130,10 @@ def compare_ast(
         return False
 
     if actual["bool_operator"] != expected["bool_operator"]:
+        return False
+
+    # Compare negated field (default to False if not present)
+    if actual.get("negated", False) != expected.get("negated", False):
         return False
 
     if actual["expression"] != expected["expression"]:

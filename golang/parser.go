@@ -42,6 +42,8 @@ type Parser struct {
 	errorText        string
 	errno            int
 	Root             *Node
+	pendingNegation  bool
+	negationStack    []bool
 }
 
 func NewParser() *Parser {
@@ -128,19 +130,50 @@ func (p *Parser) newExpression() *Expression {
 	return NewExpression(key, p.keyValueOperator, p.value, valueIsString)
 }
 
-func (p *Parser) extendTree() {
+func (p *Parser) newTruthyExpression() *Expression {
+	key, _ := ParseKey(p.key)
+	return NewExpression(key, OpTruthy, "", true)
+}
+
+func (p *Parser) togglePendingNegation() {
+	p.pendingNegation = !p.pendingNegation
+}
+
+func (p *Parser) consumePendingNegation() bool {
+	negated := p.pendingNegation
+	p.pendingNegation = false
+	return negated
+}
+
+func (p *Parser) extendTreeWithExpression(expression *Expression) {
+	negated := p.consumePendingNegation()
 	if p.currentNode != nil && p.currentNode.Left == nil {
-		node := NewExpressionNode(p.newExpression())
+		node := NewNode("", expression, nil, nil, negated)
 		p.currentNode.Left = node
 		p.currentNode.BoolOperator = p.boolOperator
 	} else if p.currentNode != nil && p.currentNode.Right == nil {
-		node := NewExpressionNode(p.newExpression())
+		node := NewNode("", expression, nil, nil, negated)
 		p.currentNode.Right = node
 		p.currentNode.BoolOperator = p.boolOperator
 	} else {
-		right := NewExpressionNode(p.newExpression())
+		right := NewNode("", expression, nil, nil, negated)
 		node := NewBranchNode(p.boolOperator, p.currentNode, right)
 		p.currentNode = node
+	}
+}
+
+func (p *Parser) extendTree() {
+	p.extendTreeWithExpression(p.newExpression())
+}
+
+func (p *Parser) applyNegationToTree(node *Node, negated bool) {
+	if !negated {
+		return
+	}
+	if node.Expression == nil && node.Left != nil && node.Left.Expression != nil && node.Right == nil {
+		node.Left.Negated = negated
+	} else {
+		node.Negated = negated
 	}
 }
 
@@ -151,11 +184,23 @@ func (p *Parser) extendTreeFromStack(boolOperator string) {
 	node := p.nodesStack[len(p.nodesStack)-1]
 	p.nodesStack = p.nodesStack[:len(p.nodesStack)-1]
 
+	negated := false
+	if len(p.negationStack) > 0 {
+		negated = p.negationStack[len(p.negationStack)-1]
+		p.negationStack = p.negationStack[:len(p.negationStack)-1]
+	}
+
 	if node.Right == nil {
+		if p.currentNode != nil {
+			p.applyNegationToTree(p.currentNode, negated)
+		}
 		node.Right = p.currentNode
 		node.BoolOperator = boolOperator
 		p.currentNode = node
 	} else {
+		if p.currentNode != nil {
+			p.applyNegationToTree(p.currentNode, negated)
+		}
 		newNode := NewBranchNode(boolOperator, node, p.currentNode)
 		p.currentNode = newNode
 	}
@@ -167,9 +212,15 @@ func (p *Parser) inStateInitial() {
 	}
 
 	p.resetData()
-	p.currentNode = NewNode(p.boolOperator, nil, nil, nil)
+	p.currentNode = NewNode(p.boolOperator, nil, nil, nil, false)
 
 	if p.char.isGroupOpen() {
+		if p.pendingNegation {
+			p.negationStack = append(p.negationStack, true)
+			p.pendingNegation = false
+		} else {
+			p.negationStack = append(p.negationStack, false)
+		}
 		p.extendNodesStack()
 		p.extendBoolOpStack()
 		p.state = stateInitial
@@ -195,7 +246,13 @@ func (p *Parser) inStateKey() {
 	}
 
 	if p.char.isDelimiter() {
-		p.state = stateExpectOperator
+		if p.key == NotKeyword {
+			p.togglePendingNegation()
+			p.resetKey()
+			p.state = stateExpectNotTarget
+		} else {
+			p.state = stateKeyOrBoolOp
+		}
 	} else if p.char.isKey() {
 		p.extendKey()
 	} else if p.char.isSingleQuote() {
@@ -207,6 +264,20 @@ func (p *Parser) inStateKey() {
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
 		p.state = stateKeyValueOperator
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 9)
+			return
+		}
+		p.extendTreeWithExpression(p.newTruthyExpression())
+		p.resetData()
+		if len(p.boolOpStack) > 0 {
+			boolOp := p.boolOpStack[len(p.boolOpStack)-1]
+			p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+			p.extendTreeFromStack(boolOp)
+		}
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
 	} else {
 		p.setErrorState("invalid character", 3)
 	}
@@ -411,6 +482,12 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		p.extendKey()
 		p.state = stateDoubleQuotedKey
 	} else if p.char.isGroupOpen() {
+		if p.pendingNegation {
+			p.negationStack = append(p.negationStack, true)
+			p.pendingNegation = false
+		} else {
+			p.negationStack = append(p.negationStack, false)
+		}
 		p.extendNodesStack()
 		p.extendBoolOpStack()
 		p.state = stateInitial
@@ -471,16 +548,99 @@ func (p *Parser) inStateExpectBoolOp() {
 	}
 }
 
+func (p *Parser) inStateKeyOrBoolOp() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isOp() {
+		p.extendKeyValueOperator()
+		p.state = stateKeyValueOperator
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 19)
+			return
+		}
+		p.extendTreeWithExpression(p.newTruthyExpression())
+		p.resetData()
+		if len(p.boolOpStack) > 0 {
+			boolOp := p.boolOpStack[len(p.boolOpStack)-1]
+			p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+			p.extendTreeFromStack(boolOp)
+		}
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else if validBoolOperatorChars[p.char.value] {
+		p.extendTreeWithExpression(p.newTruthyExpression())
+		p.resetData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+		p.extendBoolOperator()
+		if validBoolOperators[p.boolOperator] {
+			nextPos := p.char.pos + 1
+			if nextPos < len(p.text) {
+				nextChar := newChar(rune(p.text[nextPos]), nextPos, 0, 0)
+				if !nextChar.isDelimiter() {
+					p.setErrorState("expected delimiter after bool operator", 23)
+					return
+				}
+				p.state = stateBoolOpDelimiter
+			}
+		}
+	} else {
+		p.setErrorState("expected operator", 32)
+	}
+}
+
+func (p *Parser) inStateExpectNotTarget() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isDelimiter() {
+		return
+	} else if p.char.isKey() {
+		p.extendKey()
+		p.state = stateKey
+	} else if p.char.isSingleQuote() {
+		p.extendKey()
+		p.state = stateSingleQuotedKey
+	} else if p.char.isDoubleQuote() {
+		p.extendKey()
+		p.state = stateDoubleQuotedKey
+	} else if p.char.isGroupOpen() {
+		p.negationStack = append(p.negationStack, p.pendingNegation)
+		p.pendingNegation = false
+		p.extendNodesStack()
+		p.extendBoolOpStack()
+		p.state = stateInitial
+	} else {
+		p.setErrorState("expected key or group after not", 33)
+	}
+}
+
 func (p *Parser) inStateLastChar() {
 	if p.state == stateInitial && len(p.nodesStack) == 0 {
 		p.setErrorState("empty input", 24)
 	} else if p.state == stateInitial ||
-		p.state == stateKey ||
 		p.state == stateSingleQuotedKey ||
 		p.state == stateDoubleQuotedKey ||
 		p.state == stateExpectOperator ||
-		p.state == stateExpectValue {
+		p.state == stateExpectValue ||
+		p.state == stateExpectNotTarget {
 		p.setErrorState("unexpected EOF", 25)
+	} else if p.state == stateKey {
+		if p.key == NotKeyword {
+			p.setErrorState("unexpected EOF after 'not'", 25)
+		} else {
+			p.extendTreeWithExpression(p.newTruthyExpression())
+			p.resetBoolOperator()
+		}
+	} else if p.state == stateKeyOrBoolOp {
+		p.extendTreeWithExpression(p.newTruthyExpression())
+		p.resetBoolOperator()
 	} else if p.state == stateValue ||
 		p.state == stateDoubleQuotedValue ||
 		p.state == stateSingleQuotedValue {
@@ -507,6 +667,8 @@ func (p *Parser) Parse(text string) error {
 	p.nodesStack = nil
 	p.boolOpStack = nil
 	p.Root = nil
+	p.pendingNegation = false
+	p.negationStack = nil
 
 	for _, c := range text {
 		if p.state == stateError {
@@ -548,6 +710,10 @@ func (p *Parser) Parse(text string) error {
 			p.inStateDoubleQuotedKey()
 		case stateExpectBoolOp:
 			p.inStateExpectBoolOp()
+		case stateKeyOrBoolOp:
+			p.inStateKeyOrBoolOp()
+		case stateExpectNotTarget:
+			p.inStateExpectNotTarget()
 		default:
 			p.setErrorState("unknown state", 1)
 		}

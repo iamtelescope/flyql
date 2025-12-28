@@ -107,6 +107,26 @@ describe('Parser Quoted Keys Tests', () => {
     })
 })
 
+describe('Parser Truthy Tests', () => {
+    const testData = loadTestData('truthy.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
+describe('Parser Not Tests', () => {
+    const testData = loadTestData('not.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Hyphen Keys Tests', () => {
     it('should parse unquoted keys with hyphens correctly', () => {
         // Test simple hyphenated key

@@ -18,6 +18,7 @@ export function astToDict(node) {
 
     const result = {
         bool_operator: node.boolOperator,
+        negated: node.negated || false,
         expression: null,
         left: null,
         right: null,
@@ -54,10 +55,12 @@ export function normalizeAstForComparison(nodeDict) {
         nodeDict.left.expression !== null &&
         nodeDict.right === null &&
         nodeDict.left.left === null &&
-        nodeDict.left.right === null
+        nodeDict.left.right === null &&
+        !nodeDict.negated
     ) {
         return {
             bool_operator: '',
+            negated: nodeDict.left.negated || false,
             expression: nodeDict.left.expression,
             left: null,
             right: null,
@@ -65,7 +68,11 @@ export function normalizeAstForComparison(nodeDict) {
     }
 
     if (nodeDict.expression === null && nodeDict.left === null && nodeDict.right !== null) {
-        return normalizeAstForComparison(nodeDict.right)
+        const normalized = normalizeAstForComparison(nodeDict.right)
+        if (nodeDict.negated && normalized) {
+            normalized.negated = true
+        }
+        return normalized
     }
 
     if (
@@ -75,7 +82,11 @@ export function normalizeAstForComparison(nodeDict) {
         nodeDict.right.left === null &&
         nodeDict.right.right !== null
     ) {
-        return normalizeAstForComparison(nodeDict.right)
+        const normalized = normalizeAstForComparison(nodeDict.right)
+        if (nodeDict.negated && normalized) {
+            normalized.negated = true
+        }
+        return normalized
     }
 
     const result = { ...nodeDict }
@@ -99,6 +110,12 @@ export function compareAst(actual, expected) {
     }
 
     if (actual.bool_operator !== expected.bool_operator) {
+        return false
+    }
+
+    const actualNegated = actual.negated || false
+    const expectedNegated = expected.negated || false
+    if (actualNegated !== expectedNegated) {
         return false
     }
 

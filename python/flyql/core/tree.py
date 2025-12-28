@@ -12,6 +12,7 @@ class Node:
         expression: Union[Expression, None],
         left: Optional["Node"],
         right: Optional["Node"],
+        negated: bool = False,
     ) -> None:
         if (left or right) and expression:
             raise FlyqlError("either (left or right) or expression at same time")
@@ -20,6 +21,7 @@ class Node:
         self.expression = expression
         self.left = left
         self.right = right
+        self.negated = negated
 
     def set_bool_operator(self, bool_operator: str) -> None:
         if bool_operator not in VALID_BOOL_OPERATORS:

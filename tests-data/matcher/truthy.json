@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "description": "Truthy expression matcher test cases",
+  "test_suite": "truthy",
+  "tests": [
+    {
+      "name": "truthy_string",
+      "query": "active",
+      "data": {"active": "yes"},
+      "expected": true
+    },
+    {
+      "name": "truthy_empty_string",
+      "query": "active",
+      "data": {"active": ""},
+      "expected": false
+    },
+    {
+      "name": "truthy_number",
+      "query": "count",
+      "data": {"count": 42},
+      "expected": true
+    },
+    {
+      "name": "truthy_zero",
+      "query": "count",
+      "data": {"count": 0},
+      "expected": false
+    },
+    {
+      "name": "truthy_bool_true",
+      "query": "enabled",
+      "data": {"enabled": true},
+      "expected": true
+    },
+    {
+      "name": "truthy_bool_false",
+      "query": "enabled",
+      "data": {"enabled": false},
+      "expected": false
+    },
+    {
+      "name": "truthy_nil",
+      "query": "value",
+      "data": {"value": null},
+      "expected": false
+    },
+    {
+      "name": "truthy_missing",
+      "query": "missing",
+      "data": {"other": "value"},
+      "expected": false
+    },
+    {
+      "name": "truthy_and_truthy",
+      "query": "a and b",
+      "data": {"a": "yes", "b": "yes"},
+      "expected": true
+    },
+    {
+      "name": "truthy_and_falsy",
+      "query": "a and b",
+      "data": {"a": "yes", "b": ""},
+      "expected": false
+    },
+    {
+      "name": "truthy_or_falsy",
+      "query": "a or b",
+      "data": {"a": "", "b": "yes"},
+      "expected": true
+    },
+    {
+      "name": "truthy_and_comparison",
+      "query": "active and status=200",
+      "data": {"active": "yes", "status": 200},
+      "expected": true
+    }
+  ]
+}

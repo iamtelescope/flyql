@@ -20,6 +20,28 @@ RegexEngine = Literal["re2", "python-std"]  # Must match constants above
 REGEX_OPERATORS = {Operator.EQUALS_REGEX.value, Operator.NOT_EQUALS_REGEX.value}
 
 
+def is_falsy(value: Any) -> bool:
+    """Check if a value is falsy (Python-style)."""
+    if value is None:
+        return True
+    if isinstance(value, bool):
+        return not value
+    if isinstance(value, (int, float)):
+        return value == 0
+    if isinstance(value, str):
+        return value == ""
+    if isinstance(value, (list, tuple)):
+        return len(value) == 0
+    if isinstance(value, dict):
+        return len(value) == 0
+    return False
+
+
+def is_truthy(value: Any) -> bool:
+    """Check if a value is truthy (not falsy)."""
+    return not is_falsy(value)
+
+
 class Evaluator:
     def __init__(
         self,
@@ -40,32 +62,38 @@ class Evaluator:
         root: Node,
         record: Record,
     ) -> bool:
+        result: bool
 
         if root.expression:
-            return self._eval_expression(root.expression, record)
-
-        left: Optional[bool] = None
-        right: Optional[bool] = None
-
-        if root.left is not None:
-            left = self.evaluate(root.left, record)
-
-        if root.right is not None:
-            right = self.evaluate(root.right, record)
-
-        if left is not None and right is not None:
-            if root.bool_operator == BoolOperator.AND.value:
-                return left and right
-            elif root.bool_operator == BoolOperator.OR.value:
-                return left or right
-            else:
-                raise FlyqlError(f"Unknown boolean operator: {root.bool_operator}")
-        elif left is not None:
-            return left
-        elif right is not None:
-            return right
+            result = self._eval_expression(root.expression, record)
         else:
-            raise ValueError("it should never happen")
+            left: Optional[bool] = None
+            right: Optional[bool] = None
+
+            if root.left is not None:
+                left = self.evaluate(root.left, record)
+
+            if root.right is not None:
+                right = self.evaluate(root.right, record)
+
+            if left is not None and right is not None:
+                if root.bool_operator == BoolOperator.AND.value:
+                    result = left and right
+                elif root.bool_operator == BoolOperator.OR.value:
+                    result = left or right
+                else:
+                    raise FlyqlError(f"Unknown boolean operator: {root.bool_operator}")
+            elif left is not None:
+                result = left
+            elif right is not None:
+                result = right
+            else:
+                raise ValueError("it should never happen")
+
+        if getattr(root, "negated", False):
+            result = not result
+
+        return result
 
     def _get_regex(
         self,
@@ -89,6 +117,10 @@ class Evaluator:
 
         key = Key(expression.key.raw)
         value = record.get_value(key)
+
+        # Handle truthy operator (standalone key check)
+        if expression.operator == Operator.TRUTHY.value:
+            return is_truthy(value)
 
         regex: Optional[Any] = None
         if expression.operator in REGEX_OPERATORS:

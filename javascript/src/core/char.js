@@ -16,6 +16,7 @@ import {
     DOUBLE_QUOTE,
     SINGLE_QUOTE,
     NEWLINE,
+    VALID_BOOL_OPERATORS_CHARS,
 } from './constants.js'
 
 export class Char {
@@ -96,5 +97,9 @@ export class Char {
 
     isNewline() {
         return this.value === NEWLINE
+    }
+
+    isBoolOpChar() {
+        return VALID_BOOL_OPERATORS_CHARS.includes(this.value)
     }
 }

@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "description": "Not operator matcher test cases",
+  "test_suite": "not",
+  "tests": [
+    {
+      "name": "not_truthy_true",
+      "query": "not active",
+      "data": {"active": ""},
+      "expected": true
+    },
+    {
+      "name": "not_truthy_false",
+      "query": "not active",
+      "data": {"active": "yes"},
+      "expected": false
+    },
+    {
+      "name": "not_comparison_true",
+      "query": "not status=404",
+      "data": {"status": 200},
+      "expected": true
+    },
+    {
+      "name": "not_comparison_false",
+      "query": "not status=200",
+      "data": {"status": 200},
+      "expected": false
+    },
+    {
+      "name": "not_grouped_and",
+      "query": "not (a=1 and b=2)",
+      "data": {"a": 1, "b": 3},
+      "expected": true
+    },
+    {
+      "name": "not_grouped_and_false",
+      "query": "not (a=1 and b=2)",
+      "data": {"a": 1, "b": 2},
+      "expected": false
+    },
+    {
+      "name": "double_negation",
+      "query": "not not active",
+      "data": {"active": "yes"},
+      "expected": true
+    },
+    {
+      "name": "not_with_and",
+      "query": "not active and status=200",
+      "data": {"active": "", "status": 200},
+      "expected": true
+    },
+    {
+      "name": "not_with_or",
+      "query": "active or not error",
+      "data": {"active": "", "error": ""},
+      "expected": true
+    }
+  ]
+}

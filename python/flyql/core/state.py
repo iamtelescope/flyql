@@ -15,3 +15,5 @@ class State(Enum):
     KEY_VALUE_OPERATOR = "KeyValueOperator"
     BOOL_OP_DELIMITER = "BoolOpDelimiter"
     EXPECT_BOOL_OP = "ExpectBoolOp"
+    KEY_OR_BOOL_OP = "KeyOrBoolOp"
+    EXPECT_NOT_TARGET = "ExpectNotTarget"

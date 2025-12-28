@@ -67,6 +67,36 @@
       "jsonstring": false,
       "type": "Int32",
       "values": null
+    },
+    "enabled": {
+      "name": "enabled",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "archived": {
+      "name": "archived",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "a": {
+      "name": "a",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null
+    },
+    "b": {
+      "name": "b",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null
+    },
+    "error": {
+      "name": "error",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
     }
   }
 }

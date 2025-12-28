@@ -160,6 +160,9 @@ func PrepareLikePatternValue(value string) (bool, string) {
 }
 
 func ExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, error) {
+	if expr.Operator == flyql.OpTruthy {
+		return truthyExpressionToSQL(expr, fields)
+	}
 	if err := validateOperator(expr.Operator); err != nil {
 		return "", err
 	}
@@ -167,6 +170,160 @@ func ExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, 
 		return expressionToSQLSegmented(expr, fields)
 	}
 	return expressionToSQLSimple(expr, fields)
+}
+
+func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, error) {
+	// Type-aware truthy checks:
+	// - String: field IS NOT NULL AND field != ''
+	// - Int/Float: field IS NOT NULL AND field != 0
+	// - Bool: field (ClickHouse supports boolean expressions directly)
+	// - Date: field IS NOT NULL
+
+	fieldName := expr.Key.Segments[0]
+	field, ok := fields[fieldName]
+	if !ok {
+		return "", fmt.Errorf("unknown field: %s", fieldName)
+	}
+
+	if expr.Key.IsSegmented() {
+		if field.JSONString {
+			jsonPath := expr.Key.Segments[1:]
+			jsonPathParts := make([]string, len(jsonPath))
+			for i, p := range jsonPath {
+				escaped, err := EscapeParam(p)
+				if err != nil {
+					return "", err
+				}
+				jsonPathParts[i] = escaped
+			}
+			jsonPathStr := strings.Join(jsonPathParts, ", ")
+			return fmt.Sprintf("(JSONHas(%s, %s) AND JSONExtractString(%s, %s) != '')",
+				field.Name, jsonPathStr, field.Name, jsonPathStr), nil
+		} else if field.IsJSON {
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = fmt.Sprintf("`%s`", part)
+			}
+			jsonPathStr := strings.Join(pathParts, ".")
+			return fmt.Sprintf("(%s.%s IS NOT NULL)", field.Name, jsonPathStr), nil
+		} else if field.IsMap {
+			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			escapedMapKey, err := EscapeParam(mapKey)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("(mapContains(%s, %s) AND %s[%s] != '')",
+				field.Name, escapedMapKey, field.Name, escapedMapKey), nil
+		} else if field.IsArray {
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndex, err := strconv.Atoi(arrayIndexStr)
+			if err != nil {
+				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
+			}
+			return fmt.Sprintf("(length(%s) >= %d AND %s[%d] != '')",
+				field.Name, arrayIndex, field.Name, arrayIndex), nil
+		} else {
+			return "", fmt.Errorf("path search for unsupported field type")
+		}
+	}
+
+	// Simple field - type-aware truthy check
+	switch field.NormalizedType {
+	case NormalizedTypeBool:
+		return field.Name, nil
+	case NormalizedTypeString:
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", field.Name, field.Name), nil
+	case NormalizedTypeInt, NormalizedTypeFloat:
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != 0)", field.Name, field.Name), nil
+	case NormalizedTypeDate:
+		return fmt.Sprintf("(%s IS NOT NULL)", field.Name), nil
+	default:
+		// Fallback for other types - just check not null
+		return fmt.Sprintf("(%s IS NOT NULL)", field.Name), nil
+	}
+}
+
+func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string, error) {
+	// Type-aware falsy checks (negation of truthy):
+	// - String: field IS NULL OR field = ''
+	// - Int/Float: field IS NULL OR field = 0
+	// - Bool: NOT field (handles NULL correctly in ClickHouse)
+	// - Date: field IS NULL
+
+	fieldName := expr.Key.Segments[0]
+	field, ok := fields[fieldName]
+	if !ok {
+		return "", fmt.Errorf("unknown field: %s", fieldName)
+	}
+
+	if expr.Key.IsSegmented() {
+		if field.JSONString {
+			jsonPath := expr.Key.Segments[1:]
+			jsonPathParts := make([]string, len(jsonPath))
+			for i, p := range jsonPath {
+				escaped, err := EscapeParam(p)
+				if err != nil {
+					return "", err
+				}
+				jsonPathParts[i] = escaped
+			}
+			jsonPathStr := strings.Join(jsonPathParts, ", ")
+			return fmt.Sprintf("(NOT JSONHas(%s, %s) OR JSONExtractString(%s, %s) = '')",
+				field.Name, jsonPathStr, field.Name, jsonPathStr), nil
+		} else if field.IsJSON {
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = fmt.Sprintf("`%s`", part)
+			}
+			jsonPathStr := strings.Join(pathParts, ".")
+			return fmt.Sprintf("(%s.%s IS NULL)", field.Name, jsonPathStr), nil
+		} else if field.IsMap {
+			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			escapedMapKey, err := EscapeParam(mapKey)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("(NOT mapContains(%s, %s) OR %s[%s] = '')",
+				field.Name, escapedMapKey, field.Name, escapedMapKey), nil
+		} else if field.IsArray {
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndex, err := strconv.Atoi(arrayIndexStr)
+			if err != nil {
+				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
+			}
+			return fmt.Sprintf("(length(%s) < %d OR %s[%d] = '')",
+				field.Name, arrayIndex, field.Name, arrayIndex), nil
+		} else {
+			return "", fmt.Errorf("path search for unsupported field type")
+		}
+	}
+
+	// Simple field - type-aware falsy check
+	switch field.NormalizedType {
+	case NormalizedTypeBool:
+		return fmt.Sprintf("NOT %s", field.Name), nil
+	case NormalizedTypeString:
+		return fmt.Sprintf("(%s IS NULL OR %s = '')", field.Name, field.Name), nil
+	case NormalizedTypeInt, NormalizedTypeFloat:
+		return fmt.Sprintf("(%s IS NULL OR %s = 0)", field.Name, field.Name), nil
+	case NormalizedTypeDate:
+		return fmt.Sprintf("(%s IS NULL)", field.Name), nil
+	default:
+		// Fallback for other types - just check null
+		return fmt.Sprintf("(%s IS NULL)", field.Name), nil
+	}
 }
 
 func expressionToSQLSegmented(expr *flyql.Expression, fields map[string]*Field) (string, error) {
@@ -346,13 +503,24 @@ func ToSQL(root *flyql.Node, fields map[string]*Field) (string, error) {
 	}
 
 	var text string
+	isNegated := root.Negated
 
 	if root.Expression != nil {
-		sql, err := ExpressionToSQL(root.Expression, fields)
-		if err != nil {
-			return "", err
+		// For negated truthy expressions, generate falsy SQL directly
+		if isNegated && root.Expression.Operator == flyql.OpTruthy {
+			sql, err := falsyExpressionToSQL(root.Expression, fields)
+			if err != nil {
+				return "", err
+			}
+			text = sql
+			isNegated = false // Already handled
+		} else {
+			sql, err := ExpressionToSQL(root.Expression, fields)
+			if err != nil {
+				return "", err
+			}
+			text = sql
 		}
-		text = sql
 	}
 
 	var left, right string
@@ -381,6 +549,10 @@ func ToSQL(root *flyql.Node, fields map[string]*Field) (string, error) {
 		text = left
 	} else if right != "" {
 		text = right
+	}
+
+	if isNegated && text != "" {
+		text = fmt.Sprintf("NOT (%s)", text)
 	}
 
 	return text, nil

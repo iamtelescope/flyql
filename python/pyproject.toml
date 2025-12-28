@@ -76,6 +76,8 @@ disable = [
     "too-many-return-statements",    # R0911
     "too-many-public-methods",       # R0904
     "too-many-locals",               # R0914
+    "too-many-arguments",            # R0913
+    "too-many-positional-arguments", # R0917
 ]
 
 [tool.pytest.ini_options]

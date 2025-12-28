@@ -70,6 +70,16 @@ def test_quoted_keys_parsing(test_case):
     run_test_case(test_case)
 
 
+@pytest.mark.parametrize("test_case", load_test_data("truthy.json")["tests"])
+def test_truthy_parsing(test_case):
+    run_test_case(test_case)
+
+
+@pytest.mark.parametrize("test_case", load_test_data("not.json")["tests"])
+def test_not_parsing(test_case):
+    run_test_case(test_case)
+
+
 def test_unquoted_hyphen_keys():
     """Test that unquoted keys with hyphens are parsed correctly"""
     # Test simple hyphenated key

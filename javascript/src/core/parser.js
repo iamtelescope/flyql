@@ -9,6 +9,8 @@ import {
     VALID_KEY_VALUE_OPERATORS,
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
+    Operator,
+    NOT_KEYWORD,
 } from './constants.js'
 
 export class Parser {
@@ -31,6 +33,8 @@ export class Parser {
         this.errno = 0
         this.root = null
         this.typedChars = []
+        this.pendingNegation = false
+        this.negationStack = []
     }
 
     setState(state) {
@@ -131,25 +135,66 @@ export class Parser {
         this.typedChars.push([this.char, charType])
     }
 
-    newNode(boolOperator, expression, left, right) {
-        return new Node(boolOperator, expression, left, right)
+    newNode(boolOperator, expression, left, right, negated = false) {
+        return new Node(boolOperator, expression, left, right, negated)
     }
 
     newExpression() {
         return new Expression(parseKey(this.key), this.keyValueOperator, this.value, this.valueIsString)
     }
 
-    extendTree() {
+    newTruthyExpression() {
+        return new Expression(parseKey(this.key), Operator.TRUTHY, null, null)
+    }
+
+    togglePendingNegation() {
+        this.pendingNegation = !this.pendingNegation
+    }
+
+    consumePendingNegation() {
+        const negated = this.pendingNegation
+        this.pendingNegation = false
+        return negated
+    }
+
+    extendTreeWithExpression(expression) {
+        const negated = this.consumePendingNegation()
         if (this.currentNode && this.currentNode.left === null) {
-            const node = this.newNode('', this.newExpression(), null, null)
+            const node = this.newNode('', expression, null, null, negated)
             this.currentNode.setLeft(node)
             this.currentNode.setBoolOperator(this.boolOperator)
         } else if (this.currentNode && this.currentNode.right === null) {
-            const node = this.newNode('', this.newExpression(), null, null)
+            const node = this.newNode('', expression, null, null, negated)
             this.currentNode.setRight(node)
             this.currentNode.setBoolOperator(this.boolOperator)
         } else {
-            const right = this.newNode('', this.newExpression(), null, null)
+            const right = this.newNode('', expression, null, null, negated)
+            const node = this.newNode(this.boolOperator, null, this.currentNode, right)
+            this.setCurrentNode(node)
+        }
+    }
+
+    applyNegationToTree() {
+        if (this.negationStack.length > 0) {
+            const negated = this.negationStack.pop()
+            if (negated && this.currentNode) {
+                this.currentNode.setNegated(true)
+            }
+        }
+    }
+
+    extendTree() {
+        const negated = this.consumePendingNegation()
+        if (this.currentNode && this.currentNode.left === null) {
+            const node = this.newNode('', this.newExpression(), null, null, negated)
+            this.currentNode.setLeft(node)
+            this.currentNode.setBoolOperator(this.boolOperator)
+        } else if (this.currentNode && this.currentNode.right === null) {
+            const node = this.newNode('', this.newExpression(), null, null, negated)
+            this.currentNode.setRight(node)
+            this.currentNode.setBoolOperator(this.boolOperator)
+        } else {
+            const right = this.newNode('', this.newExpression(), null, null, negated)
             const node = this.newNode(this.boolOperator, null, this.currentNode, right)
             this.setCurrentNode(node)
         }
@@ -205,7 +250,13 @@ export class Parser {
         }
 
         if (this.char.isDelimiter()) {
-            this.setState(State.EXPECT_OPERATOR)
+            if (this.key === NOT_KEYWORD) {
+                this.togglePendingNegation()
+                this.resetKey()
+                this.setState(State.EXPECT_NOT_TARGET)
+            } else {
+                this.setState(State.KEY_OR_BOOL_OP)
+            }
             this.storeTypedChar(CharType.SPACE)
         } else if (this.char.isKey()) {
             this.extendKey()
@@ -221,6 +272,21 @@ export class Parser {
         } else if (this.char.isOp()) {
             this.extendKeyValueOperator()
             this.setState(State.KEY_VALUE_OPERATOR)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.isGroupClose()) {
+            if (!this.nodesStack.length) {
+                this.setErrorState('unmatched parenthesis', 3)
+                return
+            }
+            this.extendTreeWithExpression(this.newTruthyExpression())
+            this.resetData()
+            if (this.boolOpStack.length) {
+                this.boolOperator = this.boolOpStack.pop()
+            }
+            this.extendTreeFromStack(this.boolOperator)
+            this.applyNegationToTree()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
             this.storeTypedChar(CharType.OPERATOR)
         } else {
             this.setErrorState('invalid character', 3)
@@ -241,6 +307,81 @@ export class Parser {
             this.storeTypedChar(CharType.OPERATOR)
         } else {
             this.setErrorState('expected operator', 28)
+        }
+    }
+
+    inStateKeyOrBoolOp() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+            return
+        } else if (this.char.isOp()) {
+            this.extendKeyValueOperator()
+            this.setState(State.KEY_VALUE_OPERATOR)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.isBoolOpChar()) {
+            this.extendTreeWithExpression(this.newTruthyExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.extendBoolOperator()
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_BOOL_OP)
+        } else if (this.char.isGroupClose()) {
+            if (!this.nodesStack.length) {
+                this.setErrorState('unmatched parenthesis', 32)
+                return
+            }
+            this.extendTreeWithExpression(this.newTruthyExpression())
+            this.resetData()
+            if (this.boolOpStack.length) {
+                this.boolOperator = this.boolOpStack.pop()
+            }
+            this.extendTreeFromStack(this.boolOperator)
+            this.applyNegationToTree()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else {
+            this.setErrorState('invalid character', 32)
+        }
+    }
+
+    inStateExpectNotTarget() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+            return
+        } else if (this.char.isKey()) {
+            this.extendKey()
+            this.setState(State.KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isSingleQuote()) {
+            this.extendKey()
+            this.setState(State.SINGLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isDoubleQuote()) {
+            this.extendKey()
+            this.setState(State.DOUBLE_QUOTED_KEY)
+            this.storeTypedChar(CharType.KEY)
+        } else if (this.char.isGroupOpen()) {
+            if (this.pendingNegation) {
+                this.negationStack.push(true)
+                this.pendingNegation = false
+            } else {
+                this.negationStack.push(false)
+            }
+            this.extendNodesStack()
+            this.extendBoolOpStack()
+            this.setState(State.INITIAL)
+            this.storeTypedChar(CharType.OPERATOR)
+        } else {
+            this.setErrorState('expected key or group after not', 33)
         }
     }
 
@@ -338,6 +479,7 @@ export class Parser {
                     this.boolOperator = this.boolOpStack.pop()
                 }
                 this.extendTreeFromStack(this.boolOperator)
+                this.applyNegationToTree()
                 this.resetBoolOperator()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
@@ -460,6 +602,12 @@ export class Parser {
             this.setState(State.DOUBLE_QUOTED_KEY)
             this.storeTypedChar(CharType.KEY)
         } else if (this.char.isGroupOpen()) {
+            if (this.pendingNegation) {
+                this.negationStack.push(true)
+                this.pendingNegation = false
+            } else {
+                this.negationStack.push(false)
+            }
             this.extendNodesStack()
             this.extendBoolOpStack()
             this.setState(State.INITIAL)
@@ -473,6 +621,7 @@ export class Parser {
                 if (this.boolOpStack.length) {
                     this.extendTreeFromStack(this.boolOpStack.pop())
                 }
+                this.applyNegationToTree()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
             }
@@ -499,6 +648,7 @@ export class Parser {
                 if (this.boolOpStack.length) {
                     this.extendTreeFromStack(this.boolOpStack.pop())
                 }
+                this.applyNegationToTree()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
             }
@@ -529,13 +679,22 @@ export class Parser {
             this.setErrorState('empty input', 24)
         } else if (
             this.state === State.INITIAL ||
-            this.state === State.KEY ||
             this.state === State.SINGLE_QUOTED_KEY ||
             this.state === State.DOUBLE_QUOTED_KEY ||
             this.state === State.EXPECT_OPERATOR ||
             this.state === State.EXPECT_VALUE
         ) {
             this.setErrorState('unexpected EOF', 25)
+        } else if (this.state === State.KEY) {
+            if (this.key === NOT_KEYWORD) {
+                this.setErrorState('unexpected EOF after not', 25)
+            } else {
+                this.extendTreeWithExpression(this.newTruthyExpression())
+                this.resetBoolOperator()
+            }
+        } else if (this.state === State.KEY_OR_BOOL_OP) {
+            this.extendTreeWithExpression(this.newTruthyExpression())
+            this.resetBoolOperator()
         } else if (
             this.state === State.VALUE ||
             this.state === State.DOUBLE_QUOTED_VALUE ||
@@ -543,7 +702,7 @@ export class Parser {
         ) {
             this.extendTree()
             this.resetBoolOperator()
-        } else if (this.state === State.BOOL_OP_DELIMITER) {
+        } else if (this.state === State.BOOL_OP_DELIMITER || this.state === State.EXPECT_NOT_TARGET) {
             this.setErrorState('unexpected EOF', 26)
             return
         }
@@ -606,6 +765,12 @@ export class Parser {
                     break
                 case State.EXPECT_BOOL_OP:
                     this.inStateExpectBoolOp()
+                    break
+                case State.KEY_OR_BOOL_OP:
+                    this.inStateKeyOrBoolOp()
+                    break
+                case State.EXPECT_NOT_TARGET:
+                    this.inStateExpectNotTarget()
                     break
                 default:
                     this.setErrorState(`Unknown state: ${this.state}`, 1)

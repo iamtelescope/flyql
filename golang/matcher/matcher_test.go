@@ -1,10 +1,33 @@
 package matcher
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	flyql "github.com/iamtelescope/flyql"
 )
+
+func getTestDataDir() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Join(filepath.Dir(filename), "..", "..", "tests-data", "matcher")
+}
+
+type matcherTestFile struct {
+	Version     string            `json:"version"`
+	Description string            `json:"description"`
+	TestSuite   string            `json:"test_suite"`
+	Tests       []matcherTestCase `json:"tests"`
+}
+
+type matcherTestCase struct {
+	Name     string         `json:"name"`
+	Query    string         `json:"query"`
+	Data     map[string]any `json:"data"`
+	Expected bool           `json:"expected"`
+}
 
 func TestMatcherEvaluatesCorrectly(t *testing.T) {
 	tests := []struct {
@@ -168,5 +191,45 @@ func TestMatchConvenienceFunction(t *testing.T) {
 	}
 	if result {
 		t.Errorf("expected false, got true")
+	}
+}
+
+func TestMatcherFromDataFiles(t *testing.T) {
+	files := []string{
+		"truthy.json",
+		"not.json",
+	}
+
+	for _, file := range files {
+		data, err := os.ReadFile(filepath.Join(getTestDataDir(), file))
+		if err != nil {
+			t.Logf("skipping %s: %v", file, err)
+			continue
+		}
+
+		var testFile matcherTestFile
+		if err := json.Unmarshal(data, &testFile); err != nil {
+			t.Fatalf("failed to parse %s: %v", file, err)
+		}
+
+		suiteName := filepath.Base(file)
+		t.Run(suiteName, func(t *testing.T) {
+			for _, tc := range testFile.Tests {
+				t.Run(tc.Name, func(t *testing.T) {
+					result, err := flyql.Parse(tc.Query)
+					if err != nil {
+						t.Fatalf("parse error for query %q: %v", tc.Query, err)
+					}
+
+					evaluator := NewEvaluator()
+					record := NewRecord(tc.Data)
+					got := evaluator.Evaluate(result.Root, record)
+
+					if got != tc.Expected {
+						t.Errorf("query %q with data %v: got %v, want %v", tc.Query, tc.Data, got, tc.Expected)
+					}
+				})
+			}
+		})
 	}
 }

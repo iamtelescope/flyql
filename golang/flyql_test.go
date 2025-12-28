@@ -34,6 +34,7 @@ type parserTestCase struct {
 
 type expectedAST struct {
 	BoolOperator string              `json:"bool_operator"`
+	Negated      bool                `json:"negated"`
 	Expression   *expectedExpression `json:"expression"`
 	Left         *expectedAST        `json:"left"`
 	Right        *expectedAST        `json:"right"`
@@ -53,6 +54,7 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 
 	result := &expectedAST{
 		BoolOperator: node.BoolOperator,
+		Negated:      node.Negated,
 	}
 
 	if node.Expression != nil {
@@ -87,6 +89,7 @@ func normalizeAST(node *expectedAST) *expectedAST {
 		node.Left.Right == nil {
 		return &expectedAST{
 			BoolOperator: "",
+			Negated:      node.Left.Negated,
 			Expression:   node.Left.Expression,
 			Left:         nil,
 			Right:        nil,
@@ -101,6 +104,7 @@ func normalizeAST(node *expectedAST) *expectedAST {
 
 	result := &expectedAST{
 		BoolOperator: node.BoolOperator,
+		Negated:      node.Negated,
 		Expression:   node.Expression,
 	}
 	if node.Left != nil {
@@ -128,6 +132,10 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 
 	if got.BoolOperator != want.BoolOperator {
 		t.Errorf("%s: BoolOperator mismatch: got %q, want %q", path, got.BoolOperator, want.BoolOperator)
+	}
+
+	if got.Negated != want.Negated {
+		t.Errorf("%s: Negated mismatch: got %v, want %v", path, got.Negated, want.Negated)
 	}
 
 	if want.Expression != nil {
@@ -181,6 +189,8 @@ func TestParser(t *testing.T) {
 		"parser/quoted_keys.json",
 		"parser/syntax.json",
 		"parser/whitespace.json",
+		"parser/truthy.json",
+		"parser/not.json",
 	}
 
 	for _, file := range files {

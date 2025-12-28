@@ -28,8 +28,8 @@ class TestIgnoreLastCharParameter:
     def test_ignore_last_char_false_validates_final_state(self):
         parser = Parser()
         with pytest.raises(ParserError) as exc_info:
-            parser.parse("key", raise_error=True, ignore_last_char=False)
-        assert exc_info.value.errno == 25
+            parser.parse("key=value and ", raise_error=True, ignore_last_char=False)
+        assert exc_info.value.errno == 26
 
     def test_ignore_last_char_true_skips_validation(self):
         parser = Parser()
@@ -53,9 +53,9 @@ class TestParameterCombinations:
 
     def test_both_false(self):
         parser = Parser()
-        parser.parse("key", raise_error=False, ignore_last_char=False)
+        parser.parse("key=value and ", raise_error=False, ignore_last_char=False)
         assert parser.state == State.ERROR
-        assert parser.errno == 25
+        assert parser.errno == 26
 
     def test_both_true(self):
         parser = Parser()
@@ -79,7 +79,7 @@ class TestIncrementalParsing:
     def test_incomplete_states(self):
         test_cases = [
             ("k", State.KEY),
-            ("key ", State.EXPECT_OPERATOR),
+            ("key ", State.KEY_OR_BOOL_OP),
             ("key =", State.KEY_VALUE_OPERATOR),
             ("key=v", State.VALUE),
         ]

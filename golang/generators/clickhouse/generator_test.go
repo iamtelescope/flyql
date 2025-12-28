@@ -139,6 +139,14 @@ func TestErrors(t *testing.T) {
 	runTestCases(t, "errors.json")
 }
 
+func TestTruthy(t *testing.T) {
+	runTestCases(t, "truthy.json")
+}
+
+func TestNot(t *testing.T) {
+	runTestCases(t, "not.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string

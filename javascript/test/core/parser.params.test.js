@@ -25,8 +25,9 @@ describe('raiseError parameter', () => {
 
 describe('ignoreLastChar parameter', () => {
     it('should validate final state when ignoreLastChar=false', () => {
+        // With truthy support, 'key' is valid - use incomplete boolean expression
         const parser = new Parser()
-        expect(() => parser.parse('key', true, false)).toThrow(ParserError)
+        expect(() => parser.parse('key and ', true, false)).toThrow(ParserError)
     })
 
     it('should skip validation when ignoreLastChar=true', () => {
@@ -52,10 +53,11 @@ describe('ignoreLastChar parameter', () => {
 
 describe('parameter combinations', () => {
     it('should handle raiseError=false and ignoreLastChar=false', () => {
+        // With truthy support, 'key' is valid - use incomplete boolean expression
         const parser = new Parser()
-        parser.parse('key', false, false)
+        parser.parse('key and ', false, false)
         expect(parser.state).toBe(State.ERROR)
-        expect(parser.errno).toBe(25)
+        expect(parser.errno).toBe(26) // BOOL_OP_DELIMITER at EOF
     })
 
     it('should handle raiseError=true and ignoreLastChar=true', () => {
@@ -79,7 +81,7 @@ describe('incremental parsing', () => {
     it('should handle incomplete states', () => {
         const testCases = [
             ['k', State.KEY],
-            ['key ', State.EXPECT_OPERATOR],
+            ['key ', State.KEY_OR_BOOL_OP], // Updated: with truthy support, goes to KEY_OR_BOOL_OP
             ['key =', State.KEY_VALUE_OPERATOR],
             ['key=v', State.VALUE],
         ]

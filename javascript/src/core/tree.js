@@ -2,7 +2,7 @@ import { FlyqlError } from './exceptions.js'
 import { VALID_BOOL_OPERATORS } from './constants.js'
 
 export class Node {
-    constructor(boolOperator, expression, left, right) {
+    constructor(boolOperator, expression, left, right, negated = false) {
         if ((left || right) && expression) {
             throw new FlyqlError('either (left or right) or expression at same time')
         }
@@ -11,6 +11,7 @@ export class Node {
         this.expression = expression
         this.left = left
         this.right = right
+        this.negated = negated
     }
 
     setBoolOperator(boolOperator) {
@@ -30,5 +31,9 @@ export class Node {
 
     setExpression(expression) {
         this.expression = expression
+    }
+
+    setNegated(negated) {
+        this.negated = negated
     }
 }

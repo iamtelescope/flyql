@@ -31,43 +31,78 @@ func (e *Evaluator) getRegex(pattern string) (*regexp.Regexp, error) {
 	return regex, nil
 }
 
+func isFalsy(value any) bool {
+	if value == nil {
+		return true
+	}
+	switch v := value.(type) {
+	case bool:
+		return !v
+	case int:
+		return v == 0
+	case int64:
+		return v == 0
+	case float64:
+		return v == 0
+	case string:
+		return v == ""
+	case []any:
+		return len(v) == 0
+	case map[string]any:
+		return len(v) == 0
+	}
+	return false
+}
+
+func isTruthy(value any) bool {
+	return !isFalsy(value)
+}
+
 func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
 	if node == nil {
 		return false
 	}
 
+	var result bool
+
 	if node.Expression != nil {
-		return e.evalExpression(node.Expression, record)
-	}
+		result = e.evalExpression(node.Expression, record)
+	} else {
+		var left, right *bool
 
-	var left, right *bool
-
-	if node.Left != nil {
-		result := e.Evaluate(node.Left, record)
-		left = &result
-	}
-
-	if node.Right != nil {
-		result := e.Evaluate(node.Right, record)
-		right = &result
-	}
-
-	if left != nil && right != nil {
-		switch node.BoolOperator {
-		case flyql.BoolOpAnd:
-			return *left && *right
-		case flyql.BoolOpOr:
-			return *left || *right
-		default:
-			return false
+		if node.Left != nil {
+			r := e.Evaluate(node.Left, record)
+			left = &r
 		}
-	} else if left != nil {
-		return *left
-	} else if right != nil {
-		return *right
+
+		if node.Right != nil {
+			r := e.Evaluate(node.Right, record)
+			right = &r
+		}
+
+		if left != nil && right != nil {
+			switch node.BoolOperator {
+			case flyql.BoolOpAnd:
+				result = *left && *right
+			case flyql.BoolOpOr:
+				result = *left || *right
+			default:
+				result = false
+			}
+		} else if left != nil {
+			result = *left
+		} else if right != nil {
+			result = *right
+		} else {
+			result = false
+		}
 	}
 
-	return false
+	if node.Negated {
+		result = !result
+	}
+
+	return result
 }
 
 func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool {
@@ -75,6 +110,8 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 	value := record.GetValue(key)
 
 	switch expr.Operator {
+	case flyql.OpTruthy:
+		return isTruthy(value)
 	case flyql.OpEquals:
 		return compareEqual(value, expr.Value)
 	case flyql.OpNotEquals:

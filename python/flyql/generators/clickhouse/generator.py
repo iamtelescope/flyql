@@ -12,6 +12,13 @@ from flyql.core.tree import Node
 
 from flyql.generators.clickhouse.field import Field
 from flyql.generators.clickhouse.helpers import validate_operation
+from flyql.generators.clickhouse.constants import (
+    NORMALIZED_TYPE_STRING,
+    NORMALIZED_TYPE_INT,
+    NORMALIZED_TYPE_FLOAT,
+    NORMALIZED_TYPE_BOOL,
+    NORMALIZED_TYPE_DATE,
+)
 
 OPERATOR_TO_CLICKHOUSE_FUNC = {
     Operator.EQUALS.value: "equals",
@@ -110,7 +117,143 @@ def prepare_like_pattern_value(value: str) -> Tuple[bool, str]:
     return pattern_found, new_value
 
 
+def truthy_expression_to_sql(
+    expression: Expression, fields: Mapping[str, Field]
+) -> str:
+    """Generate SQL for truthy check (non-falsy value).
+
+    Type-aware truthy checks:
+    - String: field IS NOT NULL AND field != ''
+    - Int/Float: field IS NOT NULL AND field != 0
+    - Bool: field (ClickHouse supports boolean expressions directly)
+    - Date: field IS NOT NULL
+    """
+    field_name = expression.key.segments[0]
+    if field_name not in fields:
+        raise FlyqlError(f"unknown field: {field_name}")
+
+    field = fields[field_name]
+
+    if expression.key.is_segmented:
+        if field.jsonstring:
+            json_path = expression.key.segments[1:]
+            json_path_str = ", ".join([escape_param(x) for x in json_path])
+            return (
+                f"(JSONHas({field.name}, {json_path_str}) AND "
+                f"JSONExtractString({field.name}, {json_path_str}) != '')"
+            )
+        elif field.is_json:
+            json_path = expression.key.segments[1:]
+            for part in json_path:
+                validate_json_path_part(part)
+            json_path_str = ".".join(f"`{part}`" for part in json_path)
+            return f"({field.name}.{json_path_str} IS NOT NULL)"
+        elif field.is_map:
+            map_key = ":".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
+            return (
+                f"(mapContains({field.name}, {escaped_map_key}) AND "
+                f"{field.name}[{escaped_map_key}] != '')"
+            )
+        elif field.is_array:
+            array_index_str = ":".join(expression.key.segments[1:])
+            try:
+                array_index = int(array_index_str)
+            except Exception as err:
+                raise FlyqlError(
+                    f"invalid array index, expected number: {array_index_str}"
+                ) from err
+            return (
+                f"(length({field.name}) >= {array_index} AND "
+                f"{field.name}[{array_index}] != '')"
+            )
+        else:
+            raise FlyqlError("path search for unsupported field type")
+    else:
+        # Simple field - type-aware truthy check
+        if field.normalized_type == NORMALIZED_TYPE_BOOL:
+            return field.name
+        elif field.normalized_type == NORMALIZED_TYPE_STRING:
+            return f"({field.name} IS NOT NULL AND {field.name} != '')"
+        elif field.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+            return f"({field.name} IS NOT NULL AND {field.name} != 0)"
+        elif field.normalized_type == NORMALIZED_TYPE_DATE:
+            return f"({field.name} IS NOT NULL)"
+        else:
+            # Fallback for other types - just check not null
+            return f"({field.name} IS NOT NULL)"
+
+
+def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+    """Generate SQL for falsy check (null or falsy value).
+
+    Type-aware falsy checks (negation of truthy):
+    - String: field IS NULL OR field = ''
+    - Int/Float: field IS NULL OR field = 0
+    - Bool: NOT field (handles NULL correctly in ClickHouse)
+    - Date: field IS NULL
+    """
+    field_name = expression.key.segments[0]
+    if field_name not in fields:
+        raise FlyqlError(f"unknown field: {field_name}")
+
+    field = fields[field_name]
+
+    if expression.key.is_segmented:
+        if field.jsonstring:
+            json_path = expression.key.segments[1:]
+            json_path_str = ", ".join([escape_param(x) for x in json_path])
+            return (
+                f"(NOT JSONHas({field.name}, {json_path_str}) OR "
+                f"JSONExtractString({field.name}, {json_path_str}) = '')"
+            )
+        elif field.is_json:
+            json_path = expression.key.segments[1:]
+            for part in json_path:
+                validate_json_path_part(part)
+            json_path_str = ".".join(f"`{part}`" for part in json_path)
+            return f"({field.name}.{json_path_str} IS NULL)"
+        elif field.is_map:
+            map_key = ":".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
+            return (
+                f"(NOT mapContains({field.name}, {escaped_map_key}) OR "
+                f"{field.name}[{escaped_map_key}] = '')"
+            )
+        elif field.is_array:
+            array_index_str = ":".join(expression.key.segments[1:])
+            try:
+                array_index = int(array_index_str)
+            except Exception as err:
+                raise FlyqlError(
+                    f"invalid array index, expected number: {array_index_str}"
+                ) from err
+            return (
+                f"(length({field.name}) < {array_index} OR "
+                f"{field.name}[{array_index}] = '')"
+            )
+        else:
+            raise FlyqlError("path search for unsupported field type")
+    else:
+        # Simple field - type-aware falsy check
+        if field.normalized_type == NORMALIZED_TYPE_BOOL:
+            return f"NOT {field.name}"
+        elif field.normalized_type == NORMALIZED_TYPE_STRING:
+            return f"({field.name} IS NULL OR {field.name} = '')"
+        elif field.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+            return f"({field.name} IS NULL OR {field.name} = 0)"
+        elif field.normalized_type == NORMALIZED_TYPE_DATE:
+            return f"({field.name} IS NULL)"
+        else:
+            # Fallback for other types - just check null
+            return f"({field.name} IS NULL)"
+
+
 def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+    # Handle truthy operator (standalone key check)
+    if expression.operator == Operator.TRUTHY.value:
+        return truthy_expression_to_sql(expression, fields)
+
     validate_operator(expression.operator)
     text = ""
 
@@ -223,9 +366,15 @@ def to_sql(root: Node, fields: Mapping[str, Field]) -> str:
     left = ""
     right = ""
     text = ""
+    is_negated = getattr(root, "negated", False)
 
     if root.expression is not None:
-        text = expression_to_sql(expression=root.expression, fields=fields)
+        # For negated truthy expressions, generate falsy SQL directly
+        if is_negated and root.expression.operator == Operator.TRUTHY.value:
+            text = falsy_expression_to_sql(expression=root.expression, fields=fields)
+            is_negated = False  # Already handled
+        else:
+            text = expression_to_sql(expression=root.expression, fields=fields)
 
     if root.left is not None:
         left = to_sql(root=root.left, fields=fields)
@@ -240,5 +389,8 @@ def to_sql(root: Node, fields: Mapping[str, Field]) -> str:
         text = left
     elif len(right) > 0:
         text = right
+
+    if is_negated and text:
+        text = f"NOT ({text})"
 
     return text

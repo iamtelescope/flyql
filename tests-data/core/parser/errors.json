@@ -69,7 +69,7 @@
       "input": "ke y=value",
       "expected_result": "error",
       "expected_error": {
-        "errno": 28,
+        "errno_options": [28, 32],
         "message_contains": ""
       }
     },

@@ -1,0 +1,449 @@
+{
+  "version": "1.0",
+  "description": "FlyQL not operator test cases - unary negation",
+  "test_suite": "not",
+  "tests": [
+    {
+      "name": "not_truthy",
+      "input": "not active",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "active",
+          "operator": "truthy",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_comparison",
+      "input": "not status=200",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "status",
+          "operator": "=",
+          "value": 200.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_grouped_and",
+      "input": "not (a=1 and b=2)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": true,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "not_grouped_or",
+      "input": "not (a=1 or b=2)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": true,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": 2.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "double_negation",
+      "input": "not not active",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": false,
+        "expression": {
+          "key": "active",
+          "operator": "truthy",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "triple_negation",
+      "input": "not not not active",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "active",
+          "operator": "truthy",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "truthy_and_not_truthy",
+      "input": "active and not archived",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "active",
+            "operator": "truthy",
+            "value": "",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {
+            "key": "archived",
+            "operator": "truthy",
+            "value": "",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "not_truthy_or_comparison",
+      "input": "not active or status=200",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {
+            "key": "active",
+            "operator": "truthy",
+            "value": "",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "comparison_and_not_comparison",
+      "input": "status=200 and not error=true",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 200.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {
+            "key": "error",
+            "operator": "=",
+            "value": "true",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "not_with_regex",
+      "input": "not message=~error.*",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "message",
+          "operator": "=~",
+          "value": "error.*",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_with_quoted_value",
+      "input": "not name='john doe'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "john doe",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_with_quoted_key",
+      "input": "not 'my field'=value",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "'my field'",
+          "operator": "=",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_grouped_truthy",
+      "input": "not (active)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "active",
+          "operator": "truthy",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "complex_mixed",
+      "input": "(active and not archived) or (status=200 and not error)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "active",
+              "operator": "truthy",
+              "value": "",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": true,
+            "expression": {
+              "key": "archived",
+              "operator": "truthy",
+              "value": "",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "status",
+              "operator": "=",
+              "value": 200.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": true,
+            "expression": {
+              "key": "error",
+              "operator": "truthy",
+              "value": "",
+              "value_type": "string"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "not_with_extra_whitespace",
+      "input": "not   active",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "active",
+          "operator": "truthy",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_grouped_complex",
+      "input": "not (a=1 and (b=2 or c=3))",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": true,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": 1.0,
+            "value_type": "number"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "b",
+              "operator": "=",
+              "value": 2.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "c",
+              "operator": "=",
+              "value": 3.0,
+              "value_type": "number"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    }
+  ]
+}

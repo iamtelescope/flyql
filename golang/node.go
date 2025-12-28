@@ -5,14 +5,16 @@ type Node struct {
 	Expression   *Expression
 	Left         *Node
 	Right        *Node
+	Negated      bool
 }
 
-func NewNode(boolOperator string, expression *Expression, left *Node, right *Node) *Node {
+func NewNode(boolOperator string, expression *Expression, left *Node, right *Node, negated bool) *Node {
 	return &Node{
 		BoolOperator: boolOperator,
 		Expression:   expression,
 		Left:         left,
 		Right:        right,
+		Negated:      negated,
 	}
 }
 

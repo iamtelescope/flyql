@@ -39,6 +39,8 @@ export const State = Object.freeze({
     KEY_VALUE_OPERATOR: 'KeyValueOperator',
     BOOL_OP_DELIMITER: 'BoolOpDelimiter',
     EXPECT_BOOL_OP: 'ExpectBoolOp',
+    KEY_OR_BOOL_OP: 'KeyOrBoolOp',
+    EXPECT_NOT_TARGET: 'ExpectNotTarget',
 })
 
 export const BoolOperator = Object.freeze({
@@ -55,7 +57,10 @@ export const Operator = Object.freeze({
     LOWER_THAN: '<',
     GREATER_OR_EQUALS_THAN: '>=',
     LOWER_OR_EQUALS_THAN: '<=',
+    TRUTHY: 'truthy',
 })
+
+export const NOT_KEYWORD = 'not'
 
 export const VALID_KEY_VALUE_OPERATORS = [
     Operator.EQUALS,

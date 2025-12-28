@@ -16,4 +16,6 @@ const (
 	stateKeyValueOperator
 	stateBoolOpDelimiter
 	stateExpectBoolOp
+	stateKeyOrBoolOp
+	stateExpectNotTarget
 )

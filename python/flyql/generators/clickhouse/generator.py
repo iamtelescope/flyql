@@ -152,14 +152,14 @@ def truthy_expression_to_sql(
             json_path_str = ".".join(f"`{part}`" for part in json_path)
             return f"({field.name}.{json_path_str} IS NOT NULL)"
         elif field.is_map:
-            map_key = ":".join(expression.key.segments[1:])
+            map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
                 f"(mapContains({field.name}, {escaped_map_key}) AND "
                 f"{field.name}[{escaped_map_key}] != '')"
             )
         elif field.is_array:
-            array_index_str = ":".join(expression.key.segments[1:])
+            array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
             except Exception as err:
@@ -220,14 +220,14 @@ def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field])
             json_path_str = ".".join(f"`{part}`" for part in json_path)
             return f"({field.name}.{json_path_str} IS NULL)"
         elif field.is_map:
-            map_key = ":".join(expression.key.segments[1:])
+            map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
                 f"(NOT mapContains({field.name}, {escaped_map_key}) OR "
                 f"{field.name}[{escaped_map_key}] = '')"
             )
         elif field.is_array:
-            array_index_str = ":".join(expression.key.segments[1:])
+            array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
             except Exception as err:
@@ -289,11 +289,11 @@ def in_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) ->
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             return f"JSONExtractString({field.name}, {json_path_str}) {sql_op} ({values_sql})"
         elif field.is_map:
-            map_key = ":".join(expression.key.segments[1:])
+            map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return f"{field.name}[{escaped_map_key}] {sql_op} ({values_sql})"
         elif field.is_array:
-            array_index_str = ":".join(expression.key.segments[1:])
+            array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
             except Exception as err:
@@ -362,12 +362,12 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             value = escape_param(expression.value)
             text = f"{field.name}.{json_path_str} {expression.operator} {value}"
         elif field.is_map:
-            map_key = ":".join(expression.key.segments[1:])
+            map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             value = escape_param(expression.value)
             text = f"{reverse_operator}{func}({field.name}[{escaped_map_key}], {value})"
         elif field.is_array:
-            array_index_str = ":".join(expression.key.segments[1:])
+            array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
             except Exception as err:

@@ -89,7 +89,7 @@ def test_unquoted_hyphen_keys():
     assert result.root.left.expression.value == 123
 
     # Test multi-segment key with hyphens
-    result = parse('data:user-identifier = "john-doe"')
+    result = parse('data.user-identifier = "john-doe"')
     assert result.errno == 0
     assert result.root.left.expression.key.segments == ["data", "user-identifier"]
     assert result.root.left.expression.value == "john-doe"

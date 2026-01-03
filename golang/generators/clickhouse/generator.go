@@ -241,14 +241,14 @@ func inExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (string
 			jsonPathStr := strings.Join(jsonPathParts, ", ")
 			return fmt.Sprintf("JSONExtractString(%s, %s) %s (%s)", field.Name, jsonPathStr, sqlOp, valuesSQL), nil
 		} else if field.IsMap {
-			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
 				return "", err
 			}
 			return fmt.Sprintf("%s[%s] %s (%s)", field.Name, escapedMapKey, sqlOp, valuesSQL), nil
 		} else if field.IsArray {
-			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
@@ -303,7 +303,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (st
 			jsonPathStr := strings.Join(pathParts, ".")
 			return fmt.Sprintf("(%s.%s IS NOT NULL)", field.Name, jsonPathStr), nil
 		} else if field.IsMap {
-			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
 				return "", err
@@ -311,7 +311,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (st
 			return fmt.Sprintf("(mapContains(%s, %s) AND %s[%s] != '')",
 				field.Name, escapedMapKey, field.Name, escapedMapKey), nil
 		} else if field.IsArray {
-			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
@@ -383,7 +383,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (str
 			jsonPathStr := strings.Join(pathParts, ".")
 			return fmt.Sprintf("(%s.%s IS NULL)", field.Name, jsonPathStr), nil
 		} else if field.IsMap {
-			mapKey := strings.Join(expr.Key.Segments[1:], ":")
+			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
 				return "", err
@@ -391,7 +391,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, fields map[string]*Field) (str
 			return fmt.Sprintf("(NOT mapContains(%s, %s) OR %s[%s] = '')",
 				field.Name, escapedMapKey, field.Name, escapedMapKey), nil
 		} else if field.IsArray {
-			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
@@ -496,7 +496,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, fields map[string]*Field) 
 		return fmt.Sprintf("%s.%s %s %s", field.Name, jsonPathStr, expr.Operator, value), nil
 
 	} else if field.IsMap {
-		mapKey := strings.Join(expr.Key.Segments[1:], ":")
+		mapKey := strings.Join(expr.Key.Segments[1:], ".")
 		escapedMapKey, err := EscapeParam(mapKey)
 		if err != nil {
 			return "", err
@@ -508,7 +508,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, fields map[string]*Field) 
 		return fmt.Sprintf("%s%s(%s[%s], %s)", reverseOperator, funcName, field.Name, escapedMapKey, value), nil
 
 	} else if field.IsArray {
-		arrayIndexStr := strings.Join(expr.Key.Segments[1:], ":")
+		arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 		arrayIndex, err := strconv.Atoi(arrayIndexStr)
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)

@@ -4,7 +4,7 @@ export class Key {
     constructor(segments, raw = null) {
         this.segments = segments
         this.isSegmented = segments.length > 1
-        this.raw = raw !== null ? raw : segments.join(':')
+        this.raw = raw !== null ? raw : segments.join('.')
     }
 }
 
@@ -81,7 +81,7 @@ export class KeyParser {
         while (this.peek() !== null) {
             const char = this.peek()
 
-            if (char === ':') {
+            if (char === '.') {
                 return
             } else if (char === "'") {
                 this.parseQuotedSegment("'")
@@ -114,9 +114,9 @@ export class KeyParser {
             this.segments.push(this.currentSegment)
             this.currentSegment = ''
 
-            if (this.peek() === ':') {
-                this.advance() // Skip colon
-                // If we're at the end after a colon, add empty segment
+            if (this.peek() === '.') {
+                this.advance() // Skip dot
+                // If we're at the end after a dot, add empty segment
                 if (this.pos >= this.input.length) {
                     this.segments.push('')
                 }

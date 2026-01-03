@@ -77,7 +77,7 @@ class KeyParser:
         while self.peek() is not None:
             char = self.peek()
 
-            if char == ":":
+            if char == ".":
                 return
             elif char == "'":
                 self.parse_quoted_segment("'")
@@ -104,9 +104,9 @@ class KeyParser:
             self.segments.append(self.current_segment)
             self.current_segment = ""
 
-            if self.peek() == ":":
-                self.advance()  # Skip colon
-                # If we're at the end after a colon, add empty segment
+            if self.peek() == ".":
+                self.advance()  # Skip dot
+                # If we're at the end after a dot, add empty segment
                 if self.pos >= len(self.input):
                     self.segments.append("")
 

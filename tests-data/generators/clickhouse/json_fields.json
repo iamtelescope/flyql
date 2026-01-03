@@ -5,85 +5,85 @@
   "tests": [
     {
       "name": "native_json_simple_path",
-      "input": "new_json:name='test'",
+      "input": "new_json.name='test'",
       "expected_result": "success",
       "expected_sql": "new_json.`name` = 'test'"
     },
     {
       "name": "native_json_nested_path",
-      "input": "new_json:user:name='john'",
+      "input": "new_json.user.name='john'",
       "expected_result": "success",
       "expected_sql": "new_json.`user`.`name` = 'john'"
     },
     {
       "name": "native_json_number_value",
-      "input": "new_json:age=25",
+      "input": "new_json.age=25",
       "expected_result": "success",
       "expected_sql": "new_json.`age` = 25"
     },
     {
       "name": "native_json_underscore_field",
-      "input": "new_json:field_name='test'",
+      "input": "new_json.field_name='test'",
       "expected_result": "success",
       "expected_sql": "new_json.`field_name` = 'test'"
     },
     {
       "name": "native_json_hyphen_field",
-      "input": "new_json:field-name='test'",
+      "input": "new_json.field-name='test'",
       "expected_result": "success",
       "expected_sql": "new_json.`field-name` = 'test'"
     },
     {
       "name": "native_json_dot_in_field",
-      "input": "new_json:field.subfield='test'",
+      "input": "new_json.'field.subfield'='test'",
       "expected_result": "success",
       "expected_sql": "new_json.`field.subfield` = 'test'"
     },
     {
       "name": "native_json_not_equals",
-      "input": "new_json:status!='active'",
+      "input": "new_json.status!='active'",
       "expected_result": "success",
       "expected_sql": "new_json.`status` != 'active'"
     },
     {
       "name": "native_json_greater_than",
-      "input": "new_json:count>100",
+      "input": "new_json.count>100",
       "expected_result": "success",
       "expected_sql": "new_json.`count` > 100"
     },
     {
       "name": "jsonstring_simple_path",
-      "input": "json_field:name='test'",
+      "input": "json_field.name='test'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_field, 'name') = 'String', equals(JSONExtractString(json_field, 'name'), 'test'),0)"
     },
     {
       "name": "jsonstring_nested_path",
-      "input": "json_field:user:name='john'",
+      "input": "json_field.user.name='john'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_field, 'user', 'name') = 'String', equals(JSONExtractString(json_field, 'user', 'name'), 'john'),0)"
     },
     {
       "name": "jsonstring_number_value",
-      "input": "json_field:age=25",
+      "input": "json_field.age=25",
       "expected_result": "success",
       "expected_sql_contains": ["JSONExtractInt", "JSONExtractFloat", "JSONExtractBool"]
     },
     {
       "name": "jsonstring_not_equals",
-      "input": "json_field:status!='active'",
+      "input": "json_field.status!='active'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_field, 'status') = 'String', notEquals(JSONExtractString(json_field, 'status'), 'active'),0)"
     },
     {
       "name": "jsonstring_regex_match",
-      "input": "json_field:message~'error.*'",
+      "input": "json_field.message~'error.*'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_field, 'message') = 'String', match(JSONExtractString(json_field, 'message'), 'error.*'),0)"
     },
     {
       "name": "jsonstring_regex_not_match",
-      "input": "json_field:message!~'error.*'",
+      "input": "json_field.message!~'error.*'",
       "expected_result": "success",
       "expected_sql": "not multiIf(JSONType(json_field, 'message') = 'String', match(JSONExtractString(json_field, 'message'), 'error.*'),0)"
     }

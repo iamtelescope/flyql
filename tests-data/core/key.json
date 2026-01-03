@@ -25,122 +25,122 @@
     },
     {
       "name": "multiple_segments",
-      "input": "key:some:path",
+      "input": "key.some.path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some", "path"],
         "is_segmented": true,
-        "raw": "key:some:path"
+        "raw": "key.some.path"
       }
     },
     {
       "name": "quoted_segment_simple",
-      "input": "key:'some:key':path",
+      "input": "key.'some.key'.path",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["key", "some:key", "path"],
+        "segments": ["key", "some.key", "path"],
         "is_segmented": true,
-        "raw": "key:'some:key':path"
+        "raw": "key.'some.key'.path"
       }
     },
     {
       "name": "quoted_segment_only",
-      "input": "'quoted:key'",
+      "input": "'quoted.key'",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["quoted:key"],
+        "segments": ["quoted.key"],
         "is_segmented": false,
-        "raw": "'quoted:key'"
+        "raw": "'quoted.key'"
       }
     },
     {
       "name": "multiple_quoted_segments",
-      "input": "'first:part':'second:part':normal",
+      "input": "'first.part'.'second.part'.normal",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["first:part", "second:part", "normal"],
+        "segments": ["first.part", "second.part", "normal"],
         "is_segmented": true,
-        "raw": "'first:part':'second:part':normal"
+        "raw": "'first.part'.'second.part'.normal"
       }
     },
     {
       "name": "escaped_quote_in_quoted_segment",
-      "input": "key:'some\\'quoted':path",
+      "input": "key.'some\\'quoted'.path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some'quoted", "path"],
         "is_segmented": true,
-        "raw": "key:'some\\'quoted':path"
+        "raw": "key.'some\\'quoted'.path"
       }
     },
     {
       "name": "escaped_backslash",
-      "input": "key:'some\\\\path':end",
+      "input": "key.'some\\\\path'.end",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some\\path", "end"],
         "is_segmented": true,
-        "raw": "key:'some\\\\path':end"
+        "raw": "key.'some\\\\path'.end"
       }
     },
     {
-      "name": "escaped_colon_in_normal_segment",
-      "input": "key\\:with\\:colons:normal",
+      "name": "escaped_dot_in_normal_segment",
+      "input": "key\\.with\\.dots.normal",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["key:with:colons", "normal"],
+        "segments": ["key.with.dots", "normal"],
         "is_segmented": true,
-        "raw": "key\\:with\\:colons:normal"
+        "raw": "key\\.with\\.dots.normal"
       }
     },
     {
       "name": "empty_segments",
-      "input": ":::",
+      "input": "...",
       "expected_result": "success",
       "expected_key": {
         "segments": ["", "", "", ""],
         "is_segmented": true,
-        "raw": ":::"
+        "raw": "..."
       }
     },
     {
       "name": "empty_quoted_segment",
-      "input": "key:'':path",
+      "input": "key.''.path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "", "path"],
         "is_segmented": true,
-        "raw": "key:'':path"
+        "raw": "key.''.path"
       }
     },
     {
-      "name": "trailing_colon",
-      "input": "key:path:",
+      "name": "trailing_dot",
+      "input": "key.path.",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "path", ""],
         "is_segmented": true,
-        "raw": "key:path:"
+        "raw": "key.path."
       }
     },
     {
-      "name": "leading_colon",
-      "input": ":key:path",
+      "name": "leading_dot",
+      "input": ".key.path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["", "key", "path"],
         "is_segmented": true,
-        "raw": ":key:path"
+        "raw": ".key.path"
       }
     },
     {
       "name": "complex_escaping",
-      "input": "'key\\'s:value':'path\\nwith\\nnewlines':normal\\:segment",
+      "input": "'key\\'s.value'.'path\\nwith\\nnewlines'.normal:segment",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["key's:value", "path\nwith\nnewlines", "normal:segment"],
+        "segments": ["key's.value", "path\nwith\nnewlines", "normal:segment"],
         "is_segmented": true,
-        "raw": "'key\\'s:value':'path\\nwith\\nnewlines':normal\\:segment"
+        "raw": "'key\\'s.value'.'path\\nwith\\nnewlines'.normal:segment"
       }
     },
     {
@@ -155,91 +155,91 @@
     },
     {
       "name": "unterminated_quote_error",
-      "input": "key:'unterminated",
+      "input": "key.'unterminated",
       "expected_result": "error",
       "expected_error_type": "FlyqlError",
       "expected_error_message": "Key parsing error: Unterminated quoted segment"
     },
     {
       "name": "incomplete_escape_error",
-      "input": "key:segment\\",
+      "input": "key.segment\\",
       "expected_result": "error",
       "expected_error_type": "FlyqlError",
       "expected_error_message": "Key parsing error: Incomplete escape sequence"
     },
     {
       "name": "double_quoted_segment_simple",
-      "input": "key:\"some:key\":path",
+      "input": "key.\"some.key\".path",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["key", "some:key", "path"],
+        "segments": ["key", "some.key", "path"],
         "is_segmented": true,
-        "raw": "key:\"some:key\":path"
+        "raw": "key.\"some.key\".path"
       }
     },
     {
       "name": "double_quoted_segment_only",
-      "input": "\"quoted:key\"",
+      "input": "\"quoted.key\"",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["quoted:key"],
+        "segments": ["quoted.key"],
         "is_segmented": false,
-        "raw": "\"quoted:key\""
+        "raw": "\"quoted.key\""
       }
     },
     {
       "name": "mixed_single_and_double_quotes",
-      "input": "'single:part':\"double:part\":normal",
+      "input": "'single.part'.\"double.part\".normal",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["single:part", "double:part", "normal"],
+        "segments": ["single.part", "double.part", "normal"],
         "is_segmented": true,
-        "raw": "'single:part':\"double:part\":normal"
+        "raw": "'single.part'.\"double.part\".normal"
       }
     },
     {
       "name": "escaped_double_quote_in_double_quoted_segment",
-      "input": "key:\"some\\\"quoted\":path",
+      "input": "key.\"some\\\"quoted\".path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some\"quoted", "path"],
         "is_segmented": true,
-        "raw": "key:\"some\\\"quoted\":path"
+        "raw": "key.\"some\\\"quoted\".path"
       }
     },
     {
       "name": "json_key_with_quotes",
-      "input": "some:'key\"with\"quotes':path",
+      "input": "some.'key\"with\"quotes'.path",
       "expected_result": "success",
       "expected_key": {
         "segments": ["some", "key\"with\"quotes", "path"],
         "is_segmented": true,
-        "raw": "some:'key\"with\"quotes':path"
+        "raw": "some.'key\"with\"quotes'.path"
       }
     },
     {
-      "name": "json_key_with_quotes_and_colons",
-      "input": "some:'key\"with\"quotes:and:columns':path",
+      "name": "json_key_with_quotes_and_dots",
+      "input": "some.'key\"with\"quotes.and.dots'.path",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["some", "key\"with\"quotes:and:columns", "path"],
+        "segments": ["some", "key\"with\"quotes.and.dots", "path"],
         "is_segmented": true,
-        "raw": "some:'key\"with\"quotes:and:columns':path"
+        "raw": "some.'key\"with\"quotes.and.dots'.path"
       }
     },
     {
       "name": "empty_double_quoted_segments",
-      "input": "value:\"\"a:b:c\"\":key",
+      "input": "value.\"\".a.b.c.\"\".key",
       "expected_result": "success",
       "expected_key": {
-        "segments": ["value", "a", "b", "c", "key"],
+        "segments": ["value", "", "a", "b", "c", "", "key"],
         "is_segmented": true,
-        "raw": "value:\"\"a:b:c\"\":key"
+        "raw": "value.\"\".a.b.c.\"\".key"
       }
     },
     {
       "name": "unterminated_double_quote_error",
-      "input": "key:\"unterminated",
+      "input": "key.\"unterminated",
       "expected_result": "error",
       "expected_error_type": "FlyqlError",
       "expected_error_message": "Key parsing error: Unterminated quoted segment"

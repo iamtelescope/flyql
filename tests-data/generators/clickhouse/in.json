@@ -65,7 +65,7 @@
     },
     {
       "name": "in_json_field",
-      "input": "json_field:status in [200, 201]",
+      "input": "json_field.status in [200, 201]",
       "expected_result": "success",
       "expected_sql_contains": ["JSONExtract", "IN (200, 201)"]
     },

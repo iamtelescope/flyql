@@ -1,0 +1,286 @@
+{
+  "version": "1.0",
+  "description": "Basic columns parser tests",
+  "test_suite": "basic",
+  "tests": [
+    {
+      "name": "simple_column",
+      "input": "message",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "nested_column",
+      "input": "metadata.labels.tier",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "metadata.labels.tier",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "metadata",
+            "labels",
+            "tier"
+          ],
+          "is_segmented": true
+        }
+      ]
+    },
+    {
+      "name": "column_with_dots",
+      "input": "user.profile.name",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "user.profile.name",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "user",
+            "profile",
+            "name"
+          ],
+          "is_segmented": true
+        }
+      ]
+    },
+    {
+      "name": "column_with_underscore",
+      "input": "user_id",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "user_id",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "user_id"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_hyphen",
+      "input": "request-id",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "request-id",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "request-id"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_slash",
+      "input": "path/to/column",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "path/to/column",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "path/to/column"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias",
+      "input": "message as msg",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [],
+          "alias": "msg",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_modifier",
+      "input": "message|chars",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "chars",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_modifier_and_args",
+      "input": "message|chars(25)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "chars",
+              "arguments": [
+                25
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "multiple_columns",
+      "input": "message, status, user_id",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        },
+        {
+          "name": "status",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "status"
+          ],
+          "is_segmented": false
+        },
+        {
+          "name": "user_id",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "user_id"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "multiple_columns_with_modifiers",
+      "input": "message|upper, status|lower",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        },
+        {
+          "name": "status",
+          "modifiers": [
+            {
+              "name": "lower",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "status"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "column_with_spaces_around",
+      "input": "  message  ",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "columns_with_spaces",
+      "input": "message , status , user_id",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        },
+        {
+          "name": "status",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "status"
+          ],
+          "is_segmented": false
+        },
+        {
+          "name": "user_id",
+          "modifiers": [],
+          "alias": null,
+          "segments": [
+            "user_id"
+          ],
+          "is_segmented": false
+        }
+      ]
+    }
+  ]
+}

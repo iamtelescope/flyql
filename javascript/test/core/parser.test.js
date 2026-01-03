@@ -136,7 +136,7 @@ describe('Parser Hyphen Keys Tests', () => {
         expect(result1.root.left.expression.value).toBe(123)
 
         // Test multi-segment key with hyphens
-        const result2 = parse('data:user-identifier = "john-doe"')
+        const result2 = parse('data.user-identifier = "john-doe"')
         expect(result2.errno).toBe(0)
         expect(result2.root.left.expression.key.segments).toEqual(['data', 'user-identifier'])
         expect(result2.root.left.expression.value).toBe('john-doe')

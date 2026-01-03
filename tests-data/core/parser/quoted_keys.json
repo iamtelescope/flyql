@@ -5,12 +5,12 @@
   "tests": [
     {
       "name": "single_quoted_key_segment",
-      "input": "key:'part:with:semicolon':just:simple:part = 123",
+      "input": "key.'part.with.dot'.just.simple.part = 123",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "key:'part:with:semicolon':just:simple:part",
+          "key": "key.'part.with.dot'.just.simple.part",
           "operator": "=",
           "value": 123.0,
           "value_type": "number"
@@ -21,12 +21,12 @@
     },
     {
       "name": "double_quoted_key_segment",
-      "input": "key:\"part:with:semicolon\":just:simple:part = 456",
+      "input": "key.\"part.with.dot\".just.simple.part = 456",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "key:\"part:with:semicolon\":just:simple:part",
+          "key": "key.\"part.with.dot\".just.simple.part",
           "operator": "=",
           "value": 456.0,
           "value_type": "number"
@@ -37,12 +37,12 @@
     },
     {
       "name": "mixed_quotes_in_key",
-      "input": "key:'single':and:\"double\":parts = 'value'",
+      "input": "key.'single'.and.\"double\".parts = 'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "key:'single':and:\"double\":parts",
+          "key": "key.'single'.and.\"double\".parts",
           "operator": "=",
           "value": "value",
           "value_type": "string"
@@ -53,12 +53,12 @@
     },
     {
       "name": "escaped_single_quote_in_key",
-      "input": "key:'part\\'s:value':test = 789",
+      "input": "key.'part\\'s.value'.test = 789",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "key:'part\\'s:value':test",
+          "key": "key.'part\\'s.value'.test",
           "operator": "=",
           "value": 789.0,
           "value_type": "number"
@@ -69,12 +69,12 @@
     },
     {
       "name": "escaped_double_quote_in_key",
-      "input": "key:\"part\\\"s:value\":test = 999",
+      "input": "key.\"part\\\"s.value\".test = 999",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "key:\"part\\\"s:value\":test",
+          "key": "key.\"part\\\"s.value\".test",
           "operator": "=",
           "value": 999.0,
           "value_type": "number"
@@ -85,12 +85,12 @@
     },
     {
       "name": "normal_key_still_works",
-      "input": "normal:key:path = 'test'",
+      "input": "normal.key.path = 'test'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "normal:key:path",
+          "key": "normal.key.path",
           "operator": "=",
           "value": "test",
           "value_type": "string"
@@ -101,7 +101,7 @@
     },
     {
       "name": "quoted_key_with_boolean_operator",
-      "input": "key:'part:with:colon':test = 1 and normal:key = 2",
+      "input": "key.'part.with.colon'.test = 1 and normal.key = 2",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -109,7 +109,7 @@
         "left": {
           "bool_operator": "",
           "expression": {
-            "key": "key:'part:with:colon':test",
+            "key": "key.'part.with.colon'.test",
             "operator": "=",
             "value": 1.0,
             "value_type": "number"
@@ -120,7 +120,7 @@
         "right": {
           "bool_operator": "",
           "expression": {
-            "key": "normal:key",
+            "key": "normal.key",
             "operator": "=",
             "value": 2.0,
             "value_type": "number"
@@ -132,12 +132,12 @@
     },
     {
       "name": "quoted_key_starting_with_quote",
-      "input": "'key:with:colons' = value",
+      "input": "'key.with.colons' = value",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "'key:with:colons'",
+          "key": "'key.with.colons'",
           "operator": "=",
           "value": "value",
           "value_type": "string"
@@ -148,12 +148,12 @@
     },
     {
       "name": "double_quoted_key_starting_with_quote",
-      "input": "\"key:with:colons\" = value",
+      "input": "\"key.with.dots\" = value",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "\"key:with:colons\"",
+          "key": "\"key.with.dots\"",
           "operator": "=",
           "value": "value",
           "value_type": "string"
@@ -164,7 +164,7 @@
     },
     {
       "name": "single_quoted_key_after_bool_operator",
-      "input": "a=1 and 'quoted:key'=2",
+      "input": "a=1 and 'quoted.key'=2",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -183,7 +183,7 @@
         "right": {
           "bool_operator": "",
           "expression": {
-            "key": "'quoted:key'",
+            "key": "'quoted.key'",
             "operator": "=",
             "value": 2.0,
             "value_type": "number"
@@ -195,7 +195,7 @@
     },
     {
       "name": "double_quoted_key_after_bool_operator",
-      "input": "a=1 and \"quoted:key\"=2",
+      "input": "a=1 and \"quoted.key\"=2",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -214,7 +214,7 @@
         "right": {
           "bool_operator": "",
           "expression": {
-            "key": "\"quoted:key\"",
+            "key": "\"quoted.key\"",
             "operator": "=",
             "value": 2.0,
             "value_type": "number"

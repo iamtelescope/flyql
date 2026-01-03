@@ -1,0 +1,22 @@
+from enum import Enum
+
+
+class State(Enum):
+    ERROR = "Error"
+    COLUMN = "Name"
+    EXPECT_COLUMN = "ExpectColumn"
+    EXPECT_ALIAS = "ExpectAlias"
+    EXPECT_ALIAS_OPERATOR = "ExpectAliasOperator"
+    EXPECT_ALIAS_DELIMITER = "ExpectAliasDelimiter"
+    EXPECT_MODIFIER = "ExpectModifier"
+    MODIFIER = "Modifier"
+    MODIFIER_COMPLETE = "ModifierComplete"
+    MODIFIER_OPERATOR = "ModifierOperator"
+    MODIFIER_ARGUMENT = "ModifierArgument"
+    MODIFIER_ARGUMENT_DOUBLE_QUOTED = "ModifierArgumentDoubleQuoted"
+    MODIFIER_ARGUMENT_SINGLE_QUOTED = "ModifierArgumentSingleQuoted"
+    EXPECT_MODIFIER_ARGUMENT = "ExpectModifierArgument"
+    EXPECT_MODIFIER_ARGUMENT_DELIMITER = "ExpectModifierArgumentDelimiter"
+    SINGLE_QUOTED_ARGUMENT = "SingleQuotedArgument"
+    DOUBLE_QUOTED_ARGUMENT = "DoubleQuotedArgument"
+    MODIFIER_ARGUMENT_DELIMITER = "ArgumentDelimiter"

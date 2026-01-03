@@ -24,14 +24,14 @@ describe('Key', () => {
         const key = new Key(['key', 'some', 'path'])
         expect(key.segments).toEqual(['key', 'some', 'path'])
         expect(key.isSegmented).toBe(true)
-        expect(key.raw).toBe('key:some:path')
+        expect(key.raw).toBe('key.some.path')
     })
 
     it('should create key with custom raw', () => {
-        const key = new Key(['key', 'some:path'], "key:'some:path'")
-        expect(key.segments).toEqual(['key', 'some:path'])
+        const key = new Key(['key', 'some.path'], "key.'some.path'")
+        expect(key.segments).toEqual(['key', 'some.path'])
         expect(key.isSegmented).toBe(true)
-        expect(key.raw).toBe("key:'some:path'")
+        expect(key.raw).toBe("key.'some.path'")
     })
 
     it('should create empty key', () => {
@@ -128,8 +128,8 @@ describe('KeyParser individual tests', () => {
         expect(key.raw).toBe(expected.raw)
     })
 
-    it('should parse JSON key with quotes and colons', () => {
-        const testCase = testData.tests.find((t) => t.name === 'json_key_with_quotes_and_colons')
+    it('should parse JSON key with quotes and dots', () => {
+        const testCase = testData.tests.find((t) => t.name === 'json_key_with_quotes_and_dots')
         const key = parseKey(testCase.input)
         const expected = testCase.expected_key
         expect(key.segments).toEqual(expected.segments)

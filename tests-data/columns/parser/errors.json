@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "description": "Error handling tests",
+  "test_suite": "errors",
+  "tests": [
+    {
+      "name": "invalid_character_at_start",
+      "input": "@message",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 2,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "invalid_character_in_column",
+      "input": "mes@sage",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 6,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "incomplete_modifier",
+      "input": "message|",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unclosed_modifier_args",
+      "input": "message|chars(",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 16,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unclosed_single_quote",
+      "input": "message|split('tab)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 12,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "unclosed_double_quote",
+      "input": "message|split(\"tab)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 12,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "incomplete_alias_operator",
+      "input": "message a",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 14,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "incomplete_alias",
+      "input": "message as",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 14,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "invalid_alias_operator",
+      "input": "message ax msg",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 4,
+        "message_contains": ""
+      }
+    },
+    {
+      "name": "missing_column_after_comma",
+      "input": "message,",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 2,
+        "message_contains": ""
+      }
+    }
+  ]
+}

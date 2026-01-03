@@ -11,7 +11,7 @@
     },
     {
       "name": "unknown_field_segmented",
-      "input": "unknown:path='test'",
+      "input": "unknown.path='test'",
       "expected_result": "error",
       "expected_error_contains": "unknown field"
     },
@@ -23,7 +23,7 @@
     },
     {
       "name": "array_invalid_index",
-      "input": "tags:invalid='test'",
+      "input": "tags.invalid='test'",
       "expected_result": "error",
       "expected_error_contains": "invalid array index"
     },
@@ -41,13 +41,13 @@
     },
     {
       "name": "native_json_invalid_path_starts_with_digit",
-      "input": "new_json:123field='test'",
+      "input": "new_json.123field='test'",
       "expected_result": "error",
       "expected_error_contains": "Invalid JSON path"
     },
     {
       "name": "native_json_empty_path_part",
-      "input": "new_json:user::field='test'",
+      "input": "new_json.user..field='test'",
       "expected_result": "error",
       "expected_error_contains": "Invalid JSON path"
     }

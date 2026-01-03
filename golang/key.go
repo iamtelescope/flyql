@@ -50,8 +50,8 @@ func (p *keyParser) parseEscapeSequence() (string, error) {
 		return "\n", nil
 	case 't':
 		return "\t", nil
-	case ':':
-		return ":", nil
+	case '.':
+		return ".", nil
 	default:
 		return string(ch), nil
 	}
@@ -90,7 +90,7 @@ func (p *keyParser) parseNormalSegment() error {
 		}
 
 		switch ch {
-		case ':':
+		case '.':
 			return nil
 		case '\'':
 			if err := p.parseQuotedSegment('\''); err != nil {
@@ -132,7 +132,7 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 		p.currentSegment = ""
 
 		ch, ok := p.peek(0)
-		if ok && ch == ':' {
+		if ok && ch == '.' {
 			p.advance()
 			if p.pos >= len(p.input) {
 				p.segments = append(p.segments, "")

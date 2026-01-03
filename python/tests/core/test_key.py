@@ -158,11 +158,11 @@ class TestParseKeyIndividual:
         assert key.is_segmented == expected["is_segmented"]
         assert key.raw == expected["raw"]
 
-    def test_escaped_colon_in_normal_segment(self, test_data):
+    def test_escaped_dot_in_normal_segment(self, test_data):
         test_case = next(
             t
             for t in test_data["tests"]
-            if t["name"] == "escaped_colon_in_normal_segment"
+            if t["name"] == "escaped_dot_in_normal_segment"
         )
         key = parse_key(test_case["input"])
         expected = test_case["expected_key"]
@@ -188,16 +188,16 @@ class TestParseKeyIndividual:
         assert key.is_segmented == expected["is_segmented"]
         assert key.raw == expected["raw"]
 
-    def test_trailing_colon(self, test_data):
-        test_case = next(t for t in test_data["tests"] if t["name"] == "trailing_colon")
+    def test_trailing_dot(self, test_data):
+        test_case = next(t for t in test_data["tests"] if t["name"] == "trailing_dot")
         key = parse_key(test_case["input"])
         expected = test_case["expected_key"]
         assert key.segments == expected["segments"]
         assert key.is_segmented == expected["is_segmented"]
         assert key.raw == expected["raw"]
 
-    def test_leading_colon(self, test_data):
-        test_case = next(t for t in test_data["tests"] if t["name"] == "leading_colon")
+    def test_leading_dot(self, test_data):
+        test_case = next(t for t in test_data["tests"] if t["name"] == "leading_dot")
         key = parse_key(test_case["input"])
         expected = test_case["expected_key"]
         assert key.segments == expected["segments"]
@@ -292,11 +292,11 @@ class TestParseKeyIndividual:
         assert key.is_segmented == expected["is_segmented"]
         assert key.raw == expected["raw"]
 
-    def test_json_key_with_quotes_and_colons(self, test_data):
+    def test_json_key_with_quotes_and_dots(self, test_data):
         test_case = next(
             t
             for t in test_data["tests"]
-            if t["name"] == "json_key_with_quotes_and_colons"
+            if t["name"] == "json_key_with_quotes_and_dots"
         )
         key = parse_key(test_case["input"])
         expected = test_case["expected_key"]

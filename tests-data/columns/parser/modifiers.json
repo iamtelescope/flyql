@@ -1,0 +1,324 @@
+{
+  "version": "1.0",
+  "description": "Modifier parsing tests",
+  "test_suite": "modifiers",
+  "tests": [
+    {
+      "name": "single_modifier_no_args",
+      "input": "message|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "single_modifier_with_int_arg",
+      "input": "message|chars(10)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "chars",
+              "arguments": [
+                10
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "single_modifier_with_float_arg",
+      "input": "value|round(2.5)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "value",
+          "modifiers": [
+            {
+              "name": "round",
+              "arguments": [
+                2.5
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "value"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "chained_modifiers",
+      "input": "message|upper|chars(10)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            },
+            {
+              "name": "chars",
+              "arguments": [
+                10
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_multiple_args",
+      "input": "message|chars(5,10)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "chars",
+              "arguments": [
+                5,
+                10
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_string_arg_single_quote",
+      "input": "message|split('\\t')",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_string_arg_double_quote",
+      "input": "message|split(\"\\t\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_mixed_args",
+      "input": "text|substr(0,'.')",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "text",
+          "modifiers": [
+            {
+              "name": "substr",
+              "arguments": [
+                0,
+                "."
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "text"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_with_alias",
+      "input": "message|upper as MSG",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": "MSG",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "chained_modifiers_with_alias",
+      "input": "message|upper|chars(25) as msg",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            },
+            {
+              "name": "chars",
+              "arguments": [
+                25
+              ]
+            }
+          ],
+          "alias": "msg",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "nested_column_with_modifiers",
+      "input": "metadata.labels.tier|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "metadata.labels.tier",
+          "modifiers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "metadata",
+            "labels",
+            "tier"
+          ],
+          "is_segmented": true
+        }
+      ]
+    },
+    {
+      "name": "complex_chain",
+      "input": "message|split('\\t')|slice(-1)|join|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            },
+            {
+              "name": "slice",
+              "arguments": [
+                -1
+              ]
+            },
+            {
+              "name": "join",
+              "arguments": []
+            },
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
+      "name": "modifier_empty_args",
+      "input": "message|format()",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "modifiers": [
+            {
+              "name": "format",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false
+        }
+      ]
+    }
+  ]
+}

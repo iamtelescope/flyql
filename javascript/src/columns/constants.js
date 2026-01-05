@@ -46,3 +46,22 @@ export const KNOWN_MODIFIERS = [
     'format',
     'type',
 ]
+
+// Token types for Monaco editor syntax highlighting
+export const CharType = {
+    COLUMN: 'column',
+    ALIAS: 'alias',
+    OPERATOR: 'operator',
+    MODIFIER: 'modifier',
+    ARGUMENT: 'argument',
+    ERROR: 'error',
+}
+
+export const tokenTypes = [
+    CharType.COLUMN,
+    CharType.ALIAS,
+    CharType.OPERATOR,
+    CharType.MODIFIER,
+    CharType.ARGUMENT,
+    CharType.ERROR,
+]

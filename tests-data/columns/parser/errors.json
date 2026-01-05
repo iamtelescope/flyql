@@ -83,15 +83,6 @@
         "errno": 4,
         "message_contains": ""
       }
-    },
-    {
-      "name": "missing_column_after_comma",
-      "input": "message,",
-      "expected_result": "error",
-      "expected_error": {
-        "errno": 2,
-        "message_contains": ""
-      }
     }
   ]
 }

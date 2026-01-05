@@ -1,6 +1,5 @@
-import { CharType } from '../core/constants.js'
-import { isNumeric } from '../core/utils.js'
-import { Parser } from '../core/parser.js'
+import { CharType, tokenTypes } from './constants.js'
+import { Parser } from './parser.js'
 
 class Token {
     constructor(char, charType) {
@@ -18,7 +17,26 @@ class Token {
     }
 }
 
-export const tokenTypes = [CharType.KEY, CharType.VALUE, CharType.OPERATOR, CharType.NUMBER, CharType.STRING]
+export { tokenTypes }
+
+export function getMonacoTokenProvider() {
+    return {
+        getLegend: () => ({
+            tokenTypes: tokenTypes,
+            tokenModifiers: [],
+        }),
+        provideDocumentSemanticTokens: (model) => {
+            const parser = new Parser()
+            parser.parse(model.getValue(), false, true)
+            const data = parser.generateMonacoTokens()
+            return {
+                data: new Uint32Array(data),
+                resultId: null,
+            }
+        },
+        releaseDocumentSemanticTokens: () => {},
+    }
+}
 
 export function generateMonacoTokens(parser) {
     if (!parser.typedChars || parser.typedChars.length === 0) {
@@ -45,16 +63,6 @@ export function generateMonacoTokens(parser) {
         tokens.push(token)
     }
 
-    for (const token of tokens) {
-        if (token.type === CharType.VALUE) {
-            if (isNumeric(token.value)) {
-                token.type = CharType.NUMBER
-            } else {
-                token.type = CharType.STRING
-            }
-        }
-    }
-
     const data = []
     const tokenModifier = 0
     let prevToken = null
@@ -75,23 +83,4 @@ export function generateMonacoTokens(parser) {
     }
 
     return data
-}
-
-export function getMonacoTokenProvider() {
-    return {
-        getLegend: () => ({
-            tokenTypes: tokenTypes,
-            tokenModifiers: [],
-        }),
-        provideDocumentSemanticTokens: (model) => {
-            const parser = new Parser()
-            parser.parse(model.getValue(), false)
-            const data = generateMonacoTokens(parser)
-            return {
-                data: new Uint32Array(data),
-                resultId: null,
-            }
-        },
-        releaseDocumentSemanticTokens: () => {},
-    }
 }

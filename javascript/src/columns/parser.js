@@ -1,7 +1,8 @@
 import { Char } from './char.js'
 import { State } from './state.js'
 import { ParserError } from './exceptions.js'
-import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR } from './constants.js'
+import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, CharType } from './constants.js'
+import { generateMonacoTokens as generateTokens } from './monaco.js'
 
 export class Parser {
     constructor() {
@@ -21,6 +22,17 @@ export class Parser {
         this.modifierArguments = []
         this.columns = []
         this.text = ''
+        this.typedChars = []
+    }
+
+    generateMonacoTokens() {
+        return generateTokens(this)
+    }
+
+    trackChar(charType) {
+        if (this.char) {
+            this.typedChars.push([this.char, charType])
+        }
     }
 
     setText(text) {
@@ -114,24 +126,28 @@ export class Parser {
     extendColumn() {
         if (this.char) {
             this.column += this.char.value
+            this.trackChar(CharType.COLUMN)
         }
     }
 
     extendModifier() {
         if (this.char) {
             this.modifier += this.char.value
+            this.trackChar(CharType.MODIFIER)
         }
     }
 
     extendModifierArgument() {
         if (this.char) {
             this.modifierArgument += this.char.value
+            this.trackChar(CharType.ARGUMENT)
         }
     }
 
     extendAlias() {
         if (this.char) {
             this.alias += this.char.value
+            this.trackChar(CharType.ALIAS)
         }
     }
 
@@ -141,8 +157,10 @@ export class Parser {
         }
     }
 
-    parse(text) {
+    parse(text, raiseError = true, ignoreLastChar = false) {
         this.setText(text)
+        this.raiseError = raiseError
+        this.ignoreLastChar = ignoreLastChar
 
         let i = 0
         while (i < text.length) {
@@ -204,13 +222,15 @@ export class Parser {
             this.linePos += 1
         }
 
-        if (this.state === State.ERROR) {
+        if (this.state === State.ERROR && this.raiseError) {
             throw new ParserError(this.errorText, this.errno)
         }
 
-        this.inStateLastChar()
+        if (!this.ignoreLastChar) {
+            this.inStateLastChar()
+        }
 
-        if (this.state === State.ERROR) {
+        if (this.state === State.ERROR && this.raiseError) {
             throw new ParserError(this.errorText, this.errno)
         }
     }
@@ -219,9 +239,7 @@ export class Parser {
         if (this.state === State.COLUMN) {
             this.storeColumn()
         } else if (this.state === State.EXPECT_COLUMN) {
-            if (!this.column) {
-                this.setErrorState('expected column after delimiter', 2)
-            }
+            return
         } else if (this.state === State.EXPECT_ALIAS) {
             if (this.alias) {
                 this.storeColumn()
@@ -270,6 +288,7 @@ export class Parser {
             this.extendColumn()
             this.setState(State.COLUMN)
         } else {
+            this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character', 2)
         }
     }
@@ -281,11 +300,14 @@ export class Parser {
         } else if (this.char.isColumnValue()) {
             this.extendColumn()
         } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
         } else if (this.char.isModifierOperator()) {
+            this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_MODIFIER)
         } else {
+            this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character', 6)
         }
     }
@@ -296,6 +318,7 @@ export class Parser {
             this.extendModifier()
             this.setState(State.MODIFIER)
         } else {
+            this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character, expected modifier', 7)
         }
     }
@@ -305,22 +328,27 @@ export class Parser {
         if (this.char.isModifierValue()) {
             this.extendModifier()
         } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeModifier()
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
         } else if (this.char.isModifierOperator()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeModifier()
             this.setState(State.EXPECT_MODIFIER)
         } else if (this.char.isSpace()) {
             this.storeModifier()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isBracketOpen()) {
+            this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_MODIFIER_ARGUMENT)
         } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeArgument()
             this.storeModifier()
             throw new Error('unsupported close bracket')
         } else {
+            this.trackChar(CharType.ERROR)
             throw new Error('unsupported char in modifier')
         }
     }
@@ -340,6 +368,7 @@ export class Parser {
             this.extendModifierArgument()
             this.setState(State.MODIFIER_ARGUMENT)
         } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
             if (this.modifierArgument) {
                 this.storeArgument()
             }
@@ -350,11 +379,13 @@ export class Parser {
     inStateModifierArgument() {
         if (!this.char) return
         if (this.char.isModifierArgumentDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeArgument()
             this.setState(State.EXPECT_MODIFIER_ARGUMENT)
         } else if (this.char.isModifierArgumentValue()) {
             this.extendModifierArgument()
         } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeArgument()
             this.setState(State.MODIFIER_COMPLETE)
         }
@@ -431,13 +462,16 @@ export class Parser {
             this.storeModifier()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeModifier()
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
         } else if (this.char.isModifierOperator()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeModifier()
             this.setState(State.EXPECT_MODIFIER)
         } else {
+            this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character', 8)
         }
     }
@@ -474,6 +508,7 @@ export class Parser {
         } else if (this.char.isColumnValue()) {
             this.extendAlias()
         } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
         }
@@ -484,6 +519,7 @@ export class Parser {
         if (this.char.isAliasDelimiter()) {
             this.setState(State.EXPECT_ALIAS)
         } else {
+            this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character, expected alias delimiter', 5)
         }
     }

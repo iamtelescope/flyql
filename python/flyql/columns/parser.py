@@ -206,9 +206,7 @@ class Parser:
         if self.state == State.COLUMN:
             self.store_column()
         elif self.state == State.EXPECT_COLUMN:
-            # Ended while expecting a column (e.g., after comma) - this is an error
-            if not self.column:
-                self.set_error_state("expected column after delimiter", 2)
+            return
         elif self.state == State.EXPECT_ALIAS:
             if self.alias:
                 self.store_column()

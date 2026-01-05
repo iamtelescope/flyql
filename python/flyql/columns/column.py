@@ -17,12 +17,10 @@ class ParsedColumn:
 
     @property
     def segments(self) -> List[str]:
-        """Get path segments from the parsed key"""
         return self.key.segments if self.key else [self.name]
 
     @property
     def is_segmented(self) -> bool:
-        """Check if column has multiple path segments"""
         return self.key.is_segmented if self.key else False
 
     def as_dict(self) -> Dict[str, Any]:

@@ -76,10 +76,10 @@
       "expected_sql": "((active and (message IS NOT NULL AND message != '')) and (status IS NOT NULL AND status != 0))"
     },
     {
-      "name": "truthy_jsonstring_field",
-      "input": "json_field",
+      "name": "truthy_jsonstring_column",
+      "input": "json_column",
       "expected_result": "success",
-      "expected_sql": "(json_field IS NOT NULL AND json_field != '' AND JSONLength(json_field) > 0)"
+      "expected_sql": "(json_column IS NOT NULL AND json_column != '' AND JSONLength(json_column) > 0)"
     }
   ]
 }

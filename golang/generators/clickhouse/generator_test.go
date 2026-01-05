@@ -16,13 +16,13 @@ func getTestDataDir() string {
 	return filepath.Join(filepath.Dir(filename), "..", "..", "..", "tests-data", "generators", "clickhouse")
 }
 
-type fieldsFile struct {
-	Version     string              `json:"version"`
-	Description string              `json:"description"`
-	Fields      map[string]fieldDef `json:"fields"`
+type columnsFile struct {
+	Version     string               `json:"version"`
+	Description string               `json:"description"`
+	Columns     map[string]columnDef `json:"columns"`
 }
 
-type fieldDef struct {
+type columnDef struct {
 	Name       string   `json:"name"`
 	JSONString bool     `json:"jsonstring"`
 	Type       string   `json:"type"`
@@ -45,22 +45,22 @@ type testCase struct {
 	ExpectedErrorContains string   `json:"expected_error_contains,omitempty"`
 }
 
-func loadFields(t *testing.T) map[string]*Field {
-	data, err := os.ReadFile(filepath.Join(getTestDataDir(), "fields.json"))
+func loadColumns(t *testing.T) map[string]*Column {
+	data, err := os.ReadFile(filepath.Join(getTestDataDir(), "columns.json"))
 	if err != nil {
-		t.Fatalf("failed to read fields.json: %v", err)
+		t.Fatalf("failed to read columns.json: %v", err)
 	}
 
-	var ff fieldsFile
+	var ff columnsFile
 	if err := json.Unmarshal(data, &ff); err != nil {
-		t.Fatalf("failed to parse fields.json: %v", err)
+		t.Fatalf("failed to parse columns.json: %v", err)
 	}
 
-	fields := make(map[string]*Field)
-	for name, fd := range ff.Fields {
-		fields[name] = NewField(fd.Name, fd.JSONString, fd.Type, fd.Values)
+	columns := make(map[string]*Column)
+	for name, fd := range ff.Columns {
+		columns[name] = NewColumn(fd.Name, fd.JSONString, fd.Type, fd.Values)
 	}
-	return fields
+	return columns
 }
 
 func loadTestFile(t *testing.T, filename string) *testFile {
@@ -77,7 +77,7 @@ func loadTestFile(t *testing.T, filename string) *testFile {
 }
 
 func runTestCases(t *testing.T, filename string) {
-	fields := loadFields(t)
+	columns := loadColumns(t)
 	tf := loadTestFile(t, filename)
 
 	for _, tc := range tf.Tests {
@@ -87,7 +87,7 @@ func runTestCases(t *testing.T, filename string) {
 				t.Fatalf("parse error: %v", err)
 			}
 
-			sql, genErr := ToSQL(result.Root, fields)
+			sql, genErr := ToSQL(result.Root, columns)
 
 			if tc.ExpectedResult == "error" {
 				if genErr == nil {
@@ -127,8 +127,8 @@ func TestBoolean(t *testing.T) {
 	runTestCases(t, "boolean.json")
 }
 
-func TestJSONFields(t *testing.T) {
-	runTestCases(t, "json_fields.json")
+func TestJSONColumns(t *testing.T) {
+	runTestCases(t, "json_columns.json")
 }
 
 func TestMapArray(t *testing.T) {

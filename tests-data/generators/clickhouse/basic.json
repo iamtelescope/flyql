@@ -125,9 +125,9 @@
     },
     {
       "name": "enum_valid_value",
-      "input": "enum_field='value1'",
+      "input": "enum_column='value1'",
       "expected_result": "success",
-      "expected_sql": "enum_field = 'value1'"
+      "expected_sql": "enum_column = 'value1'"
     }
   ]
 }

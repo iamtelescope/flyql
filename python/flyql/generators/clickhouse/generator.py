@@ -10,7 +10,7 @@ from flyql.core.constants import (
 )
 from flyql.core.tree import Node
 
-from flyql.generators.clickhouse.field import Field
+from flyql.generators.clickhouse.column import Column
 from flyql.generators.clickhouse.helpers import (
     validate_operation,
     validate_in_list_types,
@@ -121,44 +121,44 @@ def prepare_like_pattern_value(value: str) -> Tuple[bool, str]:
 
 
 def truthy_expression_to_sql(
-    expression: Expression, fields: Mapping[str, Field]
+    expression: Expression, columns: Mapping[str, Column]
 ) -> str:
     """Generate SQL for truthy check (non-falsy value).
 
     Type-aware truthy checks:
-    - String: field IS NOT NULL AND field != ''
-    - Int/Float: field IS NOT NULL AND field != 0
-    - Bool: field (ClickHouse supports boolean expressions directly)
-    - Date: field IS NOT NULL
+    - String: column IS NOT NULL AND column != ''
+    - Int/Float: column IS NOT NULL AND column != 0
+    - Bool: column (ClickHouse supports boolean expressions directly)
+    - Date: column IS NOT NULL
     """
-    field_name = expression.key.segments[0]
-    if field_name not in fields:
-        raise FlyqlError(f"unknown field: {field_name}")
+    column_name = expression.key.segments[0]
+    if column_name not in columns:
+        raise FlyqlError(f"unknown column: {column_name}")
 
-    field = fields[field_name]
+    column = columns[column_name]
 
     if expression.key.is_segmented:
-        if field.jsonstring:
+        if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             return (
-                f"(JSONHas({field.name}, {json_path_str}) AND "
-                f"JSONExtractString({field.name}, {json_path_str}) != '')"
+                f"(JSONHas({column.name}, {json_path_str}) AND "
+                f"JSONExtractString({column.name}, {json_path_str}) != '')"
             )
-        elif field.is_json:
+        elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
-            return f"({field.name}.{json_path_str} IS NOT NULL)"
-        elif field.is_map:
+            return f"({column.name}.{json_path_str} IS NOT NULL)"
+        elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
-                f"(mapContains({field.name}, {escaped_map_key}) AND "
-                f"{field.name}[{escaped_map_key}] != '')"
+                f"(mapContains({column.name}, {escaped_map_key}) AND "
+                f"{column.name}[{escaped_map_key}] != '')"
             )
-        elif field.is_array:
+        elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -167,66 +167,68 @@ def truthy_expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             return (
-                f"(length({field.name}) >= {array_index} AND "
-                f"{field.name}[{array_index}] != '')"
+                f"(length({column.name}) >= {array_index} AND "
+                f"{column.name}[{array_index}] != '')"
             )
         else:
-            raise FlyqlError("path search for unsupported field type")
+            raise FlyqlError("path search for unsupported column type")
     else:
-        if field.jsonstring:
+        if column.jsonstring:
             return (
-                f"({field.name} IS NOT NULL AND {field.name} != '' AND "
-                f"JSONLength({field.name}) > 0)"
+                f"({column.name} IS NOT NULL AND {column.name} != '' AND "
+                f"JSONLength({column.name}) > 0)"
             )
-        elif field.normalized_type == NORMALIZED_TYPE_BOOL:
-            return field.name
-        elif field.normalized_type == NORMALIZED_TYPE_STRING:
-            return f"({field.name} IS NOT NULL AND {field.name} != '')"
-        elif field.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
-            return f"({field.name} IS NOT NULL AND {field.name} != 0)"
-        elif field.normalized_type == NORMALIZED_TYPE_DATE:
-            return f"({field.name} IS NOT NULL)"
+        elif column.normalized_type == NORMALIZED_TYPE_BOOL:
+            return column.name
+        elif column.normalized_type == NORMALIZED_TYPE_STRING:
+            return f"({column.name} IS NOT NULL AND {column.name} != '')"
+        elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+            return f"({column.name} IS NOT NULL AND {column.name} != 0)"
+        elif column.normalized_type == NORMALIZED_TYPE_DATE:
+            return f"({column.name} IS NOT NULL)"
         else:
-            return f"({field.name} IS NOT NULL)"
+            return f"({column.name} IS NOT NULL)"
 
 
-def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+def falsy_expression_to_sql(
+    expression: Expression, columns: Mapping[str, Column]
+) -> str:
     """Generate SQL for falsy check (null or falsy value).
 
     Type-aware falsy checks (negation of truthy):
-    - String: field IS NULL OR field = ''
-    - Int/Float: field IS NULL OR field = 0
-    - Bool: NOT field (handles NULL correctly in ClickHouse)
-    - Date: field IS NULL
+    - String: column IS NULL OR column = ''
+    - Int/Float: column IS NULL OR column = 0
+    - Bool: NOT column (handles NULL correctly in ClickHouse)
+    - Date: column IS NULL
     """
-    field_name = expression.key.segments[0]
-    if field_name not in fields:
-        raise FlyqlError(f"unknown field: {field_name}")
+    column_name = expression.key.segments[0]
+    if column_name not in columns:
+        raise FlyqlError(f"unknown column: {column_name}")
 
-    field = fields[field_name]
+    column = columns[column_name]
 
     if expression.key.is_segmented:
-        if field.jsonstring:
+        if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             return (
-                f"(NOT JSONHas({field.name}, {json_path_str}) OR "
-                f"JSONExtractString({field.name}, {json_path_str}) = '')"
+                f"(NOT JSONHas({column.name}, {json_path_str}) OR "
+                f"JSONExtractString({column.name}, {json_path_str}) = '')"
             )
-        elif field.is_json:
+        elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
-            return f"({field.name}.{json_path_str} IS NULL)"
-        elif field.is_map:
+            return f"({column.name}.{json_path_str} IS NULL)"
+        elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
-                f"(NOT mapContains({field.name}, {escaped_map_key}) OR "
-                f"{field.name}[{escaped_map_key}] = '')"
+                f"(NOT mapContains({column.name}, {escaped_map_key}) OR "
+                f"{column.name}[{escaped_map_key}] = '')"
             )
-        elif field.is_array:
+        elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -235,64 +237,64 @@ def falsy_expression_to_sql(expression: Expression, fields: Mapping[str, Field])
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             return (
-                f"(length({field.name}) < {array_index} OR "
-                f"{field.name}[{array_index}] = '')"
+                f"(length({column.name}) < {array_index} OR "
+                f"{column.name}[{array_index}] = '')"
             )
         else:
-            raise FlyqlError("path search for unsupported field type")
+            raise FlyqlError("path search for unsupported column type")
     else:
-        if field.jsonstring:
+        if column.jsonstring:
             return (
-                f"({field.name} IS NULL OR {field.name} = '' OR "
-                f"JSONLength({field.name}) = 0)"
+                f"({column.name} IS NULL OR {column.name} = '' OR "
+                f"JSONLength({column.name}) = 0)"
             )
-        elif field.normalized_type == NORMALIZED_TYPE_BOOL:
-            return f"NOT {field.name}"
-        elif field.normalized_type == NORMALIZED_TYPE_STRING:
-            return f"({field.name} IS NULL OR {field.name} = '')"
-        elif field.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
-            return f"({field.name} IS NULL OR {field.name} = 0)"
-        elif field.normalized_type == NORMALIZED_TYPE_DATE:
-            return f"({field.name} IS NULL)"
+        elif column.normalized_type == NORMALIZED_TYPE_BOOL:
+            return f"NOT {column.name}"
+        elif column.normalized_type == NORMALIZED_TYPE_STRING:
+            return f"({column.name} IS NULL OR {column.name} = '')"
+        elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+            return f"({column.name} IS NULL OR {column.name} = 0)"
+        elif column.normalized_type == NORMALIZED_TYPE_DATE:
+            return f"({column.name} IS NULL)"
         else:
-            return f"({field.name} IS NULL)"
+            return f"({column.name} IS NULL)"
 
 
-def in_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
-    field_name = expression.key.segments[0]
-    if field_name not in fields:
-        raise FlyqlError(f"unknown field: {field_name}")
+def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+    column_name = expression.key.segments[0]
+    if column_name not in columns:
+        raise FlyqlError(f"unknown column: {column_name}")
 
-    field = fields[field_name]
+    column = columns[column_name]
     is_not_in = expression.operator == Operator.NOT_IN.value
 
     if not expression.values:
         return "1" if is_not_in else "0"
 
-    if field.normalized_type is not None and not expression.key.is_segmented:
-        validate_in_list_types(expression.values, field.normalized_type)
+    if column.normalized_type is not None and not expression.key.is_segmented:
+        validate_in_list_types(expression.values, column.normalized_type)
 
     values_sql = ", ".join(escape_param(v) for v in expression.values)
     sql_op = "NOT IN" if is_not_in else "IN"
 
     if expression.key.is_segmented:
-        if field.is_json:
+        if column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"$.{part}" for part in json_path)
             return (
-                f"JSON_VALUE({field.name}, '{json_path_str}') {sql_op} ({values_sql})"
+                f"JSON_VALUE({column.name}, '{json_path_str}') {sql_op} ({values_sql})"
             )
-        elif field.jsonstring:
+        elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
-            return f"JSONExtractString({field.name}, {json_path_str}) {sql_op} ({values_sql})"
-        elif field.is_map:
+            return f"JSONExtractString({column.name}, {json_path_str}) {sql_op} ({values_sql})"
+        elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            return f"{field.name}[{escaped_map_key}] {sql_op} ({values_sql})"
-        elif field.is_array:
+            return f"{column.name}[{escaped_map_key}] {sql_op} ({values_sql})"
+        elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -300,19 +302,19 @@ def in_expression_to_sql(expression: Expression, fields: Mapping[str, Field]) ->
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            return f"{field.name}[{array_index}] {sql_op} ({values_sql})"
+            return f"{column.name}[{array_index}] {sql_op} ({values_sql})"
         else:
-            raise FlyqlError("path search for unsupported field type")
+            raise FlyqlError("path search for unsupported column type")
     else:
-        return f"{field.name} {sql_op} ({values_sql})"
+        return f"{column.name} {sql_op} ({values_sql})"
 
 
-def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> str:
+def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
     if expression.operator == Operator.TRUTHY.value:
-        return truthy_expression_to_sql(expression, fields)
+        return truthy_expression_to_sql(expression, columns)
 
     if expression.operator in (Operator.IN.value, Operator.NOT_IN.value):
-        return in_expression_to_sql(expression, fields)
+        return in_expression_to_sql(expression, columns)
 
     validate_operator(expression.operator)
     text = ""
@@ -322,23 +324,23 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
         if expression.operator == Operator.NOT_REGEX.value:
             reverse_operator = "not "
         func = OPERATOR_TO_CLICKHOUSE_FUNC[expression.operator]
-        field_name = expression.key.segments[0]
-        if field_name not in fields:
-            raise FlyqlError(f"unknown field: {field_name}")
-        field = fields[field_name]
+        column_name = expression.key.segments[0]
+        if column_name not in columns:
+            raise FlyqlError(f"unknown column: {column_name}")
+        column = columns[column_name]
 
-        if field.normalized_type is not None:
+        if column.normalized_type is not None:
             validate_operation(
-                expression.value, field.normalized_type, expression.operator
+                expression.value, column.normalized_type, expression.operator
             )
 
-        if field.jsonstring:
+        if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
 
             str_value = escape_param(expression.value)
             multi_if = [
-                f"JSONType({field.name}, {json_path_str}) = 'String', {func}(JSONExtractString({field.name}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
+                f"JSONType({column.name}, {json_path_str}) = 'String', {func}(JSONExtractString({column.name}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
             ]
             if is_number(expression.value) and expression.operator not in [
                 Operator.REGEX.value,
@@ -346,27 +348,29 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
             ]:
                 multi_if.extend(
                     [
-                        f"JSONType({field.name}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                        f"JSONType({field.name}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                        f"JSONType({field.name}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({field.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({column.name}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({column.name}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({column.name}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
                     ]
                 )
             multi_if.append("0")
             multi_if_str = ",".join(multi_if)
             text = f"{reverse_operator}multiIf({multi_if_str})"
-        elif field.is_json:
+        elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
             value = escape_param(expression.value)
-            text = f"{field.name}.{json_path_str} {expression.operator} {value}"
-        elif field.is_map:
+            text = f"{column.name}.{json_path_str} {expression.operator} {value}"
+        elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             value = escape_param(expression.value)
-            text = f"{reverse_operator}{func}({field.name}[{escaped_map_key}], {value})"
-        elif field.is_array:
+            text = (
+                f"{reverse_operator}{func}({column.name}[{escaped_map_key}], {value})"
+            )
+        elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -375,31 +379,31 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             value = escape_param(expression.value)
-            text = f"{reverse_operator}{func}({field.name}[{array_index}], {value})"
+            text = f"{reverse_operator}{func}({column.name}[{array_index}], {value})"
         else:
-            raise FlyqlError("path search for unsupported field type")
+            raise FlyqlError("path search for unsupported column type")
 
     else:
-        field_name = expression.key.segments[0]
-        if field_name not in fields:
-            raise FlyqlError(f"unknown field: {field_name}")
+        column_name = expression.key.segments[0]
+        if column_name not in columns:
+            raise FlyqlError(f"unknown column: {column_name}")
 
-        field = fields[field_name]
+        column = columns[column_name]
 
-        if field.values and str(expression.value) not in field.values:
+        if column.values and str(expression.value) not in column.values:
             raise FlyqlError(f"unknown value: {expression.value}")
 
-        if field.normalized_type is not None:
+        if column.normalized_type is not None:
             validate_operation(
-                expression.value, field.normalized_type, expression.operator
+                expression.value, column.normalized_type, expression.operator
             )
 
         if expression.operator == Operator.REGEX.value:
             value = escape_param(str(expression.value))
-            text = f"match({field.name}, {value})"
+            text = f"match({column.name}, {value})"
         elif expression.operator == Operator.NOT_REGEX.value:
             value = escape_param(str(expression.value))
-            text = f"not match({field.name}, {value})"
+            text = f"not match({column.name}, {value})"
         elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:
             operator = expression.operator
             is_like_pattern, value = prepare_like_pattern_value(str(expression.value))
@@ -409,19 +413,19 @@ def expression_to_sql(expression: Expression, fields: Mapping[str, Field]) -> st
                     operator = "LIKE"
                 else:
                     operator = "NOT LIKE"
-            text = f"{field.name} {operator} {value}"
+            text = f"{column.name} {operator} {value}"
         else:
             if isinstance(expression.value, (int, float)):
                 value = str(expression.value)
             else:
                 value = escape_param(str(expression.value))
-            text = f"{field.name} {expression.operator} {value}"
+            text = f"{column.name} {expression.operator} {value}"
     return text
 
 
-def to_sql(root: Node, fields: Mapping[str, Field]) -> str:
+def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
     """
-    Returns ClickHouse WHERE clause for given tree and fields
+    Returns ClickHouse WHERE clause for given tree and columns
     """
     left = ""
     right = ""
@@ -431,16 +435,16 @@ def to_sql(root: Node, fields: Mapping[str, Field]) -> str:
     if root.expression is not None:
         # For negated truthy expressions, generate falsy SQL directly
         if is_negated and root.expression.operator == Operator.TRUTHY.value:
-            text = falsy_expression_to_sql(expression=root.expression, fields=fields)
+            text = falsy_expression_to_sql(expression=root.expression, columns=columns)
             is_negated = False  # Already handled
         else:
-            text = expression_to_sql(expression=root.expression, fields=fields)
+            text = expression_to_sql(expression=root.expression, columns=columns)
 
     if root.left is not None:
-        left = to_sql(root=root.left, fields=fields)
+        left = to_sql(root=root.left, columns=columns)
 
     if root.right is not None:
-        right = to_sql(root=root.right, fields=fields)
+        right = to_sql(root=root.right, columns=columns)
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)

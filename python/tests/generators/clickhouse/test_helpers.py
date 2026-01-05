@@ -23,7 +23,7 @@ def test_get_value_type(value, expected):
 
 
 @pytest.mark.parametrize(
-    "value,field_normalized_type,operator",
+    "value,column_normalized_type,operator",
     [
         ("hello", "string", Operator.EQUALS.value),
         ("hello", "string", Operator.REGEX.value),
@@ -35,12 +35,12 @@ def test_get_value_type(value, expected):
         (3.14, "float", Operator.EQUALS.value),
     ],
 )
-def test_validate_operation_allowed(value, field_normalized_type, operator):
-    validate_operation(value, field_normalized_type, operator)
+def test_validate_operation_allowed(value, column_normalized_type, operator):
+    validate_operation(value, column_normalized_type, operator)
 
 
 @pytest.mark.parametrize(
-    "value,field_normalized_type,operator",
+    "value,column_normalized_type,operator",
     [
         # String vs numbers comparison
         (123, "string", Operator.GREATER_THAN.value),
@@ -57,9 +57,9 @@ def test_validate_operation_allowed(value, field_normalized_type, operator):
         (False, "bool", Operator.LOWER_OR_EQUALS_THAN.value),
     ],
 )
-def test_validate_operation_forbidden(value, field_normalized_type, operator):
+def test_validate_operation_forbidden(value, column_normalized_type, operator):
     with pytest.raises(FlyqlError, match="operation not allowed"):
-        validate_operation(value, field_normalized_type, operator)
+        validate_operation(value, column_normalized_type, operator)
 
 
 def test_validate_operation_unknown_type():

@@ -100,13 +100,13 @@
       "expected": false
     },
     {
-      "name": "in_missing_field",
+      "name": "in_missing_column",
       "query": "status in [200, 201]",
       "data": {"other": "value"},
       "expected": false
     },
     {
-      "name": "not_in_missing_field",
+      "name": "not_in_missing_column",
       "query": "status not in [200, 201]",
       "data": {"other": "value"},
       "expected": true

@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "description": "Field definitions for ClickHouse generator tests",
-  "fields": {
+  "columns": {
     "message": {
       "name": "message",
       "jsonstring": false,
@@ -32,8 +32,8 @@
       "type": "Date",
       "values": null
     },
-    "json_field": {
-      "name": "json_field",
+    "json_column": {
+      "name": "json_column",
       "jsonstring": true,
       "type": "String",
       "values": null
@@ -56,8 +56,8 @@
       "type": "Map(String, String)",
       "values": null
     },
-    "enum_field": {
-      "name": "enum_field",
+    "enum_column": {
+      "name": "enum_column",
       "jsonstring": false,
       "type": "Enum8",
       "values": ["value1", "value2"]

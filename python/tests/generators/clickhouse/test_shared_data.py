@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 
 from flyql.core.parser import parse
-from flyql.generators.clickhouse.field import Field
+from flyql.generators.clickhouse.column import Column
 from flyql.generators.clickhouse.generator import to_sql
 
 
@@ -15,17 +15,17 @@ TESTS_DATA_DIR = (
 )
 
 
-def load_fields():
-    fields_file = TESTS_DATA_DIR / "fields.json"
-    with open(fields_file) as f:
+def load_columns():
+    columns_file = TESTS_DATA_DIR / "columns.json"
+    with open(columns_file) as f:
         data = json.load(f)
 
-    fields = {}
-    for name, fd in data["fields"].items():
-        fields[name] = Field(
+    columns = {}
+    for name, fd in data["columns"].items():
+        columns[name] = Column(
             fd["name"], fd.get("jsonstring", False), fd["type"], fd.get("values")
         )
-    return fields
+    return columns
 
 
 def load_test_file(filename):
@@ -35,8 +35,8 @@ def load_test_file(filename):
 
 
 @pytest.fixture(scope="module")
-def fields():
-    return load_fields()
+def columns():
+    return load_columns()
 
 
 def generate_test_cases(filename):
@@ -59,7 +59,7 @@ class TestBasic:
     )
     def test_basic(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -70,12 +70,12 @@ class TestBasic:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -94,7 +94,7 @@ class TestBoolean:
     )
     def test_boolean(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -105,12 +105,12 @@ class TestBoolean:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -122,14 +122,14 @@ class TestBoolean:
                 assert substr in sql, f"SQL {sql!r} does not contain {substr!r}"
 
 
-class TestJSONFields:
+class TestJSONColumns:
     @pytest.mark.parametrize(
         "input_query,expected_result,expected_sql,expected_sql_contains,expected_error_contains",
-        list(generate_test_cases("json_fields.json")),
+        list(generate_test_cases("json_columns.json")),
     )
-    def test_json_fields(
+    def test_json_columns(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -140,12 +140,12 @@ class TestJSONFields:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -164,7 +164,7 @@ class TestMapArray:
     )
     def test_map_array(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -175,12 +175,12 @@ class TestMapArray:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -199,7 +199,7 @@ class TestErrors:
     )
     def test_errors(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -219,14 +219,14 @@ class TestErrors:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(
                     exc_info.value
                 ), f"Error {str(exc_info.value)!r} does not contain {expected_error_contains!r}"
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -241,7 +241,7 @@ class TestTruthy:
     )
     def test_truthy(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -252,12 +252,12 @@ class TestTruthy:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -276,7 +276,7 @@ class TestNot:
     )
     def test_not(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -287,12 +287,12 @@ class TestNot:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (
@@ -311,7 +311,7 @@ class TestIn:
     )
     def test_in(
         self,
-        fields,
+        columns,
         input_query,
         expected_result,
         expected_sql,
@@ -322,12 +322,12 @@ class TestIn:
 
         if expected_result == "error":
             with pytest.raises(Exception) as exc_info:
-                to_sql(result.root, fields)
+                to_sql(result.root, columns)
             if expected_error_contains:
                 assert expected_error_contains in str(exc_info.value)
             return
 
-        sql = to_sql(result.root, fields)
+        sql = to_sql(result.root, columns)
 
         if expected_sql:
             assert (

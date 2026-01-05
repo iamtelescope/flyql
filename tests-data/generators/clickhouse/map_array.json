@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "Map and Array fields ClickHouse generator test cases",
+  "description": "Map and Array columns ClickHouse generator test cases",
   "test_suite": "map_array",
   "tests": [
     {

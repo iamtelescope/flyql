@@ -71,9 +71,9 @@
     },
     {
       "name": "not_truthy_jsonstring",
-      "input": "not json_field",
+      "input": "not json_column",
       "expected_result": "success",
-      "expected_sql": "(json_field IS NULL OR json_field = '' OR JSONLength(json_field) = 0)"
+      "expected_sql": "(json_column IS NULL OR json_column = '' OR JSONLength(json_column) = 0)"
     }
   ]
 }

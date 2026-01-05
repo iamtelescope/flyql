@@ -100,7 +100,7 @@ def normalize_clickhouse_type(ch_type: str) -> Optional[str]:
     return None
 
 
-class Field:
+class Column:
     def __init__(
         self,
         name: str,

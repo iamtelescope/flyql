@@ -94,7 +94,7 @@ func NormalizeClickHouseType(chType string) string {
 	return ""
 }
 
-type Field struct {
+type Column struct {
 	Name           string
 	JSONString     bool
 	Type           string
@@ -105,12 +105,12 @@ type Field struct {
 	IsJSON         bool
 }
 
-func NewField(name string, jsonString bool, fieldType string, values []string) *Field {
-	normalizedType := NormalizeClickHouseType(fieldType)
-	return &Field{
+func NewColumn(name string, jsonString bool, columnType string, values []string) *Column {
+	normalizedType := NormalizeClickHouseType(columnType)
+	return &Column{
 		Name:           name,
 		JSONString:     jsonString,
-		Type:           fieldType,
+		Type:           columnType,
 		Values:         values,
 		NormalizedType: normalizedType,
 		IsMap:          normalizedType == NormalizedTypeMap,

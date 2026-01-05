@@ -213,7 +213,7 @@
     },
     {
       "name": "empty_value",
-      "input": "field=",
+      "input": "column=",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -304,12 +304,12 @@
     },
     {
       "name": "key_with_slash",
-      "input": "path/to/field=value",
+      "input": "path/to/column=value",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "path/to/field",
+          "key": "path/to/column",
           "operator": "=",
           "value": "value",
           "value_type": "string"
@@ -320,12 +320,12 @@
     },
     {
       "name": "complex_key",
-      "input": "nested.object:field_name/sub=value",
+      "input": "nested.object:column_name/sub=value",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "expression": {
-          "key": "nested.object:field_name/sub",
+          "key": "nested.object:column_name/sub",
           "operator": "=",
           "value": "value",
           "value_type": "string"

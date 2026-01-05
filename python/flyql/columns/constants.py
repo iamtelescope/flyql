@@ -25,24 +25,3 @@ ESCAPE_SEQUENCES = {
     "v": "\v",
     "\\": "\\",
 }
-
-KNOWN_MODIFIERS = [
-    "chars",
-    "slice",
-    "split",
-    "lines",
-    "firstline",
-    "lastline",
-    "oneline",
-    "lower",
-    "upper",
-    "join",
-    "json",
-    "str",
-    "href",
-    "hl",
-    "highlight",
-    "fmt",
-    "format",
-    "type",
-]

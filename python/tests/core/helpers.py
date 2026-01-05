@@ -132,7 +132,6 @@ def compare_ast(
     if actual["bool_operator"] != expected["bool_operator"]:
         return False
 
-    # Compare negated field (default to False if not present)
     if actual.get("negated", False) != expected.get("negated", False):
         return False
 

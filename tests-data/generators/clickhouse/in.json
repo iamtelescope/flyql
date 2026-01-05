@@ -64,8 +64,8 @@
       "expected_sql": "(status IN (200, 201) or (error IS NOT NULL AND error != ''))"
     },
     {
-      "name": "in_json_field",
-      "input": "json_field.status in [200, 201]",
+      "name": "in_json_column",
+      "input": "json_column.status in [200, 201]",
       "expected_result": "success",
       "expected_sql_contains": ["JSONExtract", "IN (200, 201)"]
     },

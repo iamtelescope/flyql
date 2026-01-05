@@ -277,13 +277,13 @@
     },
     {
       "name": "not_with_quoted_key",
-      "input": "not 'my field'=value",
+      "input": "not 'my column'=value",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
         "negated": true,
         "expression": {
-          "key": "'my field'",
+          "key": "'my column'",
           "operator": "=",
           "value": "value",
           "value_type": "string"

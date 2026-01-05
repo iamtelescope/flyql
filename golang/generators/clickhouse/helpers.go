@@ -7,9 +7,9 @@ import (
 )
 
 type forbiddenOp struct {
-	fieldType string
-	operator  string
-	valueType string
+	columnType string
+	operator   string
+	valueType  string
 }
 
 var forbiddenOperations = map[forbiddenOp]bool{
@@ -48,19 +48,19 @@ func getValueType(value any) string {
 	}
 }
 
-func ValidateOperation(value any, fieldNormalizedType string, operator string) error {
-	if fieldNormalizedType == "" {
+func ValidateOperation(value any, columnNormalizedType string, operator string) error {
+	if columnNormalizedType == "" {
 		return nil
 	}
 
 	op := forbiddenOp{
-		fieldType: fieldNormalizedType,
-		operator:  operator,
-		valueType: getValueType(value),
+		columnType: columnNormalizedType,
+		operator:   operator,
+		valueType:  getValueType(value),
 	}
 
 	if forbiddenOperations[op] {
-		return fmt.Errorf("operation not allowed: %s field with '%s' operator", fieldNormalizedType, operator)
+		return fmt.Errorf("operation not allowed: %s column with '%s' operator", columnNormalizedType, operator)
 	}
 
 	return nil
@@ -74,8 +74,8 @@ var inCompatibleTypes = map[string]map[string]bool{
 	NormalizedTypeDate:   {"string": true},
 }
 
-func ValidateInListTypes(values []any, fieldNormalizedType string) error {
-	if fieldNormalizedType == "" {
+func ValidateInListTypes(values []any, columnNormalizedType string) error {
+	if columnNormalizedType == "" {
 		return nil
 	}
 
@@ -83,7 +83,7 @@ func ValidateInListTypes(values []any, fieldNormalizedType string) error {
 		return nil
 	}
 
-	allowedTypes, ok := inCompatibleTypes[fieldNormalizedType]
+	allowedTypes, ok := inCompatibleTypes[columnNormalizedType]
 	if !ok {
 		return nil
 	}
@@ -91,7 +91,7 @@ func ValidateInListTypes(values []any, fieldNormalizedType string) error {
 	for _, value := range values {
 		valueType := getValueType(value)
 		if valueType != "" && !allowedTypes[valueType] {
-			return fmt.Errorf("type mismatch in IN list: %s field cannot contain %s values", fieldNormalizedType, valueType)
+			return fmt.Errorf("type mismatch in IN list: %s column cannot contain %s values", columnNormalizedType, valueType)
 		}
 	}
 

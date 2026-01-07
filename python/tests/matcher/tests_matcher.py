@@ -58,7 +58,7 @@ def test_matcher_with_or_operator():
 
 
 def test_matcher_with_nested_json():
-    query = "user:name=john"
+    query = "user.name=john"
     data = {"user": {"name": "john"}}
     root = parse(query).root
     evaluator = Evaluator()
@@ -68,7 +68,7 @@ def test_matcher_with_nested_json():
 
 
 def test_matcher_with_json_string():
-    query = "metadata:user:name=john"
+    query = "metadata.user.name=john"
     data = {"metadata": '{"user": {"name": "john"}}'}
     root = parse(query).root
     evaluator = Evaluator()

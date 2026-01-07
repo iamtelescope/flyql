@@ -1,6 +1,6 @@
 package matcher
 
-import "strings"
+import "github.com/iamtelescope/flyql/golang"
 
 type Key struct {
 	Value string
@@ -8,9 +8,23 @@ type Key struct {
 }
 
 func NewKey(value string) Key {
-	parts := strings.Split(value, ":")
+	parsed, err := flyql.ParseKey(value)
+	if err != nil {
+		return Key{
+			Value: value,
+			Path:  []string{},
+		}
+	}
+
+	if len(parsed.Segments) == 0 {
+		return Key{
+			Value: value,
+			Path:  []string{},
+		}
+	}
+
 	return Key{
-		Value: parts[0],
-		Path:  parts[1:],
+		Value: parsed.Segments[0],
+		Path:  parsed.Segments[1:],
 	}
 }

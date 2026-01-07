@@ -105,7 +105,7 @@ func TestMatcherWithOrOperator(t *testing.T) {
 }
 
 func TestMatcherWithNestedJSON(t *testing.T) {
-	query := "user:name=john"
+	query := "user.name=john"
 	data := map[string]any{"user": map[string]any{"name": "john"}}
 
 	result, err := flyql.Parse(query)
@@ -123,7 +123,7 @@ func TestMatcherWithNestedJSON(t *testing.T) {
 }
 
 func TestMatcherWithJSONString(t *testing.T) {
-	query := "metadata:user:name=john"
+	query := "metadata.user.name=john"
 	data := map[string]any{"metadata": `{"user": {"name": "john"}}`}
 
 	result, err := flyql.Parse(query)

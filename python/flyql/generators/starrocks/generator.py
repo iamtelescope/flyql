@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Mapping, Tuple, Any
 
@@ -82,6 +83,9 @@ def escape_param(item: Any) -> str:
     else:
         return str(item)
 
+def quote_json_path_part(part: str) -> str:
+    return "'\"%s\"'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in part)
+
 
 def is_number(value: Any) -> bool:
     try:
@@ -143,9 +147,7 @@ def truthy_expression_to_sql(
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return f"(`{column.name}`->{json_path_str} IS NOT NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
@@ -168,9 +170,7 @@ def truthy_expression_to_sql(
             )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return (
                 f"(json_exists(parse_json(`{column.name}`), {json_path_str}) AND "
                 f"parse_json(`{column.name}`)->{json_path_str} != '')"
@@ -216,9 +216,7 @@ def falsy_expression_to_sql(
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return f"(`{column.name}`->{json_path_str} IS NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
@@ -241,9 +239,7 @@ def falsy_expression_to_sql(
             )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return (
                 f"(NOT json_exists(parse_json(`{column.name}`), '$.{json_path_str}') OR "
                 f"parse_json(`{column.name}`)->{json_path_str} = '')"
@@ -289,9 +285,7 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return (
                 f"`{column.name}`->{json_path_str} {sql_op} ({values_sql})"
             )
@@ -310,7 +304,7 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
             return f"`{column.name}`[{array_index}] {sql_op} ({values_sql})"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
-            json_path_str = "->".join(f"'{escape_param(x)}'" for x in json_path)
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return f"parse_json(`{column.name}`)->{json_path_str} {sql_op} ({values_sql})"
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -355,9 +349,7 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(
-                f"'{part.replace(".", "\\\\.")}'" for part in json_path
-            )
+            json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             value = escape_param(expression.value)
 
             column_exp = f"`{column.name}`->{json_path_str}"
@@ -394,7 +386,7 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(f"'{escape_param(part)}'" for part in json_path)
+            json_path_str = "->".join(f"{quote_json_path_part(part)}" for part in json_path)
             value = escape_param(expression.value)
             text = f"parse_json(`{column.name}`)->{json_path_str} {reverse_operator}{operator} {value}"
         else:

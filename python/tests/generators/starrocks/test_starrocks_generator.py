@@ -169,7 +169,7 @@ class TestNewJSONColumns:
             parse_key("new_json.name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "`new_json`->'name' = 'test'"
+        expected = "`new_json`->'\"name\"' = 'test'"
         assert result == expected
 
     def test_json_field_nested_path(self, fields: dict[str, Column]) -> None:
@@ -177,13 +177,13 @@ class TestNewJSONColumns:
             parse_key("new_json.user.name"), Operator.EQUALS.value, "john", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "`new_json`->'user'->'name' = 'john'"
+        expected = "`new_json`->'\"user\"'->'\"name\"' = 'john'"
         assert result == expected
 
     def test_json_field_number_value(self, fields: dict[str, Column]) -> None:
         expr = Expression(parse_key("new_json.age"), Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
-        expected = "`new_json`->'age' = 25"
+        expected = "`new_json`->'\"age\"' = 25"
         assert result == expected
 
     def test_json_field_underscore_in_name(self, fields: dict[str, Column]) -> None:
@@ -191,14 +191,14 @@ class TestNewJSONColumns:
             parse_key("new_json.field_name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "`new_json`->'field_name' = 'test'"
+        assert result == "`new_json`->'\"field_name\"' = 'test'"
 
     def test_json_field_hyphen_in_name(self, fields: dict[str, Column]) -> None:
         expr = Expression(
             parse_key("new_json.field-name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "`new_json`->'field-name' = 'test'"
+        assert result == "`new_json`->'\"field-name\"' = 'test'"
 
     def test_json_field_starting_with_underscore(
         self, fields: dict[str, Column]
@@ -207,7 +207,7 @@ class TestNewJSONColumns:
             parse_key("new_json._private"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        assert result == "`new_json`->'_private' = 'test'"
+        assert result == "`new_json`->'\"_private\"' = 'test'"
 
 
 class TestJSONColumnValidationErrors:
@@ -265,7 +265,7 @@ class TestJSONColumns:
             parse_key("json_field.name"), Operator.EQUALS.value, "test", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "parse_json(`json_field`)->'name' = 'test'"
+        expected = "parse_json(`json_field`)->'\"name\"' = 'test'"
         assert result == expected
 
     def test_json_field_nested_path(self, fields: dict[str, Column]) -> None:
@@ -273,13 +273,13 @@ class TestJSONColumns:
             parse_key("json_field.user.name"), Operator.EQUALS.value, "john", True
         )
         result = expression_to_sql(expr, fields)
-        expected = "parse_json(`json_field`)->'user'->'name' = 'john'"
+        expected = "parse_json(`json_field`)->'\"user\"'->'\"name\"' = 'john'"
         assert result == expected
 
     def test_json_field_number_value(self, fields: dict[str, Column]) -> None:
         expr = Expression(parse_key("json_field.age"), Operator.EQUALS.value, 25, False)
         result = expression_to_sql(expr, fields)
-        expected = "parse_json(`json_field`)->'age' = 25"
+        expected = "parse_json(`json_field`)->'\"age\"' = 25"
         assert result == expected
 
 

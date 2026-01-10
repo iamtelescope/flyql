@@ -81,7 +81,7 @@ def escape_param(item: Any) -> str:
     elif isinstance(item, (int, float)):
         return str(item)
     else:
-        return str(item)
+        raise FlyqlError(f"unsupported type for escape_param: {type(item).__name__}")
 
 def quote_json_path_part(part: str) -> str:
     return "'\"%s\"'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in part)

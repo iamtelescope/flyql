@@ -168,6 +168,13 @@ def truthy_expression_to_sql(
                 f"(array_length(`{column.name}`) >= {array_index} AND "
                 f"`{column.name}`[{array_index}] != '')"
             )
+        elif column.is_struct:
+            struct_path = expression.key.segments[1:]
+            struct_column = "`.`".join(struct_path)
+            return (
+                f"`{column.name}`.`{struct_column}` IS NOT NULL AND "
+                f"`{column.name}`.`{struct_column}` != ''"
+            )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
@@ -179,10 +186,16 @@ def truthy_expression_to_sql(
             raise FlyqlError("path search for unsupported column type")
     else:
         if column.jsonstring:
-            return (
-                f"(`{column.name}` IS NOT NULL AND `{column.name}` != '' AND "
-                f"json_length(`{column.name}`) > 0)"
-            )
+            if column.is_map or column.is_struct:
+                return (
+                    f"(`{column.name}` IS NOT NULL AND "
+                    f"json_length(to_json(`{column.name}`)) > 0)"
+                )
+            else:
+                return (
+                    f"(`{column.name}` IS NOT NULL AND `{column.name}` != '' AND "
+                    f"json_length(`{column.name}`) > 0)"
+                )
         elif column.normalized_type == NORMALIZED_TYPE_BOOL:
             return f"`{column.name}`"
         elif column.normalized_type == NORMALIZED_TYPE_STRING:
@@ -237,6 +250,13 @@ def falsy_expression_to_sql(
                 f"(array_length(`{column.name}`) < {array_index} OR "
                 f"`{column.name}`[{array_index}] = '')"
             )
+        elif column.is_struct:
+            struct_path = expression.key.segments[1:]
+            struct_column = "`.`".join(struct_path)
+            return (
+                f"`{column.name}`.`{struct_column}` IS NULL OR "
+                f"`{column.name}`.`{struct_column}` = ''"
+            )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
@@ -248,10 +268,16 @@ def falsy_expression_to_sql(
             raise FlyqlError("path search for unsupported column type")
     else:
         if column.jsonstring:
-            return (
-                f"(`{column.name}` IS NULL OR `{column.name}` = '' OR "
-                f"json_length(`{column.name}`) = 0)"
-            )
+            if column.is_map or column.is_struct:
+                return (
+                    f"(`{column.name}` IS NULL OR "
+                    f"json_length(to_json(`{column.name}`)) = 0)"
+                )
+            else:
+                return (
+                    f"(`{column.name}` IS NULL OR `{column.name}` = '' OR "
+                    f"json_length(`{column.name}`) = 0)"
+                )
         elif column.normalized_type == NORMALIZED_TYPE_BOOL:
             return f"NOT `{column.name}`"
         elif column.normalized_type == NORMALIZED_TYPE_STRING:
@@ -302,6 +328,10 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             return f"`{column.name}`[{array_index}] {sql_op} ({values_sql})"
+        elif column.is_struct:
+            struct_path = expression.key.segments[1:]
+            struct_column = "`.`".join(struct_path)
+            return f"`{column.name}`.`{struct_column}` {sql_op} ({values_sql})"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
@@ -379,9 +409,9 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
             )
         elif column.is_struct:
             struct_path = expression.key.segments[1:]
-            struct_column = "'.'".join(struct_path)
+            struct_column = "`.`".join(struct_path)
             value = escape_param(expression.value)
-            text = f"`{column.name}`.'{struct_column}' {reverse_operator}{operator} {value}"
+            text = f"`{column.name}`.`{struct_column}` {reverse_operator}{operator} {value}"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             for part in json_path:

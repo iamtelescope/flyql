@@ -392,9 +392,10 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
             text = f"{column_exp} {reverse_operator}{operator} {value}"
         elif column.is_map:
             map_path = expression.key.segments[1:]
-            map_key = "']['".join(map_path)
+            map_path = [escape_param(part) for part in map_path]
+            map_key = "][".join(map_path)
             value = escape_param(expression.value)
-            text = f"`{column.name}`['{map_key}'] {reverse_operator}{operator} {value}"
+            text = f"`{column.name}`[{map_key}] {reverse_operator}{operator} {value}"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:

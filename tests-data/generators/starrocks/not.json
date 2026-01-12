@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "description": "Not operator ClickHouse generator test cases",
+  "test_suite": "not",
+  "tests": [
+    {
+      "name": "not_truthy_bool",
+      "input": "not active",
+      "expected_result": "success",
+      "expected_sql": "NOT `active`"
+    },
+    {
+      "name": "not_truthy_string",
+      "input": "not message",
+      "expected_result": "success",
+      "expected_sql": "(`message` IS NULL OR `message` = '')"
+    },
+    {
+      "name": "not_truthy_int",
+      "input": "not status",
+      "expected_result": "success",
+      "expected_sql": "(`status` IS NULL OR `status` = 0)"
+    },
+    {
+      "name": "not_comparison",
+      "input": "not status=200",
+      "expected_result": "success",
+      "expected_sql": "NOT (`status` = '200')"
+    },
+    {
+      "name": "not_grouped_and",
+      "input": "not (a=1 and b=2)",
+      "expected_result": "success",
+      "expected_sql": "NOT ((`a` = '1' and `b` = '2'))"
+    },
+    {
+      "name": "not_grouped_or",
+      "input": "not (a=1 or b=2)",
+      "expected_result": "success",
+      "expected_sql": "NOT ((`a` = '1' or `b` = '2'))"
+    },
+    {
+      "name": "double_negation",
+      "input": "not not active",
+      "expected_result": "success",
+      "expected_sql": "`active`"
+    },
+    {
+      "name": "truthy_and_not_truthy",
+      "input": "active and not archived",
+      "expected_result": "success",
+      "expected_sql": "(`active` and NOT `archived`)"
+    },
+    {
+      "name": "comparison_and_not_comparison",
+      "input": "status=200 and not error=true",
+      "expected_result": "success",
+      "expected_sql": "(`status` = '200' and NOT (`error` = 'true'))"
+    },
+    {
+      "name": "not_grouped_truthy",
+      "input": "not (active)",
+      "expected_result": "success",
+      "expected_sql": "NOT `active`"
+    },
+    {
+      "name": "not_with_regex",
+      "input": "not message~error",
+      "expected_result": "success",
+      "expected_sql": "NOT (regexp(`message`, 'error'))"
+    },
+    {
+      "name": "not_truthy_jsonstring",
+      "input": "not json_column",
+      "expected_result": "success",
+      "expected_sql": "(`json_column` IS NULL OR `json_column` = '' OR json_length(`json_column`) = 0)"
+    }
+  ]
+}

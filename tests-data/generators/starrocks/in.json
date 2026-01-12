@@ -1,0 +1,85 @@
+{
+  "version": "1.0",
+  "description": "IN operator Starrocks generator test cases",
+  "test_suite": "in",
+  "tests": [
+    {
+      "name": "in_integers",
+      "input": "status in [200, 300, 400]",
+      "expected_result": "success",
+      "expected_sql": "`status` IN (200, 300, 400)"
+    },
+    {
+      "name": "in_strings",
+      "input": "name in ['alice', 'bob', 'charlie']",
+      "expected_result": "success",
+      "expected_sql": "`name` IN ('alice', 'bob', 'charlie')"
+    },
+    {
+      "name": "in_single_value",
+      "input": "status in [200]",
+      "expected_result": "success",
+      "expected_sql": "`status` IN (200)"
+    },
+    {
+      "name": "in_empty_list",
+      "input": "status in []",
+      "expected_result": "success",
+      "expected_sql": "0"
+    },
+    {
+      "name": "not_in_integers",
+      "input": "status not in [400, 500]",
+      "expected_result": "success",
+      "expected_sql": "`status` NOT IN (400, 500)"
+    },
+    {
+      "name": "not_in_strings",
+      "input": "env not in ['prod', 'staging']",
+      "expected_result": "success",
+      "expected_sql": "`env` NOT IN ('prod', 'staging')"
+    },
+    {
+      "name": "not_in_empty_list",
+      "input": "status not in []",
+      "expected_result": "success",
+      "expected_sql": "1"
+    },
+    {
+      "name": "in_floats",
+      "input": "price in [9.99, 19.99, 29.99]",
+      "expected_result": "success",
+      "expected_sql": "`price` IN (9.99, 19.99, 29.99)"
+    },
+    {
+      "name": "in_with_and",
+      "input": "status in [200, 201] and name='john'",
+      "expected_result": "success",
+      "expected_sql": "(`status` IN (200, 201) and `name` = 'john')"
+    },
+    {
+      "name": "in_with_or",
+      "input": "status in [200, 201] or error",
+      "expected_result": "success",
+      "expected_sql": "(`status` IN (200, 201) or (`error` IS NOT NULL AND `error` != ''))"
+    },
+    {
+      "name": "in_json_column",
+      "input": "json_column.status in [200, 201]",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"status\"' IN (200, 201)"
+    },
+    {
+      "name": "in_type_mismatch_string_with_int",
+      "input": "message in [1, 2, 3]",
+      "expected_result": "error",
+      "expected_error_contains": "type mismatch"
+    },
+    {
+      "name": "in_type_mismatch_int_with_string",
+      "input": "status in ['200', '300']",
+      "expected_result": "error",
+      "expected_error_contains": "type mismatch"
+    }
+  ]
+}

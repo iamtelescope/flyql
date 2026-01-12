@@ -1,0 +1,85 @@
+{
+  "version": "1.0",
+  "description": "Truthy expression Starrocks generator test cases",
+  "test_suite": "truthy",
+  "tests": [
+    {
+      "name": "simple_truthy_bool",
+      "input": "active",
+      "expected_result": "success",
+      "expected_sql": "`active`"
+    },
+    {
+      "name": "simple_truthy_string",
+      "input": "message",
+      "expected_result": "success",
+      "expected_sql": "(`message` IS NOT NULL AND `message` != '')"
+    },
+    {
+      "name": "simple_truthy_int",
+      "input": "status",
+      "expected_result": "success",
+      "expected_sql": "(`status` IS NOT NULL AND `status` != 0)"
+    },
+    {
+      "name": "simple_truthy_float",
+      "input": "price",
+      "expected_result": "success",
+      "expected_sql": "(`price` IS NOT NULL AND `price` != 0)"
+    },
+    {
+      "name": "simple_truthy_date",
+      "input": "created_at",
+      "expected_result": "success",
+      "expected_sql": "(`created_at` IS NOT NULL)"
+    },
+    {
+      "name": "truthy_and_truthy",
+      "input": "active and enabled",
+      "expected_result": "success",
+      "expected_sql": "(`active` and `enabled`)"
+    },
+    {
+      "name": "truthy_or_truthy",
+      "input": "active or enabled",
+      "expected_result": "success",
+      "expected_sql": "(`active` or `enabled`)"
+    },
+    {
+      "name": "truthy_and_comparison",
+      "input": "active and status=200",
+      "expected_result": "success",
+      "expected_sql": "(`active` and `status` = '200')"
+    },
+    {
+      "name": "comparison_and_truthy",
+      "input": "status=200 and active",
+      "expected_result": "success",
+      "expected_sql": "(`status` = '200' and `active`)"
+    },
+    {
+      "name": "truthy_grouped",
+      "input": "(active)",
+      "expected_result": "success",
+      "expected_sql": "`active`"
+    },
+    {
+      "name": "truthy_grouped_and",
+      "input": "(active and enabled)",
+      "expected_result": "success",
+      "expected_sql": "(`active` and `enabled`)"
+    },
+    {
+      "name": "mixed_type_truthy",
+      "input": "active and message and status",
+      "expected_result": "success",
+      "expected_sql": "((`active` and (`message` IS NOT NULL AND `message` != '')) and (`status` IS NOT NULL AND `status` != 0))"
+    },
+    {
+      "name": "truthy_jsonstring_column",
+      "input": "json_column",
+      "expected_result": "success",
+      "expected_sql": "(`json_column` IS NOT NULL AND `json_column` != '' AND json_length(`json_column`) > 0)"
+    }
+  ]
+}

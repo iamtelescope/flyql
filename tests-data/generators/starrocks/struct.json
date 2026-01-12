@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "description": "Struct column Starrocks generator test cases",
+  "test_suite": "struct",
+  "tests": [
+    {
+      "name": "struct_simple_key",
+      "input": "object.key1='value1'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`key1` = 'value1'"
+    },
+    {
+      "name": "struct_dot_in_key_key",
+      "input": "object.'nested.key'='value'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`nested.key` = 'value'"
+    },
+    {
+      "name": "struct_nested_key",
+      "input": "object.nested.key='value'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`nested`.`key` = 'value'"
+    },
+    {
+      "name": "struct_not_equals",
+      "input": "object.key1!='value1'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`key1` != 'value1'"
+    },
+    {
+      "name": "struct_regex_match",
+      "input": "object.pattern~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`pattern` regexp 'test.*'"
+    },
+    {
+      "name": "struct_regex_not_match",
+      "input": "object.pattern!~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`pattern` not regexp 'test.*'"
+    }
+  ]
+}

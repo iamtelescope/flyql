@@ -103,6 +103,12 @@
       "jsonstring": false,
       "type": "String",
       "values": null
+    },
+    "object": {
+      "name": "object",
+      "jsonstring": false,
+      "type": "struct<a int(11), b varchar(65533), c struct<x int(11), y int(11)>, d map<varchar(65533),map<varchar(65533),varchar(65533)>>, e.bar array<int(11)>>",
+      "values": null
     }
   }
 }

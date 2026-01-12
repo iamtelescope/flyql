@@ -419,7 +419,15 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(part)}" for part in json_path)
             value = escape_param(expression.value)
-            text = f"parse_json(`{column.name}`)->{json_path_str} {reverse_operator}{operator} {value}"
+
+            column_exp = f"parse_json(`{column.name}`)->{json_path_str}"
+
+            if (
+                expression.operator == Operator.REGEX.value
+                or expression.operator == Operator.NOT_REGEX.value
+            ):
+                column_exp = f"cast({column_exp} as string)"
+            text = f"{column_exp} {reverse_operator}{operator} {value}"
         else:
             raise FlyqlError("path search for unsupported column type")
 

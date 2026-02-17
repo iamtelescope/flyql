@@ -14,7 +14,7 @@
     },
     {
       "name": "invalid_character_in_key",
-      "input": "ke@y=value",
+      "input": "ke$y=value",
       "expected_result": "error",
       "expected_error": {
         "errno": 3,
@@ -93,7 +93,7 @@
     },
     {
       "name": "invalid_char_after_bool_op",
-      "input": "a=1 and @",
+      "input": "a=1 and $",
       "expected_result": "error",
       "expected_error": {
         "errno": 18,

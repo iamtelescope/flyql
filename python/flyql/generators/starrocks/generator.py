@@ -24,7 +24,6 @@ from flyql.generators.starrocks.constants import (
     NORMALIZED_TYPE_DATE,
 )
 
-
 OPERATOR_TO_STARROCKS_OPERATOR = {
     Operator.EQUALS.value: "=",
     Operator.NOT_EQUALS.value: "!=",
@@ -82,6 +81,7 @@ def escape_param(item: Any) -> str:
         return str(item)
     else:
         raise FlyqlError(f"unsupported type for escape_param: {type(item).__name__}")
+
 
 def quote_json_path_part(part: str) -> str:
     return "'\"%s\"'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in part)
@@ -207,6 +207,7 @@ def truthy_expression_to_sql(
         else:
             return f"(`{column.name}` IS NOT NULL)"
 
+
 def falsy_expression_to_sql(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
@@ -289,6 +290,7 @@ def falsy_expression_to_sql(
         else:
             return f"(`{column.name}` IS NULL)"
 
+
 def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
     column_name = expression.key.segments[0]
     if column_name not in columns:
@@ -312,9 +314,7 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return (
-                f"`{column.name}`->{json_path_str} {sql_op} ({values_sql})"
-            )
+            return f"`{column.name}`->{json_path_str} {sql_op} ({values_sql})"
         elif column.is_map:
             map_path = expression.key.segments[1:]
             map_key = "']['".join(map_path)
@@ -335,7 +335,9 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return f"parse_json(`{column.name}`)->{json_path_str} {sql_op} ({values_sql})"
+            return (
+                f"parse_json(`{column.name}`)->{json_path_str} {sql_op} ({values_sql})"
+            )
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
@@ -417,7 +419,9 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = "->".join(f"{quote_json_path_part(part)}" for part in json_path)
+            json_path_str = "->".join(
+                f"{quote_json_path_part(part)}" for part in json_path
+            )
             value = escape_param(expression.value)
 
             column_exp = f"parse_json(`{column.name}`)->{json_path_str}"

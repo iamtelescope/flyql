@@ -6,7 +6,6 @@ from flyql.core.parser import parse
 from flyql.generators.starrocks.column import Column
 from flyql.generators.starrocks.generator import to_sql
 
-
 TESTS_DATA_DIR = (
     Path(__file__).parent.parent.parent.parent.parent
     / "tests-data"

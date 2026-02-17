@@ -4,7 +4,6 @@ from pathlib import Path
 
 from flyql.generators.clickhouse.column import Column, normalize_clickhouse_type
 
-
 TESTS_DATA_DIR = (
     Path(__file__).parent.parent.parent.parent.parent
     / "tests-data"

@@ -6,7 +6,6 @@ from flyql.core.parser import parse
 from flyql.generators.clickhouse.column import Column
 from flyql.generators.clickhouse.generator import to_sql
 
-
 TESTS_DATA_DIR = (
     Path(__file__).parent.parent.parent.parent.parent
     / "tests-data"

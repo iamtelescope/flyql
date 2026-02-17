@@ -4,7 +4,7 @@ from flyql.generators.starrocks.generator import (
     escape_param,
     is_number,
     prepare_like_pattern_value,
-    quote_json_path_part
+    quote_json_path_part,
 )
 
 
@@ -78,6 +78,7 @@ class TestPrepareLikePattern:
         pattern_found, result = prepare_like_pattern_value("hello%world")
         assert pattern_found is True
         assert result == "hello\\%world"
+
 
 class TestQuoteJsonPathPart:
 

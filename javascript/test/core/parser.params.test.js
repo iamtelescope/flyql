@@ -5,12 +5,12 @@ import { State } from '../../src/core/constants.js'
 describe('raiseError parameter', () => {
     it('should throw exception when raiseError=true', () => {
         const parser = new Parser()
-        expect(() => parser.parse('invalid@input', true)).toThrow(ParserError)
+        expect(() => parser.parse('invalid$input', true)).toThrow(ParserError)
     })
 
     it('should not throw exception when raiseError=false', () => {
         const parser = new Parser()
-        parser.parse('invalid@input', false)
+        parser.parse('invalid$input', false)
         expect(parser.state).toBe(State.ERROR)
         expect(parser.errno).toBeGreaterThan(0)
     })
@@ -62,18 +62,18 @@ describe('parameter combinations', () => {
 
     it('should handle raiseError=true and ignoreLastChar=true', () => {
         const parser = new Parser()
-        expect(() => parser.parse('invalid@', true, true)).toThrow(ParserError)
+        expect(() => parser.parse('invalid$', true, true)).toThrow(ParserError)
     })
 })
 
 describe('parse function parameters', () => {
     it('should pass parameters to Parser.parse', () => {
-        const parser = parse('invalid@', false, true)
+        const parser = parse('invalid$', false, true)
         expect(parser.state).toBe(State.ERROR)
     })
 
     it('should use default parameters', () => {
-        expect(() => parse('invalid@')).toThrow(ParserError)
+        expect(() => parse('invalid$')).toThrow(ParserError)
     })
 })
 

@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "description": "Boolean operations Starrocks generator test cases",
+  "test_suite": "boolean",
+  "tests": [
+    {
+      "name": "and_two_conditions",
+      "input": "message='hello' and count>10",
+      "expected_result": "success",
+      "expected_sql": "(`message` = 'hello' and `count` > 10)"
+    },
+    {
+      "name": "or_two_conditions",
+      "input": "message='hello' or message='world'",
+      "expected_result": "success",
+      "expected_sql": "(`message` = 'hello' or `message` = 'world')"
+    },
+    {
+      "name": "three_conditions_and",
+      "input": "message='hello' and count>10 and price<100",
+      "expected_result": "success",
+      "expected_sql": "((`message` = 'hello' and `count` > 10) and `price` < 100)"
+    },
+    {
+      "name": "three_conditions_or",
+      "input": "status='200' or status='201' or status='204'",
+      "expected_result": "success",
+      "expected_sql": "((`status` = '200' or `status` = '201') or `status` = '204')"
+    },
+    {
+      "name": "mixed_and_or_with_grouping",
+      "input": "status='200' and (message='ok' or message='success')",
+      "expected_result": "success",
+      "expected_sql": "(`status` = '200' and (`message` = 'ok' or `message` = 'success'))"
+    },
+    {
+      "name": "nested_groups",
+      "input": "(count>10 and count<100) or (price>=50 and price<=200)",
+      "expected_result": "success",
+      "expected_sql": "((`count` > 10 and `count` < 100) or (`price` >= 50 and `price` <= 200))"
+    },
+    {
+      "name": "complex_nested",
+      "input": "status='200' and ((message='ok' and count>0) or (message='error' and count=0))",
+      "expected_result": "success",
+      "expected_sql": "(`status` = '200' and ((`message` = 'ok' and `count` > 0) or (`message` = 'error' and `count` = '0')))"
+    }
+  ]
+}

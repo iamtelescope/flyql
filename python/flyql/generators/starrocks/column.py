@@ -1,0 +1,104 @@
+import re
+from typing import List, Optional
+
+from flyql.generators.starrocks.constants import (
+    NORMALIZED_TYPE_TO_STARROCKS_TYPES,
+    NORMALIZED_TYPE_STRING,
+    NORMALIZED_TYPE_INT,
+    NORMALIZED_TYPE_FLOAT,
+    NORMALIZED_TYPE_BOOL,
+    NORMALIZED_TYPE_DATE,
+    NORMALIZED_TYPE_ARRAY,
+    NORMALIZED_TYPE_MAP,
+    NORMALIZED_TYPE_STRUCT,
+    NORMALIZED_TYPE_SPECIAL,
+    NORMALIZED_TYPE_JSON,
+)
+
+REGEX = {
+    NORMALIZED_TYPE_STRING: re.compile(r"^(varchar|char|string)\s*\(\s*\d+\s*\)"),
+    NORMALIZED_TYPE_INT: re.compile(
+        r"^(tinyint|smallint|int|largeint|bigint)\s*\(\s*\d+\s*\)"
+    ),
+    NORMALIZED_TYPE_FLOAT: re.compile(
+        r"^(decimal|float|double)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)"
+    ),
+    NORMALIZED_TYPE_DATE: re.compile(r"^datetime"),
+    NORMALIZED_TYPE_ARRAY: re.compile(r"^array\s*\<"),
+    NORMALIZED_TYPE_MAP: re.compile(r"^map\s*\<"),
+    NORMALIZED_TYPE_STRUCT: re.compile(r"^struct\s*\<"),
+    NORMALIZED_TYPE_JSON: re.compile(r"^json"),
+}
+
+
+def normalize_starrocks_type(sr_type: str) -> Optional[str]:
+    if not sr_type or not isinstance(sr_type, str):
+        return None
+
+    normalized = sr_type.strip().lower()
+
+    if REGEX[NORMALIZED_TYPE_STRING].match(normalized):
+        return NORMALIZED_TYPE_STRING
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_STRING]:
+        return NORMALIZED_TYPE_STRING
+
+    if REGEX[NORMALIZED_TYPE_INT].match(normalized):
+        return NORMALIZED_TYPE_INT
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_INT]:
+        return NORMALIZED_TYPE_INT
+
+    if REGEX[NORMALIZED_TYPE_FLOAT].match(normalized):
+        return NORMALIZED_TYPE_FLOAT
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_FLOAT]:
+        return NORMALIZED_TYPE_FLOAT
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_BOOL]:
+        return NORMALIZED_TYPE_BOOL
+
+    if REGEX[NORMALIZED_TYPE_DATE].match(normalized):
+        return NORMALIZED_TYPE_DATE
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_DATE]:
+        return NORMALIZED_TYPE_DATE
+
+    if REGEX[NORMALIZED_TYPE_JSON].match(normalized):
+        return NORMALIZED_TYPE_JSON
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_JSON]:
+        return NORMALIZED_TYPE_JSON
+
+    if REGEX[NORMALIZED_TYPE_ARRAY].match(normalized):
+        return NORMALIZED_TYPE_ARRAY
+
+    if REGEX[NORMALIZED_TYPE_MAP].match(normalized):
+        return NORMALIZED_TYPE_MAP
+
+    if REGEX[NORMALIZED_TYPE_STRUCT].match(normalized):
+        return NORMALIZED_TYPE_STRUCT
+
+    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_SPECIAL]:
+        return NORMALIZED_TYPE_SPECIAL
+
+    return None
+
+
+class Column:
+    def __init__(
+        self,
+        name: str,
+        jsonstring: bool,
+        _type: str,
+        values: Optional[List[str]] = None,
+    ):
+        self.name = name
+        self.jsonstring = jsonstring
+        self.type = _type
+        self.values = values or []
+        self.normalized_type = normalize_starrocks_type(_type)
+        self.is_map = self.normalized_type == NORMALIZED_TYPE_MAP
+        self.is_array = self.normalized_type == NORMALIZED_TYPE_ARRAY
+        self.is_struct = self.normalized_type == NORMALIZED_TYPE_STRUCT
+        self.is_json = self.normalized_type == NORMALIZED_TYPE_JSON

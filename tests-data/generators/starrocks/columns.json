@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "description": "Field definitions for Starrocks generator tests",
+  "columns": {
+    "message": {
+      "name": "message",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "jsonstring": false,
+      "type": "LargeInt",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "jsonstring": false,
+      "type": "Float",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "jsonstring": false,
+      "type": "datetime",
+      "values": null
+    },
+    "json_column": {
+      "name": "json_column",
+      "jsonstring": true,
+      "type": "String",
+      "values": null
+    },
+    "new_json": {
+      "name": "new_json",
+      "jsonstring": false,
+      "type": "JSON",
+      "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "jsonstring": false,
+      "type": "Array<String>",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "jsonstring": false,
+      "type": "Map<String, String>",
+      "values": null
+    },
+    "status": {
+      "name": "status",
+      "jsonstring": false,
+      "type": "int",
+      "values": null
+    },
+    "enabled": {
+      "name": "enabled",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "archived": {
+      "name": "archived",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "a": {
+      "name": "a",
+      "jsonstring": false,
+      "type": "int",
+      "values": null
+    },
+    "b": {
+      "name": "b",
+      "jsonstring": false,
+      "type": "int",
+      "values": null
+    },
+    "error": {
+      "name": "error",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "name": {
+      "name": "name",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "object": {
+      "name": "object",
+      "jsonstring": false,
+      "type": "struct<a int(11), b varchar(65533), c struct<x int(11), y int(11)>, d map<varchar(65533),map<varchar(65533),varchar(65533)>>, e.bar array<int(11)>>",
+      "values": null
+    }
+  }
+}

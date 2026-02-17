@@ -1,0 +1,103 @@
+{
+  "version": "1.0",
+  "description": "JSON columns Starrocks generator test cases",
+  "test_suite": "json_columns",
+  "tests": [
+    {
+      "name": "native_json_simple_path",
+      "input": "new_json.name='test'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"name\"' = 'test'"
+    },
+    {
+      "name": "native_json_nested_path",
+      "input": "new_json.user.name='john'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"user\"'->'\"name\"' = 'john'"
+    },
+    {
+      "name": "native_json_number_value",
+      "input": "new_json.age=25",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"age\"' = 25"
+    },
+    {
+      "name": "native_json_underscore_column",
+      "input": "new_json.column_name='test'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"column_name\"' = 'test'"
+    },
+    {
+      "name": "native_json_hyphen_column",
+      "input": "new_json.column-name='test'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"column-name\"' = 'test'"
+    },
+    {
+      "name": "native_json_dot_in_column",
+      "input": "new_json.'column.subcolumn'='test'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"column.subcolumn\"' = 'test'"
+    },
+    {
+      "name": "native_json_not_equals",
+      "input": "new_json.status!='active'",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"status\"' != 'active'"
+    },
+    {
+      "name": "native_json_greater_than",
+      "input": "new_json.count>100",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"count\"' > 100"
+    },
+    {
+      "name": "native_json_regex_match",
+      "input": "new_json.name~'john.*'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) regexp 'john.*'"
+    },
+    {
+      "name": "native_json_regex_not_match",
+      "input": "new_json.name!~'john.*'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) not regexp 'john.*'"
+    },
+    {
+      "name": "jsonstring_simple_path",
+      "input": "json_column.name='test'",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"name\"' = 'test'"
+    },
+    {
+      "name": "jsonstring_nested_path",
+      "input": "json_column.user.name='john'",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"user\"'->'\"name\"' = 'john'"
+    },
+    {
+      "name": "jsonstring_number_value",
+      "input": "json_column.age=25",
+      "expected_result": "success",
+      "expected_sql_contains": "parse_json(`json_column`)->'\"age\"' = 25"
+    },
+    {
+      "name": "jsonstring_not_equals",
+      "input": "json_column.status!='active'",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"status\"' != 'active'"
+    },
+    {
+      "name": "jsonstring_regex_match",
+      "input": "json_column.message~'error.*'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"message\"' as string) regexp 'error.*'"
+    },
+    {
+      "name": "jsonstring_regex_not_match",
+      "input": "json_column.message!~'error.*'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"message\"' as string) not regexp 'error.*'"
+    }
+  ]
+}

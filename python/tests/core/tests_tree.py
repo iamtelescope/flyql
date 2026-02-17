@@ -6,7 +6,6 @@ from flyql.core.constants import VALID_BOOL_OPERATORS
 from flyql.core.exceptions import FlyqlError
 from flyql.core.key import Key
 
-
 INVALID_OPERATOR_VALUE = "INVALID_OPERATOR"
 
 

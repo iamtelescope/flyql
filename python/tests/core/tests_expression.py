@@ -5,7 +5,6 @@ from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.exceptions import FlyqlError
 from flyql.core.key import Key
 
-
 LIST_OPERATORS = {Operator.IN.value, Operator.NOT_IN.value, Operator.TRUTHY.value}
 
 

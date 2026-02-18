@@ -1,4 +1,5 @@
 import {
+    AT,
     UNDERSCORE,
     HYPHEN,
     DOT,
@@ -35,7 +36,8 @@ export class Char {
             this.value === SLASH ||
             this.value === SINGLE_QUOTE ||
             this.value === DOUBLE_QUOTE ||
-            this.value === BACKSLASH
+            this.value === BACKSLASH ||
+            this.value === AT
         )
     }
 

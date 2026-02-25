@@ -19,6 +19,12 @@ type Expression struct {
 }
 
 func tryConvertToNumber(value string) (any, ValueType) {
+	if i, err := strconv.ParseInt(value, 10, 64); err == nil {
+		return i, ValueTypeNumber
+	}
+	if u, err := strconv.ParseUint(value, 10, 64); err == nil {
+		return u, ValueTypeNumber
+	}
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
 		return f, ValueTypeNumber
 	}

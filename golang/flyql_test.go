@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"testing"
 )
 
@@ -158,18 +159,48 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 
 		switch wv := want.Expression.Value.(type) {
 		case float64:
-			gv, ok := got.Expression.Value.(float64)
-			if !ok {
+			switch gv := got.Expression.Value.(type) {
+			case float64:
+				if gv != wv {
+					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+				}
+			case int64:
+				if float64(gv) != wv {
+					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+				}
+			case uint64:
+				if float64(gv) != wv {
+					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+				}
+			default:
 				t.Errorf("%s: Value type mismatch: got %T, want float64", path, got.Expression.Value)
-			} else if gv != wv {
-				t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
 			}
 		case string:
-			gv, ok := got.Expression.Value.(string)
-			if !ok {
-				t.Errorf("%s: Value type mismatch: got %T, want string", path, got.Expression.Value)
-			} else if gv != wv {
-				t.Errorf("%s: Value mismatch: got %q, want %q", path, gv, wv)
+			// A string expected value with value_type=="number" means a large integer
+			// stored as string to avoid JSON float64 precision loss.
+			if want.Expression.ValueType == "number" {
+				var gotStr string
+				switch gv := got.Expression.Value.(type) {
+				case int64:
+					gotStr = strconv.FormatInt(gv, 10)
+				case uint64:
+					gotStr = strconv.FormatUint(gv, 10)
+				case float64:
+					gotStr = strconv.FormatFloat(gv, 'f', -1, 64)
+				default:
+					t.Errorf("%s: Value type mismatch: got %T, want numeric", path, got.Expression.Value)
+					return
+				}
+				if gotStr != wv {
+					t.Errorf("%s: Value mismatch: got %q, want %q", path, gotStr, wv)
+				}
+			} else {
+				gv, ok := got.Expression.Value.(string)
+				if !ok {
+					t.Errorf("%s: Value type mismatch: got %T, want string", path, got.Expression.Value)
+				} else if gv != wv {
+					t.Errorf("%s: Value mismatch: got %q, want %q", path, gv, wv)
+				}
 			}
 		}
 	} else if got.Expression != nil {
@@ -191,6 +222,7 @@ func TestParser(t *testing.T) {
 		"parser/whitespace.json",
 		"parser/truthy.json",
 		"parser/not.json",
+		"parser/int64.json",
 	}
 
 	for _, file := range files {

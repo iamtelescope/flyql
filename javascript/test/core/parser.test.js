@@ -127,6 +127,16 @@ describe('Parser Not Tests', () => {
     })
 })
 
+describe('Parser Int64 Tests', () => {
+    const testData = loadTestData('int64.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Hyphen Keys Tests', () => {
     it('should parse unquoted keys with hyphens correctly', () => {
         // Test simple hyphenated key

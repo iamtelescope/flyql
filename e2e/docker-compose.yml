@@ -1,0 +1,39 @@
+name: flyql-e2e
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-24.8}
+    ports:
+      - "19000:9000"
+      - "18123:8123"
+    environment:
+      CLICKHOUSE_USER: flyql
+      CLICKHOUSE_PASSWORD: flyql
+      CLICKHOUSE_DB: default
+    volumes:
+      - ../tests-data/e2e/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+    tmpfs:
+      - /var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user=flyql", "--password=flyql", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  postgresql:
+    image: postgres:${POSTGRESQL_VERSION:-16}
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: flyql
+      POSTGRES_PASSWORD: flyql
+      POSTGRES_DB: flyql_test
+    volumes:
+      - ../tests-data/e2e/postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flyql -d flyql_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12

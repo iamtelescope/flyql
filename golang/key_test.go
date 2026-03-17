@@ -23,9 +23,10 @@ type keyTestCase struct {
 }
 
 type expectedKey struct {
-	Segments    []string `json:"segments"`
-	IsSegmented bool     `json:"is_segmented"`
-	Raw         string   `json:"raw"`
+	Segments       []string `json:"segments"`
+	QuotedSegments []bool   `json:"quoted_segments"`
+	IsSegmented    bool     `json:"is_segmented"`
+	Raw            string   `json:"raw"`
 }
 
 func TestKey(t *testing.T) {
@@ -67,6 +68,18 @@ func TestKey(t *testing.T) {
 			for i, seg := range key.Segments {
 				if seg != tc.ExpectedKey.Segments[i] {
 					t.Errorf("segment %d mismatch: got %q, want %q", i, seg, tc.ExpectedKey.Segments[i])
+				}
+			}
+
+			if len(tc.ExpectedKey.QuotedSegments) > 0 {
+				if len(key.QuotedSegments) != len(tc.ExpectedKey.QuotedSegments) {
+					t.Errorf("quoted_segments length mismatch: got %d, want %d", len(key.QuotedSegments), len(tc.ExpectedKey.QuotedSegments))
+				} else {
+					for i, q := range key.QuotedSegments {
+						if q != tc.ExpectedKey.QuotedSegments[i] {
+							t.Errorf("quoted_segment %d mismatch: got %v, want %v", i, q, tc.ExpectedKey.QuotedSegments[i])
+						}
+					}
 				}
 			}
 

@@ -1,8 +1,9 @@
 package flyql
 
 type Key struct {
-	Segments []string
-	Raw      string
+	Segments       []string
+	QuotedSegments []bool
+	Raw            string
 }
 
 func (k Key) IsSegmented() bool {
@@ -10,10 +11,13 @@ func (k Key) IsSegmented() bool {
 }
 
 type keyParser struct {
-	input          string
-	pos            int
-	segments       []string
-	currentSegment string
+	input                    string
+	pos                      int
+	segments                 []string
+	quotedSegments           []bool
+	currentSegment           string
+	currentSegmentQuoted     bool
+	currentSegmentHasContent bool
 }
 
 func (p *keyParser) peek(offset int) (byte, bool) {
@@ -93,22 +97,34 @@ func (p *keyParser) parseNormalSegment() error {
 		case '.':
 			return nil
 		case '\'':
+			isFirst := !p.currentSegmentHasContent
 			if err := p.parseQuotedSegment('\''); err != nil {
 				return err
 			}
+			if isFirst {
+				p.currentSegmentQuoted = true
+			}
+			p.currentSegmentHasContent = true
 		case '"':
+			isFirst := !p.currentSegmentHasContent
 			if err := p.parseQuotedSegment('"'); err != nil {
 				return err
 			}
+			if isFirst {
+				p.currentSegmentQuoted = true
+			}
+			p.currentSegmentHasContent = true
 		case '\\':
 			escaped, err := p.parseEscapeSequence()
 			if err != nil {
 				return err
 			}
 			p.currentSegment += escaped
+			p.currentSegmentHasContent = true
 		default:
 			p.advance()
 			p.currentSegment += string(ch)
+			p.currentSegmentHasContent = true
 		}
 	}
 }
@@ -117,10 +133,13 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 	p.input = keyString
 	p.pos = 0
 	p.segments = nil
+	p.quotedSegments = nil
 	p.currentSegment = ""
+	p.currentSegmentQuoted = false
+	p.currentSegmentHasContent = false
 
 	if len(p.input) == 0 {
-		return Key{Segments: []string{}, Raw: keyString}, nil
+		return Key{Segments: []string{}, QuotedSegments: []bool{}, Raw: keyString}, nil
 	}
 
 	for p.pos < len(p.input) {
@@ -129,18 +148,22 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 		}
 
 		p.segments = append(p.segments, p.currentSegment)
+		p.quotedSegments = append(p.quotedSegments, p.currentSegmentQuoted)
 		p.currentSegment = ""
+		p.currentSegmentQuoted = false
+		p.currentSegmentHasContent = false
 
 		ch, ok := p.peek(0)
 		if ok && ch == '.' {
 			p.advance()
 			if p.pos >= len(p.input) {
 				p.segments = append(p.segments, "")
+				p.quotedSegments = append(p.quotedSegments, false)
 			}
 		}
 	}
 
-	return Key{Segments: p.segments, Raw: keyString}, nil
+	return Key{Segments: p.segments, QuotedSegments: p.quotedSegments, Raw: keyString}, nil
 }
 
 func ParseKey(keyString string) (Key, error) {

@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "description": "Column definitions for PostgreSQL e2e tests",
+  "columns": {
+    "id": {
+      "name": "id",
+      "type": "integer",
+      "values": null
+    },
+    "message": {
+      "name": "message",
+      "type": "text",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "type": "integer",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "type": "real",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "type": "boolean",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "type": "date",
+      "values": null
+    },
+    "status": {
+      "name": "status",
+      "type": "integer",
+      "values": null
+    },
+    "name": {
+      "name": "name",
+      "type": "text",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "type": "text",
+      "values": null
+    },
+    "meta": {
+      "name": "meta",
+      "type": "jsonb",
+      "values": null
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "version": "1.0",
+  "description": "Basic PostgreSQL generator test cases",
+  "test_suite": "basic",
+  "tests": [
+    {
+      "name": "string_equals",
+      "input": "message='hello'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" = 'hello'"
+    },
+    {
+      "name": "string_not_equals",
+      "input": "message!='hello'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" != 'hello'"
+    },
+    {
+      "name": "string_regex_match",
+      "input": "message~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" ~ 'test.*'"
+    },
+    {
+      "name": "string_regex_not_match",
+      "input": "message!~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" !~ 'test.*'"
+    },
+    {
+      "name": "int_equals",
+      "input": "count=42",
+      "expected_result": "success",
+      "expected_sql": "\"count\" = '42'"
+    },
+    {
+      "name": "int_not_equals",
+      "input": "count!=42",
+      "expected_result": "success",
+      "expected_sql": "\"count\" != '42'"
+    },
+    {
+      "name": "int_greater_than",
+      "input": "count>10",
+      "expected_result": "success",
+      "expected_sql": "\"count\" > 10"
+    },
+    {
+      "name": "int_less_than",
+      "input": "count<100",
+      "expected_result": "success",
+      "expected_sql": "\"count\" < 100"
+    },
+    {
+      "name": "int_greater_or_equals",
+      "input": "count>=10",
+      "expected_result": "success",
+      "expected_sql": "\"count\" >= 10"
+    },
+    {
+      "name": "int_less_or_equals",
+      "input": "count<=100",
+      "expected_result": "success",
+      "expected_sql": "\"count\" <= 100"
+    },
+    {
+      "name": "float_equals",
+      "input": "price=19.99",
+      "expected_result": "success",
+      "expected_sql": "\"price\" = '19.99'"
+    },
+    {
+      "name": "float_less_than",
+      "input": "price<99.99",
+      "expected_result": "success",
+      "expected_sql": "\"price\" < 99.99"
+    },
+    {
+      "name": "float_greater_or_equals",
+      "input": "price>=10.5",
+      "expected_result": "success",
+      "expected_sql": "\"price\" >= 10.5"
+    },
+    {
+      "name": "date_less_or_equals",
+      "input": "created_at<='2023-01-01'",
+      "expected_result": "success",
+      "expected_sql": "\"created_at\" <= '2023-01-01'"
+    },
+    {
+      "name": "like_pattern_suffix",
+      "input": "message='hello*'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" LIKE 'hello%'"
+    },
+    {
+      "name": "like_pattern_prefix",
+      "input": "message='*world'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" LIKE '%world'"
+    },
+    {
+      "name": "like_pattern_both",
+      "input": "message='*hello*'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" LIKE '%hello%'"
+    },
+    {
+      "name": "not_like_pattern",
+      "input": "message!='hello*'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" NOT LIKE 'hello%'"
+    },
+    {
+      "name": "escaped_star_no_pattern",
+      "input": "message='hello\\*world'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" = 'hello\\\\*world'"
+    },
+    {
+      "name": "escape_single_quote",
+      "input": "message='it\\'s test'",
+      "expected_result": "success",
+      "expected_sql": "\"message\" = 'it\\\\\\'s test'"
+    },
+    {
+      "name": "enum_valid_value",
+      "input": "enum_column='value1'",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" = 'value1'"
+    }
+  ]
+}

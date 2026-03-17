@@ -10,3 +10,12 @@ fmt:
 lint:
 	cd python && make lint
 	cd golang && make lint
+.PHONY: e2e e2e-run e2e-venv e2e-clean
+e2e:
+	cd e2e && make run
+e2e-run:
+	cd e2e && make run
+e2e-venv:
+	cd e2e && make install
+e2e-clean:
+	cd e2e && make clean

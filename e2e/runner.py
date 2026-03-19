@@ -24,7 +24,7 @@ LANGUAGE_CONFIGS = {
     },
     "javascript": {
         "label": "JavaScript",
-        "cmd": ["npx", "vitest", "run", "--config", "vitest.e2e.config.js", "e2e/clickhouse.e2e.test.js"],
+        "cmd": ["npx", "vitest", "run", "--config", "vitest.e2e.config.js", "e2e/"],
         "cwd": SCRIPT_DIR.parent / "javascript",
         "report_env_key": "E2E_REPORT_JSON",
     },

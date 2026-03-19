@@ -21,7 +21,7 @@ test-go:
 	cd ../golang/e2e && E2E_REPORT_PATH=$(REPORT) go test -v -count=1 -vet=off ./...
 
 test-js:
-	cd ../javascript && npx vitest run --config vitest.e2e.config.js e2e/clickhouse.e2e.test.js
+	cd ../javascript && npx vitest run --config vitest.e2e.config.js e2e/
 
 test-python:
 	cd ../python && .venv/bin/python3 -m pytest -v e2e/

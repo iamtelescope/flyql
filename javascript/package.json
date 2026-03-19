@@ -25,6 +25,9 @@
     },
     "./generators/clickhouse": {
       "import": "./src/generators/clickhouse/index.js"
+    },
+    "./generators/postgresql": {
+      "import": "./src/generators/postgresql/index.js"
     }
   },
   "files": [

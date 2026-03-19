@@ -22,6 +22,18 @@ LANGUAGE_CONFIGS = {
         "cwd": SCRIPT_DIR.parent / "golang" / "e2e",
         "report_env_key": "E2E_REPORT_JSON",
     },
+    "javascript": {
+        "label": "JavaScript",
+        "cmd": ["npx", "vitest", "run", "--config", "vitest.e2e.config.js", "e2e/clickhouse.e2e.test.js"],
+        "cwd": SCRIPT_DIR.parent / "javascript",
+        "report_env_key": "E2E_REPORT_JSON",
+    },
+    "python": {
+        "label": "Python",
+        "cmd": [".venv/bin/python3", "-m", "pytest", "-v", "e2e/"],
+        "cwd": SCRIPT_DIR.parent / "python",
+        "report_env_key": "E2E_REPORT_JSON",
+    },
 }
 
 DB_CONFIGS = [
@@ -118,6 +130,12 @@ def main():
         help="Bring down DBs after tests complete",
     )
     parser.add_argument(
+        "--databases",
+        default=",".join(db["key"] for db in DB_CONFIGS),
+        help=f"Comma-separated databases to start for infrastructure (default: {','.join(db['key'] for db in DB_CONFIGS)}). "
+             "Tests gracefully skip unavailable databases.",
+    )
+    parser.add_argument(
         "--version-file",
         default="versions/default.env",
         help="Version env file relative to e2e/ (default: versions/default.env)",
@@ -130,12 +148,22 @@ def main():
             print(f"Unknown language: {lang}. Available: {', '.join(LANGUAGE_CONFIGS)}", file=sys.stderr)
             sys.exit(1)
 
+    requested_dbs = {d.strip() for d in args.databases.split(",") if d.strip()}
+    available_db_keys = {db["key"] for db in DB_CONFIGS}
+    unknown_dbs = requested_dbs - available_db_keys
+    if unknown_dbs:
+        print(f"Unknown database(s): {', '.join(unknown_dbs)}. Available: {', '.join(available_db_keys)}", file=sys.stderr)
+        sys.exit(1)
+
     version_env = load_version_env(args.version_file)
 
     infra_steps = []
     all_results = []
 
     for db in DB_CONFIGS:
+        if db["key"] not in requested_dbs:
+            continue
+
         label = db["label"]
         service = db["service"]
 
@@ -261,6 +289,7 @@ def main():
     )
 
     output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html)
     print(f"Report: {output}")
 

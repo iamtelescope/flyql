@@ -77,17 +77,66 @@
         margin: 0 0 10px;
       }
 
-      .section-title + table {
-        margin-bottom: 28px;
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 2px solid #e4e7ec;
+        margin: 24px 0 0;
       }
 
-      .lang-stats {
-        font-size: 0.75rem;
-        font-weight: 400;
+      .tab {
+        padding: 10px 24px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
         color: #6b7280;
-        margin-left: 8px;
-        text-transform: none;
-        letter-spacing: 0;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: color 0.15s, border-color 0.15s;
+        user-select: none;
+      }
+
+      .tab:hover {
+        color: #374151;
+      }
+
+      .tab.active {
+        color: #16213e;
+        border-bottom-color: #16213e;
+      }
+
+      .tab .tab-count {
+        font-weight: 400;
+        font-size: 0.78rem;
+        margin-left: 4px;
+        opacity: 0.7;
+      }
+
+      .tab .tab-count.all-pass {
+        color: #16a34a;
+      }
+
+      .tab .tab-count.has-fail {
+        color: #dc2626;
+      }
+
+      .tab-content {
+        display: none;
+        padding-top: 20px;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .subsection-title {
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #9ca3af;
+        margin: 0 0 8px;
       }
 
       table {
@@ -232,86 +281,105 @@
         </tbody>
       </table>
 
+      <div class="tabs">
+        {% for group in language_groups %}
+        <div class="tab{% if loop.first %} active{% endif %}" data-tab="{{ group.key }}">
+          {{ group.label }}
+          <span class="tab-count {{ 'all-pass' if group.failed == 0 else 'has-fail' }}">({{ group.passed }}/{{ group.total }})</span>
+        </div>
+        {% endfor %}
+      </div>
+
       {% for group in language_groups %}
       {% set where_results = group.results | rejectattr('kind', 'equalto', 'select') | list %}
       {% set select_results = group.results | selectattr('kind', 'equalto', 'select') | list %}
 
-      <p class="section-title">
-        {{ group.label }}
-        <span class="lang-stats">
-          {{ group.passed }}/{{ group.total }} passed
-          {%- if group.failed %} · {{ group.failed }} failed{% endif %}
-        </span>
-      </p>
+      <div class="tab-content{% if loop.first %} active{% endif %}" id="tab-{{ group.key }}">
 
-      {% if where_results %}
-      <p class="subsection-title">Filter (WHERE) Tests</p>
-      <table>
-        <thead>
-          <tr>
-            <th class="st"></th>
-            <th>DB</th>
-            <th>Test</th>
-            <th>FlyQL</th>
-            <th>Generated SQL</th>
-            <th>Expected IDs</th>
-            <th>Returned IDs</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in where_results %}
-          <tr class="{{ 'pass' if r.passed else 'fail' }}">
-            <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
-            <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
-            <td class="name">{{ r.name }}</td>
-            <td><code>{{ r.flyql }}</code></td>
-            <td><code>{{ r.sql }}</code></td>
-            <td class="ids">{{ (r.expected_ids or []) | join(', ') }}</td>
-            <td class="ids{{ ' mismatch' if not r.passed and not r.error }}">
-              {%- if r.returned_ids -%}
-                {{ r.returned_ids | join(', ') }}
-              {%- elif not r.passed and not r.error -%}
-                <span class="err">(no rows)</span>
-              {%- endif -%}
-            </td>
-            <td class="err">{{ r.error or '' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
+        {% if where_results %}
+        <p class="subsection-title">Filter (WHERE) Tests</p>
+        <table>
+          <thead>
+            <tr>
+              <th class="st"></th>
+              <th>DB</th>
+              <th>Test</th>
+              <th>FlyQL</th>
+              <th>Generated SQL</th>
+              <th>Expected IDs</th>
+              <th>Returned IDs</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in where_results %}
+            <tr class="{{ 'pass' if r.passed else 'fail' }}">
+              <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
+              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
+              <td class="name">{{ r.name }}</td>
+              <td><code>{{ r.flyql }}</code></td>
+              <td><code>{{ r.sql }}</code></td>
+              <td class="ids">{{ (r.expected_ids or []) | join(', ') }}</td>
+              <td class="ids{{ ' mismatch' if not r.passed and not r.error }}">
+                {%- if r.returned_ids -%}
+                  {{ r.returned_ids | join(', ') }}
+                {%- elif not r.passed and not r.error -%}
+                  <span class="err">(no rows)</span>
+                {%- endif -%}
+              </td>
+              <td class="err">{{ r.error or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
 
-      {% if select_results %}
-      <p class="subsection-title">Select Tests</p>
-      <table>
-        <thead>
-          <tr>
-            <th class="st"></th>
-            <th>DB</th>
-            <th>Test</th>
-            <th>Select Columns</th>
-            <th>Generated SQL</th>
-            <th>Error</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in select_results %}
-          <tr class="{{ 'pass' if r.passed else 'fail' }}">
-            <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
-            <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
-            <td class="name">{{ r.name }}</td>
-            <td><code>{{ r.flyql }}</code></td>
-            <td><code>{{ r.sql }}</code></td>
-            <td class="err">{{ r.error or '' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
+        {% if select_results %}
+        <p class="subsection-title">Select Tests</p>
+        <table>
+          <thead>
+            <tr>
+              <th class="st"></th>
+              <th>DB</th>
+              <th>Test</th>
+              <th>Select Columns</th>
+              <th>Generated SQL</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in select_results %}
+            <tr class="{{ 'pass' if r.passed else 'fail' }}">
+              <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
+              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
+              <td class="name">{{ r.name }}</td>
+              <td><code>{{ r.flyql }}</code></td>
+              <td><code>{{ r.sql }}</code></td>
+              <td class="err">{{ r.error or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
 
+        {% if not where_results and not select_results %}
+        <p style="color: #9ca3af; padding: 20px 0;">No test results for this language.</p>
+        {% endif %}
+
+      </div>
       {% endfor %}
 
     </div>
+
+    <script>
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          tab.classList.add('active');
+          document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        });
+      });
+    </script>
   </body>
 </html>

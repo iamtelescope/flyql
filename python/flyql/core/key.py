@@ -3,11 +3,18 @@ from flyql.core.exceptions import FlyqlError
 
 
 class Key:
-    def __init__(self, segments: List[str], raw: Optional[str] = None, quoted_segments: Optional[List[bool]] = None):
+    def __init__(
+        self,
+        segments: List[str],
+        raw: Optional[str] = None,
+        quoted_segments: Optional[List[bool]] = None,
+    ):
         self.segments = segments
         self.is_segmented = len(segments) > 1
         self.raw = raw if raw is not None else ":".join(segments)
-        self.quoted_segments = quoted_segments if quoted_segments is not None else [False] * len(segments)
+        self.quoted_segments = (
+            quoted_segments if quoted_segments is not None else [False] * len(segments)
+        )
 
 
 class KeyParser:

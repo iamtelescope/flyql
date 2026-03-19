@@ -169,3 +169,8 @@ node_modules/
 
 # Go binaries
 cli/golang/flyqlcli
+
+# Project related
+e2e/output/
+_bmad/
+_bmad-output/

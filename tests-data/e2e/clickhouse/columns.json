@@ -67,6 +67,18 @@
       "jsonstring": false,
       "type": "JSON",
       "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "jsonstring": false,
+      "type": "Array(String)",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "jsonstring": false,
+      "type": "Map(String, String)",
+      "values": null
     }
   }
 }

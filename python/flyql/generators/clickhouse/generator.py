@@ -1,8 +1,10 @@
 import re
-from typing import Mapping, Tuple, Any
+from dataclasses import dataclass, field
+from typing import List, Mapping, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
+from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
     Operator,
     VALID_KEY_VALUE_OPERATORS,
@@ -458,3 +460,118 @@ def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
         text = f"NOT ({text})"
 
     return text
+
+
+# SELECT clause generation
+
+VALID_ALIAS_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
+
+
+@dataclass
+class SelectColumn:
+    key: Key
+    alias: str
+    column: Column
+    sql_expr: str
+
+
+@dataclass
+class SelectResult:
+    columns: List[SelectColumn] = field(default_factory=list)
+    sql: str = ""
+
+
+def _parse_raw_select_columns(text: str) -> List[Tuple[str, str]]:
+    parts = text.split(",")
+    result: List[Tuple[str, str]] = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        lower = part.lower()
+        idx = lower.find(" as ")
+        if idx >= 0:
+            name = part[:idx].strip()
+            alias = part[idx + 4 :].strip()
+        else:
+            name = part
+            alias = ""
+        if not name:
+            raise FlyqlError("empty column name")
+        result.append((name, alias))
+    return result
+
+
+def _resolve_column(
+    key: Key, columns: Mapping[str, Column]
+) -> Tuple[Column, List[str]]:
+    segments = key.segments
+    for i in range(len(segments), 0, -1):
+        candidate_key = ".".join(segments[:i])
+        if candidate_key in columns:
+            return columns[candidate_key], segments[i:]
+    raise FlyqlError(f"unknown column: {key.raw}")
+
+
+def _build_select_expr(column: Column, path: List[str]) -> str:
+    if not path:
+        return column.name
+
+    if column.is_json:
+        for part in path:
+            validate_json_path_part(part)
+        path_parts = [f"`{part}`" for part in path]
+        return f"{column.name}.{'.'.join(path_parts)}"
+
+    if column.jsonstring:
+        json_path_parts = [escape_param(p) for p in path]
+        return f"JSONExtractString({column.name}, {', '.join(json_path_parts)})"
+
+    if column.is_map:
+        map_key = ".".join(path)
+        escaped_key = escape_param(map_key)
+        return f"{column.name}[{escaped_key}]"
+
+    if column.is_array:
+        index_str = ".".join(path)
+        try:
+            index = int(index_str)
+        except ValueError as err:
+            raise FlyqlError(
+                f"invalid array index, expected number: {index_str}"
+            ) from err
+        return f"{column.name}[{index}]"
+
+    raise FlyqlError(f"path access on non-composite column type: {column.name}")
+
+
+def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
+    """Generate a ClickHouse SELECT clause from a column expression string."""
+    raws = _parse_raw_select_columns(text)
+    select_columns: List[SelectColumn] = []
+    exprs: List[str] = []
+
+    for name, alias in raws:
+        key = parse_key(name)
+        column, path = _resolve_column(key, columns)
+
+        sql_expr = _build_select_expr(column, path)
+
+        if alias:
+            if not VALID_ALIAS_PATTERN.match(alias):
+                raise FlyqlError(f"invalid alias: {alias}")
+            quoted_alias = f"`{alias}`" if "." in alias else alias
+            sql_expr = f"{sql_expr} AS {quoted_alias}"
+        elif path:
+            alias = name
+            if not VALID_ALIAS_PATTERN.match(alias):
+                raise FlyqlError(f"invalid alias: {alias}")
+            quoted_alias = f"`{alias}`" if "." in alias else alias
+            sql_expr = f"{sql_expr} AS {quoted_alias}"
+
+        select_columns.append(
+            SelectColumn(key=key, alias=alias, column=column, sql_expr=sql_expr)
+        )
+        exprs.append(sql_expr)
+
+    return SelectResult(columns=select_columns, sql=", ".join(exprs))

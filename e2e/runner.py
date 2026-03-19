@@ -140,6 +140,11 @@ def main():
         default="versions/default.env",
         help="Version env file relative to e2e/ (default: versions/default.env)",
     )
+    parser.add_argument(
+        "--json",
+        default="",
+        help="Also write a JSON report to this path (machine-readable, for LLM consumption)",
+    )
     args = parser.parse_args()
 
     languages = [l.strip() for l in args.languages.split(",") if l.strip()]
@@ -292,6 +297,38 @@ def main():
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(html)
     print(f"Report: {output}")
+
+    if args.json:
+        json_report = {
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "summary": {"total": total, "passed": passed_count, "failed": total - passed_count},
+            "failures": [
+                {
+                    "language": r.get("language", ""),
+                    "database": r.get("database", ""),
+                    "kind": r.get("kind", ""),
+                    "name": r.get("name", ""),
+                    "flyql": r.get("flyql", r.get("select_columns", "")),
+                    "sql": r.get("sql", ""),
+                    "expected": r.get("expected_ids", r.get("expected_rows", [])),
+                    "actual": r.get("returned_ids", r.get("returned_rows", [])),
+                    "error": r.get("error", ""),
+                }
+                for r in all_results
+                if not r.get("passed")
+            ],
+        }
+        json_path = Path(args.json)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(json_report, indent=2))
+        print(f"JSON report: {json_path}")
+
+    failed_count = total - passed_count
+    if failed_count > 0:
+        print(f"\nFAILED: {failed_count}/{total} tests failed", file=sys.stderr)
+        sys.exit(1)
+    else:
+        print(f"\nOK: {total}/{total} tests passed")
 
 
 if __name__ == "__main__":

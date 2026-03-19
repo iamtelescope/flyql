@@ -133,6 +133,37 @@ describe('escapeParam', () => {
     })
 })
 
+function runSelectTestSuite(fixtureName) {
+    const fixture = loadFixture(fixtureName)
+    describe(fixture.test_suite, () => {
+        for (const tc of fixture.tests) {
+            it(tc.name, () => {
+                if (tc.expected_result === 'success') {
+                    const result = generateSelect(tc.input, columns)
+                    if (tc.expected_sql) {
+                        expect(result.sql).toBe(tc.expected_sql)
+                    }
+                } else if (tc.expected_result === 'error') {
+                    expect(() => generateSelect(tc.input, columns)).toThrow()
+                    try {
+                        generateSelect(tc.input, columns)
+                    } catch (e) {
+                        if (tc.expected_error_contains) {
+                            for (const substr of tc.expected_error_contains) {
+                                expect(e.message.toLowerCase()).toContain(substr.toLowerCase())
+                            }
+                        }
+                    }
+                }
+            })
+        }
+    })
+}
+
+runSelectTestSuite('select_basic.json')
+runSelectTestSuite('select_composite.json')
+runSelectTestSuite('select_errors.json')
+
 describe('generateSelect', () => {
     it('selects simple column', () => {
         const result = generateSelect('message', columns)
@@ -154,7 +185,7 @@ describe('generateSelect', () => {
     it('selects JSON path with implicit alias', () => {
         const result = generateSelect('new_json.name', columns)
         expect(result.sql).toContain('new_json.`name`')
-        expect(result.sql).toContain('AS new_json.name')
+        expect(result.sql).toContain('AS `new_json.name`')
     })
 
     it('selects map path', () => {

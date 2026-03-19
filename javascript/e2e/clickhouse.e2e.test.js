@@ -65,12 +65,15 @@ describe('ClickHouse E2E', () => {
 
     afterAll(() => {
         if (REPORT_PATH && reportResults.length > 0) {
-            const report = {
-                language: 'javascript',
-                results: reportResults,
-            }
             try {
-                fs.writeFileSync(REPORT_PATH, JSON.stringify(report, null, 2))
+                let existing = { language: 'javascript', results: [] }
+                if (fs.existsSync(REPORT_PATH)) {
+                    try {
+                        existing = JSON.parse(fs.readFileSync(REPORT_PATH, 'utf-8'))
+                    } catch { /* ignore parse errors */ }
+                }
+                existing.results = [...(existing.results || []), ...reportResults]
+                fs.writeFileSync(REPORT_PATH, JSON.stringify(existing, null, 2))
             } catch (e) {
                 console.error(`warn: could not write e2e report ${REPORT_PATH}: ${e.message}`)
             }

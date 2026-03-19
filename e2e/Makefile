@@ -1,5 +1,6 @@
 VERSION_FILE ?= versions/default.env
 REPORT       := $(CURDIR)/output/report.html
+JSON_REPORT  := $(CURDIR)/output/report.json
 LANGUAGES    ?= go,javascript,python
 DATABASES    ?= clickhouse,postgresql
 
@@ -30,7 +31,7 @@ test: up
 	$(MAKE) -k test-go test-js test-python; rc=$$?; $(MAKE) down; exit $$rc
 
 run:
-	.venv/bin/python3 runner.py --languages $(LANGUAGES) --databases $(DATABASES) --output $(REPORT) --version-file $(VERSION_FILE) --down
+	.venv/bin/python3 runner.py --languages $(LANGUAGES) --databases $(DATABASES) --output $(REPORT) --json $(JSON_REPORT) --version-file $(VERSION_FILE) --down
 
 report:
 	open $(REPORT)

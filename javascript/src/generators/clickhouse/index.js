@@ -566,13 +566,15 @@ export function generateSelect(text, columns) {
             if (!validAliasPattern.test(alias)) {
                 throw new Error(`invalid alias: ${alias}`)
             }
-            sqlExpr = `${sqlExpr} AS ${alias}`
+            const quotedAlias = alias.includes('.') ? `\`${alias}\`` : alias
+            sqlExpr = `${sqlExpr} AS ${quotedAlias}`
         } else if (path.length > 0) {
             alias = raw.name
             if (!validAliasPattern.test(alias)) {
                 throw new Error(`invalid alias: ${alias}`)
             }
-            sqlExpr = `${sqlExpr} AS ${alias}`
+            const quotedAlias = alias.includes('.') ? `\`${alias}\`` : alias
+            sqlExpr = `${sqlExpr} AS ${quotedAlias}`
         }
 
         selectColumns.push({

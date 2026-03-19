@@ -259,6 +259,54 @@
       "flyql": "meta.'0' in ['zero-a', 'zero-c']",
       "expected_ids": [1, 3, 4, 6],
       "databases": ["postgresql"]
+    },
+    {
+      "name": "map_equals",
+      "flyql": "metadata.dc='us-1'",
+      "expected_ids": [1, 3, 5],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "map_not_equals",
+      "flyql": "metadata.dc!='us-1'",
+      "expected_ids": [2, 4, 6],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "map_tier_premium",
+      "flyql": "metadata.tier='premium'",
+      "expected_ids": [1, 4, 6],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "map_in_list",
+      "flyql": "metadata.dc in ['us-1', 'eu-1']",
+      "expected_ids": [1, 2, 3, 5, 6],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "array_index_equals",
+      "flyql": "tags.1='web'",
+      "expected_ids": [1, 3, 5],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "array_index_not_equals",
+      "flyql": "tags.1!='web'",
+      "expected_ids": [2, 4, 6],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "array_index_second_element",
+      "flyql": "tags.2='api'",
+      "expected_ids": [1, 2],
+      "databases": ["clickhouse"]
+    },
+    {
+      "name": "map_and_array_combined",
+      "flyql": "metadata.tier='premium' and tags.1='web'",
+      "expected_ids": [1],
+      "databases": ["clickhouse"]
     }
   ]
 }

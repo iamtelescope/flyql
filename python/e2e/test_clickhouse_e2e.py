@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flyql.core.parser import parse  # noqa: E402
 from flyql.generators.clickhouse.column import Column  # noqa: E402
-from flyql.generators.clickhouse.generator import to_sql  # noqa: E402
+from flyql.generators.clickhouse.generator import to_sql, generate_select  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEST_DATA_DIR = REPO_ROOT / "tests-data" / "e2e"
@@ -148,3 +148,57 @@ def test_clickhouse_where(
         raise
 
 
+def load_select_test_cases() -> list[dict[str, Any]]:
+    data = load_json(TEST_DATA_DIR / "clickhouse" / "select_test_cases.json")
+    return data["tests"]
+
+
+@pytest.mark.parametrize(
+    "name,select_columns,expected_rows",
+    [
+        (tc["name"], tc["select_columns"], tc["expected_rows"])
+        for tc in load_select_test_cases()
+    ],
+    ids=[tc["name"] for tc in load_select_test_cases()],
+)
+def test_clickhouse_select(
+    ch_available: bool,
+    columns: dict[str, Column],
+    name: str,
+    select_columns: str,
+    expected_rows: list[list[str]],
+) -> None:
+    result: dict[str, Any] = {
+        "kind": "select",
+        "database": "clickhouse",
+        "name": name,
+        "select_columns": select_columns,
+        "sql": "",
+        "expected_rows": expected_rows,
+        "returned_rows": [],
+        "passed": False,
+        "error": "",
+    }
+
+    if not ch_available:
+        result["error"] = "ClickHouse not available"
+        _results.append(result)
+        pytest.skip("ClickHouse not available")
+        return
+
+    try:
+        select_result = generate_select(select_columns, columns)
+        result["sql"] = select_result.sql
+
+        query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
+        rows = ch_query(query)
+        returned_rows = [[str(v) for v in row.values()] for row in rows]
+        result["returned_rows"] = returned_rows
+        result["passed"] = returned_rows == expected_rows
+
+        _results.append(result)
+        assert result["passed"], f"expected {expected_rows}, got {returned_rows}"
+    except Exception as e:
+        result["error"] = str(e)
+        _results.append(result)
+        raise

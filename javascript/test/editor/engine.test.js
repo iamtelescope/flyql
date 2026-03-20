@@ -641,6 +641,191 @@ describe('EditorEngine', () => {
         })
     })
 
+    describe('parenthesis grouping (AC #6)', () => {
+        it('( at start expects column suggestions', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('(')
+            engine.setCursorPosition(1)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('column')
+            expect(engine.suggestions.length).toBeGreaterThan(0)
+        })
+
+        it('buildContext includes nestingDepth after (', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('(')
+            engine.setCursorPosition(1)
+            await engine.updateSuggestions()
+            expect(engine.context.nestingDepth).toBe(1)
+        })
+
+        it(') after clause transitions to boolOp phase', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('(status=info) ')
+            engine.setCursorPosition(14)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('boolOp')
+            expect(engine.context.nestingDepth).toBe(0)
+        })
+
+        it('nested groups track depth correctly', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('((')
+            engine.setCursorPosition(2)
+            await engine.updateSuggestions()
+            expect(engine.context.nestingDepth).toBe(2)
+            expect(engine.suggestionType).toBe('column')
+        })
+
+        it('nestingDepth is 0 for empty input', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('')
+            expect(ctx.nestingDepth).toBe(0)
+        })
+
+        it('nestingDepth is 0 for flat query', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('status=info ')
+            engine.setCursorPosition(12)
+            await engine.updateSuggestions()
+            expect(engine.context.nestingDepth).toBe(0)
+        })
+
+        it('( after boolean expects columns inside group', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('status=info or (')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('column')
+            expect(engine.context.nestingDepth).toBe(1)
+        })
+
+        it('complex grouped query: (status>=400 and host=prod*) or level=error', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            // After closing paren + space, boolOp phase
+            const afterParen = '(status>=400 and host=prod*) '
+            engine.setQuery(afterParen)
+            engine.setCursorPosition(afterParen.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('boolOp')
+            expect(engine.context.nestingDepth).toBe(0)
+
+            // After "or ", column phase
+            const afterOr = '(status>=400 and host=prod*) or '
+            engine.setQuery(afterOr)
+            engine.setCursorPosition(afterOr.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('column')
+        })
+    })
+
+    describe('multiline highlighting (AC #1, #3)', () => {
+        it('highlights tokens across newlines', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info\nand host=prod')
+            expect(html).toContain('flyql-key')
+            expect(html).toContain('flyql-operator')
+            expect(html).toContain('flyql-value')
+        })
+
+        it('handles Windows \\r\\n newlines', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info\r\nand host=prod')
+            expect(html).toContain('flyql-key')
+            expect(html).toContain('flyql-operator')
+            expect(html).toContain('flyql-value')
+        })
+
+        it('handles bare \\r newlines', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const status = engine.getQueryStatus()
+            engine.setQuery('status=info\rand host=prod')
+            const result = engine.getQueryStatus()
+            expect(result.valid).toBe(true)
+        })
+
+        it('handles query with multiple newlines', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info\nand\nhost=prod')
+            expect(html).toContain('flyql-key')
+            // Should contain multiple key spans (status and host)
+            const keyMatches = html.match(/flyql-key/g)
+            expect(keyMatches.length).toBeGreaterThanOrEqual(2)
+        })
+    })
+
+    describe('error display (AC #2)', () => {
+        it('error context includes specific parser message', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('===')
+            engine.setCursorPosition(3)
+            await engine.updateSuggestions()
+            const error = engine.getParseError()
+            expect(error).toBeTruthy()
+            expect(typeof error).toBe('string')
+            expect(error.length).toBeGreaterThan(0)
+        })
+
+        it('error clears when query becomes valid', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            // Invalid
+            engine.setQuery('===')
+            engine.setCursorPosition(3)
+            await engine.updateSuggestions()
+            expect(engine.getParseError()).toBeTruthy()
+
+            // Fix to valid
+            engine.setQuery('status=info')
+            engine.setCursorPosition(11)
+            await engine.updateSuggestions()
+            expect(engine.getParseError()).toBeNull()
+        })
+
+        it('highlight tokens mark error portion with flyql-error class', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info ===')
+            expect(html).toContain('flyql-error')
+            // Valid portion should still be highlighted correctly
+            expect(html).toContain('flyql-key')
+        })
+
+        it('error in highlight does not affect valid prefix', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info ===bad')
+            // status should be highlighted as key
+            expect(html).toContain('flyql-key')
+            // = should be highlighted as operator
+            expect(html).toContain('flyql-operator')
+            // info should be highlighted as value
+            expect(html).toContain('flyql-value')
+            // error portion should have error class
+            expect(html).toContain('flyql-error')
+        })
+    })
+
+    describe('query status validation (AC #1-#6)', () => {
+        it('validates grouped query as valid', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('(status=info) and host=prod')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(true)
+        })
+
+        it('validates multiline query as valid', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('status=info\nand host=prod')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(true)
+        })
+
+        it('validates unmatched paren as invalid', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('(status=info')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(false)
+        })
+    })
+
     describe('full suggestion cycle (AC #1-#3)', () => {
         it('column → operator → value → boolOp cycle', async () => {
             const engine = new EditorEngine(TEST_COLUMNS)

@@ -31,6 +31,7 @@
                 @blur="onBlur"
                 @scroll="onScroll"
                 @click="onCursorMove"
+                @paste="onPaste"
                 @compositionstart="engine.state.composing = true"
                 @compositionend="onCompositionEnd"
                 spellcheck="false"
@@ -40,7 +41,11 @@
                 aria-label="FlyQL query input"
                 role="combobox"
                 :aria-expanded="focused && activated && suggestions.length > 0"
-                :aria-activedescendant="focused && activated && suggestions.length > 0 ? instanceId + '-suggestion-' + selectedIndex : undefined"
+                :aria-activedescendant="
+                    focused && activated && suggestions.length > 0
+                        ? instanceId + '-suggestion-' + selectedIndex
+                        : undefined
+                "
             ></textarea>
         </div>
         <!-- Suggestion panel -->
@@ -292,6 +297,14 @@ function onCompositionEnd(e) {
     })
 }
 
+function onPaste() {
+    activated.value = true
+    nextTick(() => {
+        autoResize()
+        triggerSuggestions()
+    })
+}
+
 function onKeydown(e) {
     if (suggestions.value.length > 0) {
         if (e.key === 'ArrowUp') {
@@ -388,8 +401,12 @@ function onKeydown(e) {
         return
     }
     if (e.shiftKey && e.key === 'Enter') {
-        e.preventDefault()
-        emit('submit')
+        // Insert newline for multiline query support (AC #4)
+        // Do not preventDefault — let the browser insert the newline naturally
+        nextTick(() => {
+            autoResize()
+            triggerSuggestions()
+        })
         return
     }
 }

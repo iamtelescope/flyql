@@ -21,6 +21,14 @@ function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+/**
+ * Normalize newlines to spaces for parser consumption.
+ * The editor supports multiline visually, but the parser only recognizes spaces as delimiters.
+ */
+function normalizeForParser(text) {
+    return text.replace(/\r\n/g, '  ').replace(/[\r\n]/g, ' ')
+}
+
 function wrapSpan(charType, text) {
     const escaped = escapeHtml(text)
     const cls = CHAR_TYPE_CLASS[charType]
@@ -72,12 +80,14 @@ export class EditorEngine {
                 keyValueOperator: '',
                 state: 'INITIAL',
                 textBeforeCursor: '',
+                nestingDepth: 0,
             }
         }
 
+        const normalized = normalizeForParser(textBeforeCursor)
         const parser = new Parser()
         try {
-            parser.parse(textBeforeCursor, false, true)
+            parser.parse(normalized, false, true)
         } catch (e) {
             return {
                 expecting: '',
@@ -88,6 +98,7 @@ export class EditorEngine {
                 state: 'ERROR',
                 error: e.message || 'Parse error',
                 textBeforeCursor,
+                nestingDepth: parser.nodesStack ? parser.nodesStack.length : 0,
             }
         }
 
@@ -101,6 +112,7 @@ export class EditorEngine {
                 state: 'ERROR',
                 error: parser.errorText || 'Parse error',
                 textBeforeCursor,
+                nestingDepth: parser.nodesStack ? parser.nodesStack.length : 0,
             }
         }
 
@@ -112,6 +124,7 @@ export class EditorEngine {
             quoteChar: '',
             expecting: '',
             textBeforeCursor,
+            nestingDepth: parser.nodesStack ? parser.nodesStack.length : 0,
         }
 
         if (
@@ -203,9 +216,10 @@ export class EditorEngine {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
+        const normalized = normalizeForParser(value)
         const parser = new Parser()
         try {
-            parser.parse(value, false, true)
+            parser.parse(normalized, false, true)
         } catch {
             return escapeHtml(value)
         }
@@ -219,8 +233,10 @@ export class EditorEngine {
         let currentType = null
         let currentText = ''
 
-        for (const [char, charType] of typedChars) {
-            const ch = char.value
+        for (let i = 0; i < typedChars.length; i++) {
+            const charType = typedChars[i][1]
+            // Use original character (preserves newlines) instead of normalized space
+            const ch = value[i] !== undefined ? value[i] : typedChars[i][0].value
             if (charType === currentType && ch !== '\n') {
                 currentText += ch
             } else {
@@ -285,9 +301,10 @@ export class EditorEngine {
     getQueryStatus() {
         const value = this.state.query
         if (!value) return { valid: true, message: 'Empty query' }
+        const normalized = normalizeForParser(value)
         const parser = new Parser()
         try {
-            parser.parse(value, false, false)
+            parser.parse(normalized, false, false)
         } catch (e) {
             return { valid: false, message: e.message || 'Parse error' }
         }

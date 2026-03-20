@@ -27,6 +27,46 @@ function checkFileForFrameworkImports(filename) {
     return violations
 }
 
+describe('ARIA accessibility attributes (AC #6)', () => {
+    const vueContent = readFileSync(resolve(EDITOR_DIR, 'FlyqlEditor.vue'), 'utf-8')
+
+    it('textarea has role="combobox"', () => {
+        expect(vueContent).toContain('role="combobox"')
+    })
+
+    it('textarea has aria-label', () => {
+        expect(vueContent).toContain('aria-label="FlyQL query input"')
+    })
+
+    it('textarea has aria-expanded', () => {
+        expect(vueContent).toContain('aria-expanded')
+    })
+
+    it('textarea has aria-activedescendant', () => {
+        expect(vueContent).toContain('aria-activedescendant')
+    })
+
+    it('suggestion list has role="listbox"', () => {
+        expect(vueContent).toContain('role="listbox"')
+    })
+
+    it('suggestion items have role="option"', () => {
+        expect(vueContent).toContain('role="option"')
+    })
+
+    it('suggestion items have aria-selected', () => {
+        expect(vueContent).toContain('aria-selected')
+    })
+
+    it('panel body has aria-live="polite"', () => {
+        expect(vueContent).toContain('aria-live="polite"')
+    })
+
+    it('suggestion items have instance-scoped id for activedescendant', () => {
+        expect(vueContent).toContain("-suggestion-' + index")
+    })
+})
+
 describe('engine module framework independence (AC #5)', () => {
     it('engine.js has no framework imports', () => {
         const violations = checkFileForFrameworkImports('engine.js')

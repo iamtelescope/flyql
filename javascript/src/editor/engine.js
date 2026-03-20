@@ -294,7 +294,12 @@ export class EditorEngine {
         if (parser.state === State.ERROR) {
             return { valid: false, message: parser.errorText || 'Parse error' }
         }
-        if (parser.state === State.EXPECT_BOOL_OP) {
+        if (
+            parser.state === State.EXPECT_BOOL_OP ||
+            parser.state === State.VALUE ||
+            parser.state === State.KEY ||
+            parser.state === State.KEY_OR_BOOL_OP
+        ) {
             return { valid: true, message: 'Valid query' }
         }
         return { valid: false, message: 'Incomplete query' }

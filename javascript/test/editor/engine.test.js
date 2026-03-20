@@ -267,6 +267,18 @@ describe('EditorEngine', () => {
             expect(labels).not.toContain('!~')
         })
 
+        it('excludes regex operators for number columns', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('level')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).not.toContain('~')
+            expect(labels).not.toContain('!~')
+            expect(labels).toContain('=')
+            expect(labels).toContain('>')
+        })
+
         it('includes regex operators for string columns', async () => {
             const engine = new EditorEngine(TEST_COLUMNS)
             engine.setQuery('host')
@@ -333,6 +345,27 @@ describe('EditorEngine', () => {
             const status = engine.getQueryStatus()
             expect(status.valid).toBe(true)
             expect(status.message).toBe('Valid query')
+        })
+
+        it('returns valid for unquoted value', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('status=info')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(true)
+        })
+
+        it('returns valid for truthy expression', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('status')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(true)
+        })
+
+        it('returns valid for complex query with unquoted values', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('level="debug" and not host=prod or status')
+            const status = engine.getQueryStatus()
+            expect(status.valid).toBe(true)
         })
 
         it('returns invalid for incomplete query', () => {
@@ -605,6 +638,50 @@ describe('EditorEngine', () => {
             // Stale result should have been discarded
             expect(engine.suggestions.length).toBe(2)
             expect(engine.suggestions[0].label).toBe('fresh-1')
+        })
+    })
+
+    describe('full suggestion cycle (AC #1-#3)', () => {
+        it('column → operator → value → boolOp cycle', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+
+            // Column phase
+            engine.setQuery('sta')
+            engine.setCursorPosition(3)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('column')
+            expect(engine.suggestions[0].label).toBe('status')
+            expect(engine.suggestions[0].detail).toBe('enum')
+
+            // Operator phase (after known column)
+            engine.setQuery('status')
+            engine.setCursorPosition(6)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('operator')
+
+            // Value phase
+            engine.setQuery('status=')
+            engine.setCursorPosition(7)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('value')
+            expect(engine.suggestions.length).toBe(4)
+
+            // BoolOp phase
+            engine.setQuery('status=info ')
+            engine.setCursorPosition(12)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('boolOp')
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('and')
+            expect(labels).toContain('or')
+            expect(labels).toContain('and not')
+            expect(labels).toContain('or not')
+
+            // Back to column phase
+            engine.setQuery('status=info and ')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('column')
         })
     })
 })

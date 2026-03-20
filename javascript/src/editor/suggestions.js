@@ -53,7 +53,7 @@ export function getOperatorSuggestions(columns, fieldName) {
         { label: Operator.LOWER_OR_EQUALS_THAN, insertText: Operator.LOWER_OR_EQUALS_THAN, sortText: 'h' },
         { label: Operator.IN, insertText: ' ' + Operator.IN + ' ', sortText: 'i' },
     ]
-    if (!col || col.type !== 'enum') {
+    if (!col || (col.type !== 'enum' && col.type !== 'number')) {
         ops.push({ label: Operator.REGEX, insertText: Operator.REGEX, sortText: 'c' })
         ops.push({ label: Operator.NOT_REGEX, insertText: Operator.NOT_REGEX, sortText: 'd' })
     }

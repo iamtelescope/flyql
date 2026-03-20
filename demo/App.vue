@@ -333,6 +333,22 @@ h1 {
 .dark .sql-output code {
     color: #d4d4d4;
 }
+/* Prism token colors — light */
+.sql-output .token.keyword { color: #0451a5; font-weight: 600; }
+.sql-output .token.string { color: #8b0000; }
+.sql-output .token.number { color: #098658; }
+.sql-output .token.operator { color: #1e1e1e; }
+.sql-output .token.function { color: #795e26; }
+.sql-output .token.punctuation { color: #555; }
+.sql-output .token.comment { color: #008000; }
+/* Prism token colors — dark */
+.dark .sql-output .token.keyword { color: #569cd6; font-weight: 600; }
+.dark .sql-output .token.string { color: #ce9178; }
+.dark .sql-output .token.number { color: #b5cea8; }
+.dark .sql-output .token.operator { color: #d4d4d4; }
+.dark .sql-output .token.function { color: #dcdcaa; }
+.dark .sql-output .token.punctuation { color: #808080; }
+.dark .sql-output .token.comment { color: #6a9955; }
 .sql-error {
     padding: 8px 12px;
     background: #fff0f0;
@@ -371,7 +387,7 @@ h1 {
 .log {
     font-family: monospace;
     font-size: 11px;
-    max-height: 200px;
+    max-height: 400px;
     overflow-y: auto;
     padding: 8px 12px;
     background: #fff;

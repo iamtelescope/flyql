@@ -37,6 +37,10 @@
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
+                aria-label="FlyQL query input"
+                role="combobox"
+                :aria-expanded="focused && activated && suggestions.length > 0"
+                :aria-activedescendant="focused && activated && suggestions.length > 0 ? instanceId + '-suggestion-' + selectedIndex : undefined"
             ></textarea>
         </div>
         <!-- Suggestion panel -->
@@ -68,19 +72,22 @@
                 <div class="flyql-panel__header">
                     Suggestions: <span class="flyql-panel__state">{{ stateLabel }}</span>
                 </div>
-                <div class="flyql-panel__body">
+                <div class="flyql-panel__body" aria-live="polite">
                     <div v-if="isLoading" class="flyql-panel__loading">
                         <slot name="loading">
                             <span class="flyql-panel__spinner"></span>
                         </slot>
                     </div>
-                    <ul v-else-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list">
+                    <ul v-else-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
                         <li
                             v-for="(item, index) in suggestions"
                             :key="index"
+                            :id="instanceId + '-suggestion-' + index"
                             :ref="(el) => setItemRef(el, index)"
                             class="flyql-panel__item"
                             :class="{ 'flyql-panel__item--active': index === selectedIndex }"
+                            :aria-selected="index === selectedIndex"
+                            role="option"
                             @click="onSuggestionSelect(index)"
                         >
                             <span class="flyql-panel__badge" :class="'flyql-panel__badge--' + item.type">
@@ -128,6 +135,10 @@ const engine = new EditorEngine(props.columns, {
         isLoading.value = loading
     },
 })
+
+// ── Instance ID for unique ARIA references ──
+
+const instanceId = 'flyql-' + Math.random().toString(36).substring(2, 8)
 
 // ── Refs ──
 
@@ -224,7 +235,13 @@ function updatePanelPosition(ctx) {
         const mirrorRect = mirror.getBoundingClientRect()
         const taRect = ta.getBoundingClientRect()
         panelLeft.value = taRect.left + (spanRect.left - mirrorRect.left) - ta.scrollLeft
-        panelTop.value = taRect.bottom + 4
+        const panelHeight = 400
+        const spaceBelow = window.innerHeight - taRect.bottom - 4
+        if (spaceBelow < panelHeight && taRect.top > panelHeight) {
+            panelTop.value = taRect.top - panelHeight - 4
+        } else {
+            panelTop.value = taRect.bottom + 4
+        }
     } finally {
         document.body.removeChild(mirror)
     }
@@ -320,8 +337,11 @@ function onKeydown(e) {
     }
 
     if (e.key === 'Tab') {
-        e.preventDefault()
-        if (!activated.value) {
+        if (activated.value && suggestions.value.length > 0) {
+            e.preventDefault()
+            acceptSuggestion(selectedIndex.value)
+        } else if (!activated.value) {
+            e.preventDefault()
             activated.value = true
             triggerSuggestions()
         }
@@ -659,7 +679,8 @@ defineExpose({ focus, blur, getQueryStatus })
 .flyql-panel {
     position: fixed;
     z-index: 100;
-    width: 600px;
+    max-width: 600px;
+    min-width: 300px;
     min-height: 200px;
     max-height: 400px;
     display: flex;

@@ -10,6 +10,7 @@ import {
 const TEST_COLUMNS = {
     status: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info'] },
     host: { type: 'string', suggest: true, autocomplete: true },
+    count: { type: 'number', suggest: true, autocomplete: false },
     hidden: { type: 'string', suggest: false, autocomplete: false },
 }
 
@@ -17,9 +18,10 @@ describe('suggestions', () => {
     describe('getKeySuggestions', () => {
         it('returns all suggestable columns with no prefix', () => {
             const result = getKeySuggestions(TEST_COLUMNS, '')
-            expect(result.length).toBe(2)
+            expect(result.length).toBe(3)
             expect(result.map((s) => s.label)).toContain('status')
             expect(result.map((s) => s.label)).toContain('host')
+            expect(result.map((s) => s.label)).toContain('count')
         })
 
         it('excludes non-suggest columns', () => {
@@ -56,6 +58,16 @@ describe('suggestions', () => {
             const labels = result.map((s) => s.label)
             expect(labels).not.toContain('~')
             expect(labels).not.toContain('!~')
+        })
+
+        it('excludes regex for number columns', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'count')
+            const labels = result.map((s) => s.label)
+            expect(labels).not.toContain('~')
+            expect(labels).not.toContain('!~')
+            expect(labels).toContain('=')
+            expect(labels).toContain('>')
+            expect(labels).toContain('<')
         })
 
         it('includes regex for string columns', () => {

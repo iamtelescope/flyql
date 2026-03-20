@@ -20,8 +20,30 @@
                 :on-autocomplete="onAutocomplete"
                 placeholder="Type a FlyQL query..."
                 :autofocus="true"
+                :debug="true"
                 @submit="onSubmit"
+                @focus="addLog('focus')"
+                @blur="addLog('blur')"
+                @parse-error="(err) => addLog(`parse-error: ${err || '(cleared)'}`)"
             />
+        </div>
+
+        <div class="section">
+            <div class="section-title">SQL Generator</div>
+            <div class="generator">
+                <select v-model="dialect" class="dialect-select">
+                    <option value="clickhouse">ClickHouse</option>
+                    <option value="postgresql">PostgreSQL</option>
+                    <option value="starrocks">StarRocks</option>
+                </select>
+                <button class="generate-btn" :disabled="!isValid || generating" @click="generate">
+                    {{ generating ? 'Generating...' : 'Generate SQL' }}
+                </button>
+            </div>
+            <div v-if="generatedSQL" class="sql-output">
+                <pre><code class="language-sql" v-html="highlightedSQL"></code></pre>
+            </div>
+            <div v-if="generateError" class="sql-error">{{ generateError }}</div>
         </div>
 
         <div class="section">
@@ -43,13 +65,17 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { FlyqlEditor } from '../src/editor/index.js'
+import { ref, computed, watch, nextTick } from 'vue'
+import { FlyqlEditor } from '../javascript/src/editor/index.js'
 
 const query = ref('')
 const editor = ref(null)
 const isDark = ref(false)
 const log = ref([])
+const dialect = ref('clickhouse')
+const generatedSQL = ref('')
+const generateError = ref('')
+const generating = ref(false)
 
 const columns = ref({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] },
@@ -59,7 +85,17 @@ const columns = ref({
     host: { type: 'string', suggest: true, autocomplete: true },
     path: { type: 'string', suggest: true, autocomplete: true },
     duration_ms: { type: 'number', suggest: true, autocomplete: false },
-    timestamp: { type: 'string', suggest: false, autocomplete: false },
+    method: { type: 'enum', suggest: true, autocomplete: true, values: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] },
+    role: { type: 'enum', suggest: true, autocomplete: true, values: ['admin', 'editor', 'viewer', 'guest'] },
+})
+
+const isValid = computed(() => {
+    if (!editor.value || !query.value) return false
+    try {
+        return editor.value.getQueryStatus().valid
+    } catch {
+        return false
+    }
 })
 
 const statusClass = computed(() => {
@@ -71,6 +107,18 @@ const statusClass = computed(() => {
         return ''
     }
 })
+
+const highlightedSQL = computed(() => {
+    if (!generatedSQL.value) return ''
+    if (window.Prism) {
+        return window.Prism.highlight(generatedSQL.value, window.Prism.languages.sql, 'sql')
+    }
+    return escapeHtml(generatedSQL.value)
+})
+
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
 
 function addLog(text) {
     const now = new Date()
@@ -87,18 +135,25 @@ function toggleDark() {
 
 async function onAutocomplete(key, value) {
     addLog(`autocomplete: key=${key} value=${value}`)
-    await new Promise((r) => setTimeout(r, 300))
-    const mockData = {
-        service: ['api-gateway', 'api-users', 'api-billing', 'worker-email', 'worker-ingest', 'frontend-web', 'frontend-mobile'],
-        host: ['prod-us-1', 'prod-us-2', 'prod-eu-1', 'staging-1', 'dev-local'],
-        path: ['/api/v1/users', '/api/v1/auth', '/api/v1/billing', '/api/v2/search', '/health', '/metrics'],
+    try {
+        const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`)
+        if (!resp.ok) {
+            addLog(`autocomplete error: ${resp.status}`)
+            return { items: [] }
+        }
+        const data = await resp.json()
+        addLog(`autocomplete result: ${data.items?.length || 0} items`)
+        return data
+    } catch (err) {
+        addLog(`autocomplete error: ${err.message}`)
+        return { items: [] }
     }
-    return { items: mockData[key] || [] }
 }
 
 function onSubmit() {
     const status = editor.value?.getQueryStatus()
     addLog(`submit: "${query.value}" (${status?.valid ? 'valid' : 'invalid'}: ${status?.message})`)
+    if (status?.valid) generate()
 }
 
 function focusEditor() {
@@ -110,6 +165,46 @@ function checkStatus() {
     const status = editor.value?.getQueryStatus()
     addLog(`status: ${JSON.stringify(status)}`)
 }
+
+async function generate() {
+    if (!isValid.value || generating.value) return
+    generating.value = true
+    generateError.value = ''
+    generatedSQL.value = ''
+    addLog(`generate: dialect=${dialect.value} query="${query.value}"`)
+    try {
+        const resp = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query.value, dialect: dialect.value }),
+        })
+        const data = await resp.json()
+        if (!resp.ok) {
+            generateError.value = data.error || 'Generation failed'
+            addLog(`generate error: ${generateError.value}`)
+        } else {
+            generatedSQL.value = data.sql
+            addLog(`generate result: ${data.sql}`)
+            nextTick(() => {
+                if (window.Prism) window.Prism.highlightAll()
+            })
+        }
+    } catch (err) {
+        generateError.value = err.message
+        addLog(`generate error: ${err.message}`)
+    } finally {
+        generating.value = false
+    }
+}
+
+watch(query, () => {
+    generatedSQL.value = ''
+    generateError.value = ''
+})
+
+watch(dialect, () => {
+    if (isValid.value && generatedSQL.value) generate()
+})
 </script>
 
 <style>
@@ -173,6 +268,86 @@ h1 {
 .dark .section-title {
     color: #999;
 }
+
+/* Generator */
+.generator {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.dialect-select {
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+}
+.dark .dialect-select {
+    background: #2a2a2a;
+    border-color: #555;
+    color: #d4d4d4;
+}
+.generate-btn {
+    padding: 6px 18px;
+    border: 1px solid #075985;
+    border-radius: 6px;
+    background: #075985;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.generate-btn:hover:not(:disabled) {
+    background: #0369a1;
+}
+.generate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.dark .generate-btn {
+    background: #0369a1;
+    border-color: #0369a1;
+}
+.sql-output {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+}
+.dark .sql-output {
+    background: #252526;
+    border-color: #444;
+}
+.sql-output pre {
+    margin: 0;
+}
+.sql-output code {
+    font-family: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1e1e1e;
+}
+.dark .sql-output code {
+    color: #d4d4d4;
+}
+.sql-error {
+    padding: 8px 12px;
+    background: #fff0f0;
+    border: 1px solid #f48771;
+    border-radius: 6px;
+    color: #c00;
+    font-size: 12px;
+    font-family: monospace;
+}
+.dark .sql-error {
+    background: #2a1a1a;
+    color: #f48771;
+}
+
+/* Status & Log */
 .status {
     font-family: monospace;
     font-size: 12px;

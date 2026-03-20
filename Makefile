@@ -19,3 +19,5 @@ e2e-venv:
 	cd e2e && make install
 e2e-clean:
 	cd e2e && make clean
+run-demo:
+	cd demo && make run

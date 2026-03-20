@@ -197,6 +197,8 @@
 
       .ch { background: #fff3e0; color: #c2410c; }
       .pg { background: #eff6ff; color: #1d4ed8; }
+      .sr { background: #f5f3ff; color: #6d28d9; }
+      .mt { background: #fef3c7; color: #92400e; }
 
       .name {
         font-weight: 500;
@@ -315,7 +317,7 @@
             {% for r in where_results %}
             <tr class="{{ 'pass' if r.passed else 'fail' }}">
               <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
-              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
+              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else ('sr' if r.database == 'starrocks' else ('mt' if r.database == 'matcher' else 'pg')) }}">{{ r.database }}</span></td>
               <td class="name">{{ r.name }}</td>
               <td><code>{{ r.flyql }}</code></td>
               <td><code>{{ r.sql }}</code></td>
@@ -351,7 +353,7 @@
             {% for r in select_results %}
             <tr class="{{ 'pass' if r.passed else 'fail' }}">
               <td class="st"><span class="icon">{{ '✓' if r.passed else '✗' }}</span></td>
-              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else 'pg' }}">{{ r.database }}</span></td>
+              <td><span class="db {{ 'ch' if r.database == 'clickhouse' else ('sr' if r.database == 'starrocks' else ('mt' if r.database == 'matcher' else 'pg')) }}">{{ r.database }}</span></td>
               <td class="name">{{ r.name }}</td>
               <td><code>{{ r.flyql }}</code></td>
               <td><code>{{ r.sql }}</code></td>

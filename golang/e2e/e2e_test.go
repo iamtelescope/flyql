@@ -12,6 +12,7 @@ import (
 
 	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
 	postgresqlgen "github.com/iamtelescope/flyql/golang/generators/postgresql"
+	starrocksgen "github.com/iamtelescope/flyql/golang/generators/starrocks"
 )
 
 // ---------- shared test data types ----------
@@ -203,6 +204,58 @@ func loadPostgreSQLColumns(t *testing.T) map[string]*postgresqlgen.Column {
 		cols[name] = postgresqlgen.NewColumn(def.Name, def.Type, def.Values)
 	}
 	return cols
+}
+
+type srColumnDef struct {
+	Name       string   `json:"name"`
+	JSONString bool     `json:"jsonstring"`
+	Type       string   `json:"type"`
+	Values     []string `json:"values"`
+}
+
+type srColumnsFile struct {
+	Columns map[string]srColumnDef `json:"columns"`
+}
+
+func loadStarRocksColumns(t *testing.T) map[string]*starrocksgen.Column {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath("starrocks", "columns.json"))
+	if err != nil {
+		t.Fatalf("read starrocks columns.json: %v", err)
+	}
+	var f srColumnsFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse starrocks columns.json: %v", err)
+	}
+	cols := make(map[string]*starrocksgen.Column, len(f.Columns))
+	for name, def := range f.Columns {
+		cols[name] = starrocksgen.NewColumn(def.Name, def.JSONString, def.Type, def.Values)
+	}
+	return cols
+}
+
+type selectTestCase struct {
+	Name                string     `json:"name"`
+	SelectColumns       string     `json:"select_columns"`
+	ExpectedColumnNames []string   `json:"expected_column_names,omitempty"`
+	ExpectedRows        [][]string `json:"expected_rows"`
+}
+
+type selectTestCasesFile struct {
+	Tests []selectTestCase `json:"tests"`
+}
+
+func loadSelectTestCases(t *testing.T, database string) []selectTestCase {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath(database, "select_test_cases.json"))
+	if err != nil {
+		t.Fatalf("read %s/select_test_cases.json: %v", database, err)
+	}
+	var f selectTestCasesFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse %s/select_test_cases.json: %v", database, err)
+	}
+	return f.Tests
 }
 
 func containsDB(databases []string, db string) bool {

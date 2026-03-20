@@ -2,7 +2,7 @@ VERSION_FILE ?= versions/default.env
 REPORT       := $(CURDIR)/output/report.html
 JSON_REPORT  := $(CURDIR)/output/report.json
 LANGUAGES    ?= go,javascript,python
-DATABASES    ?= clickhouse,postgresql
+DATABASES    ?= clickhouse,postgresql,starrocks
 
 .PHONY: up down test-go test-js test-python test report run install clean
 

@@ -34,5 +34,21 @@ wait_for_postgresql() {
     echo "PostgreSQL is ready."
 }
 
+wait_for_starrocks() {
+    echo "Waiting for StarRocks..."
+    local elapsed=0
+    until docker compose exec -T starrocks mysql -h 127.0.0.1 -P 9030 -u root -e "SELECT 1" >/dev/null 2>&1; do
+        if [ "$elapsed" -ge "$MAX_WAIT" ]; then
+            echo "ERROR: StarRocks did not become ready within ${MAX_WAIT}s"
+            exit 1
+        fi
+        echo "  StarRocks not ready, retrying in ${INTERVAL}s... (${elapsed}s elapsed)"
+        sleep "$INTERVAL"
+        elapsed=$((elapsed + INTERVAL))
+    done
+    echo "StarRocks is ready."
+}
+
 wait_for_clickhouse
 wait_for_postgresql
+wait_for_starrocks

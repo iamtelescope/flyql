@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { parse } from '../src/core/parser.js'
-import { generateWhere, newColumn } from '../src/generators/clickhouse/index.js'
+import { generateWhere, generateSelect, newColumn } from '../src/generators/clickhouse/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -130,5 +130,49 @@ describe('ClickHouse E2E', () => {
                 throw e
             }
         })
+    })
+
+    describe('SELECT clause parity', () => {
+        const selectTests = loadJSON(path.join(testDataDir, 'clickhouse', 'select_test_cases.json')).tests
+        it.each(selectTests.map((tc) => [tc.name, tc.select_columns, tc.expected_rows]))(
+            '%s',
+            async (name, selectColumns, expectedRows) => {
+                const result = {
+                    kind: 'select',
+                    database: 'clickhouse',
+                    name,
+                    select_columns: selectColumns,
+                    sql: '',
+                    expected_rows: expectedRows,
+                    returned_rows: [],
+                    passed: false,
+                    error: '',
+                }
+
+                if (!chAvailable) {
+                    result.error = 'ClickHouse not available'
+                    reportResults.push(result)
+                    return
+                }
+
+                try {
+                    const selectResult = generateSelect(selectColumns, columns)
+                    result.sql = selectResult.sql
+
+                    const query = `SELECT ${selectResult.sql} FROM flyql_e2e_test ORDER BY id`
+                    const rows = await chQuery(query)
+                    const returnedRows = rows.map((r) => Object.values(r).map(String))
+                    result.returned_rows = returnedRows
+                    result.passed = JSON.stringify(returnedRows) === JSON.stringify(expectedRows)
+
+                    reportResults.push(result)
+                    expect(returnedRows).toEqual(expectedRows)
+                } catch (e) {
+                    result.error = e.message
+                    reportResults.push(result)
+                    throw e
+                }
+            },
+        )
     })
 })

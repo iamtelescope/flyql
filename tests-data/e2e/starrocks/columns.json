@@ -1,65 +1,83 @@
 {
   "version": "1.0",
-  "description": "Column definitions for PostgreSQL e2e tests",
+  "description": "Column definitions for StarRocks e2e tests",
   "columns": {
     "id": {
       "name": "id",
-      "type": "integer",
+      "jsonstring": false,
+      "type": "INT",
       "values": null
     },
     "message": {
       "name": "message",
-      "type": "text",
+      "jsonstring": false,
+      "type": "STRING",
       "values": null
     },
     "count": {
       "name": "count",
-      "type": "integer",
+      "jsonstring": false,
+      "type": "BIGINT",
       "values": null
     },
     "price": {
       "name": "price",
-      "type": "real",
+      "jsonstring": false,
+      "type": "FLOAT",
       "values": null
     },
     "active": {
       "name": "active",
-      "type": "boolean",
+      "jsonstring": false,
+      "type": "BOOLEAN",
       "values": null
     },
     "created_at": {
       "name": "created_at",
-      "type": "date",
+      "jsonstring": false,
+      "type": "DATE",
       "values": null
     },
     "status": {
       "name": "status",
-      "type": "integer",
+      "jsonstring": false,
+      "type": "INT",
       "values": null
     },
     "name": {
       "name": "name",
-      "type": "text",
+      "jsonstring": false,
+      "type": "STRING",
       "values": null
     },
     "env": {
       "name": "env",
-      "type": "text",
+      "jsonstring": false,
+      "type": "STRING",
       "values": null
     },
     "meta": {
       "name": "meta",
-      "type": "jsonb",
+      "jsonstring": true,
+      "type": "STRING",
+      "values": null
+    },
+    "meta_json": {
+      "name": "meta_json",
+      "jsonstring": false,
+      "type": "JSON",
       "values": null
     },
     "tags": {
       "name": "tags",
-      "type": "text[]",
+      "jsonstring": false,
+      "type": "ARRAY<STRING>",
       "values": null
     },
     "metadata": {
       "name": "metadata",
-      "type": "hstore",
+      "jsonstring": false,
+      "type": "MAP<STRING, STRING>",
       "values": null
     }
   }

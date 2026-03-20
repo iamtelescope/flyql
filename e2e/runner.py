@@ -53,6 +53,27 @@ DB_CONFIGS = [
         ],
     },
     {
+        "key": "starrocks",
+        "label": "StarRocks",
+        "service": "starrocks",
+        "version_cmd": [
+            "docker", "compose", "exec", "starrocks",
+            "mysql", "-h", "127.0.0.1", "-P", "9030", "-u", "root",
+            "--skip-column-names", "-e", "SELECT current_version()",
+        ],
+        "count_cmd": [
+            "docker", "compose", "exec", "starrocks",
+            "mysql", "-h", "127.0.0.1", "-P", "9030", "-u", "root",
+            "-D", "flyql_test",
+            "--skip-column-names", "-e", "SELECT count(*) FROM flyql_e2e_test",
+        ],
+        "init_cmd": [
+            "docker", "compose", "exec", "-T", "starrocks",
+            "bash", "-c",
+            "mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/init.sql",
+        ],
+    },
+    {
         "key": "postgresql",
         "label": "PostgreSQL",
         "service": "postgresql",
@@ -176,7 +197,7 @@ def main():
         rc, stdout, stderr, dur = run_cmd(
             ["docker", "compose", "up", "-d", "--wait", service],
             extra_env=version_env,
-            timeout=120,
+            timeout=180,
         )
 
         version_detail = ""
@@ -194,6 +215,16 @@ def main():
             "duration": fmt_dur(dur),
             "success": rc == 0,
         })
+
+        if rc == 0 and "init_cmd" in db:
+            print(f"[infra] Initializing {label} database...")
+            rc_init, _, stderr_init, dur_init = run_cmd(db["init_cmd"], timeout=30)
+            infra_steps.append({
+                "name": f"{label} initialized",
+                "detail": "ok" if rc_init == 0 else f"failed: {stderr_init[:80]}",
+                "duration": fmt_dur(dur_init),
+                "success": rc_init == 0,
+            })
 
         if rc == 0:
             print(f"[infra] Verifying {label} data...")

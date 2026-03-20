@@ -10,10 +10,38 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     if not report_path:
         return
 
-    from test_clickhouse_e2e import _results
+    all_results: list[dict[str, Any]] = []
 
-    if _results:
-        report = {"language": "python", "results": _results}
+    try:
+        from test_clickhouse_e2e import _results as ch_results
+
+        all_results.extend(ch_results)
+    except ImportError:
+        pass
+
+    try:
+        from test_starrocks_e2e import _results as sr_results
+
+        all_results.extend(sr_results)
+    except ImportError:
+        pass
+
+    try:
+        from test_postgresql_e2e import _results as pg_results
+
+        all_results.extend(pg_results)
+    except ImportError:
+        pass
+
+    try:
+        from test_matcher_e2e import _results as matcher_results
+
+        all_results.extend(matcher_results)
+    except ImportError:
+        pass
+
+    if all_results:
+        report = {"language": "python", "results": all_results}
         try:
             Path(report_path).write_text(json.dumps(report, indent=2))
         except OSError as e:

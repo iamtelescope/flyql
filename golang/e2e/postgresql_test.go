@@ -196,7 +196,11 @@ func TestPostgreSQLSelectE2E(t *testing.T) {
 				}
 				row := make([]string, len(vals))
 				for i, v := range vals {
-					row[i] = fmt.Sprintf("%v", v)
+					if v == nil {
+						row[i] = ""
+					} else {
+						row[i] = fmt.Sprintf("%v", v)
+					}
 				}
 				gotRows = append(gotRows, row)
 			}

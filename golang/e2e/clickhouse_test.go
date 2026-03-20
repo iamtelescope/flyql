@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 
 	clickhousedriver "github.com/ClickHouse/clickhouse-go/v2"
@@ -113,6 +115,135 @@ func TestClickHouseE2E(t *testing.T) {
 
 			if !r.Passed {
 				t.Errorf("expected %v, got %v", tc.ExpectedIDs, ids)
+			}
+		})
+	}
+}
+
+func TestClickHouseSelectE2E(t *testing.T) {
+	addr := clickhouseAddr()
+	username := os.Getenv("CLICKHOUSE_USER")
+	if username == "" {
+		username = "flyql"
+	}
+	password := os.Getenv("CLICKHOUSE_PASSWORD")
+	if password == "" {
+		password = "flyql"
+	}
+
+	conn, err := clickhousedriver.Open(&clickhousedriver.Options{
+		Addr: []string{addr},
+		Auth: clickhousedriver.Auth{
+			Database: "default",
+			Username: username,
+			Password: password,
+		},
+		Settings: clickhousedriver.Settings{
+			"max_execution_time": 10,
+		},
+	})
+	if err != nil {
+		t.Fatalf("open ClickHouse connection: %v", err)
+	}
+	defer conn.Close()
+
+	ctx := context.Background()
+	if err := conn.Ping(ctx); err != nil {
+		t.Skipf("ClickHouse not available at %s: %v", addr, err)
+	}
+
+	columns := loadClickHouseColumns(t)
+	testCases := loadSelectTestCases(t, "clickhouse")
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			r := testResult{
+				Kind:     "select",
+				Database: "clickhouse",
+				Name:     tc.Name,
+				FlyQL:    tc.SelectColumns,
+			}
+			defer func() {
+				r.Passed = !t.Failed()
+				addResult(r)
+			}()
+
+			// Skip native JSON SELECT tests — Go ClickHouse driver doesn't support Dynamic type
+			if strings.Contains(tc.SelectColumns, "meta_json") {
+				t.Skip("Go ClickHouse driver does not support native JSON Dynamic type in SELECT")
+			}
+
+			selectResult, err := clickhousegen.ToSQLSelect(tc.SelectColumns, columns)
+			if err != nil {
+				r.Error = fmt.Sprintf("ToSQLSelect: %v", err)
+				t.Fatal(r.Error)
+			}
+			r.SQL = selectResult.SQL
+
+			query := fmt.Sprintf("SELECT %s FROM flyql_e2e_test ORDER BY id", selectResult.SQL)
+			rows, err := conn.Query(ctx, query)
+			if err != nil {
+				r.Error = fmt.Sprintf("query: %v", err)
+				t.Fatal(r.Error)
+			}
+			defer rows.Close()
+
+			colTypes := rows.ColumnTypes()
+			var gotRows [][]string
+			for rows.Next() {
+				ptrs := make([]any, len(colTypes))
+				for i, ct := range colTypes {
+					switch ct.DatabaseTypeName() {
+					case "Int8":
+						ptrs[i] = new(int8)
+					case "Int16":
+						ptrs[i] = new(int16)
+					case "Int32":
+						ptrs[i] = new(int32)
+					case "Int64":
+						ptrs[i] = new(int64)
+					case "UInt8":
+						ptrs[i] = new(uint8)
+					case "UInt16":
+						ptrs[i] = new(uint16)
+					case "UInt32":
+						ptrs[i] = new(uint32)
+					case "UInt64":
+						ptrs[i] = new(uint64)
+					case "Float32":
+						ptrs[i] = new(float32)
+					case "Float64":
+						ptrs[i] = new(float64)
+					case "Bool":
+						ptrs[i] = new(bool)
+					default:
+						ptrs[i] = new(string)
+					}
+				}
+				if err := rows.Scan(ptrs...); err != nil {
+					r.Error = fmt.Sprintf("scan: %v", err)
+					t.Fatal(r.Error)
+				}
+				row := make([]string, len(ptrs))
+				for i, p := range ptrs {
+					row[i] = fmt.Sprintf("%v", reflect.ValueOf(p).Elem().Interface())
+				}
+				gotRows = append(gotRows, row)
+			}
+
+			if len(gotRows) != len(tc.ExpectedRows) {
+				r.Error = fmt.Sprintf("row count: got %d, want %d", len(gotRows), len(tc.ExpectedRows))
+				t.Error(r.Error)
+				return
+			}
+			for i, expected := range tc.ExpectedRows {
+				got := gotRows[i]
+				for j := range expected {
+					if j < len(got) && got[j] != expected[j] {
+						t.Errorf("row %d col %d: got %q, want %q", i, j, got[j], expected[j])
+					}
+				}
 			}
 		})
 	}

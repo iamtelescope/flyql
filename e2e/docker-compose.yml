@@ -20,6 +20,24 @@ services:
       timeout: 5s
       retries: 12
 
+  starrocks:
+    image: starrocks/allin1-ubuntu:${STARROCKS_VERSION:-3.3-latest}
+    ports:
+      - "19030:9030"
+      - "18030:8030"
+      - "18040:8040"
+    volumes:
+      - ../tests-data/e2e/starrocks/init.sql:/opt/starrocks/init.sql
+    tmpfs:
+      - /opt/starrocks/fe/meta
+      - /opt/starrocks/be/storage
+    healthcheck:
+      test: ["CMD", "mysql", "-h", "127.0.0.1", "-P", "9030", "-u", "root", "-e", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
   postgresql:
     image: postgres:${POSTGRESQL_VERSION:-16}
     ports:

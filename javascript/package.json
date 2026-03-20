@@ -28,6 +28,12 @@
     },
     "./generators/postgresql": {
       "import": "./src/generators/postgresql/index.js"
+    },
+    "./generators/starrocks": {
+      "import": "./src/generators/starrocks/index.js"
+    },
+    "./matcher": {
+      "import": "./src/matcher/index.js"
     }
   },
   "files": [

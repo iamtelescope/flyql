@@ -89,13 +89,13 @@
     },
     {
       "name": "in_nested_key_match",
-      "query": "user:role in ['admin', 'moderator']",
+      "query": "user.role in ['admin', 'moderator']",
       "data": {"user": {"role": "admin"}},
       "expected": true
     },
     {
       "name": "in_nested_key_no_match",
-      "query": "user:role in ['admin', 'moderator']",
+      "query": "user.role in ['admin', 'moderator']",
       "data": {"user": {"role": "viewer"}},
       "expected": false
     },

@@ -488,8 +488,15 @@ watch(
     },
 )
 
+function onWindowScroll() {
+    if (focused.value && activated.value && context.value) {
+        updatePanelPosition(context.value)
+    }
+}
+
 onMounted(() => {
     autoResize()
+    window.addEventListener('scroll', onWindowScroll, true)
     if (props.autofocus) {
         nextTick(() => {
             textareaRef.value?.focus()
@@ -499,6 +506,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     activated.value = false
+    window.removeEventListener('scroll', onWindowScroll, true)
 })
 
 function focus() {
@@ -606,7 +614,7 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
     color: #0089ab;
 }
 
-.dark .flyql-col-modifier {
+.flyql-dark .flyql-col-modifier {
     color: #fa83f8;
 }
 
@@ -630,7 +638,7 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
     color: #fff;
 }
 
-.dark .flyql-panel__badge--modifier {
+.flyql-dark .flyql-panel__badge--modifier {
     background: #fa83f8;
     color: #1e1e1e;
 }

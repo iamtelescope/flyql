@@ -17,7 +17,7 @@
                 v-model="columnsExpr"
                 :columns="columns"
                 placeholder="message, status|upper, host as h"
-                :debug="true"
+                :debug="false"
                 @update:parsed="onColumnsParsed"
                 @submit="onSubmit"
             />
@@ -37,7 +37,7 @@
                 :on-autocomplete="onAutocomplete"
                 placeholder="Type a FlyQL query..."
                 :autofocus="true"
-                :debug="true"
+                :debug="false"
                 @submit="onSubmit"
                 @focus="addLog('focus')"
                 @blur="addLog('blur')"
@@ -150,6 +150,7 @@ function addLog(text) {
 function toggleDark() {
     isDark.value = !isDark.value
     document.documentElement.classList.toggle('dark', isDark.value)
+    document.documentElement.classList.toggle('flyql-dark', isDark.value)
     addLog(`Theme: ${isDark.value ? 'dark' : 'light'}`)
 }
 

@@ -590,8 +590,15 @@ watch(
     },
 )
 
+function onWindowScroll() {
+    if (focused.value && activated.value && context.value) {
+        updatePanelPosition(context.value)
+    }
+}
+
 onMounted(() => {
     autoResize()
+    window.addEventListener('scroll', onWindowScroll, true)
     if (props.autofocus) {
         nextTick(() => {
             textareaRef.value?.focus()
@@ -601,6 +608,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     activated.value = false
+    window.removeEventListener('scroll', onWindowScroll, true)
 })
 
 // ── Public API ──
@@ -919,7 +927,7 @@ defineExpose({ focus, blur, getQueryStatus })
     --flyql-font-size: 13px;
 }
 
-.dark {
+.flyql-dark {
     --flyql-bg: #1e1e1e;
     --flyql-text: #d4d4d4;
     --flyql-border: #525252;

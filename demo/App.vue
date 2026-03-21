@@ -12,7 +12,24 @@
         </div>
 
         <div class="section">
-            <div class="section-title">Editor</div>
+            <div class="section-title">Columns</div>
+            <FlyqlColumns
+                v-model="columnsExpr"
+                :columns="columns"
+                placeholder="message, status|upper, host as h"
+                :debug="true"
+                @update:parsed="onColumnsParsed"
+                @submit="onSubmit"
+            />
+        </div>
+
+        <div v-if="parsedColumns.length > 0" class="section">
+            <div class="section-title">Parsed columns ({{ parsedColumns.length }})</div>
+            <div class="status">{{ parsedColumnsText }}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Query</div>
             <FlyqlEditor
                 ref="editor"
                 v-model="query"
@@ -66,9 +83,11 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
-import { FlyqlEditor } from '../javascript/src/editor/index.js'
+import { FlyqlEditor, FlyqlColumns } from '../javascript/src/editor/index.js'
 
 const query = ref('')
+const columnsExpr = ref('')
+const parsedColumns = ref([])
 const editor = ref(null)
 const isDark = ref(false)
 const log = ref([])
@@ -79,6 +98,7 @@ const generating = ref(false)
 
 const columns = ref({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] },
+    level_detail: { type: 'string', suggest: true, autocomplete: false },
     service: { type: 'string', suggest: true, autocomplete: true },
     message: { type: 'string', suggest: true, autocomplete: false },
     status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 201, 204, 301, 400, 401, 403, 404, 500, 502, 503] },
@@ -148,6 +168,22 @@ async function onAutocomplete(key, value) {
         addLog(`autocomplete error: ${err.message}`)
         return { items: [] }
     }
+}
+
+const parsedColumnsText = computed(() => {
+    return parsedColumns.value.map((c) => {
+        let text = c.name
+        if (c.modifiers && c.modifiers.length > 0) {
+            text += '|' + c.modifiers.map((m) => m.name + (m.arguments.length ? `(${m.arguments.join(',')})` : '')).join('|')
+        }
+        if (c.alias) text += ' as ' + c.alias
+        return text
+    }).join(', ')
+})
+
+function onColumnsParsed(cols) {
+    parsedColumns.value = cols
+    addLog(`columns parsed: ${cols.length} columns`)
 }
 
 function onSubmit() {

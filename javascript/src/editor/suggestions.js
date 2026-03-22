@@ -25,25 +25,113 @@ export const STATE_LABELS = {
     boolOp: 'boolean operator',
 }
 
+/**
+ * Traverse a column schema's children by dot-separated segments.
+ * Returns { node, parentPath } where node is the schema node at the resolved path,
+ * or null if the path doesn't resolve.
+ */
+function resolveNestedNode(columns, segments) {
+    // Case-insensitive lookup: find matching key regardless of case
+    const findKey = (obj, target) => {
+        const lower = target.toLowerCase()
+        for (const key of Object.keys(obj)) {
+            if (key.toLowerCase() === lower) return key
+        }
+        return null
+    }
+
+    const rootKey = findKey(columns, segments[0])
+    if (!rootKey) return null
+    let node = columns[rootKey]
+    if (!node || node.suggest === false) return null
+    let parentPath = rootKey
+
+    for (let i = 1; i < segments.length; i++) {
+        if (!node.children) return null
+        const childKey = findKey(node.children, segments[i])
+        if (!childKey) return null
+        node = node.children[childKey]
+        if (!node || node.suggest === false) return null
+        parentPath += '.' + childKey
+    }
+    return { node, parentPath }
+}
+
+/**
+ * Get nested column suggestions when prefix contains a dot.
+ * Traverses children to suggest at the appropriate depth.
+ */
+export function getNestedColumnSuggestions(columns, prefix) {
+    const dotIndex = prefix.lastIndexOf('.')
+    const rawParentPath = prefix.substring(0, dotIndex)
+    const childPrefix = prefix.substring(dotIndex + 1).toLowerCase()
+
+    // Split parent path into segments and traverse
+    const segments = rawParentPath.split('.')
+    const resolved = resolveNestedNode(columns, segments)
+    if (!resolved || !resolved.node.children) return []
+
+    // Use schema-normalized parentPath from resolveNestedNode (canonical casing)
+    const parentPath = resolved.parentPath
+
+    const result = []
+    for (const [name, def] of Object.entries(resolved.node.children)) {
+        if (!def || def.suggest === false) continue
+        if (childPrefix && !name.toLowerCase().startsWith(childPrefix)) continue
+        const fullPath = parentPath + '.' + name
+        const hasChildren = !!def.children
+        result.push({
+            label: fullPath,
+            insertText: hasChildren ? fullPath + '.' : fullPath,
+            type: 'column',
+            detail: def.type || '',
+        })
+    }
+    return result
+}
+
+/**
+ * Resolve a column definition by name, supporting dot-separated nested paths.
+ * Returns the schema node for the column, or undefined if not found.
+ */
+export function resolveColumnDef(columns, fieldName) {
+    if (!fieldName) return undefined
+    // Case-insensitive lookup for both flat and nested columns
+    const lower = fieldName.toLowerCase()
+    for (const key of Object.keys(columns)) {
+        if (key.toLowerCase() === lower) return columns[key]
+    }
+    if (!fieldName.includes('.')) return undefined
+    const segments = fieldName.split('.')
+    const resolved = resolveNestedNode(columns, segments)
+    return resolved ? resolved.node : undefined
+}
+
 export function getKeySuggestions(columns, prefix) {
+    // If prefix contains a dot, delegate to nested traversal
+    if (prefix.includes('.')) {
+        return getNestedColumnSuggestions(columns, prefix)
+    }
+
     const result = []
     const lowerPrefix = prefix.toLowerCase()
     for (const name of Object.keys(columns)) {
         const col = columns[name]
-        if (!col.suggest) continue
+        if (!col || col.suggest === false) continue
         if (lowerPrefix && !name.toLowerCase().startsWith(lowerPrefix)) continue
+        const hasChildren = !!col.children
         result.push({
             label: name,
-            insertText: name,
+            insertText: hasChildren ? name + '.' : name,
             type: 'column',
-            detail: col.type,
+            detail: col.type || '',
         })
     }
     return result
 }
 
 export function getOperatorSuggestions(columns, fieldName) {
-    const col = columns[fieldName]
+    const col = resolveColumnDef(columns, fieldName)
     const ops = [
         { label: Operator.EQUALS, insertText: Operator.EQUALS, sortText: 'a' },
         { label: Operator.NOT_EQUALS, insertText: Operator.NOT_EQUALS, sortText: 'b' },
@@ -99,7 +187,7 @@ export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
 }
 
 export async function getValueSuggestions(columns, key, value, quoteChar, onAutocomplete, valueCache, setLoading) {
-    const col = columns[key]
+    const col = resolveColumnDef(columns, key)
     if (!col) return { suggestions: [], message: '' }
     if (!col.autocomplete) {
         return { suggestions: [], message: 'Autocompletion is disabled for this column' }
@@ -187,10 +275,11 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, valueCache
         return { suggestions: [], suggestionType: '', message: ctx.error }
     }
 
-    const columnNames = Object.keys(columns)
-
     if (ctx.expecting === 'column') {
-        if (columnNames.includes(ctx.key)) {
+        // Check for exact match: top-level key or resolved nested leaf
+        const resolvedCol = resolveColumnDef(columns, ctx.key)
+        const isExactLeaf = resolvedCol && !resolvedCol.children
+        if (isExactLeaf) {
             suggestions = getOperatorSuggestions(columns, ctx.key)
             suggestionType = 'operator'
         } else {

@@ -35,6 +35,7 @@ var pgColumns = map[string]*postgresql.Column{
 	"duration_ms": postgresql.NewColumn("duration_ms", "integer", nil),
 	"method":      postgresql.NewColumn("method", "varchar(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        postgresql.NewColumn("role", "varchar(50)", []string{"admin", "editor", "viewer", "guest"}),
+	"metadata":    postgresql.NewColumn("metadata", "jsonb", nil),
 }
 
 var chColumns = map[string]*clickhouse.Column{
@@ -47,6 +48,7 @@ var chColumns = map[string]*clickhouse.Column{
 	"duration_ms": clickhouse.NewColumn("duration_ms", false, "UInt32", nil),
 	"method":      clickhouse.NewColumn("method", false, "String", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        clickhouse.NewColumn("role", false, "String", []string{"admin", "editor", "viewer", "guest"}),
+	"metadata":    clickhouse.NewColumn("metadata", false, "JSON", nil),
 }
 
 var srColumns = map[string]*starrocks.Column{
@@ -59,6 +61,7 @@ var srColumns = map[string]*starrocks.Column{
 	"duration_ms": starrocks.NewColumn("duration_ms", false, "INT", nil),
 	"method":      starrocks.NewColumn("method", false, "VARCHAR(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        starrocks.NewColumn("role", false, "VARCHAR(50)", []string{"admin", "editor", "viewer", "guest"}),
+	"metadata":    starrocks.NewColumn("metadata", false, "JSON", nil),
 }
 
 func main() {

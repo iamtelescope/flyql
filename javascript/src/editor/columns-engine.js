@@ -10,6 +10,7 @@ import { parse as parseColumns } from '../columns/index.js'
 import { State } from '../columns/state.js'
 import { CharType, KNOWN_MODIFIERS, MODIFIER_INFO } from '../columns/constants.js'
 import { EditorState } from './state.js'
+import { getNestedColumnSuggestions, resolveColumnDef } from './suggestions.js'
 
 const COL_CHAR_TYPE_CLASS = {
     [CharType.COLUMN]: 'flyql-col-column',
@@ -173,6 +174,33 @@ export class ColumnsEngine {
         if (ctx.expecting === 'column') {
             const prefix = ctx.column.toLowerCase()
             const existing = ctx.existingColumns
+
+            // Nested column path — delegate to shared helper
+            if (prefix.includes('.')) {
+                // Check if it's an exact leaf match — show next-step actions
+                const resolvedCol = resolveColumnDef(this.columns, ctx.column)
+                if (resolvedCol && !resolvedCol.children) {
+                    const nextSteps = [
+                        { label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' },
+                        { label: '|', insertText: '|', type: 'delimiter', detail: 'add modifier' },
+                    ]
+                    const nested = getNestedColumnSuggestions(this.columns, ctx.column).filter(
+                        (s) => !existing.includes(s.label) && s.label.toLowerCase() !== prefix,
+                    )
+                    this.suggestions = [...nextSteps, ...nested]
+                    this.suggestionType = 'column'
+                    return { ctx, seq }
+                }
+
+                const nested = getNestedColumnSuggestions(this.columns, ctx.column)
+                this.suggestions = nested.filter((s) => !existing.includes(s.label))
+                this.suggestionType = 'column'
+                if (this.suggestions.length === 0 && prefix) {
+                    this.message = 'No matching columns'
+                }
+                return { ctx, seq }
+            }
+
             const columnSuggestions = []
             let hasExactMatch = false
             for (const [name, def] of Object.entries(this.columns)) {
@@ -180,9 +208,10 @@ export class ColumnsEngine {
                 if (existing.includes(name)) continue
                 if (prefix && !name.toLowerCase().startsWith(prefix)) continue
                 if (prefix && name.toLowerCase() === prefix) hasExactMatch = true
+                const hasChildren = !!def.children
                 columnSuggestions.push({
                     label: name,
-                    insertText: name,
+                    insertText: hasChildren ? name + '.' : name,
                     type: 'column',
                     detail: def.type || '',
                 })

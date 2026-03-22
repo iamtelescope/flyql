@@ -429,7 +429,7 @@ function acceptSuggestion(index) {
     }
     let insertText = suggestion.insertText
 
-    if (!suggestion.cursorOffset && !insertText.endsWith(' ')) {
+    if (!suggestion.cursorOffset && !insertText.endsWith(' ') && !insertText.endsWith('.')) {
         const charAfter = currentValue[range.end] || ''
         if (charAfter === ' ') {
             range.end += 1

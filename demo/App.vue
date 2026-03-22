@@ -107,6 +107,21 @@ const columns = ref({
     duration_ms: { type: 'number', suggest: true, autocomplete: false },
     method: { type: 'enum', suggest: true, autocomplete: true, values: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] },
     role: { type: 'enum', suggest: true, autocomplete: true, values: ['admin', 'editor', 'viewer', 'guest'] },
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
 })
 
 const isValid = computed(() => {

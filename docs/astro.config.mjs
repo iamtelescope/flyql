@@ -34,6 +34,33 @@ export default defineConfig({
             { label: "Nested Keys", link: "/syntax/nested-keys/" },
           ],
         },
+        {
+          label: "Editor",
+          items: [
+            { label: "Overview", link: "/editor/" },
+            { label: "Columns Component", link: "/editor/columns-component/" },
+            { label: "Schema", link: "/editor/schema/" },
+            { label: "Theming", link: "/editor/theming/" },
+          ],
+        },
+        {
+          label: "Getting Started",
+          items: [
+            { label: "Overview", link: "/getting-started/" },
+            { label: "Go", link: "/getting-started/go/" },
+            { label: "Python", link: "/getting-started/python/" },
+            { label: "JavaScript", link: "/getting-started/javascript/" },
+          ],
+        },
+        {
+          label: "SQL Dialects",
+          items: [
+            { label: "Overview", link: "/sql/" },
+            { label: "ClickHouse", link: "/sql/clickhouse/" },
+            { label: "PostgreSQL", link: "/sql/postgresql/" },
+            { label: "StarRocks", link: "/sql/starrocks/" },
+          ],
+        },
       ],
     }),
     sitemap(),

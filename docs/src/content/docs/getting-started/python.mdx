@@ -1,0 +1,77 @@
+---
+title: Python Quickstart
+description: Install and use FlyQL in a Python project
+---
+
+## Installation
+
+FlyQL for Python is installed from git (not published to PyPI):
+
+```bash
+pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+```
+
+This installs the `flyql` package along with its dependency `google-re2`.
+
+**Requirements:** Python 3.10+
+
+## Parse a Query
+
+```python
+from flyql.core.parser import parse
+
+result = parse("status=200 and active")
+print(result.root)
+```
+
+`parse()` returns a `Parser` object with a `root` node representing the AST. It raises a `ParserError` on invalid input.
+
+## Generate SQL
+
+Use a generator to turn the AST into a parameterized WHERE clause. Each database dialect has its own generator.
+
+### ClickHouse
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status>=400 and host=prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql(result.root, columns)
+print(sql)
+```
+
+PostgreSQL and StarRocks generators follow the same pattern — import from `flyql.generators.postgresql` or `flyql.generators.starrocks` instead.
+
+## Match In-Memory
+
+Evaluate a query against a data record without generating SQL:
+
+```python
+from flyql.core.parser import parse
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+result = parse("status=200 and active")
+
+data = {
+    "status": 200,
+    "active": True,
+    "host": "prod-api-01",
+}
+
+evaluator = Evaluator()
+matches = evaluator.evaluate(result.root, Record(data))
+print(f"Matches: {matches}")  # True
+```
+
+## What's Next
+
+- [Syntax Reference](/syntax/) — all operators, boolean logic, patterns, and more

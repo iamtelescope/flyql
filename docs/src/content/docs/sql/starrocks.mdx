@@ -1,0 +1,99 @@
+---
+title: StarRocks
+description: Generated SQL examples for StarRocks
+---
+
+StarRocks SQL uses backtick-quoted identifiers, `regexp()` for regex, and `->` with JSON-stringified keys for JSON access.
+
+## Basic Examples
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `message='hello'` | `` `message` = 'hello' `` |
+| `message!='hello'` | `` `message` != 'hello' `` |
+| `count>10` | `` `count` > 10 `` |
+| `count<=100` | `` `count` <= 100 `` |
+| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host=prod*` | `` `host` LIKE 'prod%' `` |
+
+## Boolean Operators
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `a='1' and b>10` | `` (`a` = '1' and `b` > 10) `` |
+| `a='1' or b='2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a='1'` | `` not (`a` = '1') `` |
+
+## List Membership
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `status in [200, 201]` | `` `status` IN (200, 201) `` |
+| `env not in ['dev', 'test']` | `` `env` NOT IN ('dev', 'test') `` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## JSON Columns
+
+StarRocks supports two JSON column types with different SQL output.
+
+### Native JSON Type
+
+Native JSON columns use the `->` operator with JSON-stringified keys:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `data.name='test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name='john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### JSON String Type
+
+Columns storing JSON as a string require `parse_json()` before traversal:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `data.name='test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name='john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Map Columns
+
+Map columns use bracket notation with direct comparison:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `metadata.key1='value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1!='value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key='value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern~'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## Array Columns
+
+Array columns use 0-based bracket indexing:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `tags.0='first'` | `` `tags`[0] = 'first' `` |
+| `tags.1='second'` | `` `tags`[1] = 'second' `` |
+
+### Column Setup
+
+The `jsonString` parameter controls which mode is used (same as ClickHouse):
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```

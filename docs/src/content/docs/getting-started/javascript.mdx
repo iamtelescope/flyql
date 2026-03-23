@@ -1,0 +1,89 @@
+---
+title: JavaScript Quickstart
+description: Install and use FlyQL in a JavaScript project
+---
+
+## Installation
+
+```bash
+npm install flyql
+```
+
+**Requirements:** Node.js 16+. All imports use ES modules.
+
+## Parse a Query
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status=200 and active")
+console.log(result.root)
+```
+
+`parse()` returns a `Parser` object with a `root` node representing the AST. It throws on invalid input.
+
+## Generate SQL
+
+Use a generator to turn the AST into a parameterized WHERE clause. Each database dialect is a separate subpath import.
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status>=400 and host=prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### Other Dialects
+
+PostgreSQL and StarRocks generators follow the same pattern:
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+Note: PostgreSQL's `newColumn` has a different signature — `newColumn(name, type, values)` (no `jsonString` parameter).
+
+## Match In-Memory
+
+Evaluate a query against a data record without generating SQL:
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status=200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## Available Subpath Imports
+
+| Import Path | Contents |
+|-------------|----------|
+| `flyql` | Core parser (`parse`, `ParserError`, operators, constants) |
+| `flyql/core` | Core parser module directly |
+| `flyql/columns` | Column expression parser |
+| `flyql/generators/clickhouse` | ClickHouse SQL generator |
+| `flyql/generators/postgresql` | PostgreSQL SQL generator |
+| `flyql/generators/starrocks` | StarRocks SQL generator |
+| `flyql/matcher` | In-memory record matcher |
+| `flyql/editor` | Web editor component (requires Vue 3) |
+
+## What's Next
+
+- [Syntax Reference](/syntax/) — all operators, boolean logic, patterns, and more

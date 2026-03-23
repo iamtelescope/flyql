@@ -125,6 +125,7 @@ const props = defineProps({
     modelValue: { type: String, default: '' },
     columns: { type: Object, default: () => ({}) },
     onAutocomplete: { type: Function, default: null },
+    onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
     autofocus: { type: Boolean, default: false },
     debug: { type: Boolean, default: false },
@@ -136,6 +137,7 @@ const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus',
 
 const engine = new EditorEngine(props.columns, {
     onAutocomplete: props.onAutocomplete,
+    onKeyDiscovery: props.onKeyDiscovery,
     onLoadingChange: (loading) => {
         isLoading.value = loading
     },
@@ -558,6 +560,7 @@ watch(activated, (val) => {
     engine.state.setActivated(val)
     if (!val) {
         engine.clearValueCache()
+        engine.clearKeyCache()
     }
 })
 
@@ -587,6 +590,13 @@ watch(
     () => props.onAutocomplete,
     (newFn) => {
         engine.onAutocomplete = newFn || null
+    },
+)
+
+watch(
+    () => props.onKeyDiscovery,
+    (newFn) => {
+        engine.onKeyDiscovery = newFn || null
     },
 )
 

@@ -42,6 +42,7 @@ export class EditorEngine {
     constructor(columns, options = {}) {
         this.columns = columns || {}
         this.onAutocomplete = options.onAutocomplete || null
+        this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
         this.state = new EditorState()
         this.context = null
@@ -50,6 +51,7 @@ export class EditorEngine {
         this.message = ''
         this.isLoading = false
         this.valueCache = {}
+        this.keyCache = {}
         this._suggestionSeq = 0
     }
 
@@ -192,11 +194,19 @@ export class EditorEngine {
         this.suggestions = []
         this.state.selectedIndex = 0
 
-        const result = await updateSuggestions(ctx, this.columns, this.onAutocomplete, this.valueCache, (loading) => {
-            if (seq !== this._suggestionSeq) return
-            this.isLoading = loading
-            if (this.onLoadingChange) this.onLoadingChange(loading)
-        })
+        const result = await updateSuggestions(
+            ctx,
+            this.columns,
+            this.onAutocomplete,
+            this.valueCache,
+            this.onKeyDiscovery,
+            this.keyCache,
+            (loading) => {
+                if (seq !== this._suggestionSeq) return
+                this.isLoading = loading
+                if (this.onLoadingChange) this.onLoadingChange(loading)
+            },
+        )
 
         if (seq !== this._suggestionSeq) return ctx
 
@@ -375,6 +385,13 @@ export class EditorEngine {
      */
     clearValueCache() {
         this.valueCache = {}
+    }
+
+    /**
+     * Clear the key discovery cache (e.g., when deactivating).
+     */
+    clearKeyCache() {
+        this.keyCache = {}
     }
 
     /**

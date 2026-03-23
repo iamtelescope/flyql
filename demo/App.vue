@@ -16,6 +16,7 @@
             <FlyqlColumns
                 v-model="columnsExpr"
                 :columns="columns"
+                :on-key-discovery="onKeyDiscovery"
                 placeholder="message, status|upper, host as h"
                 :debug="false"
                 @update:parsed="onColumnsParsed"
@@ -35,6 +36,7 @@
                 v-model="query"
                 :columns="columns"
                 :on-autocomplete="onAutocomplete"
+                :on-key-discovery="onKeyDiscovery"
                 placeholder="Type a FlyQL query..."
                 :autofocus="true"
                 :debug="false"
@@ -122,6 +124,7 @@ const columns = ref({
             version: { type: 'string', suggest: true },
         },
     },
+    request: { type: 'object', suggest: true },
 })
 
 const isValid = computed(() => {
@@ -183,6 +186,23 @@ async function onAutocomplete(key, value) {
     } catch (err) {
         addLog(`autocomplete error: ${err.message}`)
         return { items: [] }
+    }
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    addLog(`key-discovery: column=${columnName} segments=${segments.join(',')}`)
+    try {
+        const resp = await fetch(`/api/discover-keys?column=${encodeURIComponent(columnName)}&segments=${segments.map(encodeURIComponent).join(',')}`)
+        if (!resp.ok) {
+            addLog(`key-discovery error: ${resp.status}`)
+            return []
+        }
+        const data = await resp.json()
+        addLog(`key-discovery result: ${data.keys?.length || 0} keys`)
+        return data.keys || []
+    } catch (err) {
+        addLog(`key-discovery error: ${err.message}`)
+        return []
     }
 }
 

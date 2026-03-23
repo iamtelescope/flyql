@@ -10,7 +10,7 @@ import { parse as parseColumns } from '../columns/index.js'
 import { State } from '../columns/state.js'
 import { CharType, KNOWN_MODIFIERS, MODIFIER_INFO } from '../columns/constants.js'
 import { EditorState } from './state.js'
-import { getNestedColumnSuggestions, resolveColumnDef } from './suggestions.js'
+import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 
 const COL_CHAR_TYPE_CLASS = {
     [CharType.COLUMN]: 'flyql-col-column',
@@ -54,6 +54,9 @@ function wrapSpan(charType, text) {
 export class ColumnsEngine {
     constructor(columns, options = {}) {
         this.columns = columns || {}
+        this.onKeyDiscovery = options.onKeyDiscovery || null
+        this.onLoadingChange = options.onLoadingChange || null
+        this.keyCache = {}
         this.state = new EditorState()
         this.context = null
         this.suggestions = []
@@ -193,6 +196,27 @@ export class ColumnsEngine {
                 }
 
                 const nested = getNestedColumnSuggestions(this.columns, ctx.column)
+                if (nested.length === 0) {
+                    // Try remote key discovery for schemaless object columns
+                    const discovered = await getKeyDiscoverySuggestions(
+                        this.columns,
+                        ctx.column,
+                        this.onKeyDiscovery,
+                        this.keyCache,
+                        (loading) => {
+                            if (this.isStale(seq)) return
+                            this.isLoading = loading
+                            if (this.onLoadingChange) this.onLoadingChange(loading)
+                        },
+                    )
+                    if (this.isStale(seq)) return { ctx, seq }
+                    this.suggestions = discovered.filter((s) => !existing.includes(s.label))
+                    this.suggestionType = 'column'
+                    if (this.suggestions.length === 0 && prefix) {
+                        this.message = 'No matching columns'
+                    }
+                    return { ctx, seq }
+                }
                 this.suggestions = nested.filter((s) => !existing.includes(s.label))
                 this.suggestionType = 'column'
                 if (this.suggestions.length === 0 && prefix) {
@@ -462,6 +486,10 @@ export class ColumnsEngine {
 
     getStateLabel() {
         return STATE_LABELS[this.suggestionType] || ''
+    }
+
+    clearKeyCache() {
+        this.keyCache = {}
     }
 
     getFilterPrefix() {

@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	flyql "github.com/iamtelescope/flyql/golang"
@@ -36,6 +37,7 @@ var pgColumns = map[string]*postgresql.Column{
 	"method":      postgresql.NewColumn("method", "varchar(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        postgresql.NewColumn("role", "varchar(50)", []string{"admin", "editor", "viewer", "guest"}),
 	"metadata":    postgresql.NewColumn("metadata", "jsonb", nil),
+	"request":     postgresql.NewColumn("request", "jsonb", nil),
 }
 
 var chColumns = map[string]*clickhouse.Column{
@@ -49,6 +51,7 @@ var chColumns = map[string]*clickhouse.Column{
 	"method":      clickhouse.NewColumn("method", false, "String", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        clickhouse.NewColumn("role", false, "String", []string{"admin", "editor", "viewer", "guest"}),
 	"metadata":    clickhouse.NewColumn("metadata", false, "JSON", nil),
+	"request":     clickhouse.NewColumn("request", false, "JSON", nil),
 }
 
 var srColumns = map[string]*starrocks.Column{
@@ -62,6 +65,26 @@ var srColumns = map[string]*starrocks.Column{
 	"method":      starrocks.NewColumn("method", false, "VARCHAR(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
 	"role":        starrocks.NewColumn("role", false, "VARCHAR(50)", []string{"admin", "editor", "viewer", "guest"}),
 	"metadata":    starrocks.NewColumn("metadata", false, "JSON", nil),
+	"request":     starrocks.NewColumn("request", false, "JSON", nil),
+}
+
+type discoveredKey struct {
+	Name        string `json:"name"`
+	Type        string `json:"type,omitempty"`
+	HasChildren bool   `json:"hasChildren,omitempty"`
+}
+
+var keyDiscoveryData = map[string][]discoveredKey{
+	"request": {
+		{Name: "method", Type: "string"},
+		{Name: "url", Type: "string"},
+		{Name: "headers", Type: "object", HasChildren: true},
+	},
+	"request|headers": {
+		{Name: "content_type", Type: "string"},
+		{Name: "accept", Type: "string"},
+		{Name: "authorization", Type: "string"},
+	},
 }
 
 func main() {
@@ -79,6 +102,22 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"items": items})
+	})
+
+	r.GET("/api/discover-keys", func(c *gin.Context) {
+		segmentsParam := c.Query("segments")
+		log.Printf("discover-keys: column=%s segments=%s", c.Query("column"), segmentsParam)
+
+		time.Sleep(500 * time.Millisecond)
+
+		segments := strings.Split(segmentsParam, ",")
+		lookupKey := strings.Join(segments, "|")
+		keys, ok := keyDiscoveryData[lookupKey]
+		if !ok {
+			keys = []discoveredKey{}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"keys": keys})
 	})
 
 	r.POST("/api/generate", func(c *gin.Context) {

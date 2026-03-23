@@ -65,7 +65,12 @@
                     Suggestions: <span class="flyql-panel__state">{{ stateLabel }}</span>
                 </div>
                 <div class="flyql-panel__body" aria-live="polite">
-                    <ul v-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
+                    <div v-if="isLoading" class="flyql-panel__loading">
+                        <slot name="loading">
+                            <span class="flyql-panel__spinner"></span>
+                        </slot>
+                    </div>
+                    <ul v-else-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
                         <li
                             v-for="(item, index) in suggestions"
                             :key="index"
@@ -84,8 +89,8 @@
                             <span v-if="item.detail" class="flyql-panel__detail">{{ item.detail }}</span>
                         </li>
                     </ul>
-                    <div v-else-if="message" class="flyql-panel__message">{{ message }}</div>
-                    <div v-else class="flyql-panel__empty">No suggestions</div>
+                    <div v-else-if="!isLoading && message" class="flyql-panel__message">{{ message }}</div>
+                    <div v-else-if="!isLoading" class="flyql-panel__empty">No suggestions</div>
                 </div>
             </div>
         </Teleport>
@@ -99,6 +104,7 @@ import { ColumnsEngine } from './columns-engine.js'
 const props = defineProps({
     modelValue: { type: String, default: '' },
     columns: { type: Object, default: () => ({}) },
+    onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
     autofocus: { type: Boolean, default: false },
     debug: { type: Boolean, default: false },
@@ -106,7 +112,14 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'update:parsed', 'submit', 'parse-error', 'focus', 'blur'])
 
-const engine = new ColumnsEngine(props.columns)
+const isLoading = ref(false)
+
+const engine = new ColumnsEngine(props.columns, {
+    onKeyDiscovery: props.onKeyDiscovery,
+    onLoadingChange: (loading) => {
+        isLoading.value = loading
+    },
+})
 
 const instanceId = 'flyql-cols-' + Math.random().toString(36).substring(2, 8)
 
@@ -460,8 +473,16 @@ function badgeText(type) {
 watch(activated, (val) => {
     if (!val) {
         engine.state.setActivated(false)
+        engine.clearKeyCache()
     }
 })
+
+watch(
+    () => props.onKeyDiscovery,
+    (newFn) => {
+        engine.onKeyDiscovery = newFn || null
+    },
+)
 
 watch(selectedIndex, async (idx) => {
     await nextTick()

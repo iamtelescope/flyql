@@ -110,7 +110,26 @@ export function resolveColumnDef(columns, fieldName) {
 export function getKeySuggestions(columns, prefix) {
     // If prefix contains a dot, delegate to nested traversal
     if (prefix.includes('.')) {
-        return getNestedColumnSuggestions(columns, prefix)
+        const nested = getNestedColumnSuggestions(columns, prefix)
+        if (nested.length > 0) return nested
+        // Check if this is a schemaless object column (no children) — signal async needed
+        const dotIndex = prefix.lastIndexOf('.')
+        const rawParentPath = prefix.substring(0, dotIndex)
+        const segments = rawParentPath.split('.')
+        // Check root column first — for multi-level discovery, intermediate nodes
+        // are discovered keys (not in schema), so only root needs to be resolvable
+        const rootResolved = resolveNestedNode(columns, [segments[0]])
+        if (rootResolved && rootResolved.node.type === 'object') {
+            if (!rootResolved.node.children) {
+                return null // root is schemaless object — signal async
+            }
+            // Root has children — check if full path resolves through static children
+            const fullResolved = resolveNestedNode(columns, segments)
+            if (fullResolved && !fullResolved.node.children && fullResolved.node.type === 'object') {
+                return null // reached a schemaless object deeper in static tree
+            }
+        }
+        return []
     }
 
     const result = []
@@ -188,7 +207,29 @@ export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
 
 export async function getValueSuggestions(columns, key, value, quoteChar, onAutocomplete, valueCache, setLoading) {
     const col = resolveColumnDef(columns, key)
-    if (!col) return { suggestions: [], message: '' }
+    if (!col) {
+        // For unresolved dotted keys (e.g., discovered paths like request.method),
+        // fall through to onAutocomplete so the host app can provide value suggestions.
+        if (key && key.includes('.') && onAutocomplete) {
+            if (valueCache[key]) {
+                return { suggestions: prepareSuggestionValues(valueCache[key], quoteChar, value), message: '' }
+            }
+            const loadingTimer = setTimeout(() => {
+                setLoading(true)
+            }, 200)
+            try {
+                const result = await onAutocomplete(key, '')
+                if (result && result.items) {
+                    valueCache[key] = result.items
+                    return { suggestions: prepareSuggestionValues(result.items, quoteChar, value), message: '' }
+                }
+            } finally {
+                clearTimeout(loadingTimer)
+                setLoading(false)
+            }
+        }
+        return { suggestions: [], message: '' }
+    }
     if (!col.autocomplete) {
         return { suggestions: [], message: 'Autocompletion is disabled for this column' }
     }
@@ -217,6 +258,74 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
         }
     }
     return { suggestions: [], message: '' }
+}
+
+export async function getKeyDiscoverySuggestions(columns, prefix, onKeyDiscovery, keyCache, setLoading) {
+    if (!onKeyDiscovery) return []
+
+    const dotIndex = prefix.lastIndexOf('.')
+    const rawParentPath = prefix.substring(0, dotIndex)
+    const childPrefix = prefix.substring(dotIndex + 1).toLowerCase()
+    const segments = rawParentPath.split('.')
+
+    // Resolve the root column — for multi-level discovery, we only need the root
+    // to be a schemaless object. Intermediate segments are discovered keys, not schema nodes.
+    const resolved = resolveNestedNode(columns, [segments[0]])
+    if (!resolved) return []
+
+    // If root node has children, check if the full path resolves through static children
+    if (resolved.node.children) {
+        const fullResolved = resolveNestedNode(columns, segments)
+        if (fullResolved && fullResolved.node.children) return [] // fully static path
+        if (fullResolved && fullResolved.node.type !== 'object') return [] // leaf node
+        // If fullResolved exists but has no children and is object type, proceed with discovery
+        // If fullResolved is null, segments go beyond static children — not discoverable from here
+        if (!fullResolved) return []
+    }
+    if (resolved.node.type !== 'object') return []
+
+    const parentPath = segments.join('.')
+    const rootColumnName = segments[0]
+    const cacheKey = segments.join('|')
+
+    // Cache check
+    if (keyCache[cacheKey]) {
+        return filterDiscoveredKeys(keyCache[cacheKey], parentPath, childPrefix)
+    }
+
+    const loadingTimer = setTimeout(() => {
+        setLoading(true)
+    }, 200)
+    try {
+        const keys = await onKeyDiscovery(rootColumnName, segments)
+        if (keys && Array.isArray(keys)) {
+            keyCache[cacheKey] = keys
+            return filterDiscoveredKeys(keys, parentPath, childPrefix)
+        }
+    } catch {
+        // Error: return empty suggestions, editor remains functional
+    } finally {
+        clearTimeout(loadingTimer)
+        setLoading(false)
+    }
+    return []
+}
+
+function filterDiscoveredKeys(keys, parentPath, childPrefix) {
+    return keys
+        .filter((k) => {
+            if (!childPrefix) return true
+            return k.name.toLowerCase().startsWith(childPrefix)
+        })
+        .map((k) => {
+            const fullPath = parentPath + '.' + k.name
+            return {
+                label: fullPath,
+                insertText: k.hasChildren ? fullPath + '.' : fullPath,
+                type: 'column',
+                detail: k.type || 'unknown',
+            }
+        })
 }
 
 export function getInsertRange(ctx, fullText, suggestionType) {
@@ -260,7 +369,15 @@ export function getInsertRange(ctx, fullText, suggestionType) {
     return { start: cursorPos, end: cursorPos }
 }
 
-export async function updateSuggestions(ctx, columns, onAutocomplete, valueCache, setLoading) {
+export async function updateSuggestions(
+    ctx,
+    columns,
+    onAutocomplete,
+    valueCache,
+    onKeyDiscovery,
+    keyCache,
+    setLoading,
+) {
     let message = ''
     let suggestions = []
     let suggestionType = ''
@@ -283,8 +400,15 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, valueCache
             suggestions = getOperatorSuggestions(columns, ctx.key)
             suggestionType = 'operator'
         } else {
-            suggestions = getKeySuggestions(columns, ctx.key)
-            suggestionType = 'column'
+            const keySuggestions = getKeySuggestions(columns, ctx.key)
+            if (keySuggestions === null) {
+                // Async key discovery needed
+                suggestionType = 'column'
+                suggestions = await getKeyDiscoverySuggestions(columns, ctx.key, onKeyDiscovery, keyCache, setLoading)
+            } else {
+                suggestions = keySuggestions
+                suggestionType = 'column'
+            }
         }
     } else if (ctx.expecting === 'operatorOrBool') {
         suggestions = [...getOperatorSuggestions(columns, ctx.key), ...getBoolSuggestions()]

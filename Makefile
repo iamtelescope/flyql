@@ -21,3 +21,9 @@ e2e-clean:
 	cd e2e && make clean
 run-demo:
 	cd demo && make run
+docs-install:
+	cd docs && npm install
+docs-build:
+	cd docs && npm run build
+docs-dev:
+	cd docs && npm run dev

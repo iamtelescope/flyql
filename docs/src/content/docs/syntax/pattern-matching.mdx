@@ -1,0 +1,73 @@
+---
+title: Pattern Matching
+description: Regex and wildcard matching in FlyQL
+---
+
+## Regex Matching
+
+Use `~` to match a value against a regular expression, and `!~` to negate the match:
+
+```
+message~"error.*timeout"
+path!~"^/health"
+```
+
+| Operator | Meaning |
+|----------|---------|
+| `~` | Value matches regex pattern |
+| `!~` | Value does not match regex pattern |
+
+### Regex Pattern Syntax
+
+The regex syntax depends on the target backend:
+
+- **ClickHouse** — uses `match()` function (RE2 syntax)
+- **PostgreSQL** — uses `~` and `!~` operators (POSIX regex)
+- **StarRocks** — uses `regexp` function
+- **In-memory matcher** — uses the host language's regex engine (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Quote the pattern when it contains spaces or special characters:
+
+```
+message~"connection (refused|reset)"
+host~"^prod-[0-9]+"
+```
+
+## Wildcard Matching
+
+Use `*` at the end of an unquoted value for glob-style prefix matching:
+
+```
+host=prod*
+service=api-*
+```
+
+This matches any value that starts with the given prefix. Wildcards are only supported at the end of a value — `*prod` or `pr*od` are not supported.
+
+### Wildcard vs. Regex
+
+| Pattern | Syntax | Example |
+|---------|--------|---------|
+| Wildcard (prefix) | `key=value*` | `host=prod*` |
+| Regex (full) | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+
+Use wildcards for simple prefix matching. Use regex when you need more complex patterns.
+
+## Examples
+
+```
+# Regex: messages containing "error" or "fail"
+message~"error|fail"
+
+# Regex: paths starting with /api/v2
+path~"^/api/v2"
+
+# Negated regex: exclude health check paths
+path!~"^/health"
+
+# Wildcard: hosts starting with "prod"
+host=prod*
+
+# Combined
+host=prod* and message~"timeout.*" and path!~"^/health"
+```

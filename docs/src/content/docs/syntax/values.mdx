@@ -1,0 +1,104 @@
+---
+title: Values & Expressions
+description: Truthy/falsy expressions, quoted strings, and numeric values in FlyQL
+---
+
+## Truthy/Falsy Expressions
+
+A standalone key without an operator checks if the field has a truthy value:
+
+```
+active
+message and status
+```
+
+A value is considered **falsy** if it is:
+- `null` / `None` / missing
+- Empty string `""`
+- Zero `0`
+- Boolean `false`
+
+Everything else is **truthy**.
+
+Use `not` to check for falsy values:
+
+```
+not archived          # archived is falsy
+active and not debug  # active is truthy, debug is falsy
+```
+
+## String Values
+
+### Without Spaces
+
+If the value contains no spaces, write it directly:
+
+```
+status=200
+host=prod-api-01
+level=error
+```
+
+### With Spaces
+
+Enclose values with spaces in single or double quotes:
+
+```
+user="John Doe"
+message='connection refused'
+```
+
+### Escaping Quotes
+
+If the value contains the same quote character used for enclosure, escape it with a backslash:
+
+```
+user='John\'s account'
+message="said \"hello\""
+```
+
+## Numeric Values
+
+Numeric values are written without quotes:
+
+```
+status=200
+duration>1000
+count<=50
+```
+
+Numbers are used with all comparison operators (`=`, `!=`, `>`, `>=`, `<`, `<=`).
+
+## Whitespace
+
+FlyQL is whitespace-tolerant. Spaces around operators are optional:
+
+```
+status=200          # no spaces
+status = 200        # spaces around operator
+status =200         # space before only
+```
+
+All of the above are equivalent. Whitespace between tokens is always allowed.
+
+## Examples
+
+```
+# Truthy check
+active
+
+# Negated truthy
+not archived
+
+# Unquoted string value
+level=error
+
+# Quoted string with spaces
+user="John Doe"
+
+# Numeric comparison
+status>=400 and duration<5000
+
+# Mixed
+active and level=error and message~"timeout.*"
+```

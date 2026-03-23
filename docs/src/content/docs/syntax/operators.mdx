@@ -1,0 +1,74 @@
+---
+title: Comparison Operators
+description: FlyQL comparison operators for filtering data
+---
+
+FlyQL supports the following comparison operators:
+
+## Equality
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `=` | Equals | `status=200` |
+| `!=` | Not equals | `env!=prod` |
+
+```
+status=200
+service!="api-gateway"
+```
+
+Both sides of the operator are required — a key and a value.
+
+## Numeric Comparison
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `>` | Greater than | `status>399` |
+| `>=` | Greater or equals | `status>=400` |
+| `<` | Less than | `duration<1000` |
+| `<=` | Less or equals | `duration<=500` |
+
+```
+status>=400 and duration<5000
+response_time>100 and response_time<=2000
+```
+
+Numeric comparison operators work on numeric values. When used with string values, lexicographic comparison applies.
+
+## Regex Matching
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `~` | Regex match | `message~"error.*"` |
+| `!~` | Not regex match | `path!~"^/health"` |
+
+```
+message~"timeout|connection refused"
+host!~"^test-.*"
+```
+
+Regex patterns follow the syntax of the target database or runtime.
+
+## List Membership
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `in` | In list | `status in [200, 201]` |
+| `not in` | Not in list | `env not in ['dev', 'test']` |
+
+See the [Lists](/syntax/lists/) page for detailed list syntax rules.
+
+## Operator Summary
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `=` | Equals | `status=200` |
+| `!=` | Not equals | `env!=prod` |
+| `>` | Greater than | `count>10` |
+| `>=` | Greater or equals | `count>=10` |
+| `<` | Less than | `count<100` |
+| `<=` | Less or equals | `count<=100` |
+| `~` | Regex match | `msg~"err.*"` |
+| `!~` | Not regex match | `msg!~"^ok"` |
+| `in` | In list | `s in [1, 2]` |
+| `not in` | Not in list | `s not in [3]` |

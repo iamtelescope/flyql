@@ -1,0 +1,46 @@
+---
+title: FlyQL
+description: A lightweight, injection-proof query language for multi-dialect SQL generation
+---
+
+A lightweight query language that transpiles into injection-proof SQL across ClickHouse, PostgreSQL, and StarRocks — with implementations in Go, Python, and JavaScript.
+
+## What is FlyQL?
+
+FlyQL is a simple, human-readable query language designed for filtering data. Write a query like `status>=400 and host=prod*`, and FlyQL transpiles it into parameterized SQL for your database — or evaluates it in-memory against data records.
+
+```
+status>=400 and host=prod* and not debug
+```
+
+This query works identically whether your backend is ClickHouse, PostgreSQL, StarRocks, or an in-memory dataset.
+
+## Key Features
+
+- **Injection-Proof by Design** — The grammar cannot express subqueries, JOINs, UNIONs, or DDL. Security is structural, not defensive. All generated SQL uses parameterized values.
+- **Multi-Dialect SQL** — One query language, dialect-specific output. Generates correct SQL for ClickHouse, PostgreSQL, and StarRocks with proper type handling (JSON paths, Map access, Array handling).
+- **Multi-Language** — Full implementations in Go, Python, and JavaScript. Parse on the frontend, validate on the backend, generate SQL anywhere — same query, same results.
+- **Zero Dependencies** — Hand-written state-machine parser with no external dependencies in any language. Trivial to integrate, nothing to conflict with.
+
+## Quick Example
+
+```
+service!=api and (status>=400 or level=error) and message~"timeout.*"
+```
+
+| Component | Meaning |
+|-----------|---------|
+| `service!=api` | service field is not "api" |
+| `status>=400` | status is 400 or greater |
+| `level=error` | level field equals "error" |
+| `message~"timeout.*"` | message matches regex pattern |
+| `and`, `or` | boolean logic with precedence |
+| `( )` | explicit grouping |
+
+## Supported Languages
+
+| Language | Parser | SQL Generators | In-Memory Matcher |
+|----------|--------|---------------|-------------------|
+| Go | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| Python | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| JavaScript | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |

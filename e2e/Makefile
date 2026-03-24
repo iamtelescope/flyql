@@ -1,0 +1,40 @@
+VERSION_FILE ?= versions/default.env
+REPORT       := $(CURDIR)/output/report.html
+JSON_REPORT  := $(CURDIR)/output/report.json
+LANGUAGES    ?= go,javascript,python
+DATABASES    ?= clickhouse,postgresql,starrocks
+
+.PHONY: up down test-go test-js test-python test report run install clean
+
+up:
+	env $$(cat $(VERSION_FILE) | xargs) docker compose up -d --wait || (bash wait-for-dbs.sh)
+
+down:
+	docker compose down -v
+
+install: .venv
+	.venv/bin/pip install -q -r requirements.txt
+
+.venv:
+	python3 -m venv .venv
+
+test-go:
+	cd ../golang/e2e && E2E_REPORT_PATH=$(REPORT) go test -v -count=1 -vet=off ./...
+
+test-js:
+	cd ../javascript && npx vitest run --config vitest.e2e.config.js e2e/
+
+test-python:
+	cd ../python && .venv/bin/python3 -m pytest -v e2e/
+
+test: up
+	$(MAKE) -k test-go test-js test-python; rc=$$?; $(MAKE) down; exit $$rc
+
+run:
+	.venv/bin/python3 runner.py --languages $(LANGUAGES) --databases $(DATABASES) --output $(REPORT) --json $(JSON_REPORT) --version-file $(VERSION_FILE) --down
+
+report:
+	open $(REPORT)
+
+clean: down
+	rm -f $(REPORT)

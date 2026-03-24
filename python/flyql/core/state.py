@@ -18,6 +18,7 @@ class State(Enum):
     KEY_OR_BOOL_OP = "KeyOrBoolOp"
     EXPECT_NOT_TARGET = "ExpectNotTarget"
     EXPECT_IN_KEYWORD = "ExpectInKeyword"
+    EXPECT_HAS_KEYWORD = "ExpectHasKeyword"
     EXPECT_LIST_START = "ExpectListStart"
     IN_LIST_VALUE = "InListValue"
     IN_LIST_SINGLE_QUOTED_VALUE = "InListSingleQuotedValue"

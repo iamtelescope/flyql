@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "description": "Column definitions for StarRocks e2e tests",
+  "columns": {
+    "id": {
+      "name": "id",
+      "jsonstring": false,
+      "type": "INT",
+      "values": null
+    },
+    "message": {
+      "name": "message",
+      "jsonstring": false,
+      "type": "STRING",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "jsonstring": false,
+      "type": "BIGINT",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "jsonstring": false,
+      "type": "FLOAT",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "jsonstring": false,
+      "type": "BOOLEAN",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "jsonstring": false,
+      "type": "DATE",
+      "values": null
+    },
+    "status": {
+      "name": "status",
+      "jsonstring": false,
+      "type": "INT",
+      "values": null
+    },
+    "name": {
+      "name": "name",
+      "jsonstring": false,
+      "type": "STRING",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "jsonstring": false,
+      "type": "STRING",
+      "values": null
+    },
+    "meta": {
+      "name": "meta",
+      "jsonstring": true,
+      "type": "STRING",
+      "values": null
+    },
+    "meta_json": {
+      "name": "meta_json",
+      "jsonstring": false,
+      "type": "JSON",
+      "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "jsonstring": false,
+      "type": "ARRAY<STRING>",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "jsonstring": false,
+      "type": "MAP<STRING, STRING>",
+      "values": null
+    }
+  }
+}

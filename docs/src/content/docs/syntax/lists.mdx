@@ -1,0 +1,69 @@
+---
+title: Lists
+description: List membership operators in FlyQL (in, not in)
+---
+
+## List Membership
+
+Use `in` to check if a value is in a list, and `not in` to check it is not:
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+## Syntax Rules
+
+- Values are enclosed in square brackets `[ ]` and separated by commas
+- All values in a list must be the same type (all strings or all numbers)
+- String values must be quoted: `['a', 'b', 'c']`
+- Numeric values are unquoted: `[1, 2, 3]`
+- Spaces around commas and brackets are allowed
+
+### String Lists
+
+```
+method in ['GET', 'POST', 'PUT']
+env not in ['dev', 'test', 'local']
+```
+
+Both single and double quotes work for string values.
+
+### Numeric Lists
+
+```
+status in [200, 201, 204]
+port not in [80, 443]
+```
+
+### Empty Lists
+
+Empty lists are allowed:
+
+```
+status in []        # always false — nothing matches an empty list
+status not in []    # always true — everything is "not in" an empty list
+```
+
+## Combined with Other Operators
+
+List operators combine with boolean operators like any other condition:
+
+```
+status in [200, 201] and method in ['GET', 'POST']
+level=error or status not in [200, 201, 204]
+(status in [500, 502, 503] or level=critical) and env=prod
+```
+
+## Examples
+
+```
+# HTTP success codes
+status in [200, 201, 204]
+
+# Exclude test environments
+env not in ['dev', 'test', 'staging']
+
+# Multiple list conditions
+method in ['GET', 'POST'] and status not in [401, 403, 404]
+```

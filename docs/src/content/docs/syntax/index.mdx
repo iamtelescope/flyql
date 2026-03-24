@@ -1,0 +1,56 @@
+---
+title: Syntax Overview
+description: Basic query structure and syntax rules for FlyQL
+---
+
+FlyQL queries consist of one or more conditions connected by boolean operators (`and`, `or`, `not`). Each condition is either a comparison or a truthy check.
+
+## Basic Query Structure
+
+```
+status=200 and active and not archived
+```
+
+- `status=200` — `status` field equals `200`
+- `active` — `active` field has a truthy value
+- `not archived` — `archived` field is falsy (null, empty, zero, or false)
+
+## More Examples
+
+```
+service!=api or user="john doe"
+```
+
+```
+message~"error.*" and not debug
+```
+
+```
+(a=1 or b=2) and not (c=3 and d=4)
+```
+
+```
+status in [200, 201] and method not in ['DELETE', 'PUT']
+```
+
+```
+message has 'error' and tags not has 'debug'
+```
+
+## General Rules
+
+- **Standalone keys** — A key without an operator is treated as a truthy check
+- **Comparisons** — A key with an operator must have a corresponding value
+- **Whitespace** — Spaces around operators are allowed: `status=200` and `status = 200` are equivalent
+- **Operator precedence** — `and` binds tighter than `or`: `a=1 or b=2 and c=3` is parsed as `a=1 or (b=2 and c=3)`
+- **Parentheses** — Use `(` and `)` to override precedence and group conditions explicitly
+
+## Syntax Sections
+
+- [Operators](/syntax/operators/) — Comparison operators (`=`, `!=`, `>`, `>=`, `<`, `<=`)
+- [Boolean Logic](/syntax/boolean-logic/) — `and`, `or`, `not`, precedence, grouping
+- [Pattern Matching](/syntax/pattern-matching/) — Regex (`~`, `!~`) and wildcard (`*`) matching
+- [Lists](/syntax/lists/) — `in` and `not in` with list values
+- [Containment](/syntax/operators/#containment-check) — `has` and `not has` for substring, key existence, and item membership
+- [Values & Expressions](/syntax/values/) — Truthy/falsy, quoted strings, numbers
+- [Nested Keys](/syntax/nested-keys/) — Dot-separated paths and quoted key segments

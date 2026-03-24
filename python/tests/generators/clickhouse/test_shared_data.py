@@ -4,7 +4,7 @@ from pathlib import Path
 
 from flyql.core.parser import parse
 from flyql.generators.clickhouse.column import Column
-from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.generator import to_sql, generate_select
 
 TESTS_DATA_DIR = (
     Path(__file__).parent.parent.parent.parent.parent
@@ -303,6 +303,41 @@ class TestNot:
                 assert substr in sql, f"SQL {sql!r} does not contain {substr!r}"
 
 
+class TestHas:
+    @pytest.mark.parametrize(
+        "input_query,expected_result,expected_sql,expected_sql_contains,expected_error_contains",
+        list(generate_test_cases("has.json")),
+    )
+    def test_has(
+        self,
+        columns,
+        input_query,
+        expected_result,
+        expected_sql,
+        expected_sql_contains,
+        expected_error_contains,
+    ):
+        result = parse(input_query)
+
+        if expected_result == "error":
+            with pytest.raises(Exception) as exc_info:
+                to_sql(result.root, columns)
+            if expected_error_contains:
+                assert expected_error_contains in str(exc_info.value)
+            return
+
+        sql = to_sql(result.root, columns)
+
+        if expected_sql:
+            assert (
+                sql == expected_sql
+            ), f"SQL mismatch: got {sql!r}, want {expected_sql!r}"
+
+        if expected_sql_contains:
+            for substr in expected_sql_contains:
+                assert substr in sql, f"SQL {sql!r} does not contain {substr!r}"
+
+
 class TestIn:
     @pytest.mark.parametrize(
         "input_query,expected_result,expected_sql,expected_sql_contains,expected_error_contains",
@@ -336,3 +371,96 @@ class TestIn:
         if expected_sql_contains:
             for substr in expected_sql_contains:
                 assert substr in sql, f"SQL {sql!r} does not contain {substr!r}"
+
+
+def generate_select_test_cases(filename):
+    tf = load_test_file(filename)
+    for tc in tf["tests"]:
+        yield pytest.param(
+            tc["input"],
+            tc["expected_result"],
+            tc.get("expected_sql"),
+            tc.get("expected_error_contains"),
+            id=tc["name"],
+        )
+
+
+class TestSelectBasic:
+    @pytest.mark.parametrize(
+        "input_text,expected_result,expected_sql,expected_error_contains",
+        list(generate_select_test_cases("select_basic.json")),
+    )
+    def test_select_basic(
+        self,
+        columns,
+        input_text,
+        expected_result,
+        expected_sql,
+        expected_error_contains,
+    ):
+        if expected_result == "error":
+            with pytest.raises(Exception) as exc_info:
+                generate_select(input_text, columns)
+            if expected_error_contains:
+                for substr in expected_error_contains:
+                    assert substr.lower() in str(exc_info.value).lower()
+            return
+        result = generate_select(input_text, columns)
+        if expected_sql:
+            assert (
+                result.sql == expected_sql
+            ), f"SQL mismatch: got {result.sql!r}, want {expected_sql!r}"
+
+
+class TestSelectComposite:
+    @pytest.mark.parametrize(
+        "input_text,expected_result,expected_sql,expected_error_contains",
+        list(generate_select_test_cases("select_composite.json")),
+    )
+    def test_select_composite(
+        self,
+        columns,
+        input_text,
+        expected_result,
+        expected_sql,
+        expected_error_contains,
+    ):
+        if expected_result == "error":
+            with pytest.raises(Exception) as exc_info:
+                generate_select(input_text, columns)
+            if expected_error_contains:
+                for substr in expected_error_contains:
+                    assert substr.lower() in str(exc_info.value).lower()
+            return
+        result = generate_select(input_text, columns)
+        if expected_sql:
+            assert (
+                result.sql == expected_sql
+            ), f"SQL mismatch: got {result.sql!r}, want {expected_sql!r}"
+
+
+class TestSelectErrors:
+    @pytest.mark.parametrize(
+        "input_text,expected_result,expected_sql,expected_error_contains",
+        list(generate_select_test_cases("select_errors.json")),
+    )
+    def test_select_errors(
+        self,
+        columns,
+        input_text,
+        expected_result,
+        expected_sql,
+        expected_error_contains,
+    ):
+        if expected_result == "error":
+            with pytest.raises(Exception) as exc_info:
+                generate_select(input_text, columns)
+            if expected_error_contains:
+                for substr in expected_error_contains:
+                    assert substr.lower() in str(exc_info.value).lower()
+            return
+        result = generate_select(input_text, columns)
+        if expected_sql:
+            assert (
+                result.sql == expected_sql
+            ), f"SQL mismatch: got {result.sql!r}, want {expected_sql!r}"

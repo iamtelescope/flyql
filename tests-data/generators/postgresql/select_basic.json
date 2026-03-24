@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "description": "Basic SELECT generation test cases",
+  "test_suite": "select_basic",
+  "tests": [
+    {
+      "name": "single_column",
+      "input": "message",
+      "expected_result": "success",
+      "expected_sql": "\"message\""
+    },
+    {
+      "name": "multiple_columns",
+      "input": "message, count",
+      "expected_result": "success",
+      "expected_sql": "\"message\", \"count\""
+    },
+    {
+      "name": "multiple_columns_no_spaces",
+      "input": "message,count",
+      "expected_result": "success",
+      "expected_sql": "\"message\", \"count\""
+    },
+    {
+      "name": "multiple_columns_extra_spaces",
+      "input": "  message  ,  count  ",
+      "expected_result": "success",
+      "expected_sql": "\"message\", \"count\""
+    },
+    {
+      "name": "column_with_alias",
+      "input": "message as msg",
+      "expected_result": "success",
+      "expected_sql": "\"message\" AS \"msg\""
+    },
+    {
+      "name": "column_with_alias_uppercase_as",
+      "input": "message AS msg",
+      "expected_result": "success",
+      "expected_sql": "\"message\" AS \"msg\""
+    },
+    {
+      "name": "multiple_columns_with_alias",
+      "input": "message, count as num",
+      "expected_result": "success",
+      "expected_sql": "\"message\", \"count\" AS \"num\""
+    },
+    {
+      "name": "all_columns_with_aliases",
+      "input": "message as msg, count as num",
+      "expected_result": "success",
+      "expected_sql": "\"message\" AS \"msg\", \"count\" AS \"num\""
+    },
+    {
+      "name": "join_column_raw_identifier",
+      "input": "u.name",
+      "expected_result": "success",
+      "expected_sql": "u.name"
+    },
+    {
+      "name": "join_column_with_alias",
+      "input": "u.name as username",
+      "expected_result": "success",
+      "expected_sql": "u.name AS \"username\""
+    },
+    {
+      "name": "mixed_simple_and_join",
+      "input": "message, u.name as username, count",
+      "expected_result": "success",
+      "expected_sql": "\"message\", u.name AS \"username\", \"count\""
+    }
+  ]
+}

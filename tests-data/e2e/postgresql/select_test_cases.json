@@ -1,0 +1,254 @@
+{
+  "tests": [
+    {
+      "name": "simple_columns",
+      "select_columns": "id, message",
+      "expected_column_names": ["id", "message"],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"],
+        ["6", "hello test"]
+      ]
+    },
+    {
+      "name": "jsonb_single_path",
+      "select_columns": "id, meta.region",
+      "expected_rows": [
+        ["1", "us-east"],
+        ["2", "eu-west"],
+        ["3", "us-east"],
+        ["4", "ap-south"],
+        ["5", "us-east"],
+        ["6", "eu-west"]
+      ]
+    },
+    {
+      "name": "jsonb_nested_path",
+      "select_columns": "id, meta.location.city",
+      "expected_rows": [
+        ["1", "NYC"],
+        ["2", "London"],
+        ["3", "Boston"],
+        ["4", "Mumbai"],
+        ["5", "NYC"],
+        ["6", "Paris"]
+      ]
+    },
+    {
+      "name": "jsonb_deeply_nested_path",
+      "select_columns": "id, meta.location.cloud.provider",
+      "expected_rows": [
+        ["1", "aws"],
+        ["2", "gcp"],
+        ["3", "aws"],
+        ["4", "gcp"],
+        ["5", "azure"],
+        ["6", "azure"]
+      ]
+    },
+    {
+      "name": "jsonb_with_alias",
+      "select_columns": "id, meta.region as region",
+      "expected_column_names": ["id", "region"],
+      "expected_rows": [
+        ["1", "us-east"],
+        ["2", "eu-west"],
+        ["3", "us-east"],
+        ["4", "ap-south"],
+        ["5", "us-east"],
+        ["6", "eu-west"]
+      ]
+    },
+    {
+      "name": "mixed_columns",
+      "select_columns": "id, message, meta.region as region, count",
+      "expected_column_names": ["id", "message", "region", "count"],
+      "expected_rows": [
+        ["1", "hello",       "us-east",  "42"],
+        ["2", "world",       "eu-west",  "10"],
+        ["3", "hello world", "us-east",  "100"],
+        ["4", "",            "ap-south", "0"],
+        ["5", "error test",  "us-east",  "5"],
+        ["6", "hello test",  "eu-west",  "200"]
+      ]
+    },
+    {
+      "name": "jsonb_dotted_key",
+      "select_columns": "id, meta.'dc.region'",
+      "expected_rows": [
+        ["1", "us-1"],
+        ["2", "eu-1"],
+        ["3", "us-1"],
+        ["4", "ap-1"],
+        ["5", "us-1"],
+        ["6", "eu-1"]
+      ]
+    },
+    {
+      "name": "jsonb_dotted_key_with_alias",
+      "select_columns": "id, meta.'dc.region' as dc_region",
+      "expected_column_names": ["id", "dc_region"],
+      "expected_rows": [
+        ["1", "us-1"],
+        ["2", "eu-1"],
+        ["3", "us-1"],
+        ["4", "ap-1"],
+        ["5", "us-1"],
+        ["6", "eu-1"]
+      ]
+    },
+    {
+      "name": "jsonb_array_index",
+      "select_columns": "id, meta.tags.0",
+      "expected_rows": [
+        ["1", "web"],
+        ["2", "mobile"],
+        ["3", "web"],
+        ["4", "iot"],
+        ["5", "web"],
+        ["6", "api"]
+      ]
+    },
+    {
+      "name": "jsonb_array_index_with_alias",
+      "select_columns": "id, meta.tags.0 as first_tag",
+      "expected_column_names": ["id", "first_tag"],
+      "expected_rows": [
+        ["1", "web"],
+        ["2", "mobile"],
+        ["3", "web"],
+        ["4", "iot"],
+        ["5", "web"],
+        ["6", "api"]
+      ]
+    },
+    {
+      "name": "jsonb_quoted_integer_key",
+      "select_columns": "id, meta.'0'",
+      "expected_rows": [
+        ["1", "zero-a"],
+        ["2", "zero-b"],
+        ["3", "zero-a"],
+        ["4", "zero-c"],
+        ["5", "zero-b"],
+        ["6", "zero-c"]
+      ]
+    },
+    {
+      "name": "jsonb_quoted_integer_key_with_alias",
+      "select_columns": "id, meta.'0' as zero_key",
+      "expected_column_names": ["id", "zero_key"],
+      "expected_rows": [
+        ["1", "zero-a"],
+        ["2", "zero-b"],
+        ["3", "zero-a"],
+        ["4", "zero-c"],
+        ["5", "zero-b"],
+        ["6", "zero-c"]
+      ]
+    },
+    {
+      "name": "multiple_simple_columns",
+      "select_columns": "id, message, count, name",
+      "expected_rows": [
+        ["1", "hello",       "42",  "alice"],
+        ["2", "world",       "10",  "bob"],
+        ["3", "hello world", "100", "charlie"],
+        ["4", "",            "0",   "alice"],
+        ["5", "error test",  "5",   "bob"],
+        ["6", "hello test",  "200", "dave"]
+      ]
+    },
+    {
+      "name": "column_with_alias",
+      "select_columns": "id, message as msg",
+      "expected_column_names": ["id", "msg"],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"],
+        ["6", "hello test"]
+      ]
+    },
+    {
+      "name": "hstore_key",
+      "select_columns": "id, metadata.dc",
+      "expected_rows": [
+        ["1", "us-1"],
+        ["2", "eu-1"],
+        ["3", "us-1"],
+        ["4", "ap-1"],
+        ["5", "us-1"],
+        ["6", "eu-1"]
+      ]
+    },
+    {
+      "name": "hstore_key_with_alias",
+      "select_columns": "id, metadata.dc as datacenter",
+      "expected_column_names": ["id", "datacenter"],
+      "expected_rows": [
+        ["1", "us-1"],
+        ["2", "eu-1"],
+        ["3", "us-1"],
+        ["4", "ap-1"],
+        ["5", "us-1"],
+        ["6", "eu-1"]
+      ]
+    },
+    {
+      "name": "array_first_element",
+      "select_columns": "id, tags.0",
+      "expected_rows": [
+        ["1", "web"],
+        ["2", "mobile"],
+        ["3", "web"],
+        ["4", "iot"],
+        ["5", "web"],
+        ["6", "api"]
+      ]
+    },
+    {
+      "name": "array_second_element",
+      "select_columns": "id, tags.1",
+      "expected_rows": [
+        ["1", "api"],
+        ["2", "api"],
+        ["3", "mobile"],
+        ["4", ""],
+        ["5", ""],
+        ["6", "mobile"]
+      ]
+    },
+    {
+      "name": "array_element_with_alias",
+      "select_columns": "id, tags.0 as first_tag",
+      "expected_column_names": ["id", "first_tag"],
+      "expected_rows": [
+        ["1", "web"],
+        ["2", "mobile"],
+        ["3", "web"],
+        ["4", "iot"],
+        ["5", "web"],
+        ["6", "api"]
+      ]
+    },
+    {
+      "name": "mixed_all_types",
+      "select_columns": "id, message, metadata.tier as tier, tags.0 as tag1, meta.region as region",
+      "expected_column_names": ["id", "message", "tier", "tag1", "region"],
+      "expected_rows": [
+        ["1", "hello",       "premium", "web",    "us-east"],
+        ["2", "world",       "free",    "mobile", "eu-west"],
+        ["3", "hello world", "free",    "web",    "us-east"],
+        ["4", "",            "premium", "iot",    "ap-south"],
+        ["5", "error test",  "free",    "web",    "us-east"],
+        ["6", "hello test",  "premium", "api",    "eu-west"]
+      ]
+    }
+  ]
+}

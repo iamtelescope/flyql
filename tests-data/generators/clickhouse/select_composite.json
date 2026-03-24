@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "description": "SELECT generation for JSON, JSONString, Map, and Array columns in ClickHouse",
+  "test_suite": "select_composite",
+  "tests": [
+    {
+      "name": "json_single_path",
+      "input": "new_json.key",
+      "expected_result": "success",
+      "expected_sql": "new_json.`key` AS `new_json.key`"
+    },
+    {
+      "name": "json_nested_path",
+      "input": "new_json.key.sub",
+      "expected_result": "success",
+      "expected_sql": "new_json.`key`.`sub` AS `new_json.key.sub`"
+    },
+    {
+      "name": "json_with_alias",
+      "input": "new_json.key as label",
+      "expected_result": "success",
+      "expected_sql": "new_json.`key` AS label"
+    },
+    {
+      "name": "jsonstring_single_path",
+      "input": "json_column.key",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'key') AS `json_column.key`"
+    },
+    {
+      "name": "jsonstring_nested_path",
+      "input": "json_column.key.sub",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'key', 'sub') AS `json_column.key.sub`"
+    },
+    {
+      "name": "jsonstring_with_alias",
+      "input": "json_column.key as label",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'key') AS label"
+    },
+    {
+      "name": "map_key",
+      "input": "metadata.key",
+      "expected_result": "success",
+      "expected_sql": "metadata['key'] AS `metadata.key`"
+    },
+    {
+      "name": "map_key_with_alias",
+      "input": "metadata.key as meta_key",
+      "expected_result": "success",
+      "expected_sql": "metadata['key'] AS meta_key"
+    },
+    {
+      "name": "array_first_element",
+      "input": "tags.0",
+      "expected_result": "success",
+      "expected_sql": "tags[0] AS `tags.0`"
+    },
+    {
+      "name": "array_second_element",
+      "input": "tags.1",
+      "expected_result": "success",
+      "expected_sql": "tags[1] AS `tags.1`"
+    },
+    {
+      "name": "array_element_with_alias",
+      "input": "tags.0 as first_tag",
+      "expected_result": "success",
+      "expected_sql": "tags[0] AS first_tag"
+    },
+    {
+      "name": "mixed_simple_json_map_array",
+      "input": "message, new_json.key as k, count",
+      "expected_result": "success",
+      "expected_sql": "message, new_json.`key` AS k, count"
+    }
+  ]
+}

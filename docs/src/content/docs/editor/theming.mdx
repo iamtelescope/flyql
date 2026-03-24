@@ -1,0 +1,116 @@
+---
+title: Theming
+description: Customize the FlyQL editor appearance with CSS custom properties
+---
+
+The FlyQL editor uses CSS custom properties (variables) for all visual styling. Override any `--flyql-*` variable to match your application's design.
+
+## CSS Custom Properties
+
+### Colors
+
+| Variable | Light Default | Dark Default | Description |
+|----------|--------------|--------------|-------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | Editor background |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Text color |
+| `--flyql-border` | `#d4d4d4` | `#525252` | Border color |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | Border color when focused |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Placeholder text |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | Error highlight |
+
+### Syntax Highlighting
+
+| Variable | Light Default | Dark Default | Description |
+|----------|--------------|--------------|-------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | Column/key names |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | Operators (`=`, `!=`, `and`, etc.) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | String values |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | Numeric values |
+
+### Suggestion Panel
+
+| Variable | Light Default | Dark Default | Description |
+|----------|--------------|--------------|-------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | Panel background |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | Panel border |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | Hovered item |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | Selected item |
+
+### Typography
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI font |
+| `--flyql-code-font-family` | `monospace` | Code/query font |
+| `--flyql-font-size` | `13px` | Base font size |
+
+## Light Theme
+
+The light theme is the default. No additional classes are needed:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Dark Theme
+
+Apply the `flyql-dark` class to the document root or any ancestor element:
+
+```javascript
+// Toggle dark mode
+document.documentElement.classList.add('flyql-dark')
+
+// Or toggle dynamically
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+Or in your template:
+
+```html
+<div :class="{ 'flyql-dark': isDark }">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+```
+
+## Custom Theme
+
+Override specific variables in your CSS:
+
+```css
+/* Custom brand theme */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Custom dark overrides */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## Scoped Theming
+
+Theme a specific editor instance by wrapping it in a container with overrides:
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS custom properties cascade, so overrides on any ancestor apply to all FlyQL components within.

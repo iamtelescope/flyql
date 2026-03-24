@@ -62,6 +62,10 @@ class TestParseKeyFromJSON:
                 key.is_segmented == expected["is_segmented"]
             ), f"Failed for test: {test_case['name']}"
             assert key.raw == expected["raw"], f"Failed for test: {test_case['name']}"
+            if "quoted_segments" in expected:
+                assert (
+                    key.quoted_segments == expected["quoted_segments"]
+                ), f"Failed quoted_segments for test: {test_case['name']}"
 
     def test_error_cases(self, test_data):
         """Test all error cases from JSON test data."""

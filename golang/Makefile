@@ -1,6 +1,7 @@
 all: test
 fmt:
 	go fmt ./...
+	cd e2e && go fmt ./...
 fmt-test:
 	@test -z "$$(gofmt -l .)" || (echo "Files not formatted:" && gofmt -l . && exit 1)
 vet:

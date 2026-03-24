@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "description": "Hstore and Array columns PostgreSQL generator test cases",
+  "test_suite": "map_array",
+  "tests": [
+    {
+      "name": "hstore_simple_key",
+      "input": "metadata.key1='value1'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'key1' = 'value1'"
+    },
+    {
+      "name": "hstore_nested_key",
+      "input": "metadata.nested:key='value'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'nested:key' = 'value'"
+    },
+    {
+      "name": "hstore_not_equals",
+      "input": "metadata.key1!='value1'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'key1' != 'value1'"
+    },
+    {
+      "name": "hstore_regex_match",
+      "input": "metadata.pattern~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'pattern' ~ 'test.*'"
+    },
+    {
+      "name": "hstore_regex_not_match",
+      "input": "metadata.pattern!~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'pattern' !~ 'test.*'"
+    },
+    {
+      "name": "array_index_0",
+      "input": "tags.0='first'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] = 'first'"
+    },
+    {
+      "name": "array_index_1",
+      "input": "tags.1='second'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[2] = 'second'"
+    },
+    {
+      "name": "array_not_equals",
+      "input": "tags.0!='excluded'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] != 'excluded'"
+    },
+    {
+      "name": "array_regex_match",
+      "input": "tags.0~'tag.*'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] ~ 'tag.*'"
+    },
+    {
+      "name": "hstore_key_with_single_quote",
+      "input": "metadata.\"key'quote\"='value'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'key\\'quote' = 'value'"
+    },
+    {
+      "name": "hstore_key_with_backslash",
+      "input": "metadata.\"key\\\\slash\"='value'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'key\\\\slash' = 'value'"
+    }
+  ]
+}

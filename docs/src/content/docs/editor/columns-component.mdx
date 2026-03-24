@@ -1,0 +1,84 @@
+---
+title: Columns Component
+description: FlyqlColumns component for column expression editing
+---
+
+The `FlyqlColumns` component provides a dedicated input for column expressions — selecting, filtering, and applying modifiers to columns.
+
+## Quick Setup
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `modelValue` | `String` | `''` | Expression text (v-model) |
+| `columns` | `Object` | `{}` | Column [schema](/editor/schema/) |
+| `onKeyDiscovery` | `Function` | `null` | Remote key discovery callback |
+| `placeholder` | `String` | `''` | Placeholder text |
+| `autofocus` | `Boolean` | `false` | Auto-focus on mount |
+| `debug` | `Boolean` | `false` | Debug logging |
+
+## Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `update:modelValue` | `string` | Expression text changed (v-model) |
+| `update:parsed` | `ParsedColumn[]` | Parsed column array updated |
+| `submit` | — | User pressed Shift+Enter |
+| `parse-error` | `string` | Parse error message |
+| `focus` | — | Component gained focus |
+| `blur` | — | Component lost focus |
+
+## Exposed Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `focus()` | — | Focus the input |
+| `blur()` | — | Blur the input |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Validate the expression |
+| `getParsedColumns()` | `ParsedColumn[]` | Get parsed column array |
+
+## Column Expression Syntax
+
+Column expressions use a comma-separated format with optional modifiers and aliases:
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| Part | Syntax | Example |
+|------|--------|---------|
+| Column | `name` | `message` |
+| Modifier | `name\|modifier` | `status\|upper` |
+| Modifier with args | `name\|modifier(arg)` | `name\|truncate(50)` |
+| Alias | `name as alias` | `host as h` |
+| Nested | `parent.child` | `metadata.labels.env` |
+| Chained modifiers | `name\|mod1\|mod2` | `msg\|lower\|truncate(100)` |

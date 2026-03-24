@@ -1,0 +1,156 @@
+---
+title: Editor Component
+description: Integrate the FlyQL query editor in your Vue 3 application
+---
+
+The FlyQL editor is a Vue 3 component that provides a schema-driven query input with autocomplete, syntax highlighting, and keyboard navigation.
+
+## Quick Setup
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onSubmit() {
+    console.log('Query submitted:', query.value)
+}
+
+function onParseError(error) {
+    console.log('Parse error:', error)
+}
+</script>
+
+<template>
+    <FlyqlEditor
+        v-model="query"
+        :columns="columns"
+        placeholder="Type a FlyQL query..."
+        @submit="onSubmit"
+        @parse-error="onParseError"
+    />
+</template>
+```
+
+This renders a text input with autocomplete suggestions for columns, type-aware operators, and boolean operators — all driven by the `columns` schema.
+
+## Installation
+
+```bash
+npm install flyql
+```
+
+The editor requires Vue 3 as a peer dependency:
+
+```bash
+npm install vue
+```
+
+Import from the `flyql/editor` subpath:
+
+```javascript
+import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `modelValue` | `String` | `''` | Query text (v-model) |
+| `columns` | `Object` | `{}` | Column [schema](/editor/schema/) |
+| `onAutocomplete` | `Function` | `null` | Async value callback |
+| `onKeyDiscovery` | `Function` | `null` | Remote key discovery callback |
+| `placeholder` | `String` | `''` | Placeholder text |
+| `autofocus` | `Boolean` | `false` | Auto-focus on mount |
+| `debug` | `Boolean` | `false` | Debug logging |
+
+**Callback signatures:**
+- `onAutocomplete(key, value)` — returns `Promise<{ items: string[] }>`
+- `onKeyDiscovery(columnName, segments)` — returns `Promise<Array<{ name, type?, hasChildren? }>>`
+
+## Events
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `update:modelValue` | `string` | Query text changed (v-model) |
+| `submit` | — | User pressed Shift+Enter |
+| `parse-error` | `string` | Parse error message when query is invalid |
+| `focus` | — | Editor gained focus |
+| `blur` | — | Editor lost focus |
+
+## Exposed Methods
+
+Access via template ref:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const editorRef = ref(null)
+
+function checkStatus() {
+    const status = editorRef.value.getQueryStatus()
+    console.log(status.valid, status.message)
+}
+</script>
+
+<template>
+    <FlyqlEditor ref="editorRef" v-model="query" :columns="columns" />
+    <button @click="checkStatus">Check</button>
+</template>
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `focus()` | — | Focus the editor input |
+| `blur()` | — | Blur the editor input |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Validate the current query |
+
+## Async Value Autocomplete
+
+Provide an `onAutocomplete` callback to fetch value suggestions from your API:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    service: { type: 'string', suggest: true, autocomplete: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
+}
+
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+</script>
+
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" :on-autocomplete="onAutocomplete" />
+</template>
+```
+
+The callback receives the column `key` and current `value` prefix. Return `{ items: string[] }`. A loading indicator appears automatically after 200ms.
+
+Columns with `autocomplete: true` and static `values` use those values directly without calling the callback. Columns with `autocomplete: true` but no `values` trigger the callback.
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Arrow Up/Down | Navigate suggestions |
+| Enter / Tab | Accept selected suggestion |
+| Escape | Dismiss suggestions |
+| Shift+Enter | Submit query (emits `submit` event) |

@@ -17,7 +17,10 @@ const (
 	OpTruthy          = "truthy"
 	OpIn              = "in"
 	OpNotIn           = "not in"
+	OpHas             = "has"
+	OpNotHas          = "not has"
 )
 
 const NotKeyword = "not"
 const InKeyword = "in"
+const HasKeyword = "has"

@@ -1,0 +1,187 @@
+{
+  "version": "1.0",
+  "description": "JSONB columns PostgreSQL generator test cases",
+  "test_suite": "json_columns",
+  "tests": [
+    {
+      "name": "jsonb_simple_path",
+      "input": "jsonb_column.name='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' = 'test')"
+    },
+    {
+      "name": "jsonb_nested_path",
+      "input": "jsonb_column.user.name='john'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'user'->'name') = 'string' AND \"jsonb_column\"->'user'->>'name' = 'john')"
+    },
+    {
+      "name": "jsonb_number_comparison",
+      "input": "jsonb_column.age>25",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'age') = 'number' AND (\"jsonb_column\"->>'age')::numeric > 25)"
+    },
+    {
+      "name": "jsonb_underscore_column",
+      "input": "jsonb_column.column_name='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'column_name') = 'string' AND \"jsonb_column\"->>'column_name' = 'test')"
+    },
+    {
+      "name": "jsonb_hyphen_column",
+      "input": "jsonb_column.column-name='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'column-name') = 'string' AND \"jsonb_column\"->>'column-name' = 'test')"
+    },
+    {
+      "name": "jsonb_dot_in_column",
+      "input": "jsonb_column.'column.subcolumn'='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'column.subcolumn') = 'string' AND \"jsonb_column\"->>'column.subcolumn' = 'test')"
+    },
+    {
+      "name": "jsonb_dot_in_column_not_equals",
+      "input": "jsonb_column.'column.subcolumn'!='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'column.subcolumn') = 'string' AND \"jsonb_column\"->>'column.subcolumn' != 'test')"
+    },
+    {
+      "name": "jsonb_dot_in_column_regex",
+      "input": "jsonb_column.'column.subcolumn'~'test.*'",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->>'column.subcolumn' ~ 'test.*'"
+    },
+    {
+      "name": "jsonb_dot_in_column_in_list",
+      "input": "jsonb_column.'column.subcolumn' in ['x', 'y']",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->>'column.subcolumn' IN ('x', 'y')"
+    },
+    {
+      "name": "jsonb_dot_in_column_truthy",
+      "input": "jsonb_column.'column.subcolumn'",
+      "expected_result": "success",
+      "expected_sql": "(\"jsonb_column\"->>'column.subcolumn' IS NOT NULL AND \"jsonb_column\"->>'column.subcolumn' != '')"
+    },
+    {
+      "name": "jsonb_dot_in_nested_path",
+      "input": "jsonb_column.'a.b'.c='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'a.b'->'c') = 'string' AND \"jsonb_column\"->'a.b'->>'c' = 'test')"
+    },
+    {
+      "name": "jsonb_dot_in_nested_path_level3",
+      "input": "jsonb_column.outer.'a.b'.c='test'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'outer'->'a.b'->'c') = 'string' AND \"jsonb_column\"->'outer'->'a.b'->>'c' = 'test')"
+    },
+    {
+      "name": "jsonb_not_equals",
+      "input": "jsonb_column.status!='active'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'status') = 'string' AND \"jsonb_column\"->>'status' != 'active')"
+    },
+    {
+      "name": "jsonb_regex_match",
+      "input": "jsonb_column.message~'error.*'",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->>'message' ~ 'error.*'"
+    },
+    {
+      "name": "jsonb_regex_not_match",
+      "input": "jsonb_column.message!~'error.*'",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->>'message' !~ 'error.*'"
+    },
+    {
+      "name": "jsonb_nested_number_comparison",
+      "input": "jsonb_column.stats.count>=100",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'stats'->'count') = 'number' AND (\"jsonb_column\"->'stats'->>'count')::numeric >= 100)"
+    },
+    {
+      "name": "jsonb_equals_string",
+      "input": "jsonb_column.level='info'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'level') = 'string' AND \"jsonb_column\"->>'level' = 'info')"
+    },
+    {
+      "name": "jsonb_number_equals",
+      "input": "jsonb_column.count=1",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'count') = 'number' AND (\"jsonb_column\"->>'count')::numeric = 1)"
+    },
+    {
+      "name": "jsonb_quoted_number_equals",
+      "input": "jsonb_column.count='1'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'count') = 'string' AND \"jsonb_column\"->>'count' = '1')"
+    },
+    {
+      "name": "jsonb_array_index_string_equals",
+      "input": "details.items.0.name='foo'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'items'->0->'name') = 'string' AND \"details\"->'items'->0->>'name' = 'foo')"
+    },
+    {
+      "name": "jsonb_array_index_number_comparison",
+      "input": "details.items.0.count>100",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'items'->0->'count') = 'number' AND (\"details\"->'items'->0->>'count')::numeric > 100)"
+    },
+    {
+      "name": "jsonb_array_index_regex",
+      "input": "details.items.0.name~'foo.*'",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0->>'name' ~ 'foo.*'"
+    },
+    {
+      "name": "jsonb_array_index_in_list",
+      "input": "details.items.0.name in ['foo', 'bar']",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0->>'name' IN ('foo', 'bar')"
+    },
+    {
+      "name": "jsonb_array_index_truthy",
+      "input": "details.items.0.name",
+      "expected_result": "success",
+      "expected_sql": "(\"details\"->'items'->0->>'name' IS NOT NULL AND \"details\"->'items'->0->>'name' != '')"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_string_equals",
+      "input": "details.'0'='foo'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'0') = 'string' AND \"details\"->>'0' = 'foo')"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_number_comparison",
+      "input": "details.'0'>5",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'0') = 'number' AND (\"details\"->>'0')::numeric > 5)"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_regex",
+      "input": "details.'0'~'foo.*'",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->>'0' ~ 'foo.*'"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_in_list",
+      "input": "details.'0' in ['foo', 'bar']",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->>'0' IN ('foo', 'bar')"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_truthy",
+      "input": "details.'0'",
+      "expected_result": "success",
+      "expected_sql": "(\"details\"->>'0' IS NOT NULL AND \"details\"->>'0' != '')"
+    },
+    {
+      "name": "jsonb_quoted_integer_key_in_path",
+      "input": "details.items.'0'.name='bar'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'items'->'0'->'name') = 'string' AND \"details\"->'items'->'0'->>'name' = 'bar')"
+    }
+  ]
+}

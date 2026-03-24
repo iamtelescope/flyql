@@ -1,0 +1,102 @@
+{
+  "version": "1.0",
+  "description": "Column definitions for PostgreSQL generator tests",
+  "columns": {
+    "message": {
+      "name": "message",
+      "type": "text",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "type": "integer",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "type": "real",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "type": "boolean",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "type": "date",
+      "values": null
+    },
+    "jsonb_column": {
+      "name": "jsonb_column",
+      "type": "jsonb",
+      "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "type": "text[]",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "type": "hstore",
+      "values": null
+    },
+    "enum_column": {
+      "name": "enum_column",
+      "type": "text",
+      "values": ["value1", "value2"]
+    },
+    "status": {
+      "name": "status",
+      "type": "integer",
+      "values": null
+    },
+    "enabled": {
+      "name": "enabled",
+      "type": "boolean",
+      "values": null
+    },
+    "archived": {
+      "name": "archived",
+      "type": "boolean",
+      "values": null
+    },
+    "a": {
+      "name": "a",
+      "type": "integer",
+      "values": null
+    },
+    "b": {
+      "name": "b",
+      "type": "integer",
+      "values": null
+    },
+    "error": {
+      "name": "error",
+      "type": "text",
+      "values": null
+    },
+    "name": {
+      "name": "name",
+      "type": "text",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "type": "text",
+      "values": null
+    },
+    "u.name": {
+      "name": "name",
+      "type": "text",
+      "values": null,
+      "raw_identifier": "u.name"
+    },
+    "details": {
+      "name": "details",
+      "type": "jsonb",
+      "values": null
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "description": "Error cases for PostgreSQL generator",
+  "test_suite": "errors",
+  "tests": [
+    {
+      "name": "unknown_column",
+      "input": "unknown_column='test'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    },
+    {
+      "name": "unknown_column_segmented",
+      "input": "unknown.path='test'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    },
+    {
+      "name": "enum_invalid_value",
+      "input": "enum_column='invalid_value'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "array_invalid_index",
+      "input": "tags.invalid='test'",
+      "expected_result": "error",
+      "expected_error_contains": "invalid array index"
+    },
+    {
+      "name": "int_column_regex_operation",
+      "input": "count~'test'",
+      "expected_result": "error",
+      "expected_error_contains": "operation not allowed"
+    },
+    {
+      "name": "float_column_regex_operation",
+      "input": "price~'test'",
+      "expected_result": "error",
+      "expected_error_contains": "operation not allowed"
+    },
+    {
+      "name": "jsonb_invalid_path_starts_with_digit",
+      "input": "jsonb_column.123column='test'",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    },
+    {
+      "name": "jsonb_empty_path_part",
+      "input": "jsonb_column.user..column='test'",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    }
+  ]
+}

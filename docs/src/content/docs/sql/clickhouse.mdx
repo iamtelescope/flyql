@@ -1,0 +1,115 @@
+---
+title: ClickHouse
+description: Generated SQL examples for ClickHouse
+---
+
+ClickHouse SQL uses unquoted column names, `match()` for regex, and `LIKE` for wildcards.
+
+## Basic Examples
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `message='hello'` | `message = 'hello'` |
+| `message!='hello'` | `message != 'hello'` |
+| `count>10` | `count > 10` |
+| `count<=100` | `count <= 100` |
+| `message~'error.*'` | `match(message, 'error.*')` |
+| `message!~'test.*'` | `not match(message, 'test.*')` |
+| `host=prod*` | `host LIKE 'prod%'` |
+
+## Boolean Operators
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `a='1' and b>10` | `(a = '1' and b > 10)` |
+| `a='1' or b='2'` | `(a = '1' or b = '2')` |
+| `not a='1'` | `not (a = '1')` |
+
+## List Membership
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `status in [200, 201]` | `status IN (200, 201)` |
+| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## Containment (`has` / `not has`)
+
+The `has` operator generates different SQL depending on the column type:
+
+| Column Type | FlyQL | Generated SQL |
+|-------------|-------|--------------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String (negated) | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array (negated) | `tags not has 'web'` | `NOT has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map (negated) | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
+| Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+
+## JSON Columns
+
+ClickHouse supports two JSON column types with different SQL output.
+
+### Native JSON Type
+
+Columns declared as `JSON` use dot notation with backtick-quoted segments:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `data.name='test'` | `` data.`name` = 'test' `` |
+| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age=25` | `` data.`age` = 25 `` |
+
+### JSON String Type
+
+Columns storing JSON as a string (e.g., `String` type with JSON content) use `JSONExtract` functions wrapped in `multiIf` for type checking:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+
+## Map Columns
+
+Map columns use bracket notation with `equals()`/`notEquals()` functions:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+
+## Array Columns
+
+Array columns use 0-based bracket indexing with `equals()`:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `tags.0='first'` | `equals(tags[0], 'first')` |
+| `tags.1='second'` | `equals(tags[1], 'second')` |
+| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+
+### Column Setup
+
+The `jsonString` parameter controls which mode is used:
+
+```go
+// Go
+columns := map[string]*clickhouse.Column{
+    "message": clickhouse.NewColumn("message", false, "String", nil),
+    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "String", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "String", null),       // JSON string
+}
+```

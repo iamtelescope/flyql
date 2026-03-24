@@ -9,6 +9,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": [],
+        "quoted_segments": [],
         "is_segmented": false,
         "raw": ""
       }
@@ -19,6 +20,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["test"],
+        "quoted_segments": [false],
         "is_segmented": false,
         "raw": "test"
       }
@@ -29,6 +31,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some", "path"],
+        "quoted_segments": [false, false, false],
         "is_segmented": true,
         "raw": "key.some.path"
       }
@@ -39,6 +42,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some.key", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.'some.key'.path"
       }
@@ -49,6 +53,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["quoted.key"],
+        "quoted_segments": [true],
         "is_segmented": false,
         "raw": "'quoted.key'"
       }
@@ -59,6 +64,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["first.part", "second.part", "normal"],
+        "quoted_segments": [true, true, false],
         "is_segmented": true,
         "raw": "'first.part'.'second.part'.normal"
       }
@@ -69,6 +75,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some'quoted", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.'some\\'quoted'.path"
       }
@@ -79,6 +86,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some\\path", "end"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.'some\\\\path'.end"
       }
@@ -89,6 +97,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key.with.dots", "normal"],
+        "quoted_segments": [false, false],
         "is_segmented": true,
         "raw": "key\\.with\\.dots.normal"
       }
@@ -99,6 +108,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["", "", "", ""],
+        "quoted_segments": [false, false, false, false],
         "is_segmented": true,
         "raw": "..."
       }
@@ -109,6 +119,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.''.path"
       }
@@ -119,6 +130,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "path", ""],
+        "quoted_segments": [false, false, false],
         "is_segmented": true,
         "raw": "key.path."
       }
@@ -129,6 +141,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["", "key", "path"],
+        "quoted_segments": [false, false, false],
         "is_segmented": true,
         "raw": ".key.path"
       }
@@ -139,6 +152,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key's.value", "path\nwith\nnewlines", "normal:segment"],
+        "quoted_segments": [true, true, false],
         "is_segmented": true,
         "raw": "'key\\'s.value'.'path\\nwith\\nnewlines'.normal:segment"
       }
@@ -149,6 +163,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["line1\nline2\ttab"],
+        "quoted_segments": [true],
         "is_segmented": false,
         "raw": "'line1\\nline2\\ttab'"
       }
@@ -173,6 +188,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some.key", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.\"some.key\".path"
       }
@@ -183,6 +199,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["quoted.key"],
+        "quoted_segments": [true],
         "is_segmented": false,
         "raw": "\"quoted.key\""
       }
@@ -193,6 +210,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["single.part", "double.part", "normal"],
+        "quoted_segments": [true, true, false],
         "is_segmented": true,
         "raw": "'single.part'.\"double.part\".normal"
       }
@@ -203,6 +221,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["key", "some\"quoted", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "key.\"some\\\"quoted\".path"
       }
@@ -213,6 +232,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["some", "key\"with\"quotes", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "some.'key\"with\"quotes'.path"
       }
@@ -223,6 +243,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["some", "key\"with\"quotes.and.dots", "path"],
+        "quoted_segments": [false, true, false],
         "is_segmented": true,
         "raw": "some.'key\"with\"quotes.and.dots'.path"
       }
@@ -233,6 +254,7 @@
       "expected_result": "success",
       "expected_key": {
         "segments": ["value", "", "a", "b", "c", "", "key"],
+        "quoted_segments": [false, true, false, false, false, true, false],
         "is_segmented": true,
         "raw": "value.\"\".a.b.c.\"\".key"
       }
@@ -243,6 +265,28 @@
       "expected_result": "error",
       "expected_error_type": "FlyqlError",
       "expected_error_message": "Key parsing error: Unterminated quoted segment"
+    },
+    {
+      "name": "quoted_integer_segment",
+      "input": "col.'0'",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["col", "0"],
+        "quoted_segments": [false, true],
+        "is_segmented": true,
+        "raw": "col.'0'"
+      }
+    },
+    {
+      "name": "unquoted_integer_segment",
+      "input": "col.0",
+      "expected_result": "success",
+      "expected_key": {
+        "segments": ["col", "0"],
+        "quoted_segments": [false, false],
+        "is_segmented": true,
+        "raw": "col.0"
+      }
     }
   ]
 }

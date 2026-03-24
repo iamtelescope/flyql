@@ -1,0 +1,98 @@
+---
+title: Go Quickstart
+description: Install and use FlyQL in a Go project
+---
+
+## Installation
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## Parse a Query
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status=200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` returns a `*ParseResult` with a `Root` node representing the AST.
+
+## Generate SQL
+
+Use a generator to turn the AST into a parameterized WHERE clause. Each database dialect has its own generator with dialect-specific column types.
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status>=400 and host=prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn("status", false, "UInt32", nil),
+		"host":   clickhouse.NewColumn("host", false, "String", nil),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+PostgreSQL and StarRocks generators follow the same pattern — import from `generators/postgresql` or `generators/starrocks` instead.
+
+## Match In-Memory
+
+Evaluate a query against a data record without generating SQL:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status=200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## What's Next
+
+- [Syntax Reference](/syntax/) — all operators, boolean logic, patterns, and more

@@ -1,0 +1,83 @@
+---
+title: Nested Keys
+description: Dot-separated path traversal and quoted key segments in FlyQL
+---
+
+## Dot Notation
+
+Use dot-separated paths to access nested fields in JSON, Map, or structured data:
+
+```
+request.url="/api/users"
+response.headers.content_type="application/json"
+metadata.labels.env=prod
+```
+
+Each dot-separated segment traverses one level into the nested structure. The SQL generators translate these paths into the correct syntax for each database dialect (JSON path access, Map lookups, etc.).
+
+## Quoted Key Segments
+
+When a key segment itself contains a dot, wrap it in quotes so the dot is not treated as a separator:
+
+```
+"foo.bar".baz=value
+```
+
+Here:
+- `"foo.bar"` is a single key segment (the dot is literal)
+- `baz` is a child of `"foo.bar"`
+
+Without quotes, `foo.bar.baz` would be three segments: `foo` → `bar` → `baz`.
+
+### Quoting Rules
+
+Both single and double quotes work for key segments:
+
+```
+"foo.bar".baz=value
+'foo.bar'.baz=value
+```
+
+Only the segments containing dots need to be quoted:
+
+```
+metadata."dotted.key".value=123
+```
+
+## Path Depth
+
+There is no limit on nesting depth:
+
+```
+a.b.c.d.e=value
+```
+
+Each segment is traversed in order when generating SQL or evaluating in-memory.
+
+## Combined with Operators
+
+Nested keys work with all operators:
+
+```
+request.status>=400
+response.body~"error.*"
+metadata.tags in ['prod', 'staging']
+request.headers.content_type!="text/html"
+not request.authenticated
+```
+
+## Examples
+
+```
+# Simple nested access
+request.method=GET
+
+# Deep nesting
+response.headers.content_type="application/json"
+
+# Quoted segment with literal dot
+"app.config".debug=true
+
+# Combined with boolean logic
+request.status>=400 and response.body~"error" and not request.internal
+```

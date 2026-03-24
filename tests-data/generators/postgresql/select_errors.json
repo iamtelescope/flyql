@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "description": "Error cases for SELECT generation",
+  "test_suite": "select_errors",
+  "tests": [
+    {
+      "name": "unknown_column",
+      "input": "unknown_col",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    },
+    {
+      "name": "unknown_column_in_list",
+      "input": "message, unknown_col, count",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    },
+    {
+      "name": "path_on_plain_column",
+      "input": "message.foo",
+      "expected_result": "error",
+      "expected_error_contains": "path access on non-composite column type"
+    },
+    {
+      "name": "path_on_join_column",
+      "input": "u.name.extra",
+      "expected_result": "error",
+      "expected_error_contains": "path access on non-composite column type"
+    },
+    {
+      "name": "array_invalid_index",
+      "input": "tags.invalid",
+      "expected_result": "error",
+      "expected_error_contains": "invalid array index"
+    },
+    {
+      "name": "jsonb_path_starts_with_digit",
+      "input": "jsonb_column.123column",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    },
+    {
+      "name": "jsonb_empty_path_part",
+      "input": "jsonb_column.user..name",
+      "expected_result": "error",
+      "expected_error_contains": "Invalid JSON path"
+    }
+  ]
+}

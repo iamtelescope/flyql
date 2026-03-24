@@ -1,0 +1,84 @@
+{
+  "version": "1.0",
+  "description": "Column definitions for ClickHouse e2e tests",
+  "columns": {
+    "id": {
+      "name": "id",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null
+    },
+    "message": {
+      "name": "message",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "count": {
+      "name": "count",
+      "jsonstring": false,
+      "type": "Int64",
+      "values": null
+    },
+    "price": {
+      "name": "price",
+      "jsonstring": false,
+      "type": "Float64",
+      "values": null
+    },
+    "active": {
+      "name": "active",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null
+    },
+    "created_at": {
+      "name": "created_at",
+      "jsonstring": false,
+      "type": "Date",
+      "values": null
+    },
+    "status": {
+      "name": "status",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null
+    },
+    "name": {
+      "name": "name",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "env": {
+      "name": "env",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
+    },
+    "meta": {
+      "name": "meta",
+      "jsonstring": true,
+      "type": "String",
+      "values": null
+    },
+    "meta_json": {
+      "name": "meta_json",
+      "jsonstring": false,
+      "type": "JSON",
+      "values": null
+    },
+    "tags": {
+      "name": "tags",
+      "jsonstring": false,
+      "type": "Array(String)",
+      "values": null
+    },
+    "metadata": {
+      "name": "metadata",
+      "jsonstring": false,
+      "type": "Map(String, String)",
+      "values": null
+    }
+  }
+}

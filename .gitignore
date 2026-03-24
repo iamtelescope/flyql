@@ -167,5 +167,13 @@ cython_debug/
 # NodeJS
 node_modules/
 
+# Astro build cache
+.astro/
+
 # Go binaries
 cli/golang/flyqlcli
+
+# Project related
+e2e/output/
+_bmad/
+_bmad-output/

@@ -1,0 +1,139 @@
+{
+  "version": "1.0",
+  "description": "SELECT generation for JSONB, hstore, and array columns",
+  "test_suite": "select_composite",
+  "tests": [
+    {
+      "name": "jsonb_single_path",
+      "input": "jsonb_column.key",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'key' AS \"jsonb_column.key\""
+    },
+    {
+      "name": "jsonb_nested_path",
+      "input": "jsonb_column.a.b",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'a'->'b' AS \"jsonb_column.a.b\""
+    },
+    {
+      "name": "jsonb_deeply_nested_path",
+      "input": "jsonb_column.a.b.c",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'a'->'b'->'c' AS \"jsonb_column.a.b.c\""
+    },
+    {
+      "name": "jsonb_with_alias",
+      "input": "jsonb_column.key as label",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'key' AS \"label\""
+    },
+    {
+      "name": "jsonb_nested_with_alias",
+      "input": "jsonb_column.user.name as uname",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'user'->'name' AS \"uname\""
+    },
+    {
+      "name": "jsonb_root_column",
+      "input": "jsonb_column",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\""
+    },
+    {
+      "name": "jsonb_dotted_key",
+      "input": "jsonb_column.'double.data'",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'double.data' AS \"jsonb_column.'double.data'\""
+    },
+    {
+      "name": "jsonb_dotted_key_with_alias",
+      "input": "jsonb_column.'double.data' as label",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'double.data' AS \"label\""
+    },
+    {
+      "name": "jsonb_dotted_key_in_path",
+      "input": "jsonb_column.'a.b'.c",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'a.b'->'c' AS \"jsonb_column.'a.b'.c\""
+    },
+    {
+      "name": "jsonb_outer_dotted_key_in_path",
+      "input": "jsonb_column.outer.'a.b'.c",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\"->'outer'->'a.b'->'c' AS \"jsonb_column.outer.'a.b'.c\""
+    },
+    {
+      "name": "hstore_key",
+      "input": "metadata.key",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'key' AS \"metadata.key\""
+    },
+    {
+      "name": "hstore_key_with_alias",
+      "input": "metadata.env as environment",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'env' AS \"environment\""
+    },
+    {
+      "name": "array_first_element",
+      "input": "tags.0",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] AS \"tags.0\""
+    },
+    {
+      "name": "array_third_element",
+      "input": "tags.2",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[3] AS \"tags.2\""
+    },
+    {
+      "name": "array_element_with_alias",
+      "input": "tags.0 as first_tag",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] AS \"first_tag\""
+    },
+    {
+      "name": "mixed_simple_jsonb_hstore_array",
+      "input": "message, jsonb_column.user.name as uname, metadata.env as env, tags.0 as tag, count",
+      "expected_result": "success",
+      "expected_sql": "\"message\", \"jsonb_column\"->'user'->'name' AS \"uname\", \"metadata\"->'env' AS \"env\", \"tags\"[1] AS \"tag\", \"count\""
+    },
+    {
+      "name": "jsonb_array_index",
+      "input": "details.items.0",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0 AS \"details.items.0\""
+    },
+    {
+      "name": "jsonb_array_index_with_alias",
+      "input": "details.items.0 as first_item",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0 AS \"first_item\""
+    },
+    {
+      "name": "jsonb_array_index_nested_key",
+      "input": "details.items.0.name",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0->'name' AS \"details.items.0.name\""
+    },
+    {
+      "name": "jsonb_array_index_nested_key_with_alias",
+      "input": "details.items.0.name as item_name",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->0->'name' AS \"item_name\""
+    },
+    {
+      "name": "jsonb_quoted_integer_key",
+      "input": "details.'0'",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'0' AS \"details.'0'\""
+    },
+    {
+      "name": "jsonb_quoted_integer_key_in_path",
+      "input": "details.items.'0'.name",
+      "expected_result": "success",
+      "expected_sql": "\"details\"->'items'->'0'->'name' AS \"details.items.'0'.name\""
+    }
+  ]
+}

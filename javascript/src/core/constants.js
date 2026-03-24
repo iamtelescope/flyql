@@ -43,6 +43,7 @@ export const State = Object.freeze({
     KEY_OR_BOOL_OP: 'KeyOrBoolOp',
     EXPECT_NOT_TARGET: 'ExpectNotTarget',
     EXPECT_IN_KEYWORD: 'ExpectInKeyword',
+    EXPECT_HAS_KEYWORD: 'ExpectHasKeyword',
     EXPECT_LIST_START: 'ExpectListStart',
     EXPECT_LIST_VALUE: 'ExpectListValue',
     IN_LIST_VALUE: 'InListValue',
@@ -68,10 +69,13 @@ export const Operator = Object.freeze({
     TRUTHY: 'truthy',
     IN: 'in',
     NOT_IN: 'not in',
+    HAS: 'has',
+    NOT_HAS: 'not has',
 })
 
 export const NOT_KEYWORD = 'not'
 export const IN_KEYWORD = 'in'
+export const HAS_KEYWORD = 'has'
 
 export const VALID_KEY_VALUE_OPERATORS = [
     Operator.EQUALS,
@@ -84,6 +88,8 @@ export const VALID_KEY_VALUE_OPERATORS = [
     Operator.LOWER_OR_EQUALS_THAN,
     Operator.IN,
     Operator.NOT_IN,
+    Operator.HAS,
+    Operator.NOT_HAS,
 ]
 
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]

@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "description": "HAS operator PostgreSQL generator test cases",
+  "test_suite": "has",
+  "tests": [
+    {
+      "name": "has_string_column",
+      "input": "message has 'hello'",
+      "expected_result": "success",
+      "expected_sql": "position('hello' in \"message\") > 0"
+    },
+    {
+      "name": "not_has_string_column",
+      "input": "message not has 'hello'",
+      "expected_result": "success",
+      "expected_sql": "(\"message\" IS NULL OR position('hello' in \"message\") = 0)"
+    },
+    {
+      "name": "has_array_column",
+      "input": "tags has 'value'",
+      "expected_result": "success",
+      "expected_sql": "'value' = ANY(\"tags\")"
+    },
+    {
+      "name": "not_has_array_column",
+      "input": "tags not has 'value'",
+      "expected_result": "success",
+      "expected_sql": "NOT ('value' = ANY(\"tags\"))"
+    },
+    {
+      "name": "has_jsonb_column",
+      "input": "jsonb_column has 'key'",
+      "expected_result": "success",
+      "expected_sql": "\"jsonb_column\" ? 'key'"
+    },
+    {
+      "name": "not_has_jsonb_column",
+      "input": "jsonb_column not has 'key'",
+      "expected_result": "success",
+      "expected_sql": "NOT (\"jsonb_column\" ? 'key')"
+    },
+    {
+      "name": "has_hstore_column",
+      "input": "metadata has 'key'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\" ? 'key'"
+    },
+    {
+      "name": "not_has_hstore_column",
+      "input": "metadata not has 'key'",
+      "expected_result": "success",
+      "expected_sql": "NOT (\"metadata\" ? 'key')"
+    },
+    {
+      "name": "has_with_and",
+      "input": "message has 'hello' and tags has 'important'",
+      "expected_result": "success",
+      "expected_sql": "(position('hello' in \"message\") > 0 AND 'important' = ANY(\"tags\"))"
+    },
+    {
+      "name": "has_unknown_column",
+      "input": "unknown has 'value'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    }
+  ]
+}

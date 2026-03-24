@@ -223,6 +223,7 @@ func TestParser(t *testing.T) {
 		"parser/truthy.json",
 		"parser/not.json",
 		"parser/int64.json",
+		"parser/has.json",
 	}
 
 	for _, file := range files {

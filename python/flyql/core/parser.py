@@ -11,6 +11,7 @@ from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
 from flyql.core.constants import NOT_KEYWORD
 from flyql.core.constants import IN_KEYWORD
+from flyql.core.constants import HAS_KEYWORD
 from flyql.core.constants import Operator
 from flyql.core.key import parse_key
 
@@ -54,6 +55,7 @@ class Parser:
         self.in_list_current_value_is_string: Union[bool, None] = None
         self.in_list_values_type: Optional[str] = None
         self.is_not_in: bool = False
+        self.is_not_has: bool = False
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -107,6 +109,7 @@ class Parser:
         self.in_list_current_value_is_string = None
         self.in_list_values_type = None
         self.is_not_in = False
+        self.is_not_has = False
 
     def extend_in_list_current_value(self) -> None:
         if self.char:
@@ -400,7 +403,42 @@ class Parser:
         if not self.char:
             return
 
-        if self.key_value_operator == "i" and self.char.value == "n":
+        if self.key_value_operator == "h" and self.char.value == "a":
+            self.key_value_operator = "ha"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "ha" and self.char.value == "s":
+            self.key_value_operator = HAS_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == HAS_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.HAS.value
+                self.is_not_has = False
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.HAS.value
+                self.is_not_has = False
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.HAS.value
+                self.is_not_has = False
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.HAS.value
+                self.is_not_has = False
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'has'", 50)
+            return
+        elif self.key_value_operator == "i" and self.char.value == "n":
             self.key_value_operator = "in"
             self.store_typed_char(CharType.OPERATOR)
         elif self.key_value_operator == "in":
@@ -687,6 +725,10 @@ class Parser:
             self.key_value_operator = "i"
             self.set_state(State.KEY_VALUE_OPERATOR)
             self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "h":
+            self.key_value_operator = "h"
+            self.set_state(State.KEY_VALUE_OPERATOR)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.value == "n":
             self.key_value_operator = "n"
             self.set_state(State.EXPECT_IN_KEYWORD)
@@ -768,6 +810,12 @@ class Parser:
         if self.char.is_delimiter():
             self.store_typed_char(CharType.SPACE)
             return
+        elif self.char.value == "h" and self.is_not_in:
+            self.key_value_operator = "h"
+            self.is_not_in = False
+            self.is_not_has = True
+            self.set_state(State.EXPECT_HAS_KEYWORD)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.value == "i":
             self.key_value_operator = "i"
             self.store_typed_char(CharType.OPERATOR)
@@ -779,6 +827,42 @@ class Parser:
             self.set_state(State.EXPECT_LIST_VALUE)
         else:
             self.set_error_state("expected '['", 42)
+
+    def in_state_expect_has_keyword(self) -> None:
+        """After 'not ' in the not-has path, build 'has' keyword char by char."""
+        if not self.char:
+            return
+
+        if self.key_value_operator == "h" and self.char.value == "a":
+            self.key_value_operator = "ha"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "ha" and self.char.value == "s":
+            self.key_value_operator = HAS_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == HAS_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.NOT_HAS.value
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.NOT_HAS.value
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.NOT_HAS.value
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.NOT_HAS.value
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'not has'", 50)
+        else:
+            self.set_error_state("expected 'has' keyword", 50)
 
     def in_state_expect_list_value(self) -> None:
         """Inside list, expecting a value or ']'."""
@@ -909,6 +993,7 @@ class Parser:
             State.EXPECT_VALUE,
             State.EXPECT_NOT_TARGET,
             State.EXPECT_IN_KEYWORD,
+            State.EXPECT_HAS_KEYWORD,
             State.EXPECT_LIST_START,
             State.EXPECT_LIST_VALUE,
             State.IN_LIST_VALUE,
@@ -994,6 +1079,8 @@ class Parser:
                     self.in_state_expect_not_target()
                 case State.EXPECT_IN_KEYWORD:
                     self.in_state_expect_in_keyword()
+                case State.EXPECT_HAS_KEYWORD:
+                    self.in_state_expect_has_keyword()
                 case State.EXPECT_LIST_START:
                     self.in_state_expect_list_start()
                 case State.EXPECT_LIST_VALUE:

@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "description": "SELECT generation error cases for ClickHouse",
+  "test_suite": "select_errors",
+  "tests": [
+    {
+      "name": "unknown_column",
+      "input": "unknown",
+      "expected_result": "error",
+      "expected_error_contains": ["unknown"]
+    },
+    {
+      "name": "path_on_plain_column",
+      "input": "message.sub",
+      "expected_result": "error",
+      "expected_error_contains": ["non-composite"]
+    },
+    {
+      "name": "array_invalid_index",
+      "input": "tags.abc",
+      "expected_result": "error",
+      "expected_error_contains": ["invalid array index"]
+    }
+  ]
+}

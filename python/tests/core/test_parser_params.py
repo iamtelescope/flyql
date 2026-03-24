@@ -8,11 +8,11 @@ class TestRaiseErrorParameter:
     def test_raise_error_true_throws_exception(self):
         parser = Parser()
         with pytest.raises(ParserError):
-            parser.parse("invalid@input", raise_error=True)
+            parser.parse("invalid$input", raise_error=True)
 
     def test_raise_error_false_no_exception(self):
         parser = Parser()
-        parser.parse("invalid@input", raise_error=False)
+        parser.parse("invalid$input", raise_error=False)
         assert parser.state == State.ERROR
         assert parser.errno > 0
 
@@ -60,18 +60,18 @@ class TestParameterCombinations:
     def test_both_true(self):
         parser = Parser()
         with pytest.raises(ParserError):
-            parser.parse("invalid@", raise_error=True, ignore_last_char=True)
+            parser.parse("invalid$", raise_error=True, ignore_last_char=True)
 
 
 class TestParseFunctionParameters:
 
     def test_parse_function_with_parameters(self):
-        parser = parse("invalid@", raise_error=False, ignore_last_char=True)
+        parser = parse("invalid$", raise_error=False, ignore_last_char=True)
         assert parser.state == State.ERROR
 
     def test_parse_function_defaults(self):
         with pytest.raises(ParserError):
-            parse("invalid@")
+            parse("invalid$")
 
 
 class TestIncrementalParsing:

@@ -1,3 +1,4 @@
+export const AT = '@'
 export const DOT = '.'
 export const DOUBLE_QUOTE = '"'
 export const SINGLE_QUOTE = "'"

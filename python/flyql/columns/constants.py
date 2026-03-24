@@ -1,3 +1,4 @@
+AT = "@"
 DOT = "."
 DOUBLE_QUOTE = '"'
 SINGLE_QUOTE = "'"

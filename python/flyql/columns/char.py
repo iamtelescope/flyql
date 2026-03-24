@@ -1,4 +1,5 @@
 from .constants import (
+    AT,
     UNDERSCORE,
     HYPHEN,
     DOT,
@@ -36,6 +37,7 @@ class Char:
             or self.value == SINGLE_QUOTE
             or self.value == DOUBLE_QUOTE
             or self.value == BACKSLASH
+            or self.value == AT
         )
 
     def is_modifier_argument_value(self) -> bool:

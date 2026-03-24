@@ -5,7 +5,7 @@
   "tests": [
     {
       "name": "invalid_character_at_start",
-      "input": "@message",
+      "input": "$message",
       "expected_result": "error",
       "expected_error": {
         "errno": 2,
@@ -14,7 +14,7 @@
     },
     {
       "name": "invalid_character_in_column",
-      "input": "mes@sage",
+      "input": "mes$sage",
       "expected_result": "error",
       "expected_error": {
         "errno": 6,

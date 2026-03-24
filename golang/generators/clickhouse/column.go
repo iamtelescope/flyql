@@ -1,8 +1,10 @@
 package clickhouse
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 var typeRegexes = map[string]*regexp.Regexp{
@@ -105,10 +107,29 @@ type Column struct {
 	IsJSON         bool
 }
 
+func escapeIdentifier(name string) string {
+	needsQuoting := false
+	for i, c := range name {
+		if i == 0 && unicode.IsDigit(c) {
+			needsQuoting = true
+			break
+		}
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_' {
+			needsQuoting = true
+			break
+		}
+	}
+	if !needsQuoting {
+		return name
+	}
+	escaped := strings.ReplaceAll(name, "`", "``")
+	return fmt.Sprintf("`%s`", escaped)
+}
+
 func NewColumn(name string, jsonString bool, columnType string, values []string) *Column {
 	normalizedType := NormalizeClickHouseType(columnType)
 	return &Column{
-		Name:           name,
+		Name:           escapeIdentifier(name),
 		JSONString:     jsonString,
 		Type:           columnType,
 		Values:         values,

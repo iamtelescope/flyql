@@ -19,54 +19,138 @@ import (
 //go:embed dist/*
 var frontend embed.FS
 
-var autocompleteData = map[string][]string{
-	"service":     {"api-gateway", "api-users", "api-billing", "worker-email", "worker-ingest", "frontend-web", "frontend-mobile"},
-	"host":        {"prod-us-1", "prod-us-2", "prod-eu-1", "staging-1", "dev-local"},
-	"path":        {"/api/v1/users", "/api/v1/auth", "/api/v1/billing", "/api/v2/search", "/health", "/metrics"},
-	"status_code": {"200", "201", "204", "301", "400", "401", "403", "404", "500", "502", "503"},
+// demoColumn is the single source of truth for all column definitions.
+// Generator-specific columns, autocomplete data, and the frontend editor
+// config are all derived from this.
+type demoColumn struct {
+	// Editor config
+	EditorType   string            `json:"type"`
+	Suggest      bool              `json:"suggest"`
+	Autocomplete bool              `json:"autocomplete,omitempty"`
+	Values       []any             `json:"values,omitempty"`
+	Children     map[string]any    `json:"children,omitempty"`
+
+	// Generator types (not sent to frontend)
+	CHType     string `json:"-"`
+	CHJsonStr  bool   `json:"-"`
+	PGType     string `json:"-"`
+	SRType     string `json:"-"`
+	SRJsonStr  bool   `json:"-"`
+
+	// Autocomplete suggestions fetched via API (not inline values)
+	AutocompleteSuggestions []string `json:"-"`
 }
 
-var pgColumns = map[string]*postgresql.Column{
-	"level":       postgresql.NewColumn("level", "varchar(255)", []string{"debug", "info", "warning", "error", "critical"}),
-	"service":     postgresql.NewColumn("service", "varchar(255)", nil),
-	"message":     postgresql.NewColumn("message", "text", nil),
-	"status_code": postgresql.NewColumn("status_code", "integer", nil),
-	"host":        postgresql.NewColumn("host", "varchar(255)", nil),
-	"path":        postgresql.NewColumn("path", "varchar(255)", nil),
-	"duration_ms": postgresql.NewColumn("duration_ms", "integer", nil),
-	"method":      postgresql.NewColumn("method", "varchar(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-	"role":        postgresql.NewColumn("role", "varchar(50)", []string{"admin", "editor", "viewer", "guest"}),
-	"metadata":    postgresql.NewColumn("metadata", "jsonb", nil),
-	"request":     postgresql.NewColumn("request", "jsonb", nil),
+var demoColumns = map[string]*demoColumn{
+	"level": {
+		EditorType: "enum", Suggest: true, Autocomplete: true,
+		Values:     toAnySlice("debug", "info", "warning", "error", "critical"),
+		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
+	},
+	"level_detail": {
+		EditorType: "string", Suggest: true,
+		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
+	},
+	"service": {
+		EditorType: "string", Suggest: true, Autocomplete: true,
+		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
+		AutocompleteSuggestions: []string{"api-gateway", "api-users", "api-billing", "worker-email", "worker-ingest", "frontend-web", "frontend-mobile"},
+	},
+	"message": {
+		EditorType: "string", Suggest: true,
+		CHType:     "String", PGType: "text", SRType: "STRING",
+	},
+	"status_code": {
+		EditorType: "number", Suggest: true, Autocomplete: true,
+		Values:     toAnySlice(200, 201, 204, 301, 400, 401, 403, 404, 500, 502, 503),
+		CHType:     "UInt16", PGType: "integer", SRType: "INT",
+	},
+	"host": {
+		EditorType: "string", Suggest: true, Autocomplete: true,
+		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
+		AutocompleteSuggestions: []string{"prod-us-1", "prod-us-2", "prod-eu-1", "staging-1", "dev-local"},
+	},
+	"path": {
+		EditorType: "string", Suggest: true, Autocomplete: true,
+		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
+		AutocompleteSuggestions: []string{"/api/v1/users", "/api/v1/auth", "/api/v1/billing", "/api/v2/search", "/health", "/metrics"},
+	},
+	"duration_ms": {
+		EditorType: "number", Suggest: true,
+		CHType:     "UInt32", PGType: "integer", SRType: "INT",
+	},
+	"method": {
+		EditorType: "enum", Suggest: true, Autocomplete: true,
+		Values:     toAnySlice("GET", "POST", "PUT", "DELETE", "PATCH"),
+		CHType:     "String", PGType: "varchar(10)", SRType: "VARCHAR(10)",
+	},
+	"role": {
+		EditorType: "enum", Suggest: true, Autocomplete: true,
+		Values:     toAnySlice("admin", "editor", "viewer", "guest"),
+		CHType:     "String", PGType: "varchar(50)", SRType: "VARCHAR(50)",
+	},
+	"metadata": {
+		EditorType: "object", Suggest: true,
+		Children: map[string]any{
+			"labels": map[string]any{
+				"type": "object", "suggest": true,
+				"children": map[string]any{
+					"tier": map[string]any{"type": "string", "suggest": true, "autocomplete": true, "values": []string{"dev", "staging", "prod"}},
+					"env":  map[string]any{"type": "string", "suggest": true, "autocomplete": true},
+				},
+			},
+			"version": map[string]any{"type": "string", "suggest": true},
+		},
+		CHType: "JSON", PGType: "jsonb", SRType: "JSON",
+	},
+	"request": {
+		EditorType: "object", Suggest: true,
+		CHType:     "JSON", PGType: "jsonb", SRType: "JSON",
+	},
+	"user@host": {
+		EditorType: "string", Suggest: true, Autocomplete: true,
+		CHType:     "String", PGType: "text", SRType: "STRING",
+		AutocompleteSuggestions: []string{"alice@web1", "bob@web2", "charlie@web1", "alice@web3", "bob@web1", "dave@web2"},
+	},
 }
 
-var chColumns = map[string]*clickhouse.Column{
-	"level":       clickhouse.NewColumn("level", false, "String", []string{"debug", "info", "warning", "error", "critical"}),
-	"service":     clickhouse.NewColumn("service", false, "String", nil),
-	"message":     clickhouse.NewColumn("message", false, "String", nil),
-	"status_code": clickhouse.NewColumn("status_code", false, "UInt16", nil),
-	"host":        clickhouse.NewColumn("host", false, "String", nil),
-	"path":        clickhouse.NewColumn("path", false, "String", nil),
-	"duration_ms": clickhouse.NewColumn("duration_ms", false, "UInt32", nil),
-	"method":      clickhouse.NewColumn("method", false, "String", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-	"role":        clickhouse.NewColumn("role", false, "String", []string{"admin", "editor", "viewer", "guest"}),
-	"metadata":    clickhouse.NewColumn("metadata", false, "JSON", nil),
-	"request":     clickhouse.NewColumn("request", false, "JSON", nil),
+func toAnySlice(items ...any) []any {
+	return items
 }
 
-var srColumns = map[string]*starrocks.Column{
-	"level":       starrocks.NewColumn("level", false, "VARCHAR(255)", []string{"debug", "info", "warning", "error", "critical"}),
-	"service":     starrocks.NewColumn("service", false, "VARCHAR(255)", nil),
-	"message":     starrocks.NewColumn("message", false, "STRING", nil),
-	"status_code": starrocks.NewColumn("status_code", false, "INT", nil),
-	"host":        starrocks.NewColumn("host", false, "VARCHAR(255)", nil),
-	"path":        starrocks.NewColumn("path", false, "VARCHAR(255)", nil),
-	"duration_ms": starrocks.NewColumn("duration_ms", false, "INT", nil),
-	"method":      starrocks.NewColumn("method", false, "VARCHAR(10)", []string{"GET", "POST", "PUT", "DELETE", "PATCH"}),
-	"role":        starrocks.NewColumn("role", false, "VARCHAR(50)", []string{"admin", "editor", "viewer", "guest"}),
-	"metadata":    starrocks.NewColumn("metadata", false, "JSON", nil),
-	"request":     starrocks.NewColumn("request", false, "JSON", nil),
+func buildGeneratorColumns() (map[string]*clickhouse.Column, map[string]*postgresql.Column, map[string]*starrocks.Column) {
+	ch := make(map[string]*clickhouse.Column)
+	pg := make(map[string]*postgresql.Column)
+	sr := make(map[string]*starrocks.Column)
+
+	for name, col := range demoColumns {
+		var enumValues []string
+		if col.EditorType == "enum" {
+			for _, v := range col.Values {
+				if s, ok := v.(string); ok {
+					enumValues = append(enumValues, s)
+				}
+			}
+		}
+		ch[name] = clickhouse.NewColumn(name, col.CHJsonStr, col.CHType, enumValues)
+		pg[name] = postgresql.NewColumn(name, col.PGType, enumValues)
+		sr[name] = starrocks.NewColumn(name, col.SRJsonStr, col.SRType, enumValues)
+	}
+	return ch, pg, sr
 }
+
+func buildAutocompleteData() map[string][]string {
+	data := make(map[string][]string)
+	for name, col := range demoColumns {
+		if len(col.AutocompleteSuggestions) > 0 {
+			data[name] = col.AutocompleteSuggestions
+		}
+	}
+	return data
+}
+
+var chColumns, pgColumns, srColumns = buildGeneratorColumns()
+var autocompleteData = buildAutocompleteData()
 
 type discoveredKey struct {
 	Name        string `json:"name"`
@@ -89,6 +173,10 @@ var keyDiscoveryData = map[string][]discoveredKey{
 
 func main() {
 	r := gin.Default()
+
+	r.GET("/api/columns", func(c *gin.Context) {
+		c.JSON(http.StatusOK, demoColumns)
+	})
 
 	r.GET("/api/autocomplete", func(c *gin.Context) {
 		key := c.Query("key")

@@ -211,6 +211,31 @@
       ]
     },
     {
+      "name": "at_column_select",
+      "select_columns": "id, user@host",
+      "expected_rows": [
+        ["1", "alice@web1"],
+        ["2", "bob@web2"],
+        ["3", "charlie@web1"],
+        ["4", "alice@web3"],
+        ["5", "bob@web1"],
+        ["6", "dave@web2"]
+      ]
+    },
+    {
+      "name": "at_column_select_with_alias",
+      "select_columns": "id, user@host as login",
+      "expected_column_names": ["id", "login"],
+      "expected_rows": [
+        ["1", "alice@web1"],
+        ["2", "bob@web2"],
+        ["3", "charlie@web1"],
+        ["4", "alice@web3"],
+        ["5", "bob@web1"],
+        ["6", "dave@web2"]
+      ]
+    },
+    {
       "name": "mixed_all_types",
       "select_columns": "id, message, metadata.tier as tier, tags.1 as tag1, meta.region as region",
       "expected_column_names": ["id", "message", "tier", "tag1", "region"],

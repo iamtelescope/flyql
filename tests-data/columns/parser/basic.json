@@ -104,6 +104,20 @@
       ]
     },
     {
+      "name": "column_with_at_sign",
+      "input": "user@host",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "user@host",
+          "modifiers": [],
+          "alias": null,
+          "segments": ["user@host"],
+          "is_segmented": false
+        }
+      ]
+    },
+    {
       "name": "column_with_alias",
       "input": "message as msg",
       "expected_result": "success",

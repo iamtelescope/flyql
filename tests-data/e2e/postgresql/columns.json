@@ -61,6 +61,11 @@
       "name": "metadata",
       "type": "hstore",
       "values": null
+    },
+    "user@host": {
+      "name": "user@host",
+      "type": "text",
+      "values": null
     }
   }
 }

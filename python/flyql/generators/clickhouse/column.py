@@ -100,6 +100,16 @@ def normalize_clickhouse_type(ch_type: str) -> Optional[str]:
     return None
 
 
+def _escape_identifier(name: str) -> str:
+    needs_quoting = name[:1].isdigit() or any(
+        not (c.isalnum() or c == "_") for c in name
+    )
+    if not needs_quoting:
+        return name
+    escaped = name.replace("`", "``")
+    return f"`{escaped}`"
+
+
 class Column:
     def __init__(
         self,
@@ -108,7 +118,7 @@ class Column:
         _type: str,
         values: Optional[List[str]] = None,
     ):
-        self.name = name
+        self.name = _escape_identifier(name)
         self.jsonstring = jsonstring
         self.type = _type
         self.values = values or []

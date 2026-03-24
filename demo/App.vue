@@ -84,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { FlyqlEditor, FlyqlColumns } from '../javascript/src/editor/index.js'
 
 const query = ref('')
@@ -98,33 +98,17 @@ const generatedSQL = ref('')
 const generateError = ref('')
 const generating = ref(false)
 
-const columns = ref({
-    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] },
-    level_detail: { type: 'string', suggest: true, autocomplete: false },
-    service: { type: 'string', suggest: true, autocomplete: true },
-    message: { type: 'string', suggest: true, autocomplete: false },
-    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 201, 204, 301, 400, 401, 403, 404, 500, 502, 503] },
-    host: { type: 'string', suggest: true, autocomplete: true },
-    path: { type: 'string', suggest: true, autocomplete: true },
-    duration_ms: { type: 'number', suggest: true, autocomplete: false },
-    method: { type: 'enum', suggest: true, autocomplete: true, values: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] },
-    role: { type: 'enum', suggest: true, autocomplete: true, values: ['admin', 'editor', 'viewer', 'guest'] },
-    metadata: {
-        type: 'object',
-        suggest: true,
-        children: {
-            labels: {
-                type: 'object',
-                suggest: true,
-                children: {
-                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
-                    env: { type: 'string', suggest: true, autocomplete: true },
-                },
-            },
-            version: { type: 'string', suggest: true },
-        },
-    },
-    request: { type: 'object', suggest: true },
+const columns = ref({})
+
+onMounted(async () => {
+    try {
+        const resp = await fetch('/api/columns')
+        if (resp.ok) {
+            columns.value = await resp.json()
+        }
+    } catch (err) {
+        console.error('Failed to load columns:', err)
+    }
 })
 
 const isValid = computed(() => {

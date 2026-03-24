@@ -29,7 +29,8 @@ func (c char) isKey() bool {
 		c.value == '.' ||
 		c.value == ':' ||
 		c.value == '/' ||
-		c.value == '-'
+		c.value == '-' ||
+		c.value == '@'
 }
 
 func (c char) isOp() bool {

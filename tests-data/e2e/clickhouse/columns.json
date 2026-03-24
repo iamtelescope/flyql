@@ -79,6 +79,12 @@
       "jsonstring": false,
       "type": "Map(String, String)",
       "values": null
+    },
+    "user@host": {
+      "name": "user@host",
+      "jsonstring": false,
+      "type": "String",
+      "values": null
     }
   }
 }

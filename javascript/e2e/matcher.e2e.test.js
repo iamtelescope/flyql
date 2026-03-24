@@ -29,6 +29,7 @@ function loadTestCases() {
         !tc.flyql.includes("meta.'0'") &&
         !tc.flyql.includes('meta.tags.') &&
         !tc.flyql.includes("hello*'") &&
+        !tc.flyql.includes("'*@") &&
         !tc.flyql.includes('created_at<=')
     )
 }

@@ -235,9 +235,17 @@ export function normalizeClickHouseType(chType) {
     return ''
 }
 
+function escapeIdentifier(name) {
+    if (/^[0-9]/.test(name) || /[^a-zA-Z0-9_]/.test(name)) {
+        const escaped = name.replace(/`/g, '``')
+        return `\`${escaped}\``
+    }
+    return name
+}
+
 export class Column {
     constructor(name, jsonString, type, values) {
-        this.name = name
+        this.name = escapeIdentifier(name)
         this.jsonString = jsonString
         this.type = type
         this.values = values || []

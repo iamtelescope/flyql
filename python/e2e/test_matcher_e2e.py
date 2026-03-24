@@ -41,6 +41,7 @@ def load_test_cases() -> list[dict[str, Any]]:
                 "meta.'0'",
                 "meta.tags.",
                 "hello*'",
+                "'*@",
                 "created_at<=",
             ]
         )

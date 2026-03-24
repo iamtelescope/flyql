@@ -6,10 +6,11 @@ from flyql.core.key import Key
 
 def try_convert_to_number(value: str | int | float) -> str | int | float:
     try:
-        f = float(value)
-        if f.is_integer():
-            return int(f)
-        return f
+        return int(str(value))
+    except ValueError:
+        pass
+    try:
+        return float(value)
     except ValueError:
         return value
 

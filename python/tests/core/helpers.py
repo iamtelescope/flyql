@@ -119,6 +119,20 @@ def normalize_ast_for_comparison(node_dict) -> Optional[Dict[str, Any]]:
     return result
 
 
+def _expressions_equal(actual: Dict[str, Any], expected: Dict[str, Any]) -> bool:
+    if actual["key"] != expected["key"]:
+        return False
+    if actual["operator"] != expected["operator"]:
+        return False
+    if actual["value_type"] != expected["value_type"]:
+        return False
+    # Large integer values are stored as strings in test data to avoid JSON
+    # precision loss. Compare by converting both sides to string.
+    if actual["value_type"] == "number" and isinstance(expected["value"], str):
+        return str(actual["value"]) == expected["value"]
+    return actual["value"] == expected["value"]
+
+
 def compare_ast(
     actual: Optional[Dict[str, Any]], expected: Optional[Dict[str, Any]]
 ) -> bool:
@@ -135,7 +149,13 @@ def compare_ast(
     if actual.get("negated", False) != expected.get("negated", False):
         return False
 
-    if actual["expression"] != expected["expression"]:
+    actual_expr = actual["expression"]
+    expected_expr = expected["expression"]
+    if actual_expr is None and expected_expr is None:
+        pass
+    elif actual_expr is None or expected_expr is None:
+        return False
+    elif not _expressions_equal(actual_expr, expected_expr):
         return False
 
     if not compare_ast(actual["left"], expected["left"]):

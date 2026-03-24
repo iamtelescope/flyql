@@ -127,6 +127,16 @@ describe('Parser Not Tests', () => {
     })
 })
 
+describe('Parser Int64 Tests', () => {
+    const testData = loadTestData('int64.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Has Tests', () => {
     const testData = loadTestData('has.json')
 

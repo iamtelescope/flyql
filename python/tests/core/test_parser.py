@@ -80,6 +80,11 @@ def test_not_parsing(test_case):
     run_test_case(test_case)
 
 
+@pytest.mark.parametrize("test_case", load_test_data("int64.json")["tests"])
+def test_int64_parsing(test_case):
+    run_test_case(test_case)
+  
+
 @pytest.mark.parametrize("test_case", load_test_data("has.json")["tests"])
 def test_has_parsing(test_case):
     run_test_case(test_case)

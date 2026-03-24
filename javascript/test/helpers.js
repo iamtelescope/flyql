@@ -30,6 +30,7 @@ export function astToDict(node) {
             operator: node.expression.operator,
             value: node.expression.value,
             value_type: typeof node.expression.value === 'string' ? 'string' : 'number',
+            value_bigint: typeof node.expression.value === 'bigint',
         }
     }
 
@@ -143,12 +144,17 @@ function compareExpressions(actual, expected) {
         return false
     }
 
-    return (
-        actual.key === expected.key &&
-        actual.operator === expected.operator &&
-        actual.value === expected.value &&
-        actual.value_type === expected.value_type
-    )
+    if (actual.key !== expected.key) return false
+    if (actual.operator !== expected.operator) return false
+    if (actual.value_type !== expected.value_type) return false
+
+    // BigInt values from the parser must be compared to their string representation
+    // in the test data (since JSON cannot encode large integers without precision loss)
+    if (actual.value_bigint) {
+        return actual.value.toString() === String(expected.value)
+    }
+
+    return actual.value === expected.value
 }
 
 export function formatAstMismatchMessage(testName, input, expected, actual) {

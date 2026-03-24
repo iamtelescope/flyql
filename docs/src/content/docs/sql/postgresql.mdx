@@ -36,6 +36,20 @@ PostgreSQL uses uppercase `AND`/`OR` (unlike ClickHouse and StarRocks):
 | `status in []` | `FALSE` |
 | `status not in []` | `TRUE` |
 
+## Containment (`has` / `not has`)
+
+The `has` operator generates different SQL depending on the column type:
+
+| Column Type | FlyQL | Generated SQL |
+|-------------|-------|--------------|
+| String | `message has 'error'` | `position('error' in "message") > 0` |
+| String (negated) | `message not has 'error'` | `("message" IS NULL OR position('error' in "message") = 0)` |
+| Array | `tags has 'web'` | `'web' = ANY("tags")` |
+| Array (negated) | `tags not has 'web'` | `NOT ('web' = ANY("tags"))` |
+| JSONB | `data has 'key'` | `"data" ? 'key'` |
+| JSONB (negated) | `data not has 'key'` | `NOT ("data" ? 'key')` |
+| Hstore | `metadata has 'key'` | `"metadata" ? 'key'` |
+
 ## JSONB Columns
 
 PostgreSQL uses JSONB operators with type checking via `jsonb_typeof()`:

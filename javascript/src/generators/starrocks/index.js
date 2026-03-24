@@ -343,9 +343,88 @@ function falsyExpressionToSQL(expr, columns) {
     }
 }
 
+function hasExpressionToSQL(expr, columns) {
+    const isNotHas = expr.operator === Operator.NOT_HAS
+    const columnName = expr.key.segments[0]
+    const column = columns[columnName]
+    if (!column) throw new Error(`unknown column: ${columnName}`)
+
+    const value = escapeParam(expr.value)
+
+    if (expr.key.isSegmented) {
+        if (column.isJSON) {
+            const jsonPath = expr.key.segments.slice(1)
+            for (const part of jsonPath) validateJSONPathPart(part)
+            const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
+            const columnExp = `cast(\`${column.name}\`->${jsonPathStr} as string)`
+            if (isNotHas) {
+                return `INSTR(${columnExp}, ${value}) = 0`
+            }
+            return `INSTR(${columnExp}, ${value}) > 0`
+        } else if (column.isMap) {
+            const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
+            const mapKey = mapPath.join('][')
+            if (isNotHas) {
+                return `INSTR(\`${column.name}\`[${mapKey}], ${value}) = 0`
+            }
+            return `INSTR(\`${column.name}\`[${mapKey}], ${value}) > 0`
+        } else if (column.isArray) {
+            const arrayIndexStr = expr.key.segments.slice(1).join('.')
+            const arrayIndex = parseInt(arrayIndexStr, 10)
+            if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
+            if (isNotHas) {
+                return `INSTR(\`${column.name}\`[${arrayIndex}], ${value}) = 0`
+            }
+            return `INSTR(\`${column.name}\`[${arrayIndex}], ${value}) > 0`
+        } else if (column.jsonString) {
+            const jsonPath = expr.key.segments.slice(1)
+            for (const part of jsonPath) validateJSONPathPart(part)
+            const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
+            const columnExp = `cast(parse_json(\`${column.name}\`)->${jsonPathStr} as string)`
+            if (isNotHas) {
+                return `INSTR(${columnExp}, ${value}) = 0`
+            }
+            return `INSTR(${columnExp}, ${value}) > 0`
+        } else {
+            throw new Error('path search for unsupported column type')
+        }
+    }
+
+    if (column.isArray) {
+        if (isNotHas) {
+            return `NOT array_contains(\`${column.name}\`, ${value})`
+        }
+        return `array_contains(\`${column.name}\`, ${value})`
+    }
+
+    if (column.isMap) {
+        if (isNotHas) {
+            return `NOT array_contains(map_keys(\`${column.name}\`), ${value})`
+        }
+        return `array_contains(map_keys(\`${column.name}\`), ${value})`
+    }
+
+    if (column.isJSON) {
+        if (isNotHas) {
+            return `NOT json_exists(\`${column.name}\`, concat('$.', ${value}))`
+        }
+        return `json_exists(\`${column.name}\`, concat('$.', ${value}))`
+    }
+
+    if (column.normalizedType === NormalizedTypeString) {
+        if (isNotHas) {
+            return `(\`${column.name}\` IS NULL OR INSTR(\`${column.name}\`, ${value}) = 0)`
+        }
+        return `INSTR(\`${column.name}\`, ${value}) > 0`
+    }
+
+    throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
+}
+
 function expressionToSQL(expr, columns) {
     if (expr.operator === Operator.TRUTHY) return truthyExpressionToSQL(expr, columns)
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) return inExpressionToSQL(expr, columns)
+    if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) return hasExpressionToSQL(expr, columns)
     if (!VALID_KEY_VALUE_OPERATORS.includes(expr.operator) && expr.operator !== Operator.TRUTHY) {
         throw new Error(`invalid operator: ${expr.operator}`)
     }

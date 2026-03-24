@@ -56,6 +56,19 @@ function compareLess(a, b) {
     return false
 }
 
+function evalHas(value, exprValue) {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'string') return value.includes(toString(exprValue))
+    if (Array.isArray(value)) {
+        for (const item of value) {
+            if (compareEqual(item, exprValue)) return true
+        }
+        return false
+    }
+    if (typeof value === 'object') return toString(exprValue) in value
+    return false
+}
+
 function valueInList(value, list) {
     for (const item of list) {
         if (compareEqual(value, item)) return true
@@ -148,6 +161,11 @@ export class Evaluator {
             case Operator.NOT_IN:
                 if (!expr.values || expr.values.length === 0) return true
                 return !valueInList(value, expr.values)
+            case Operator.HAS:
+                return evalHas(value, expr.value)
+            case Operator.NOT_HAS:
+                if (value === null || value === undefined) return true
+                return !evalHas(value, expr.value)
             default:
                 return false
         }

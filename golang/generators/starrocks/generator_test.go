@@ -160,6 +160,11 @@ func TestIn(t *testing.T) {
 	runWhereTestSuite(t, columns, "in.json")
 }
 
+func TestHas(t *testing.T) {
+	columns := loadColumns(t)
+	runWhereTestSuite(t, columns, "has.json")
+}
+
 func TestTruthy(t *testing.T) {
 	columns := loadColumns(t)
 	runWhereTestSuite(t, columns, "truthy.json")

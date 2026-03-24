@@ -20,6 +20,8 @@ var validOperators = map[string]bool{
 	flyql.OpLessOrEquals:    true,
 	flyql.OpIn:              true,
 	flyql.OpNotIn:           true,
+	flyql.OpHas:             true,
+	flyql.OpNotHas:          true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -446,6 +448,120 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	return fmt.Sprintf("`%s` %s (%s)", column.Name, sqlOp, valuesSQL), nil
 }
 
+func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+	isNotHas := expr.Operator == flyql.OpNotHas
+
+	columnName := expr.Key.Segments[0]
+	column, ok := columns[columnName]
+	if !ok {
+		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	value, err := EscapeParam(expr.Value)
+	if err != nil {
+		return "", err
+	}
+
+	if expr.Key.IsSegmented() {
+		if column.IsJSON {
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = QuoteJSONPathPart(part)
+			}
+			jsonPathStr := strings.Join(pathParts, "->")
+			leafExpr := fmt.Sprintf("`%s`->%s", column.Name, jsonPathStr)
+			if isNotHas {
+				return fmt.Sprintf("INSTR(cast(%s as string), %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(cast(%s as string), %s) > 0", leafExpr, value), nil
+		} else if column.IsMap {
+			mapPath := expr.Key.Segments[1:]
+			escapedParts := make([]string, len(mapPath))
+			for i, part := range mapPath {
+				escaped, err := EscapeParam(part)
+				if err != nil {
+					return "", err
+				}
+				escapedParts[i] = escaped
+			}
+			mapKey := strings.Join(escapedParts, "][")
+			leafExpr := fmt.Sprintf("`%s`[%s]", column.Name, mapKey)
+			if isNotHas {
+				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
+		} else if column.IsArray {
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
+			arrayIndex, err := strconv.Atoi(arrayIndexStr)
+			if err != nil {
+				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
+			}
+			leafExpr := fmt.Sprintf("`%s`[%d]", column.Name, arrayIndex)
+			if isNotHas {
+				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
+		} else if column.IsStruct {
+			structPath := expr.Key.Segments[1:]
+			structColumn := strings.Join(structPath, "`.`")
+			leafExpr := fmt.Sprintf("`%s`.`%s`", column.Name, structColumn)
+			if isNotHas {
+				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
+		} else if column.JSONString {
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = QuoteJSONPathPart(part)
+			}
+			jsonPathStr := strings.Join(pathParts, "->")
+			leafExpr := fmt.Sprintf("parse_json(`%s`)->%s", column.Name, jsonPathStr)
+			if isNotHas {
+				return fmt.Sprintf("INSTR(cast(%s as string), %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(cast(%s as string), %s) > 0", leafExpr, value), nil
+		} else {
+			return "", fmt.Errorf("path search for unsupported column type")
+		}
+	}
+
+	if column.NormalizedType == NormalizedTypeString {
+		if isNotHas {
+			return fmt.Sprintf("(`%s` IS NULL OR INSTR(`%s`, %s) = 0)", column.Name, column.Name, value), nil
+		}
+		return fmt.Sprintf("INSTR(`%s`, %s) > 0", column.Name, value), nil
+	} else if column.IsArray {
+		if isNotHas {
+			return fmt.Sprintf("NOT array_contains(`%s`, %s)", column.Name, value), nil
+		}
+		return fmt.Sprintf("array_contains(`%s`, %s)", column.Name, value), nil
+	} else if column.IsMap {
+		if isNotHas {
+			return fmt.Sprintf("NOT array_contains(map_keys(`%s`), %s)", column.Name, value), nil
+		}
+		return fmt.Sprintf("array_contains(map_keys(`%s`), %s)", column.Name, value), nil
+	} else if column.IsJSON {
+		if isNotHas {
+			return fmt.Sprintf("NOT json_exists(`%s`, concat('$.', %s))", column.Name, value), nil
+		}
+		return fmt.Sprintf("json_exists(`%s`, concat('$.', %s))", column.Name, value), nil
+	} else {
+		return "", fmt.Errorf("has operator is not supported for column type: %s", column.NormalizedType)
+	}
+}
+
 func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	columnName := expr.Key.Segments[0]
 	column, ok := columns[columnName]
@@ -610,6 +726,9 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string
 	}
 	if expr.Operator == flyql.OpIn || expr.Operator == flyql.OpNotIn {
 		return inExpressionToSQL(expr, columns)
+	}
+	if expr.Operator == flyql.OpHas || expr.Operator == flyql.OpNotHas {
+		return hasExpressionToSQL(expr, columns)
 	}
 	if err := validateOperator(expr.Operator); err != nil {
 		return "", err

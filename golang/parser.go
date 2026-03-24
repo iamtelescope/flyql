@@ -13,6 +13,8 @@ var validKeyValueOperators = map[string]bool{
 	OpLessOrEquals:    true,
 	OpIn:              true,
 	OpNotIn:           true,
+	OpHas:             true,
+	OpNotHas:          true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -53,6 +55,7 @@ type Parser struct {
 	inListCurrentValueIsString *bool
 	inListValuesType           *ValueType
 	isNotIn                    bool
+	isNotHas                   bool
 }
 
 func NewParser() *Parser {
@@ -97,6 +100,7 @@ func (p *Parser) resetInListData() {
 	p.inListCurrentValueIsString = nil
 	p.inListValuesType = nil
 	p.isNotIn = false
+	p.isNotHas = false
 }
 
 func (p *Parser) extendInListCurrentValue() {
@@ -366,6 +370,38 @@ func (p *Parser) inStateExpectOperator() {
 
 func (p *Parser) inStateKeyValueOperator() {
 	if p.char == nil {
+		return
+	}
+
+	if p.keyValueOperator == "h" && p.char.value == 'a' {
+		p.keyValueOperator = "ha"
+		return
+	} else if p.keyValueOperator == "ha" && p.char.value == 's' {
+		p.keyValueOperator = HasKeyword
+		return
+	} else if p.keyValueOperator == HasKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpHas
+			p.isNotHas = false
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpHas
+			p.isNotHas = false
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpHas
+			p.isNotHas = false
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpHas
+			p.isNotHas = false
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'has'", 50)
+		}
 		return
 	}
 
@@ -659,6 +695,9 @@ func (p *Parser) inStateKeyOrBoolOp() {
 	} else if p.char.value == 'i' {
 		p.keyValueOperator = "i"
 		p.state = stateKeyValueOperator
+	} else if p.char.value == 'h' {
+		p.keyValueOperator = "h"
+		p.state = stateKeyValueOperator
 	} else if p.char.value == 'n' {
 		p.keyValueOperator = "n"
 		p.state = stateExpectInKeyword
@@ -748,6 +787,11 @@ func (p *Parser) inStateExpectListStart() {
 
 	if p.char.isDelimiter() {
 		return
+	} else if p.char.value == 'h' && p.isNotIn {
+		p.keyValueOperator = "h"
+		p.isNotIn = false
+		p.isNotHas = true
+		p.state = stateExpectHasKeyword
 	} else if p.char.value == 'i' {
 		p.keyValueOperator = "i"
 	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
@@ -756,6 +800,39 @@ func (p *Parser) inStateExpectListStart() {
 		p.state = stateExpectListValue
 	} else {
 		p.setErrorState("expected '['", 42)
+	}
+}
+
+func (p *Parser) inStateExpectHasKeyword() {
+	if p.char == nil {
+		return
+	}
+
+	if p.keyValueOperator == "h" && p.char.value == 'a' {
+		p.keyValueOperator = "ha"
+	} else if p.keyValueOperator == "ha" && p.char.value == 's' {
+		p.keyValueOperator = HasKeyword
+	} else if p.keyValueOperator == HasKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpNotHas
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpNotHas
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpNotHas
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpNotHas
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'not has'", 50)
+		}
+	} else {
+		p.setErrorState("expected 'has' keyword", 50)
 	}
 }
 
@@ -884,6 +961,7 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateExpectValue ||
 		p.state == stateExpectNotTarget ||
 		p.state == stateExpectInKeyword ||
+		p.state == stateExpectHasKeyword ||
 		p.state == stateExpectListStart ||
 		p.state == stateExpectListValue ||
 		p.state == stateInListValue ||
@@ -976,6 +1054,8 @@ func (p *Parser) Parse(text string) error {
 			p.inStateExpectNotTarget()
 		case stateExpectInKeyword:
 			p.inStateExpectInKeyword()
+		case stateExpectHasKeyword:
+			p.inStateExpectHasKeyword()
 		case stateExpectListStart:
 			p.inStateExpectListStart()
 		case stateExpectListValue:

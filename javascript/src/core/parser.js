@@ -12,6 +12,7 @@ import {
     Operator,
     NOT_KEYWORD,
     IN_KEYWORD,
+    HAS_KEYWORD,
 } from './constants.js'
 
 export class Parser {
@@ -41,6 +42,7 @@ export class Parser {
         this.inListCurrentValueIsString = null
         this.inListValuesType = null
         this.isNotIn = false
+        this.isNotHas = false
     }
 
     setState(state) {
@@ -106,6 +108,7 @@ export class Parser {
         this.inListCurrentValueIsString = null
         this.inListValuesType = null
         this.isNotIn = false
+        this.isNotHas = false
     }
 
     extendInListCurrentValue() {
@@ -401,6 +404,10 @@ export class Parser {
             this.keyValueOperator = 'i'
             this.setState(State.KEY_VALUE_OPERATOR)
             this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === 'h') {
+            this.keyValueOperator = 'h'
+            this.setState(State.KEY_VALUE_OPERATOR)
+            this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.value === 'n') {
             this.keyValueOperator = 'n'
             this.setState(State.EXPECT_IN_KEYWORD)
@@ -455,6 +462,48 @@ export class Parser {
 
     inStateKeyValueOperator() {
         if (!this.char) {
+            return
+        }
+
+        if (this.keyValueOperator === 'h' && this.char.value === 'a') {
+            this.keyValueOperator = 'ha'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'ha' && this.char.value === 's') {
+            this.keyValueOperator = HAS_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === HAS_KEYWORD) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.HAS
+                this.isNotHas = false
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.HAS
+                this.isNotHas = false
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.HAS
+                this.isNotHas = false
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.HAS
+                this.isNotHas = false
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'has'", 50)
+            }
             return
         }
 
@@ -806,6 +855,12 @@ export class Parser {
         if (this.char.isDelimiter()) {
             this.storeTypedChar(CharType.SPACE)
             return
+        } else if (this.char.value === 'h' && this.isNotIn) {
+            this.keyValueOperator = 'h'
+            this.isNotIn = false
+            this.isNotHas = true
+            this.setState(State.EXPECT_HAS_KEYWORD)
+            this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.value === 'i') {
             this.keyValueOperator = 'i'
             this.storeTypedChar(CharType.OPERATOR)
@@ -817,6 +872,45 @@ export class Parser {
             this.setState(State.EXPECT_LIST_VALUE)
         } else {
             this.setErrorState("expected '['", 42)
+        }
+    }
+
+    inStateExpectHasKeyword() {
+        if (!this.char) {
+            return
+        }
+
+        if (this.keyValueOperator === 'h' && this.char.value === 'a') {
+            this.keyValueOperator = 'ha'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'ha' && this.char.value === 's') {
+            this.keyValueOperator = HAS_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === HAS_KEYWORD) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.NOT_HAS
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.NOT_HAS
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.NOT_HAS
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.NOT_HAS
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'not has'", 50)
+            }
+        } else {
+            this.setErrorState("expected 'has' keyword", 50)
         }
     }
 
@@ -966,6 +1060,7 @@ export class Parser {
             this.state === State.EXPECT_VALUE ||
             this.state === State.EXPECT_NOT_TARGET ||
             this.state === State.EXPECT_IN_KEYWORD ||
+            this.state === State.EXPECT_HAS_KEYWORD ||
             this.state === State.EXPECT_LIST_START ||
             this.state === State.EXPECT_LIST_VALUE ||
             this.state === State.IN_LIST_VALUE ||
@@ -1063,6 +1158,9 @@ export class Parser {
                     break
                 case State.EXPECT_IN_KEYWORD:
                     this.inStateExpectInKeyword()
+                    break
+                case State.EXPECT_HAS_KEYWORD:
+                    this.inStateExpectHasKeyword()
                     break
                 case State.EXPECT_LIST_START:
                     this.inStateExpectListStart()

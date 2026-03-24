@@ -22,6 +22,10 @@ FlyQL generators produce a WHERE clause fragment as a plain SQL string with all 
 | Boolean ops | `and` / `or` | `AND` / `OR` | `and` / `or` |
 | Empty `IN []` | `0` | `FALSE` | `0` |
 | Empty `NOT IN []` | `1` | `TRUE` | `1` |
+| String `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| Array `has` | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| Map `has` | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON `has` | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## JSON Access — The Biggest Difference
 

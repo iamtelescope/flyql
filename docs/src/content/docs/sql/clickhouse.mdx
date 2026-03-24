@@ -34,6 +34,21 @@ ClickHouse SQL uses unquoted column names, `match()` for regex, and `LIKE` for w
 | `status in []` | `0` |
 | `status not in []` | `1` |
 
+## Containment (`has` / `not has`)
+
+The `has` operator generates different SQL depending on the column type:
+
+| Column Type | FlyQL | Generated SQL |
+|-------------|-------|--------------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String (negated) | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array (negated) | `tags not has 'web'` | `NOT has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map (negated) | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
+| Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+
 ## JSON Columns
 
 ClickHouse supports two JSON column types with different SQL output.

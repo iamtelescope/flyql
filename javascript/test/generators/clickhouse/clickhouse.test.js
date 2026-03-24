@@ -73,6 +73,7 @@ describe('ClickHouse Generator', () => {
     runTestSuite('json_columns.json')
     runTestSuite('map_array.json')
     runTestSuite('in.json')
+    runTestSuite('has.json')
     runTestSuite('truthy.json')
     runTestSuite('not.json')
     runTestSuite('errors.json')

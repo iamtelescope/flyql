@@ -191,6 +191,7 @@ func TestParser(t *testing.T) {
 		"parser/whitespace.json",
 		"parser/truthy.json",
 		"parser/not.json",
+		"parser/has.json",
 	}
 
 	for _, file := range files {

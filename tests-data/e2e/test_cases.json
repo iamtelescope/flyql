@@ -331,6 +331,36 @@
       "flyql": "metadata.tier='premium' and tags.0='web'",
       "expected_ids": [1],
       "databases": ["postgresql"]
+    },
+    {
+      "name": "has_string_substring",
+      "flyql": "message has 'hello'",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "not_has_string_substring",
+      "flyql": "message not has 'hello'",
+      "expected_ids": [2, 4, 5],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "has_string_world",
+      "flyql": "message has 'world'",
+      "expected_ids": [2, 3],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "has_string_combined_and",
+      "flyql": "message has 'hello' and active",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "has_string_combined_or",
+      "flyql": "message has 'error' or message has 'world'",
+      "expected_ids": [2, 3, 5],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
     }
   ]
 }

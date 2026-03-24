@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "description": "HAS operator ClickHouse generator test cases",
+  "test_suite": "has",
+  "tests": [
+    {
+      "name": "has_string_column",
+      "input": "message has 'hello'",
+      "expected_result": "success",
+      "expected_sql": "position(message, 'hello') > 0"
+    },
+    {
+      "name": "not_has_string_column",
+      "input": "message not has 'hello'",
+      "expected_result": "success",
+      "expected_sql": "(message IS NULL OR position(message, 'hello') = 0)"
+    },
+    {
+      "name": "has_array_column",
+      "input": "tags has 'value'",
+      "expected_result": "success",
+      "expected_sql": "has(tags, 'value')"
+    },
+    {
+      "name": "not_has_array_column",
+      "input": "tags not has 'value'",
+      "expected_result": "success",
+      "expected_sql": "NOT has(tags, 'value')"
+    },
+    {
+      "name": "has_map_column",
+      "input": "metadata has 'key'",
+      "expected_result": "success",
+      "expected_sql": "mapContains(metadata, 'key')"
+    },
+    {
+      "name": "not_has_map_column",
+      "input": "metadata not has 'key'",
+      "expected_result": "success",
+      "expected_sql": "NOT mapContains(metadata, 'key')"
+    },
+    {
+      "name": "has_json_column",
+      "input": "new_json has 'key'",
+      "expected_result": "success",
+      "expected_sql": "JSON_EXISTS(new_json, concat('$.', 'key'))"
+    },
+    {
+      "name": "not_has_json_column",
+      "input": "new_json not has 'key'",
+      "expected_result": "success",
+      "expected_sql": "NOT JSON_EXISTS(new_json, concat('$.', 'key'))"
+    },
+    {
+      "name": "has_jsonstring_column",
+      "input": "json_column has 'key'",
+      "expected_result": "success",
+      "expected_sql": "JSONHas(json_column, 'key')"
+    },
+    {
+      "name": "not_has_jsonstring_column",
+      "input": "json_column not has 'key'",
+      "expected_result": "success",
+      "expected_sql": "NOT JSONHas(json_column, 'key')"
+    },
+    {
+      "name": "has_with_and",
+      "input": "message has 'hello' and tags has 'important'",
+      "expected_result": "success",
+      "expected_sql": "(position(message, 'hello') > 0 and has(tags, 'important'))"
+    },
+    {
+      "name": "has_unknown_column",
+      "input": "unknown has 'value'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown column"
+    }
+  ]
+}

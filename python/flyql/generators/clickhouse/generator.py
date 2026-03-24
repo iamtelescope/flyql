@@ -311,12 +311,89 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
         return f"{column.name} {sql_op} ({values_sql})"
 
 
+def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+    column_name = expression.key.segments[0]
+    if column_name not in columns:
+        raise FlyqlError(f"unknown column: {column_name}")
+
+    column = columns[column_name]
+    is_not_has = expression.operator == Operator.NOT_HAS.value
+    value = escape_param(expression.value)
+
+    if expression.key.is_segmented:
+        if column.is_json:
+            json_path = expression.key.segments[1:]
+            for part in json_path:
+                validate_json_path_part(part)
+            json_path_str = ".".join(f"$.{part}" for part in json_path)
+            leaf_expr = f"JSON_VALUE({column.name}, '{json_path_str}')"
+            if is_not_has:
+                return f"position({leaf_expr}, {value}) = 0"
+            return f"position({leaf_expr}, {value}) > 0"
+        elif column.jsonstring:
+            json_path = expression.key.segments[1:]
+            json_path_str = ", ".join(escape_param(x) for x in json_path)
+            leaf_expr = f"JSONExtractString({column.name}, {json_path_str})"
+            if is_not_has:
+                return f"position({leaf_expr}, {value}) = 0"
+            return f"position({leaf_expr}, {value}) > 0"
+        elif column.is_map:
+            map_key = ".".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
+            leaf_expr = f"{column.name}[{escaped_map_key}]"
+            if is_not_has:
+                return f"position({leaf_expr}, {value}) = 0"
+            return f"position({leaf_expr}, {value}) > 0"
+        elif column.is_array:
+            array_index_str = ".".join(expression.key.segments[1:])
+            try:
+                array_index = int(array_index_str)
+            except Exception as err:
+                raise FlyqlError(
+                    f"invalid array index, expected number: {array_index_str}"
+                ) from err
+            leaf_expr = f"{column.name}[{array_index}]"
+            if is_not_has:
+                return f"position({leaf_expr}, {value}) = 0"
+            return f"position({leaf_expr}, {value}) > 0"
+        else:
+            raise FlyqlError("path search for unsupported column type")
+
+    if column.is_array:
+        if is_not_has:
+            return f"NOT has({column.name}, {value})"
+        return f"has({column.name}, {value})"
+    elif column.is_map:
+        if is_not_has:
+            return f"NOT mapContains({column.name}, {value})"
+        return f"mapContains({column.name}, {value})"
+    elif column.is_json:
+        if is_not_has:
+            return f"NOT JSON_EXISTS({column.name}, concat('$.', {value}))"
+        return f"JSON_EXISTS({column.name}, concat('$.', {value}))"
+    elif column.jsonstring:
+        if is_not_has:
+            return f"NOT JSONHas({column.name}, {value})"
+        return f"JSONHas({column.name}, {value})"
+    elif column.normalized_type == NORMALIZED_TYPE_STRING:
+        if is_not_has:
+            return f"({column.name} IS NULL OR position({column.name}, {value}) = 0)"
+        return f"position({column.name}, {value}) > 0"
+    else:
+        raise FlyqlError(
+            f"has operator is not supported for column type: {column.normalized_type}"
+        )
+
+
 def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql(expression, columns)
 
     if expression.operator in (Operator.IN.value, Operator.NOT_IN.value):
         return in_expression_to_sql(expression, columns)
+
+    if expression.operator in (Operator.HAS.value, Operator.NOT_HAS.value):
+        return has_expression_to_sql(expression, columns)
 
     validate_operator(expression.operator)
     text = ""

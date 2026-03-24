@@ -1,0 +1,139 @@
+{
+  "version": "1.0",
+  "description": "HAS operator matcher test cases",
+  "test_suite": "has",
+  "tests": [
+    {
+      "name": "has_string_substring_match",
+      "query": "column has 'duct'",
+      "data": {"column": "production"},
+      "expected": true
+    },
+    {
+      "name": "has_string_substring_no_match",
+      "query": "column has 'xyz'",
+      "data": {"column": "production"},
+      "expected": false
+    },
+    {
+      "name": "has_string_empty_substring",
+      "query": "column has ''",
+      "data": {"column": "production"},
+      "expected": true
+    },
+    {
+      "name": "has_map_key_exists_with_null_value",
+      "query": "column has 'key'",
+      "data": {"column": {"key": null}},
+      "expected": true
+    },
+    {
+      "name": "not_has_map_key_exists_with_null_value",
+      "query": "column not has 'key'",
+      "data": {"column": {"key": null}},
+      "expected": false
+    },
+    {
+      "name": "has_map_key_exists",
+      "query": "column has 'key'",
+      "data": {"column": {"key": "value"}},
+      "expected": true
+    },
+    {
+      "name": "has_map_key_missing",
+      "query": "column has 'abc'",
+      "data": {"column": {"key": "value"}},
+      "expected": false
+    },
+    {
+      "name": "has_list_item_string_match",
+      "query": "column has 'a'",
+      "data": {"column": ["a", "b", "c"]},
+      "expected": true
+    },
+    {
+      "name": "has_list_item_string_no_match",
+      "query": "column has 'z'",
+      "data": {"column": ["a", "b", "c"]},
+      "expected": false
+    },
+    {
+      "name": "has_list_item_number_match",
+      "query": "column has 1",
+      "data": {"column": [1, 2, 3]},
+      "expected": true
+    },
+    {
+      "name": "has_list_item_number_no_match",
+      "query": "column has 5",
+      "data": {"column": [1, 2, 3]},
+      "expected": false
+    },
+    {
+      "name": "has_null_value",
+      "query": "column has 'x'",
+      "data": {"column": null},
+      "expected": false
+    },
+    {
+      "name": "has_empty_string",
+      "query": "column has 'x'",
+      "data": {"column": ""},
+      "expected": false
+    },
+    {
+      "name": "has_empty_list",
+      "query": "column has 'x'",
+      "data": {"column": []},
+      "expected": false
+    },
+    {
+      "name": "has_empty_map",
+      "query": "column has 'x'",
+      "data": {"column": {}},
+      "expected": false
+    },
+    {
+      "name": "has_nested_path",
+      "query": "parent.child has 'a'",
+      "data": {"parent": {"child": ["a", "b"]}},
+      "expected": true
+    },
+    {
+      "name": "not_has_string_match",
+      "query": "column not has 'duct'",
+      "data": {"column": "production"},
+      "expected": false
+    },
+    {
+      "name": "not_has_string_no_match",
+      "query": "column not has 'xyz'",
+      "data": {"column": "production"},
+      "expected": true
+    },
+    {
+      "name": "not_has_list_match",
+      "query": "column not has 5",
+      "data": {"column": [1, 2, 3]},
+      "expected": true
+    },
+    {
+      "name": "not_has_null",
+      "query": "column not has 'x'",
+      "data": {"column": null},
+      "expected": true
+    },
+    {
+      "name": "has_combined_with_and",
+      "query": "col1 has 'a' and col2 has 1",
+      "data": {"col1": "abc", "col2": [1, 2]},
+      "expected": true
+    },
+    {
+      "name": "has_combined_with_and_false",
+      "query": "col1 has 'z' and col2 has 1",
+      "data": {"col1": "abc", "col2": [1, 2]},
+      "expected": false
+    }
+  ]
+}

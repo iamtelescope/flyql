@@ -476,6 +476,86 @@ function falsyExpressionToSQL(expr, columns) {
     }
 }
 
+function hasExpressionToSQL(expr, columns) {
+    const isNotHas = expr.operator === Operator.NOT_HAS
+    const columnName = expr.key.segments[0]
+    const column = columns[columnName]
+    if (!column) {
+        throw new Error(`unknown column: ${columnName}`)
+    }
+
+    const identifier = getIdentifier(column)
+    const value = escapeParam(expr.value)
+
+    if (expr.key.isSegmented) {
+        if (column.isJSONB) {
+            const jsonPath = expr.key.segments.slice(1)
+            const allQuoted = extractQuotedSegments(expr.key.raw)
+            const jsonPathQuoted = allQuoted.slice(1)
+            for (let i = 0; i < jsonPath.length; i++) {
+                validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
+            }
+            const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+            if (isNotHas) {
+                return `position(${value} in ${pathExpr}) = 0`
+            }
+            return `position(${value} in ${pathExpr}) > 0`
+        } else if (column.isHstore) {
+            const mapKey = expr.key.segments.slice(1).join('.')
+            const escapedMapKey = escapeParam(mapKey)
+            const accessExpr = `${identifier}->${escapedMapKey}`
+            if (isNotHas) {
+                return `position(${value} in ${accessExpr}) = 0`
+            }
+            return `position(${value} in ${accessExpr}) > 0`
+        } else if (column.isArray) {
+            const arrayIndexStr = expr.key.segments.slice(1).join('.')
+            const arrayIndex = parseInt(arrayIndexStr, 10)
+            if (isNaN(arrayIndex)) {
+                throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
+            }
+            const pgIndex = arrayIndex + 1
+            const accessExpr = `${identifier}[${pgIndex}]`
+            if (isNotHas) {
+                return `position(${value} in ${accessExpr}) = 0`
+            }
+            return `position(${value} in ${accessExpr}) > 0`
+        } else {
+            throw new Error('path search for unsupported column type')
+        }
+    }
+
+    if (column.isArray) {
+        if (isNotHas) {
+            return `NOT (${value} = ANY(${identifier}))`
+        }
+        return `${value} = ANY(${identifier})`
+    }
+
+    if (column.isJSONB) {
+        if (isNotHas) {
+            return `NOT (${identifier} ? ${value})`
+        }
+        return `${identifier} ? ${value}`
+    }
+
+    if (column.isHstore) {
+        if (isNotHas) {
+            return `NOT (${identifier} ? ${value})`
+        }
+        return `${identifier} ? ${value}`
+    }
+
+    if (column.normalizedType === NormalizedTypeString) {
+        if (isNotHas) {
+            return `(${identifier} IS NULL OR position(${value} in ${identifier}) = 0)`
+        }
+        return `position(${value} in ${identifier}) > 0`
+    }
+
+    throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
+}
+
 function validateOperator(op) {
     if (!VALID_KEY_VALUE_OPERATORS.includes(op) && op !== Operator.TRUTHY) {
         throw new Error(`invalid operator: ${op}`)
@@ -495,6 +575,9 @@ function expressionToSQL(expr, columns) {
     }
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) {
         return inExpressionToSQL(expr, columns)
+    }
+    if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) {
+        return hasExpressionToSQL(expr, columns)
     }
     if (expr.key.isSegmented) {
         return expressionToSQLSegmented(expr, columns)

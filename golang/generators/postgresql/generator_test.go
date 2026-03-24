@@ -155,6 +155,10 @@ func TestIn(t *testing.T) {
 	runTestCases(t, "in.json")
 }
 
+func TestHas(t *testing.T) {
+	runTestCases(t, "has.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string

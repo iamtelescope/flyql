@@ -198,6 +198,8 @@ func TestMatcherFromDataFiles(t *testing.T) {
 	files := []string{
 		"truthy.json",
 		"not.json",
+		"in.json",
+		"has.json",
 	}
 
 	for _, file := range files {

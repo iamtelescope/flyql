@@ -58,6 +58,28 @@ Regex patterns follow the syntax of the target database or runtime.
 
 See the [Lists](/syntax/lists/) page for detailed list syntax rules.
 
+## Containment Check
+
+| Operator | Name | Example |
+|----------|------|---------|
+| `has` | Contains | `message has 'error'` |
+| `not has` | Does not contain | `message not has 'test'` |
+
+```
+message has 'timeout'
+tags not has 'deprecated'
+```
+
+The `has` operator performs a type-dependent containment check:
+
+- **String** — substring match: `message has 'error'` is true if `message` contains `"error"`
+- **Map** — key existence: `metadata has 'region'` is true if the map has a key `"region"`
+- **Array/List** — item membership: `tags has 'web'` is true if the array contains `"web"`
+- **JSON** — key existence: `data has 'name'` is true if the JSON object has a key `"name"`
+- **Null/empty** — always false for `has`, always true for `not has`
+
+`has` takes a single value (not a list). Use `in` for checking membership in a set of values.
+
 ## Operator Summary
 
 | Operator | Name | Example |
@@ -72,3 +94,5 @@ See the [Lists](/syntax/lists/) page for detailed list syntax rules.
 | `!~` | Not regex match | `msg!~"^ok"` |
 | `in` | In list | `s in [1, 2]` |
 | `not in` | Not in list | `s not in [3]` |
+| `has` | Contains | `msg has 'err'` |
+| `not has` | Not contains | `msg not has 'ok'` |

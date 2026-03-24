@@ -3,6 +3,7 @@ package matcher
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
 )
@@ -146,6 +147,13 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 			return true
 		}
 		return !valueInList(value, expr.Values)
+	case flyql.OpHas:
+		return evalHas(value, expr.Value)
+	case flyql.OpNotHas:
+		if value == nil {
+			return true
+		}
+		return !evalHas(value, expr.Value)
 	default:
 		return false
 	}
@@ -232,6 +240,28 @@ func compareLessOrEqual(a, b any) bool {
 		return aFloat <= bFloat
 	}
 	return false
+}
+
+func evalHas(value any, exprValue any) bool {
+	if value == nil {
+		return false
+	}
+	switch v := value.(type) {
+	case string:
+		return strings.Contains(v, toString(exprValue))
+	case map[string]any:
+		_, exists := v[toString(exprValue)]
+		return exists
+	case []any:
+		for _, item := range v {
+			if compareEqual(item, exprValue) {
+				return true
+			}
+		}
+		return false
+	default:
+		return false
+	}
 }
 
 func valueInList(value any, list []any) bool {

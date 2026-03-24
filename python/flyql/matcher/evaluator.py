@@ -154,5 +154,22 @@ class Evaluator:
             if not expression.values:
                 return True
             return value not in expression.values
+        elif expression.operator == Operator.HAS.value:
+            return self._eval_has(value, expression.value)
+        elif expression.operator == Operator.NOT_HAS.value:
+            if value is None:
+                return True
+            return not self._eval_has(value, expression.value)
         else:
             raise FlyqlError(f"Unknown expression operator: {expression.operator}")
+
+    def _eval_has(self, value: Any, expr_value: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return str(expr_value) in value
+        if isinstance(value, dict):
+            return str(expr_value) in value
+        if isinstance(value, (list, tuple)):
+            return expr_value in value
+        return False

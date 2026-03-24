@@ -19,6 +19,7 @@ const (
 	stateKeyOrBoolOp
 	stateExpectNotTarget
 	stateExpectInKeyword
+	stateExpectHasKeyword
 	stateExpectListStart
 	stateExpectListValue
 	stateInListValue

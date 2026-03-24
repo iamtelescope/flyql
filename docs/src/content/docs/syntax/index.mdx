@@ -33,6 +33,10 @@ message~"error.*" and not debug
 status in [200, 201] and method not in ['DELETE', 'PUT']
 ```
 
+```
+message has 'error' and tags not has 'debug'
+```
+
 ## General Rules
 
 - **Standalone keys** — A key without an operator is treated as a truthy check
@@ -47,5 +51,6 @@ status in [200, 201] and method not in ['DELETE', 'PUT']
 - [Boolean Logic](/syntax/boolean-logic/) — `and`, `or`, `not`, precedence, grouping
 - [Pattern Matching](/syntax/pattern-matching/) — Regex (`~`, `!~`) and wildcard (`*`) matching
 - [Lists](/syntax/lists/) — `in` and `not in` with list values
+- [Containment](/syntax/operators/#containment-check) — `has` and `not has` for substring, key existence, and item membership
 - [Values & Expressions](/syntax/values/) — Truthy/falsy, quoted strings, numbers
 - [Nested Keys](/syntax/nested-keys/) — Dot-separated paths and quoted key segments

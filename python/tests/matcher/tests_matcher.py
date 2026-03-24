@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from flyql.core.parser import parse
@@ -8,6 +11,18 @@ from flyql.matcher.evaluator import (
     REGEX_ENGINE_PYTHON_STD,
 )
 from flyql.matcher.record import Record
+
+
+def load_matcher_test_data(filename: str) -> list:
+    test_data_path = (
+        Path(__file__).resolve().parent.parent.parent.parent
+        / "tests-data"
+        / "matcher"
+        / filename
+    )
+    with open(test_data_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data["tests"]
 
 
 @pytest.mark.parametrize(
@@ -173,3 +188,15 @@ def test_regex_engine_cache_isolation():
     # Caches should be independent
     assert len(evaluator_re2.cache) > 0
     assert len(evaluator_pystd.cache) > 0
+
+
+@pytest.mark.parametrize("test_case", load_matcher_test_data("has.json"))
+def test_has_matcher(test_case: dict) -> None:
+    root = parse(test_case["query"]).root
+    evaluator = Evaluator()
+    record = Record(data=test_case["data"])
+    result = evaluator.evaluate(root, record)
+    assert result is test_case["expected"], (
+        f"query={test_case['query']!r}, data={test_case['data']!r}: "
+        f"got {result}, want {test_case['expected']}"
+    )

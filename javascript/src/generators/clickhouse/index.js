@@ -391,6 +391,96 @@ function falsyExpressionToSQL(expr, columns) {
     }
 }
 
+function hasExpressionToSQL(expr, columns) {
+    const isNotHas = expr.operator === Operator.NOT_HAS
+    const columnName = expr.key.segments[0]
+    const column = columns[columnName]
+    if (!column) {
+        throw new Error(`unknown column: ${columnName}`)
+    }
+
+    const value = escapeParam(expr.value)
+
+    if (expr.key.isSegmented) {
+        if (column.jsonString) {
+            const jsonPath = expr.key.segments.slice(1)
+            const jsonPathParts = jsonPath.map((p) => escapeParam(p))
+            const jsonPathStr = jsonPathParts.join(', ')
+            if (isNotHas) {
+                return `position(JSONExtractString(${column.name}, ${jsonPathStr}), ${value}) = 0`
+            }
+            return `position(JSONExtractString(${column.name}, ${jsonPathStr}), ${value}) > 0`
+        } else if (column.isJSON) {
+            const jsonPath = expr.key.segments.slice(1)
+            for (const part of jsonPath) {
+                validateJSONPathPart(part)
+            }
+            const pathParts = jsonPath.map((part) => '`' + part + '`')
+            const jsonPathStr = pathParts.join('.')
+            if (isNotHas) {
+                return `position(${column.name}.${jsonPathStr}, ${value}) = 0`
+            }
+            return `position(${column.name}.${jsonPathStr}, ${value}) > 0`
+        } else if (column.isMap) {
+            const mapKey = expr.key.segments.slice(1).join('.')
+            const escapedMapKey = escapeParam(mapKey)
+            if (isNotHas) {
+                return `position(${column.name}[${escapedMapKey}], ${value}) = 0`
+            }
+            return `position(${column.name}[${escapedMapKey}], ${value}) > 0`
+        } else if (column.isArray) {
+            const arrayIndexStr = expr.key.segments.slice(1).join('.')
+            const arrayIndex = parseInt(arrayIndexStr, 10)
+            if (isNaN(arrayIndex)) {
+                throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
+            }
+            if (isNotHas) {
+                return `position(${column.name}[${arrayIndex}], ${value}) = 0`
+            }
+            return `position(${column.name}[${arrayIndex}], ${value}) > 0`
+        } else {
+            throw new Error('path search for unsupported column type')
+        }
+    }
+
+    if (column.isArray) {
+        if (isNotHas) {
+            return `NOT has(${column.name}, ${value})`
+        }
+        return `has(${column.name}, ${value})`
+    }
+
+    if (column.isMap) {
+        if (isNotHas) {
+            return `NOT mapContains(${column.name}, ${value})`
+        }
+        return `mapContains(${column.name}, ${value})`
+    }
+
+    if (column.isJSON) {
+        if (isNotHas) {
+            return `NOT JSON_EXISTS(${column.name}, concat('$.', ${value}))`
+        }
+        return `JSON_EXISTS(${column.name}, concat('$.', ${value}))`
+    }
+
+    if (column.jsonString) {
+        if (isNotHas) {
+            return `NOT JSONHas(${column.name}, ${value})`
+        }
+        return `JSONHas(${column.name}, ${value})`
+    }
+
+    if (column.normalizedType === NormalizedTypeString) {
+        if (isNotHas) {
+            return `(${column.name} IS NULL OR position(${column.name}, ${value}) = 0)`
+        }
+        return `position(${column.name}, ${value}) > 0`
+    }
+
+    throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
+}
+
 function validateOperator(op) {
     if (!VALID_KEY_VALUE_OPERATORS.includes(op) && op !== Operator.TRUTHY) {
         throw new Error(`invalid operator: ${op}`)
@@ -410,6 +500,9 @@ function expressionToSQL(expr, columns) {
     }
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) {
         return inExpressionToSQL(expr, columns)
+    }
+    if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) {
+        return hasExpressionToSQL(expr, columns)
     }
     if (expr.key.isSegmented) {
         return expressionToSQLSegmented(expr, columns)

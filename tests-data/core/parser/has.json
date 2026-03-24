@@ -1,0 +1,245 @@
+{
+  "version": "1.0",
+  "description": "HAS operator parser test cases",
+  "test_suite": "has",
+  "tests": [
+    {
+      "name": "has_string_value",
+      "input": "column has 'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_numeric_value",
+      "input": "column has 42",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "has",
+          "value": 42.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_double_quoted_string",
+      "input": "column has \"value\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_has_string_value",
+      "input": "column not has 'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "not has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_has_numeric_value",
+      "input": "column not has 42",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "not has",
+          "value": 42.0,
+          "value_type": "number"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_quoted_key",
+      "input": "\"dotted.key\" has 'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "\"dotted.key\"",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_combined_with_and",
+      "input": "col1 has 'a' and col2='b'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "col1",
+            "operator": "has",
+            "value": "a",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "col2",
+            "operator": "=",
+            "value": "b",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "has_combined_with_or",
+      "input": "col1 has 'a' or col2 has 'b'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "col1",
+            "operator": "has",
+            "value": "a",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "col2",
+            "operator": "has",
+            "value": "b",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "has_with_extra_whitespace",
+      "input": "column  has  'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_nested_key",
+      "input": "parent.child has 'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "parent.child",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_has_with_extra_whitespace",
+      "input": "column  not  has  'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "not has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "has_no_space_before_quoted_value",
+      "input": "column has'value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_has_double_quoted_string",
+      "input": "column not has \"value\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "column",
+          "operator": "not has",
+          "value": "value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

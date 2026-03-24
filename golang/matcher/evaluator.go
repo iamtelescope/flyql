@@ -43,6 +43,8 @@ func isFalsy(value any) bool {
 		return v == 0
 	case int64:
 		return v == 0
+	case uint64:
+		return v == 0
 	case float64:
 		return v == 0
 	case string:
@@ -183,9 +185,81 @@ func toFloat(v any) (float64, bool) {
 		return float64(val), true
 	case int64:
 		return float64(val), true
+	case uint64:
+		return float64(val), true
 	default:
 		return 0, false
 	}
+}
+
+type intVal struct {
+	i64    int64
+	u64    uint64
+	isUint bool
+}
+
+func toIntVal(v any) (intVal, bool) {
+	switch val := v.(type) {
+	case int:
+		return intVal{i64: int64(val)}, true
+	case int64:
+		return intVal{i64: val}, true
+	case uint64:
+		return intVal{u64: val, isUint: true}, true
+	}
+	return intVal{}, false
+}
+
+func compareIntVals(a, b intVal) int {
+	if !a.isUint && !b.isUint {
+		if a.i64 < b.i64 {
+			return -1
+		}
+		if a.i64 > b.i64 {
+			return 1
+		}
+		return 0
+	}
+	if a.isUint && b.isUint {
+		if a.u64 < b.u64 {
+			return -1
+		}
+		if a.u64 > b.u64 {
+			return 1
+		}
+		return 0
+	}
+	if a.isUint {
+		if b.i64 < 0 {
+			return 1
+		}
+		if a.u64 < uint64(b.i64) {
+			return -1
+		}
+		if a.u64 > uint64(b.i64) {
+			return 1
+		}
+		return 0
+	}
+	if a.i64 < 0 {
+		return -1
+	}
+	if uint64(a.i64) < b.u64 {
+		return -1
+	}
+	if uint64(a.i64) > b.u64 {
+		return 1
+	}
+	return 0
+}
+
+func tryCompareInts(a, b any) (int, bool) {
+	ai, aOk := toIntVal(a)
+	bi, bOk := toIntVal(b)
+	if !aOk || !bOk {
+		return 0, false
+	}
+	return compareIntVals(ai, bi), true
 }
 
 func compareEqual(a, b any) bool {
@@ -194,6 +268,10 @@ func compareEqual(a, b any) bool {
 	}
 	if a == nil || b == nil {
 		return false
+	}
+
+	if cmp, ok := tryCompareInts(a, b); ok {
+		return cmp == 0
 	}
 
 	aFloat, aIsNum := toFloat(a)
@@ -207,6 +285,9 @@ func compareEqual(a, b any) bool {
 }
 
 func compareGreater(a, b any) bool {
+	if cmp, ok := tryCompareInts(a, b); ok {
+		return cmp > 0
+	}
 	aFloat, aOk := toFloat(a)
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
@@ -216,6 +297,9 @@ func compareGreater(a, b any) bool {
 }
 
 func compareLess(a, b any) bool {
+	if cmp, ok := tryCompareInts(a, b); ok {
+		return cmp < 0
+	}
 	aFloat, aOk := toFloat(a)
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
@@ -225,6 +309,9 @@ func compareLess(a, b any) bool {
 }
 
 func compareGreaterOrEqual(a, b any) bool {
+	if cmp, ok := tryCompareInts(a, b); ok {
+		return cmp >= 0
+	}
 	aFloat, aOk := toFloat(a)
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
@@ -234,6 +321,9 @@ func compareGreaterOrEqual(a, b any) bool {
 }
 
 func compareLessOrEqual(a, b any) bool {
+	if cmp, ok := tryCompareInts(a, b); ok {
+		return cmp <= 0
+	}
 	aFloat, aOk := toFloat(a)
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {

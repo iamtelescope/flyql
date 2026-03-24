@@ -239,10 +239,8 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 		return fmt.Sprintf("%s %s %s", identifier, operator, escapedValue), nil
 
 	default:
-		if _, ok := expr.Value.(int); ok {
-			return fmt.Sprintf("%s %s %v", identifier, expr.Operator, expr.Value), nil
-		}
-		if _, ok := expr.Value.(float64); ok {
+		switch expr.Value.(type) {
+		case int, int64, uint64, float64:
 			return fmt.Sprintf("%s %s %v", identifier, expr.Operator, expr.Value), nil
 		}
 		value, err := EscapeParam(fmt.Sprintf("%v", expr.Value))

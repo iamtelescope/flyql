@@ -105,6 +105,10 @@ export function escapeParam(item) {
         return item ? 'true' : 'false'
     }
 
+    if (typeof item === 'bigint') {
+        return String(item)
+    }
+
     if (typeof item === 'number') {
         if (!Number.isFinite(item)) {
             throw new Error(`unsupported numeric value for escapeParam: ${item}`)
@@ -273,7 +277,7 @@ function expressionToSQLSegmented(expr, columns) {
                 return `${pathExpr} ~ ${value}`
             case expr.operator === Operator.NOT_REGEX:
                 return `${pathExpr} !~ ${value}`
-            case typeof expr.value === 'number': {
+            case typeof expr.value === 'number' || typeof expr.value === 'bigint': {
                 const jsonbRaw = buildJSONBPathRaw(identifier, jsonPath, jsonPathQuoted)
                 return `(jsonb_typeof(${jsonbRaw}) = 'number' AND (${pathExpr})::numeric ${expr.operator} ${value})`
             }

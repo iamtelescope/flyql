@@ -56,6 +56,7 @@ export function escapeParam(item) {
         return result + "'"
     }
     if (typeof item === 'boolean') return item ? 'True' : 'False'
+    if (typeof item === 'bigint') return String(item)
     if (typeof item === 'number') {
         if (!Number.isFinite(item)) throw new Error(`unsupported numeric value: ${item}`)
         return String(item)
@@ -73,6 +74,7 @@ export function quoteJsonPathPart(part) {
 
 function isNumber(value) {
     if (typeof value === 'number') return true
+    if (typeof value === 'bigint') return true
     if (typeof value === 'string') {
         return !isNaN(parseFloat(value)) || !isNaN(parseInt(value, 10))
     }
@@ -135,7 +137,7 @@ function expressionToSQLSimple(expr, columns) {
             return `\`${column.name}\` ${operator} ${escapedValue}`
         }
         default: {
-            if (typeof expr.value === 'number') {
+            if (typeof expr.value === 'number' || typeof expr.value === 'bigint') {
                 return `\`${column.name}\` ${expr.operator} ${expr.value}`
             }
             const value = escapeParam(String(expr.value))

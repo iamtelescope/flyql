@@ -4,6 +4,7 @@ function isFalsy(value) {
     if (value === null || value === undefined) return true
     if (typeof value === 'boolean') return !value
     if (typeof value === 'number') return value === 0
+    if (typeof value === 'bigint') return value === 0n
     if (typeof value === 'string') return value === ''
     if (Array.isArray(value)) return value.length === 0
     if (typeof value === 'object') return Object.keys(value).length === 0
@@ -16,6 +17,7 @@ function isTruthy(value) {
 
 function toFloat(v) {
     if (typeof v === 'number') return v
+    if (typeof v === 'bigint') return Number(v)
     if (typeof v === 'string') {
         const n = Number(v)
         if (!isNaN(n)) return n
@@ -35,10 +37,29 @@ function compareEqual(a, b) {
     if (a === undefined && b === undefined) return true
     if (a === undefined || b === undefined) return false
     if (typeof a === 'number' && typeof b === 'number') return a === b
+    if (typeof a === 'bigint' || typeof b === 'bigint') {
+        if (typeof a === 'boolean' || typeof b === 'boolean') return false
+        try {
+            return BigInt(a) === BigInt(b)
+        } catch {
+            return false
+        }
+    }
     return a === b
 }
 
+function toBigInt(v) {
+    if (typeof v === 'bigint') return v
+    if (typeof v === 'number' && Number.isInteger(v)) return BigInt(v)
+    return null
+}
+
 function compareGreater(a, b) {
+    if (typeof a === 'bigint' || typeof b === 'bigint') {
+        const aBig = toBigInt(a)
+        const bBig = toBigInt(b)
+        if (aBig !== null && bBig !== null) return aBig > bBig
+    }
     const aNum = toFloat(a)
     const bNum = toFloat(b)
     if (aNum !== null && bNum !== null) return aNum > bNum
@@ -48,6 +69,11 @@ function compareGreater(a, b) {
 }
 
 function compareLess(a, b) {
+    if (typeof a === 'bigint' || typeof b === 'bigint') {
+        const aBig = toBigInt(a)
+        const bBig = toBigInt(b)
+        if (aBig !== null && bBig !== null) return aBig < bBig
+    }
     const aNum = toFloat(a)
     const bNum = toFloat(b)
     if (aNum !== null && bNum !== null) return aNum < bNum

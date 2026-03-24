@@ -30,6 +30,7 @@ const forbiddenOperations = new Set([
 
 export function getValueType(value) {
     if (typeof value === 'boolean') return 'bool'
+    if (typeof value === 'bigint') return 'int'
     if (typeof value === 'number') {
         return Number.isInteger(value) ? 'int' : 'float'
     }

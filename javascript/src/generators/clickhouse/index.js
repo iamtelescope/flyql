@@ -72,6 +72,10 @@ export function escapeParam(item) {
         return item ? 'True' : 'False'
     }
 
+    if (typeof item === 'bigint') {
+        return String(item)
+    }
+
     if (typeof item === 'number') {
         if (!Number.isFinite(item)) {
             throw new Error(`unsupported numeric value for escapeParam: ${item}`)
@@ -184,7 +188,7 @@ function expressionToSQLSegmented(expr, columns) {
         ]
 
         if (
-            typeof expr.value === 'number' &&
+            (typeof expr.value === 'number' || typeof expr.value === 'bigint') &&
             expr.operator !== Operator.REGEX &&
             expr.operator !== Operator.NOT_REGEX
         ) {

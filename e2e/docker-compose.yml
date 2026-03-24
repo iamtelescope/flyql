@@ -32,10 +32,10 @@ services:
       - /opt/starrocks/fe/meta
       - /opt/starrocks/be/storage
     healthcheck:
-      test: ["CMD", "mysql", "-h", "127.0.0.1", "-P", "9030", "-u", "root", "-e", "SELECT 1"]
+      test: ["CMD-SHELL", "mysql -h 127.0.0.1 -P 9030 -u root --skip-column-names -e 'SHOW BACKENDS' 2>/dev/null | awk -F'\\t' '{print $9}' | grep -q true"]
       interval: 5s
       timeout: 5s
-      retries: 24
+      retries: 30
       start_period: 30s
 
   postgresql:

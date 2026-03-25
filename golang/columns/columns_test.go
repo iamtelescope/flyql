@@ -33,16 +33,34 @@ type expectedError struct {
 	MessageContains string `json:"message_contains"`
 }
 
+type testCapabilities struct {
+	Modifiers *bool `json:"modifiers,omitempty"`
+}
+
 type testCase struct {
-	Name            string           `json:"name"`
-	Input           string           `json:"input"`
-	ExpectedResult  string           `json:"expected_result"`
-	ExpectedColumns []expectedColumn `json:"expected_columns"`
-	ExpectedError   *expectedError   `json:"expected_error"`
+	Name            string            `json:"name"`
+	Input           string            `json:"input"`
+	ExpectedResult  string            `json:"expected_result"`
+	ExpectedColumns []expectedColumn  `json:"expected_columns"`
+	ExpectedError   *expectedError    `json:"expected_error"`
+	Capabilities    *testCapabilities `json:"capabilities,omitempty"`
 }
 
 type testSuite struct {
-	Tests []testCase `json:"tests"`
+	Tests               []testCase        `json:"tests"`
+	DefaultCapabilities *testCapabilities `json:"default_capabilities,omitempty"`
+}
+
+func resolveCapabilities(tc testCase, suite testSuite) Capabilities {
+	caps := Capabilities{}
+	src := tc.Capabilities
+	if src == nil {
+		src = suite.DefaultCapabilities
+	}
+	if src != nil && src.Modifiers != nil {
+		caps.Modifiers = *src.Modifiers
+	}
+	return caps
 }
 
 func loadTestSuite(t *testing.T, filename string) testSuite {
@@ -118,7 +136,8 @@ func TestBasic(t *testing.T) {
 
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
-			columns, err := Parse(tc.Input)
+			caps := resolveCapabilities(tc, suite)
+			columns, err := Parse(tc.Input, caps)
 			if tc.ExpectedResult == "success" {
 				if err != nil {
 					t.Fatalf("Parse(%q) returned error: %v", tc.Input, err)
@@ -143,7 +162,8 @@ func TestModifiers(t *testing.T) {
 
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
-			columns, err := Parse(tc.Input)
+			caps := resolveCapabilities(tc, suite)
+			columns, err := Parse(tc.Input, caps)
 			if tc.ExpectedResult == "success" {
 				if err != nil {
 					t.Fatalf("Parse(%q) returned error: %v", tc.Input, err)
@@ -168,7 +188,8 @@ func TestErrors(t *testing.T) {
 
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
-			_, err := Parse(tc.Input)
+			caps := resolveCapabilities(tc, suite)
+			_, err := Parse(tc.Input, caps)
 			if err == nil {
 				t.Fatalf("Parse(%q) expected error, got nil", tc.Input)
 			}
@@ -194,7 +215,7 @@ func TestErrors(t *testing.T) {
 
 func TestJSONSerialization(t *testing.T) {
 	// Test that empty modifiers serialize as [] not null
-	columns, err := Parse("message")
+	columns, err := Parse("message", Capabilities{})
 	if err != nil {
 		t.Fatalf("Parse failed: %v", err)
 	}
@@ -217,7 +238,7 @@ func TestJSONSerialization(t *testing.T) {
 }
 
 func TestParseToJSON(t *testing.T) {
-	data, err := ParseToJSON("message|upper as MSG")
+	data, err := ParseToJSON("message|upper as MSG", Capabilities{Modifiers: true})
 	if err != nil {
 		t.Fatalf("ParseToJSON failed: %v", err)
 	}

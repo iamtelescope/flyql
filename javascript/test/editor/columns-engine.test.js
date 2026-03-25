@@ -10,6 +10,8 @@ const TEST_COLUMNS = {
     host: { type: 'string', suggest: true },
 }
 
+const MODIFIERS_OPTS = { capabilities: { modifiers: true } }
+
 describe('ColumnsEngine', () => {
     describe('constructor', () => {
         it('creates engine with columns', () => {
@@ -45,13 +47,13 @@ describe('ColumnsEngine', () => {
         })
 
         it('after pipe expects modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('message|')
             expect(ctx.expecting).toBe('modifier')
         })
 
         it('typing modifier expects modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('message|up')
             expect(ctx.expecting).toBe('modifier')
             expect(ctx.modifier).toBe('up')
@@ -64,7 +66,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('in modifier arguments expects argument', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('message|chars(')
             expect(ctx.expecting).toBe('argument')
         })
@@ -155,7 +157,7 @@ describe('ColumnsEngine', () => {
 
     describe('updateSuggestions — exact match shows next-step actions (AC #2)', () => {
         it('exact column match shows delimiter and modifier-pipe first', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('level')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
@@ -168,7 +170,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('exact match still shows other matching columns below', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('host')
             engine.setCursorPosition(4)
             await engine.updateSuggestions()
@@ -189,7 +191,7 @@ describe('ColumnsEngine', () => {
 
     describe('updateSuggestions — after column space (next-step suggestions)', () => {
         it('suggests pipe and comma after column + space', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message ')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
@@ -205,7 +207,7 @@ describe('ColumnsEngine', () => {
 
     describe('updateSuggestions — modifier exact match shows next steps', () => {
         it('exact modifier without args shows comma and pipe (no parens)', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('level|upper')
             engine.setCursorPosition(11)
             await engine.updateSuggestions()
@@ -217,7 +219,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('exact modifier with args shows comma, parens, and pipe', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('level|chars')
             engine.setCursorPosition(11)
             await engine.updateSuggestions()
@@ -231,7 +233,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('partial modifier match does NOT show next steps', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('level|up')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
@@ -243,7 +245,7 @@ describe('ColumnsEngine', () => {
 
     describe('getInsertRange with delimiter/modifier-pipe suggestions', () => {
         it('delimiter suggestion inserts at cursor without replacing prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('level')
             const delimSuggestion = { label: ',', insertText: ', ', type: 'delimiter' }
             const range = engine.getInsertRange(ctx, 'level', delimSuggestion)
@@ -252,7 +254,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('pipe delimiter suggestion inserts at cursor without replacing prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('level')
             const pipeSuggestion = { label: '|', insertText: '|', type: 'delimiter' }
             const range = engine.getInsertRange(ctx, 'level', pipeSuggestion)
@@ -261,7 +263,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('column suggestion replaces prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('lev')
             const colSuggestion = { label: 'level', insertText: 'level', type: 'column' }
             const range = engine.getInsertRange(ctx, 'lev', colSuggestion)
@@ -272,7 +274,7 @@ describe('ColumnsEngine', () => {
 
     describe('updateSuggestions — modifier phase (AC #3)', () => {
         it('suggests modifiers after pipe', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
@@ -284,7 +286,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('filters modifiers by prefix', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|up')
             engine.setCursorPosition(10)
             await engine.updateSuggestions()
@@ -308,13 +310,13 @@ describe('ColumnsEngine', () => {
         })
 
         it('highlights modifiers', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const html = engine.getHighlightTokens('message|upper')
             expect(html).toContain('flyql-col-modifier')
         })
 
         it('highlights arguments', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const html = engine.getHighlightTokens('message|chars(25)')
             expect(html).toContain('flyql-col-argument')
         })
@@ -351,7 +353,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('parses column with modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|upper')
             const cols = engine.getParsedColumns()
             expect(cols).toHaveLength(1)
@@ -368,7 +370,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('parses complex expression', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|upper|chars(25) as msg,level')
             const cols = engine.getParsedColumns()
             expect(cols).toHaveLength(2)
@@ -405,7 +407,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('valid for column with modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|upper')
             expect(engine.getQueryStatus().valid).toBe(true)
         })
@@ -417,7 +419,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('invalid for unclosed arguments', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             engine.setQuery('message|chars(')
             expect(engine.getQueryStatus().valid).toBe(false)
         })
@@ -454,7 +456,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('returns range for modifier prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
             const ctx = engine.buildContext('message|up')
             const range = engine.getInsertRange(ctx, 'message|up')
             expect(range.start).toBe(8)
@@ -483,6 +485,51 @@ describe('ColumnsEngine', () => {
         it('returns plain text when no prefix', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             expect(engine.highlightMatch('level')).toBe('level')
+        })
+    })
+
+    describe('capabilities', () => {
+        it('default engine (modifiers disabled): pipe in column triggers error', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('message|')
+            expect(ctx.expecting).toBe('error')
+            expect(ctx.error).toContain('modifiers are not enabled')
+        })
+
+        it('default engine: exact column suggestions do NOT include pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('level')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain(',')
+            expect(labels).not.toContain('|')
+        })
+
+        it('default engine: alias state does NOT include pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('message ')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain(',')
+            expect(labels).not.toContain('|')
+        })
+
+        it('modifiers enabled: pipe in column returns modifier context', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const ctx = engine.buildContext('message|')
+            expect(ctx.expecting).toBe('modifier')
+        })
+
+        it('modifiers enabled: exact column suggestions include pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            engine.setQuery('level')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain(',')
+            expect(labels).toContain('|')
         })
     })
 

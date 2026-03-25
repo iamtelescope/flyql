@@ -1,17 +1,20 @@
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from .parser import Parser
 from .column import ParsedColumn
 from .exceptions import ParserError
 from flyql.core.key import parse_key
 
 
-def parse(text: str) -> List[ParsedColumn]:
+def parse(
+    text: str, capabilities: Optional[Dict[str, Any]] = None
+) -> List[ParsedColumn]:
     """
     Parse columns string and return list of ParsedColumn objects.
 
     Args:
         text: Columns definition string (e.g., "message, status|upper as code")
+        capabilities: Optional capabilities config (e.g., {"modifiers": True})
 
     Returns:
         List of ParsedColumn objects with parsed path segments
@@ -22,11 +25,11 @@ def parse(text: str) -> List[ParsedColumn]:
     Examples:
         >>> columns = parse("message")
         >>> columns = parse("message, status, user_id")
-        >>> columns = parse("message|chars(25) as msg")
-        >>> columns = parse("metadata.labels.tier|upper")
+        >>> columns = parse("message|chars(25) as msg", {"modifiers": True})
+        >>> columns = parse("metadata.labels.tier|upper", {"modifiers": True})
         >>> columns = parse("data.'key.with.dots'.nested")
     """
-    parser = Parser()
+    parser = Parser(capabilities=capabilities)
     parser.parse(text)
     columns = []
     for column_dict in parser.columns:
@@ -45,12 +48,14 @@ def parse(text: str) -> List[ParsedColumn]:
     return columns
 
 
-def parse_to_dicts(text: str) -> List[Dict[str, Any]]:
-    return [col.as_dict() for col in parse(text)]
+def parse_to_dicts(
+    text: str, capabilities: Optional[Dict[str, Any]] = None
+) -> List[Dict[str, Any]]:
+    return [col.as_dict() for col in parse(text, capabilities=capabilities)]
 
 
-def parse_to_json(text: str) -> str:
-    return json.dumps(parse_to_dicts(text))
+def parse_to_json(text: str, capabilities: Optional[Dict[str, Any]] = None) -> str:
+    return json.dumps(parse_to_dicts(text, capabilities=capabilities))
 
 
 __all__ = [

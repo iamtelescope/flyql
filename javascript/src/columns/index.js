@@ -6,8 +6,8 @@ import { CharType, tokenTypes, MODIFIER_INFO } from './constants.js'
 import { generateMonacoTokens, getMonacoTokenProvider } from './monaco.js'
 import { validateColumns, validateColumnNames } from './validation.js'
 
-export function parse(text) {
-    const parser = new Parser()
+export function parse(text, capabilities) {
+    const parser = new Parser(capabilities)
     parser.parse(text)
     const columns = []
     for (const columnDict of parser.columns) {
@@ -18,12 +18,12 @@ export function parse(text) {
     return columns
 }
 
-export function parseToDicts(text) {
-    return parse(text).map((col) => col.asDict())
+export function parseToDicts(text, capabilities) {
+    return parse(text, capabilities).map((col) => col.asDict())
 }
 
-export function parseToJson(text) {
-    return JSON.stringify(parseToDicts(text))
+export function parseToJson(text, capabilities) {
+    return JSON.stringify(parseToDicts(text, capabilities))
 }
 
 export {

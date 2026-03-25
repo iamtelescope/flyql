@@ -5,7 +5,9 @@ import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, Cha
 import { generateMonacoTokens as generateTokens } from './monaco.js'
 
 export class Parser {
-    constructor() {
+    constructor(capabilities) {
+        const defaults = { modifiers: false }
+        this.capabilities = capabilities ? { ...defaults, ...capabilities } : { ...defaults }
         this.line = 0
         this.linePos = 0
         this.char = null
@@ -304,6 +306,11 @@ export class Parser {
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
         } else if (this.char.isModifierOperator()) {
+            if (!this.capabilities.modifiers) {
+                this.trackChar(CharType.ERROR)
+                this.setErrorState('modifiers are not enabled', 17)
+                return
+            }
             this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_MODIFIER)
         } else {
@@ -467,6 +474,11 @@ export class Parser {
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
         } else if (this.char.isModifierOperator()) {
+            if (!this.capabilities.modifiers) {
+                this.trackChar(CharType.ERROR)
+                this.setErrorState('modifiers are not enabled', 17)
+                return
+            }
             this.trackChar(CharType.OPERATOR)
             this.storeModifier()
             this.setState(State.EXPECT_MODIFIER)

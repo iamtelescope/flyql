@@ -11,7 +11,11 @@ from .constants import (
 
 
 class Parser:
-    def __init__(self) -> None:
+    def __init__(self, capabilities: Optional[Dict[str, Any]] = None) -> None:
+        defaults: Dict[str, Any] = {"modifiers": False}
+        if capabilities is not None:
+            defaults.update(capabilities)
+        self.capabilities = defaults
         self.line = 0
         self.line_pos = 0
         self.char: Optional[Char] = None
@@ -273,6 +277,9 @@ class Parser:
             self.set_state(State.EXPECT_COLUMN)
             self.store_column()
         elif self.char.is_modifier_operator():
+            if not self.capabilities["modifiers"]:
+                self.set_error_state("modifiers are not enabled", 17)
+                return
             self.set_state(State.EXPECT_MODIFIER)
         else:
             self.set_error_state("invalid character", 6)
@@ -413,6 +420,9 @@ class Parser:
             self.store_column()
             self.set_state(State.EXPECT_COLUMN)
         elif self.char.is_modifier_operator():
+            if not self.capabilities["modifiers"]:
+                self.set_error_state("modifiers are not enabled", 17)
+                return
             self.store_modifier()
             self.set_state(State.EXPECT_MODIFIER)
         else:

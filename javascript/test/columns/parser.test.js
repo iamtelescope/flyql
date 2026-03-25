@@ -2,13 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { parse, ParserError } from '../../src/columns/index.js'
 import { loadTestData, compareColumns, formatColumnMismatchMessage } from './helpers.js'
 
-function runTestCase(testCase) {
+function runTestCase(testCase, suiteCapabilities) {
+    const capabilities = testCase.capabilities || suiteCapabilities || undefined
     if (testCase.expected_result === 'error') {
-        expect(() => parse(testCase.input)).toThrow(ParserError)
+        expect(() => parse(testCase.input, capabilities)).toThrow(ParserError)
 
         if (testCase.expected_error) {
             try {
-                parse(testCase.input)
+                parse(testCase.input, capabilities)
             } catch (e) {
                 const expectedError = testCase.expected_error
                 if (expectedError.errno) {
@@ -20,7 +21,7 @@ function runTestCase(testCase) {
             }
         }
     } else {
-        const result = parse(testCase.input)
+        const result = parse(testCase.input, capabilities)
         const expected = testCase.expected_columns
         expect(compareColumns(result, expected)).toBe(true)
         if (!compareColumns(result, expected)) {
@@ -34,7 +35,7 @@ describe('Columns Parser', () => {
         const testData = loadTestData('basic.json')
         testData.tests.forEach((testCase) => {
             it(`should handle ${testCase.name}`, () => {
-                runTestCase(testCase)
+                runTestCase(testCase, testData.default_capabilities)
             })
         })
     })
@@ -43,7 +44,7 @@ describe('Columns Parser', () => {
         const testData = loadTestData('modifiers.json')
         testData.tests.forEach((testCase) => {
             it(`should handle ${testCase.name}`, () => {
-                runTestCase(testCase)
+                runTestCase(testCase, testData.default_capabilities)
             })
         })
     })
@@ -52,7 +53,7 @@ describe('Columns Parser', () => {
         const testData = loadTestData('errors.json')
         testData.tests.forEach((testCase) => {
             it(`should handle ${testCase.name}`, () => {
-                runTestCase(testCase)
+                runTestCase(testCase, testData.default_capabilities)
             })
         })
     })

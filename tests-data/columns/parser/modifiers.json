@@ -2,6 +2,7 @@
   "version": "1.0",
   "description": "Modifier parsing tests",
   "test_suite": "modifiers",
+  "default_capabilities": {"modifiers": true},
   "tests": [
     {
       "name": "single_modifier_no_args",

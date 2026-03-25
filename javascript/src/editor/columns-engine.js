@@ -54,6 +54,8 @@ function wrapSpan(charType, text) {
 export class ColumnsEngine {
     constructor(columns, options = {}) {
         this.columns = columns || {}
+        const capDefaults = { modifiers: false }
+        this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
         this.keyCache = {}
@@ -89,7 +91,7 @@ export class ColumnsEngine {
             }
         }
 
-        const parser = new Parser()
+        const parser = new Parser(this.capabilities)
         try {
             parser.parse(textBeforeCursor, false, true)
         } catch (e) {
@@ -190,13 +192,15 @@ export class ColumnsEngine {
                             type: 'delimiter',
                             detail: 'next column',
                         },
-                        {
+                    ]
+                    if (this.capabilities.modifiers) {
+                        nextSteps.push({
                             label: MODIFIER_OPERATOR,
                             insertText: MODIFIER_OPERATOR,
                             type: 'delimiter',
                             detail: 'add modifier',
-                        },
-                    ]
+                        })
+                    }
                     const nested = getNestedColumnSuggestions(this.columns, ctx.column).filter(
                         (s) => !existing.includes(s.label) && s.label.toLowerCase() !== prefix,
                     )
@@ -260,13 +264,15 @@ export class ColumnsEngine {
                         type: 'delimiter',
                         detail: 'next column',
                     },
-                    {
+                ]
+                if (this.capabilities.modifiers) {
+                    nextSteps.push({
                         label: MODIFIER_OPERATOR,
                         insertText: MODIFIER_OPERATOR,
                         type: 'delimiter',
                         detail: 'add modifier',
-                    },
-                ]
+                    })
+                }
                 const otherColumns = columnSuggestions.filter((s) => s.label.toLowerCase() !== prefix)
                 this.suggestions = [...otherColumns, ...nextSteps]
                 this.suggestionType = 'next'
@@ -278,6 +284,11 @@ export class ColumnsEngine {
                 }
             }
         } else if (ctx.expecting === 'modifier') {
+            if (!this.capabilities.modifiers) {
+                this.message = 'modifiers are not enabled'
+                this.suggestionType = ''
+                return { ctx, seq }
+            }
             const prefix = ctx.modifier.toLowerCase()
             const hasExactMatch = prefix && KNOWN_MODIFIERS.some((m) => m.toLowerCase() === prefix)
 
@@ -342,38 +353,43 @@ export class ColumnsEngine {
                 ]
             } else {
                 // After column/modifier+space, before alias operator — pipe and comma are valid
-                this.suggestions = [
-                    {
+                const items = []
+                if (this.capabilities.modifiers) {
+                    items.push({
                         label: MODIFIER_OPERATOR,
                         insertText: MODIFIER_OPERATOR,
                         type: 'delimiter',
                         detail: 'add modifier',
-                    },
-                    {
-                        label: COLUMNS_DELIMITER,
-                        insertText: COLUMNS_DELIMITER + ' ',
-                        type: 'delimiter',
-                        detail: 'next column',
-                    },
-                ]
+                    })
+                }
+                items.push({
+                    label: COLUMNS_DELIMITER,
+                    insertText: COLUMNS_DELIMITER + ' ',
+                    type: 'delimiter',
+                    detail: 'next column',
+                })
+                this.suggestions = items
             }
             this.suggestionType = 'delimiter'
         } else if (ctx.expecting === 'next') {
             // After modifier with args completes — suggest comma or pipe
-            this.suggestions = [
+            const items = [
                 {
                     label: COLUMNS_DELIMITER,
                     insertText: COLUMNS_DELIMITER + ' ',
                     type: 'delimiter',
                     detail: 'next column',
                 },
-                {
+            ]
+            if (this.capabilities.modifiers) {
+                items.push({
                     label: MODIFIER_OPERATOR,
                     insertText: MODIFIER_OPERATOR,
                     type: 'delimiter',
                     detail: 'chain modifier',
-                },
-            ]
+                })
+            }
+            this.suggestions = items
             this.suggestionType = 'delimiter'
         } else if (ctx.expecting === 'error') {
             this.message = ctx.error
@@ -394,7 +410,7 @@ export class ColumnsEngine {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
-        const parser = new Parser()
+        const parser = new Parser(this.capabilities)
         try {
             parser.parse(value, false, true)
         } catch {
@@ -465,7 +481,7 @@ export class ColumnsEngine {
         const value = this.state.query
         if (!value) return []
         try {
-            return parseColumns(value)
+            return parseColumns(value, this.capabilities)
         } catch {
             return []
         }
@@ -477,7 +493,7 @@ export class ColumnsEngine {
     getQueryStatus() {
         const value = this.state.query
         if (!value) return { valid: true, message: 'Empty' }
-        const parser = new Parser()
+        const parser = new Parser(this.capabilities)
         try {
             parser.parse(value, false, false)
         } catch (e) {

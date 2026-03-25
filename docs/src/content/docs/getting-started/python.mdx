@@ -79,13 +79,16 @@ Parse a columns expression into structured data with segments, modifiers, and al
 ```python
 from flyql.columns import parse, parse_to_json
 
-# Parse to objects
-parsed = parse("message|chars(25) as msg, status")
+# Parse basic columns (modifiers disabled by default)
+parsed = parse("message, status")
 for col in parsed:
     print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
 
+# Enable modifiers via capabilities
+with_mods = parse("message|chars(25) as msg, status", capabilities={"modifiers": True})
+
 # Or serialize directly to JSON for API responses
-json_str = parse_to_json("message, status|upper")
+json_str = parse_to_json("message, status|upper", capabilities={"modifiers": True})
 print(json_str)
 ```
 

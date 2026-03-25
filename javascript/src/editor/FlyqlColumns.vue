@@ -114,6 +114,7 @@ import './flyql.css'
 const props = defineProps({
     modelValue: { type: String, default: '' },
     columns: { type: Object, default: () => ({}) },
+    capabilities: { type: Object, default: null },
     onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
     autofocus: { type: Boolean, default: false },
@@ -124,12 +125,16 @@ const emit = defineEmits(['update:modelValue', 'update:parsed', 'submit', 'parse
 
 const isLoading = ref(false)
 
-const engine = new ColumnsEngine(props.columns, {
+const engineOpts = {
     onKeyDiscovery: props.onKeyDiscovery,
     onLoadingChange: (loading) => {
         isLoading.value = loading
     },
-})
+}
+if (props.capabilities) {
+    engineOpts.capabilities = props.capabilities
+}
+const engine = new ColumnsEngine(props.columns, engineOpts)
 
 const instanceId = 'flyql-cols-' + Math.random().toString(36).substring(2, 8)
 

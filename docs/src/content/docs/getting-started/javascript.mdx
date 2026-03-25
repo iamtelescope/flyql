@@ -78,14 +78,17 @@ Parse a columns expression into structured data with segments, modifiers, and al
 ```javascript
 import { parse, parseToJson } from 'flyql/columns'
 
-// Parse to objects
-const parsed = parse("message|chars(25) as msg, status")
+// Parse basic columns (modifiers disabled by default)
+const parsed = parse("message, status")
 for (const col of parsed) {
     console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
 }
 
+// Enable modifiers via capabilities
+const withMods = parse("message|chars(25) as msg, status", { modifiers: true })
+
 // Or serialize directly to JSON for API responses
-const json = parseToJson("message, status|upper")
+const json = parseToJson("message, status|upper", { modifiers: true })
 console.log(json)
 ```
 

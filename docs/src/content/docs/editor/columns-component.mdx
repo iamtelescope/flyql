@@ -29,6 +29,7 @@ function onParsed(parsed) {
     <FlyqlColumns
         v-model="expr"
         :columns="columns"
+        :capabilities="{ modifiers: true }"
         placeholder="message, status|upper, host as h"
         @update:parsed="onParsed"
     />
@@ -41,6 +42,7 @@ function onParsed(parsed) {
 |------|------|---------|-------------|
 | `modelValue` | `String` | `''` | Expression text (v-model) |
 | `columns` | `Object` | `{}` | Column [schema](/editor/schema/) |
+| `capabilities` | `Object` | `null` | Parser capabilities (e.g., `{ modifiers: true }`) |
 | `onKeyDiscovery` | `Function` | `null` | Remote key discovery callback |
 | `placeholder` | `String` | `''` | Placeholder text |
 | `autofocus` | `Boolean` | `false` | Auto-focus on mount |

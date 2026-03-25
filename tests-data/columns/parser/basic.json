@@ -146,6 +146,7 @@
     {
       "name": "column_with_modifier",
       "input": "message|chars",
+      "capabilities": {"modifiers": true},
       "expected_result": "success",
       "expected_columns": [
         {
@@ -168,6 +169,7 @@
     {
       "name": "column_with_modifier_and_args",
       "input": "message|chars(25)",
+      "capabilities": {"modifiers": true},
       "expected_result": "success",
       "expected_columns": [
         {
@@ -229,6 +231,7 @@
     {
       "name": "multiple_columns_with_modifiers",
       "input": "message|upper, status|lower",
+      "capabilities": {"modifiers": true},
       "expected_result": "success",
       "expected_columns": [
         {

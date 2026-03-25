@@ -205,7 +205,7 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('exact nested leaf shows next-step delimiters (P2)', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(NESTED_COLUMNS, { capabilities: { modifiers: true } })
         engine.setQuery('metadata.labels.tier')
         engine.setCursorPosition(20)
         await engine.updateSuggestions()

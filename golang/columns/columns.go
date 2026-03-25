@@ -69,7 +69,13 @@ type columnData struct {
 	alias     string
 }
 
+// Capabilities controls which parser features are enabled.
+type Capabilities struct {
+	Modifiers bool
+}
+
 type parser struct {
+	capabilities         Capabilities
 	text                 string
 	state                state
 	errorText            string
@@ -87,8 +93,9 @@ type parser struct {
 	columns              []columnData
 }
 
-func newParser() *parser {
+func newParser(capabilities Capabilities) *parser {
 	return &parser{
+		capabilities:         capabilities,
 		state:                stateExpectColumn,
 		modifierArgumentType: "auto",
 		modifiers:            []Modifier{},
@@ -345,6 +352,10 @@ func (p *parser) inStateColumn() {
 		p.state = stateExpectColumn
 		p.storeColumn()
 	} else if p.charValue == "|" {
+		if !p.capabilities.Modifiers {
+			p.setErrorState("modifiers are not enabled", 17)
+			return
+		}
 		p.state = stateExpectModifier
 	} else {
 		p.setErrorState("invalid character", 6)
@@ -489,6 +500,10 @@ func (p *parser) inStateModifierComplete() {
 		p.storeColumn()
 		p.state = stateExpectColumn
 	} else if p.charValue == "|" {
+		if !p.capabilities.Modifiers {
+			p.setErrorState("modifiers are not enabled", 17)
+			return
+		}
 		p.storeModifier()
 		p.state = stateExpectModifier
 	} else {
@@ -540,8 +555,8 @@ func (p *parser) inStateExpectAliasDelimiter() {
 }
 
 // Parse parses a columns expression and returns a slice of ParsedColumn.
-func Parse(text string) ([]ParsedColumn, error) {
-	p := newParser()
+func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
+	p := newParser(capabilities)
 	if err := p.parse(text); err != nil {
 		return nil, err
 	}
@@ -592,8 +607,8 @@ func Parse(text string) ([]ParsedColumn, error) {
 }
 
 // ParseToJSON parses a columns expression and returns the result as JSON bytes.
-func ParseToJSON(text string) ([]byte, error) {
-	columns, err := Parse(text)
+func ParseToJSON(text string, capabilities Capabilities) ([]byte, error) {
+	columns, err := Parse(text, capabilities)
 	if err != nil {
 		return nil, err
 	}

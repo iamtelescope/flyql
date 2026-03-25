@@ -60,6 +60,14 @@ Import from the `flyql/editor` subpath:
 import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
 ```
 
+Both components import `flyql.css` internally, which provides theme variables, suggestion panel styles, and token highlighting. With standard bundlers (Vite, webpack, etc.) this works automatically.
+
+If your setup doesn't process CSS imports from JS, import the stylesheet manually:
+
+```javascript
+import 'flyql/editor/flyql.css'
+```
+
 ## Props
 
 | Prop | Type | Default | Description |
@@ -71,10 +79,13 @@ import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
 | `placeholder` | `String` | `''` | Placeholder text |
 | `autofocus` | `Boolean` | `false` | Auto-focus on mount |
 | `debug` | `Boolean` | `false` | Debug logging |
+| `debounceMs` | `Number` | `300` | Debounce delay (ms) for async autocomplete calls. Set to `0` to disable |
 
 **Callback signatures:**
-- `onAutocomplete(key, value)` — returns `Promise<{ items: string[] }>`
+- `onAutocomplete(key, value)` — returns `Promise<{ items: string[], incomplete?: boolean }>`
 - `onKeyDiscovery(columnName, segments)` — returns `Promise<Array<{ name, type?, hasChildren? }>>`
+
+When `incomplete` is `true` in the response, the editor knows the returned list is partial and will re-fetch on the next keystroke. Async calls are debounced (default 150ms) and in-flight requests are automatically cancelled when a new one starts.
 
 ## Events
 
@@ -142,7 +153,17 @@ async function onAutocomplete(key, value) {
 </template>
 ```
 
-The callback receives the column `key` and current `value` prefix. Return `{ items: string[] }`. A loading indicator appears automatically after 200ms.
+The callback receives the column `key` and current `value` prefix. Return `{ items: string[], incomplete?: boolean }`. A loading indicator appears automatically after 200ms.
+
+### Stateful autocomplete flow
+
+The editor uses a stateful autocomplete flow that minimizes server calls:
+
+- **Initial load** — When entering value context (e.g., `service=`), the editor fetches immediately with no debounce. A full spinner is shown until results arrive.
+- **Complete list** (`incomplete: false`) — The editor stores the returned items and switches to client-side filtering. Subsequent keystrokes filter instantly without server calls, until the user changes to a different column.
+- **Incomplete list** (`incomplete: true`) — The editor keeps showing current suggestions while a debounced re-fetch runs in the background. An inline spinner appears in the header. When new results arrive, they replace the current suggestions.
+
+If the server returns 0 items, the editor displays "No matching values". For client-side filtering of a complete list, an empty result simply shows no suggestions (the user can backspace to see more).
 
 Columns with `autocomplete: true` and static `values` use those values directly without calling the callback. Columns with `autocomplete: true` but no `values` trigger the callback.
 

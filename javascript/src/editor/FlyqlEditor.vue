@@ -50,7 +50,7 @@
         </div>
         <!-- Suggestion panel -->
         <Teleport to="body">
-            <div v-if="focused && activated" class="flyql-panel" @mousedown.prevent :style="panelStyle">
+            <div v-if="focused && activated" ref="panelRef" class="flyql-panel" @mousedown.prevent :style="panelStyle">
                 <div v-if="debug" class="flyql-panel__header flyql-panel__debug">
                     <span v-if="context"
                         >state={{ context.state }} expecting={{ context.expecting }} key={{ context.key }} value={{
@@ -74,16 +74,10 @@
                         </svg>
                     </button>
                 </div>
-                <div class="flyql-panel__header">
-                    Suggestions: <span class="flyql-panel__state">{{ stateLabel }}</span>
-                </div>
+                <div class="flyql-panel__loader" :class="{ 'flyql-panel__loader--active': isLoading }"></div>
+                <div class="flyql-panel__header">Suggestions</div>
                 <div class="flyql-panel__body" aria-live="polite">
-                    <div v-if="isLoading" class="flyql-panel__loading">
-                        <slot name="loading">
-                            <span class="flyql-panel__spinner"></span>
-                        </slot>
-                    </div>
-                    <ul v-else-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
+                    <ul v-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
                         <li
                             v-for="(item, index) in suggestions"
                             :key="index"
@@ -107,8 +101,32 @@
                             >
                         </li>
                     </ul>
-                    <div v-else-if="!isLoading && message" class="flyql-panel__message">{{ message }}</div>
-                    <div v-else-if="!isLoading" class="flyql-panel__empty">No suggestions</div>
+                    <div v-if="isLoading && suggestions.length === 0 && !message" class="flyql-panel__skeleton">
+                        <div v-for="n in 6" :key="n" class="flyql-panel__skeleton-row">
+                            <span class="flyql-panel__skeleton-badge"></span>
+                            <span
+                                class="flyql-panel__skeleton-text"
+                                :style="{ width: 40 + ((n * 17) % 45) + '%' }"
+                            ></span>
+                        </div>
+                    </div>
+                    <div v-if="!isLoading && suggestions.length === 0 && message" class="flyql-panel__message">
+                        {{ message }}
+                    </div>
+                    <div v-if="!isLoading && suggestions.length === 0 && !message" class="flyql-panel__empty">
+                        No suggestions
+                    </div>
+                </div>
+                <div class="flyql-panel__footer">
+                    <span v-if="context && context.key && suggestionType === 'value'" class="flyql-panel__footer-col">{{
+                        context.key
+                    }}</span>
+                    <span class="flyql-panel__footer-label">{{ stateLabel }}</span>
+                    <span
+                        v-if="suggestionType === 'value' && suggestions.length > 0 && incomplete"
+                        class="flyql-panel__footer-status"
+                        >partial results</span
+                    >
                 </div>
             </div>
         </Teleport>
@@ -118,6 +136,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { EditorEngine } from './engine.js'
+import './flyql.css'
 
 // ── Props & Emits ──
 
@@ -129,6 +148,7 @@ const props = defineProps({
     placeholder: { type: String, default: '' },
     autofocus: { type: Boolean, default: false },
     debug: { type: Boolean, default: false },
+    debounceMs: { type: Number, default: 150 },
 })
 
 const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus', 'blur'])
@@ -138,8 +158,10 @@ const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus',
 const engine = new EditorEngine(props.columns, {
     onAutocomplete: props.onAutocomplete,
     onKeyDiscovery: props.onKeyDiscovery,
+    debounceMs: props.debounceMs,
     onLoadingChange: (loading) => {
         isLoading.value = loading
+        stateLabel.value = engine.getStateLabel()
     },
 })
 
@@ -156,6 +178,7 @@ const editorRoot = ref(null)
 const listRef = ref(null)
 const focused = ref(false)
 const activated = ref(false)
+const panelRef = ref(null)
 const panelLeft = ref(0)
 const panelTop = ref(0)
 
@@ -164,6 +187,8 @@ const panelTop = ref(0)
 const suggestions = ref([])
 const selectedIndex = ref(0)
 const isLoading = ref(false)
+const incomplete = ref(false)
+const suggestionType = ref('')
 const message = ref('')
 const stateLabel = ref('')
 const context = ref(null)
@@ -184,6 +209,8 @@ function syncFromEngine() {
     suggestions.value = engine.suggestions
     selectedIndex.value = engine.state.selectedIndex
     isLoading.value = engine.isLoading
+    incomplete.value = engine.incomplete
+    suggestionType.value = engine.suggestionType
     message.value = engine.message
     stateLabel.value = engine.getStateLabel()
     context.value = engine.context
@@ -241,8 +268,15 @@ function updatePanelPosition(ctx) {
         const spanRect = span.getBoundingClientRect()
         const mirrorRect = mirror.getBoundingClientRect()
         const taRect = ta.getBoundingClientRect()
-        panelLeft.value = taRect.left + (spanRect.left - mirrorRect.left) - ta.scrollLeft
-        const panelHeight = 400
+        const cursorLeft = taRect.left + (spanRect.left - mirrorRect.left) - ta.scrollLeft
+        const panelWidth = panelRef.value?.offsetWidth || 600
+        const viewportWidth = document.documentElement.clientWidth
+        if (cursorLeft + panelWidth > viewportWidth) {
+            panelLeft.value = Math.max(0, cursorLeft - panelWidth)
+        } else {
+            panelLeft.value = cursorLeft
+        }
+        const panelHeight = panelRef.value?.offsetHeight || 280
         const spaceBelow = window.innerHeight - taRect.bottom - 4
         if (spaceBelow < panelHeight && taRect.top > panelHeight) {
             panelTop.value = taRect.top - panelHeight - 4
@@ -262,7 +296,9 @@ async function triggerSuggestions() {
     engine.setQuery(ta.value)
     engine.setCursorPosition(ta.selectionStart)
     try {
-        const ctx = await engine.updateSuggestions()
+        const promise = engine.updateSuggestions()
+        syncFromEngine() // sync immediately after engine clears state
+        const ctx = await promise
         syncFromEngine()
         nextTick(() => {
             updatePanelPosition(ctx)
@@ -559,7 +595,6 @@ function badgeText(type) {
 watch(activated, (val) => {
     engine.state.setActivated(val)
     if (!val) {
-        engine.clearValueCache()
         engine.clearKeyCache()
     }
 })
@@ -706,253 +741,5 @@ defineExpose({ focus, blur, getQueryStatus })
 
 .flyql-editor__input::placeholder {
     color: var(--flyql-placeholder-color);
-}
-</style>
-
-<style>
-/* Suggestion panel (unscoped — teleported to body) */
-.flyql-panel {
-    position: fixed;
-    z-index: 100;
-    max-width: 600px;
-    min-width: 300px;
-    min-height: 200px;
-    max-height: 400px;
-    display: flex;
-    flex-direction: column;
-    background: var(--flyql-dropdown-bg);
-    border: 1px solid var(--flyql-dropdown-border);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    font-family: var(--flyql-font-family);
-    font-size: var(--flyql-font-size);
-    overflow: hidden;
-}
-
-.flyql-panel__header {
-    padding: 6px 6px 6px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.3px;
-    color: var(--flyql-text);
-    opacity: 0.6;
-    flex-shrink: 0;
-}
-
-.flyql-panel__state {
-    font-weight: 400;
-    font-style: italic;
-}
-
-.flyql-panel__clear {
-    float: right;
-    background: none;
-    border: none;
-    color: var(--flyql-text);
-    opacity: 0.5;
-    font-size: 11px;
-    line-height: 1;
-    padding: 0;
-    cursor: pointer;
-}
-
-.flyql-panel__clear:hover {
-    opacity: 1;
-}
-
-.flyql-panel__body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-}
-
-.flyql-panel__loading {
-    padding: 2px 10px;
-    display: flex;
-}
-
-.flyql-panel__spinner {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--flyql-border);
-    border-top-color: var(--flyql-key-color);
-    border-radius: 50%;
-    animation: flyql-spin 0.6s linear infinite;
-}
-
-@keyframes flyql-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.flyql-panel__empty {
-    padding: 10px;
-    color: var(--flyql-placeholder-color);
-    font-style: italic;
-}
-
-.flyql-panel__message {
-    padding: 10px;
-    color: var(--flyql-placeholder-color);
-    font-style: italic;
-}
-
-.flyql-panel__header--error {
-    color: var(--flyql-error-color);
-    opacity: 1;
-}
-
-.flyql-panel__debug {
-    font-family: var(--flyql-code-font-family);
-    font-size: 10px;
-    opacity: 0.4;
-    border-bottom: 1px solid var(--flyql-dropdown-border);
-}
-
-.flyql-panel__list {
-    list-style: none;
-    margin: 0;
-    padding: 2px 0;
-}
-
-.flyql-panel__item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 4px 10px;
-    cursor: pointer;
-    white-space: nowrap;
-}
-
-.flyql-panel__item:hover {
-    background: var(--flyql-dropdown-item-hover);
-}
-
-.flyql-panel__item--active {
-    background: var(--flyql-dropdown-item-active);
-}
-
-.flyql-panel__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 18px;
-    font-size: 10px;
-    font-weight: 600;
-    border-radius: 3px;
-    flex-shrink: 0;
-}
-
-.flyql-panel__badge--column {
-    background: var(--flyql-key-color);
-    color: #fff;
-}
-
-.flyql-panel__badge--operator {
-    background: var(--flyql-operator-color);
-    color: #fff;
-}
-
-.flyql-panel__badge--value {
-    background: var(--flyql-value-color);
-    color: #fff;
-}
-
-.flyql-panel__badge--boolOp {
-    background: var(--flyql-operator-color);
-    color: #fff;
-}
-
-.flyql-panel__label {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--flyql-text);
-    font-family: var(--flyql-code-font-family);
-}
-
-.flyql-panel__match {
-    color: var(--flyql-key-color);
-    font-weight: 600;
-}
-
-.flyql-panel__detail {
-    color: var(--flyql-placeholder-color);
-    font-size: 11px;
-    margin-left: auto;
-    padding-left: 8px;
-}
-
-.flyql-panel__detail--boolOp {
-    color: var(--flyql-operator-color);
-}
-
-/* Token highlighting classes (unscoped so they apply inside v-html) */
-.flyql-key {
-    color: var(--flyql-key-color);
-}
-
-.flyql-operator {
-    color: var(--flyql-operator-color);
-}
-
-.flyql-value,
-.flyql-string {
-    color: var(--flyql-value-color);
-}
-
-.flyql-number {
-    color: var(--flyql-number-color);
-}
-
-.flyql-error {
-    color: var(--flyql-error-color);
-    text-decoration: wavy underline;
-}
-
-/* Theme variables */
-:root {
-    --flyql-bg: #ffffff;
-    --flyql-text: #1e1e1e;
-    --flyql-border: #d4d4d4;
-    --flyql-border-focus: #075985;
-    --flyql-placeholder-color: #a0a0a0;
-
-    --flyql-key-color: #0451a5;
-    --flyql-operator-color: #0089ab;
-    --flyql-value-color: #8b0000;
-    --flyql-number-color: #098658;
-    --flyql-error-color: #ff0000;
-
-    --flyql-dropdown-bg: #ffffff;
-    --flyql-dropdown-border: #d4d4d4;
-    --flyql-dropdown-item-hover: #f7f7f7;
-    --flyql-dropdown-item-active: #eef4fb;
-
-    --flyql-font-family: 'Open Sans', sans-serif;
-    --flyql-code-font-family: monospace;
-    --flyql-font-size: 13px;
-}
-
-.flyql-dark {
-    --flyql-bg: #1e1e1e;
-    --flyql-text: #d4d4d4;
-    --flyql-border: #525252;
-    --flyql-border-focus: #0369a1;
-    --flyql-placeholder-color: #676767;
-
-    --flyql-key-color: #6e9fff;
-    --flyql-operator-color: #0089ab;
-    --flyql-value-color: #ce9178;
-    --flyql-number-color: #b5cea8;
-    --flyql-error-color: #f48771;
-
-    --flyql-dropdown-bg: #252526;
-    --flyql-dropdown-border: #454545;
-    --flyql-dropdown-item-hover: #2e3132;
-    --flyql-dropdown-item-active: #1a2a3a;
 }
 </style>

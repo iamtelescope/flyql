@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -54,7 +55,7 @@ var demoColumns = map[string]*demoColumn{
 	"service": {
 		EditorType: "string", Suggest: true, Autocomplete: true,
 		CHType:     "String", PGType: "varchar(255)", SRType: "VARCHAR(255)",
-		AutocompleteSuggestions: []string{"api-gateway", "api-users", "api-billing", "worker-email", "worker-ingest", "frontend-web", "frontend-mobile"},
+		AutocompleteSuggestions: generateServiceNames(),
 	},
 	"message": {
 		EditorType: "string", Suggest: true,
@@ -116,6 +117,30 @@ var demoColumns = map[string]*demoColumn{
 
 func toAnySlice(items ...any) []any {
 	return items
+}
+
+func generateServiceNames() []string {
+	// Hierarchical names: many share long prefixes, gradually narrow with each character typed.
+	// e.g. "prod-us-east-api-users-v1-primary" — typing "prod-us-east-api-u" narrows from 150+ to ~30.
+	regions := []string{"prod-us-east", "prod-us-west", "prod-eu-west", "prod-eu-central", "prod-ap-south"}
+	tiers := []string{"api", "worker", "batch", "stream"}
+	domains := []string{"users", "orders", "payments", "billing", "auth", "search", "notify", "inventory"}
+	versions := []string{"v1", "v2"}
+	roles := []string{"primary", "replica"}
+
+	var services []string
+	for _, r := range regions {
+		for _, t := range tiers {
+			for _, d := range domains {
+				for _, v := range versions {
+					for _, role := range roles {
+						services = append(services, fmt.Sprintf("%s-%s-%s-%s-%s", r, t, d, v, role))
+					}
+				}
+			}
+		}
+	}
+	return services
 }
 
 func buildGeneratorColumns() (map[string]*clickhouse.Column, map[string]*postgresql.Column, map[string]*starrocks.Column) {
@@ -180,16 +205,32 @@ func main() {
 
 	r.GET("/api/autocomplete", func(c *gin.Context) {
 		key := c.Query("key")
-		log.Printf("autocomplete: key=%s value=%s", key, c.Query("value"))
+		value := strings.ToLower(c.Query("value"))
+		limit := 10
+		log.Printf("autocomplete: key=%s value=%s", key, value)
 
-		time.Sleep(1 * time.Second)
-
-		items, ok := autocompleteData[key]
-		if !ok {
-			items = []string{}
+		if key == "service" {
+			time.Sleep(1 * time.Second)
 		}
 
-		c.JSON(http.StatusOK, gin.H{"items": items})
+		allItems, ok := autocompleteData[key]
+		if !ok {
+			allItems = []string{}
+		}
+
+		var filtered []string
+		for _, item := range allItems {
+			if value == "" || strings.HasPrefix(strings.ToLower(item), value) {
+				filtered = append(filtered, item)
+			}
+		}
+
+		incomplete := len(filtered) > limit
+		if incomplete {
+			filtered = filtered[:limit]
+		}
+
+		c.JSON(http.StatusOK, gin.H{"items": filtered, "incomplete": incomplete})
 	})
 
 	r.GET("/api/discover-keys", func(c *gin.Context) {

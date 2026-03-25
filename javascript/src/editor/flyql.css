@@ -1,0 +1,321 @@
+/* ── Theme variables ── */
+:root {
+    --flyql-bg: #ffffff;
+    --flyql-text: #1e1e1e;
+    --flyql-border: #d4d4d4;
+    --flyql-border-focus: #075985;
+    --flyql-placeholder-color: #a0a0a0;
+
+    --flyql-key-color: #0451a5;
+    --flyql-operator-color: #0089ab;
+    --flyql-value-color: #8b0000;
+    --flyql-number-color: #098658;
+    --flyql-error-color: #ff0000;
+
+    --flyql-dropdown-bg: #ffffff;
+    --flyql-dropdown-border: #d4d4d4;
+    --flyql-dropdown-item-hover: #f7f7f7;
+    --flyql-dropdown-item-active: #eef4fb;
+
+    --flyql-font-family: 'Open Sans', sans-serif;
+    --flyql-code-font-family: monospace;
+    --flyql-font-size: 13px;
+}
+
+.flyql-dark {
+    --flyql-bg: #1e1e1e;
+    --flyql-text: #d4d4d4;
+    --flyql-border: #525252;
+    --flyql-border-focus: #0369a1;
+    --flyql-placeholder-color: #676767;
+
+    --flyql-key-color: #6e9fff;
+    --flyql-operator-color: #0089ab;
+    --flyql-value-color: #ce9178;
+    --flyql-number-color: #b5cea8;
+    --flyql-error-color: #f48771;
+
+    --flyql-dropdown-bg: #252526;
+    --flyql-dropdown-border: #454545;
+    --flyql-dropdown-item-hover: #2e3132;
+    --flyql-dropdown-item-active: #1a2a3a;
+}
+
+/* ── Suggestion panel (teleported to body, shared by both editors) ── */
+.flyql-panel {
+    position: fixed;
+    z-index: 100;
+    width: 600px;
+    max-width: 100vw;
+    display: flex;
+    flex-direction: column;
+    background: var(--flyql-dropdown-bg);
+    border: 1px solid var(--flyql-dropdown-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-family: var(--flyql-font-family);
+    font-size: var(--flyql-font-size);
+    overflow: hidden;
+}
+
+.flyql-panel__header {
+    padding: 6px 6px 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--flyql-text);
+    opacity: 0.6;
+    flex-shrink: 0;
+}
+
+.flyql-panel__header--error {
+    color: var(--flyql-error-color);
+    opacity: 1;
+}
+
+.flyql-panel__debug {
+    font-family: var(--flyql-code-font-family);
+    font-size: 10px;
+    opacity: 0.4;
+    border-bottom: 1px solid var(--flyql-dropdown-border);
+}
+
+.flyql-panel__clear {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--flyql-text);
+    opacity: 0.5;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+
+.flyql-panel__clear:hover {
+    opacity: 1;
+}
+
+.flyql-panel__body {
+    overflow-y: auto;
+    max-height: 280px;
+}
+
+.flyql-panel__footer {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--flyql-text);
+    opacity: 0.5;
+    border-top: 1px solid var(--flyql-dropdown-border);
+    background: color-mix(in srgb, var(--flyql-dropdown-bg) 96%, var(--flyql-text) 4%);
+    border-radius: 0 0 6px 6px;
+}
+
+.flyql-panel__footer-col {
+    font-family: var(--flyql-code-font-family);
+    font-weight: 600;
+    color: var(--flyql-key-color);
+    opacity: 1;
+}
+
+.flyql-panel__footer-label {
+    font-style: italic;
+}
+
+.flyql-panel__footer-status {
+    margin-left: auto;
+    font-size: 10px;
+}
+
+/* ── Loader bar ── */
+.flyql-panel__loader {
+    height: 2px;
+    background: transparent;
+    border-radius: 6px 6px 0 0;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.flyql-panel__loader--active {
+    background: var(--flyql-border);
+}
+
+.flyql-panel__loader--active::after {
+    content: '';
+    display: block;
+    height: 100%;
+    width: 40%;
+    background: var(--flyql-key-color);
+    border-radius: 2px;
+    animation: flyql-slide 1s linear infinite;
+}
+
+@keyframes flyql-slide {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(250%);
+    }
+}
+
+/* ── Skeleton loading ── */
+.flyql-panel__skeleton {
+    padding: 6px 10px;
+}
+
+.flyql-panel__skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+}
+
+.flyql-panel__skeleton-badge {
+    flex-shrink: 0;
+    width: 20px;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--flyql-border);
+    opacity: 0.4;
+    animation: flyql-pulse 1.2s ease-in-out infinite;
+}
+
+.flyql-panel__skeleton-text {
+    height: 12px;
+    border-radius: 3px;
+    background: var(--flyql-border);
+    opacity: 0.3;
+    animation: flyql-pulse 1.2s ease-in-out infinite;
+    animation-delay: 0.1s;
+}
+
+@keyframes flyql-pulse {
+    0%,
+    100% {
+        opacity: 0.15;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* ── Panel list items ── */
+.flyql-panel__list {
+    list-style: none;
+    margin: 0;
+    padding: 2px 0;
+}
+
+.flyql-panel__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.flyql-panel__item:hover {
+    background: var(--flyql-dropdown-item-hover);
+}
+
+.flyql-panel__item--active {
+    background: var(--flyql-dropdown-item-active);
+}
+
+.flyql-panel__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 18px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.flyql-panel__badge--column {
+    background: var(--flyql-key-color);
+    color: #fff;
+}
+
+.flyql-panel__badge--operator {
+    background: var(--flyql-operator-color);
+    color: #fff;
+}
+
+.flyql-panel__badge--value {
+    background: var(--flyql-value-color);
+    color: #fff;
+}
+
+.flyql-panel__badge--boolOp {
+    background: var(--flyql-operator-color);
+    color: #fff;
+}
+
+.flyql-panel__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--flyql-text);
+    font-family: var(--flyql-code-font-family);
+}
+
+.flyql-panel__match {
+    color: var(--flyql-key-color);
+    font-weight: 600;
+}
+
+.flyql-panel__detail {
+    color: var(--flyql-placeholder-color);
+    font-size: 11px;
+    margin-left: auto;
+    padding-left: 8px;
+}
+
+.flyql-panel__detail--boolOp {
+    color: var(--flyql-operator-color);
+}
+
+.flyql-panel__empty {
+    padding: 10px;
+    color: var(--flyql-placeholder-color);
+    font-style: italic;
+}
+
+.flyql-panel__message {
+    padding: 10px;
+    color: var(--flyql-placeholder-color);
+    font-style: italic;
+}
+
+/* ── Token highlighting (shared across v-html in both editors) ── */
+.flyql-key {
+    color: var(--flyql-key-color);
+}
+
+.flyql-operator {
+    color: var(--flyql-operator-color);
+}
+
+.flyql-value,
+.flyql-string {
+    color: var(--flyql-value-color);
+}
+
+.flyql-number {
+    color: var(--flyql-number-color);
+}
+
+.flyql-error {
+    color: var(--flyql-error-color);
+    text-decoration: wavy underline;
+}

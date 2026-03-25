@@ -204,7 +204,7 @@ describe('updateSuggestions — routing integration (AC #1, #5, #10)', () => {
             expecting: 'column',
             textBeforeCursor: 'request.',
         }
-        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, {}, mockDiscovery, {}, () => {})
+        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, mockDiscovery, {}, () => {})
         expect(result.suggestionType).toBe('column')
         expect(result.suggestions.map((s) => s.label)).toContain('request.method')
     })
@@ -217,7 +217,7 @@ describe('updateSuggestions — routing integration (AC #1, #5, #10)', () => {
             expecting: 'column',
             textBeforeCursor: 'metadata.',
         }
-        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, {}, mockDiscovery, {}, () => {})
+        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, mockDiscovery, {}, () => {})
         expect(result.suggestionType).toBe('column')
         expect(result.suggestions.map((s) => s.label)).toContain('metadata.labels')
         expect(mockDiscovery).not.toHaveBeenCalled()
@@ -230,7 +230,7 @@ describe('updateSuggestions — routing integration (AC #1, #5, #10)', () => {
             expecting: 'column',
             textBeforeCursor: 'request.',
         }
-        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, {}, null, {}, () => {})
+        const result = await updateSuggestions(ctx, MIXED_COLUMNS, null, null, {}, () => {})
         // Should fall through to fallback
         expect(result.suggestions.length).toBeGreaterThanOrEqual(0)
     })
@@ -240,6 +240,7 @@ describe('EditorEngine — key discovery integration', () => {
     it('engine passes onKeyDiscovery to updateSuggestions', async () => {
         const mockDiscovery = createMockDiscovery()
         const engine = new EditorEngine(MIXED_COLUMNS, {
+            debounceMs: 0,
             onKeyDiscovery: mockDiscovery,
         })
         engine.setQuery('request.')
@@ -279,7 +280,7 @@ describe('ColumnsEngine — key discovery (AC #11)', () => {
 describe('mixed schema coexistence (AC #5, flat + JSONSchema + schemaless)', () => {
     it('flat columns, JSONSchema nested, and schemaless nested coexist', async () => {
         const mockDiscovery = createMockDiscovery()
-        const engine = new EditorEngine(MIXED_COLUMNS, { onKeyDiscovery: mockDiscovery })
+        const engine = new EditorEngine(MIXED_COLUMNS, { debounceMs: 0, onKeyDiscovery: mockDiscovery })
 
         // Flat column — partial prefix
         engine.setQuery('le')
@@ -327,48 +328,30 @@ describe('operator suggestions for discovered keys (AC #10 analog)', () => {
 describe('value suggestions for discovered paths (AC #10)', () => {
     it('onAutocomplete called with full dotted key for schemaless discovered path', async () => {
         const mockAutocomplete = vi.fn(async () => ({ items: ['GET', 'POST', 'PUT'] }))
-        const valueCache = {}
-        const result = await getValueSuggestions(
-            MIXED_COLUMNS,
-            'request.method',
-            '',
-            '',
-            mockAutocomplete,
-            valueCache,
-            () => {},
-        )
+        const result = await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', mockAutocomplete, () => {})
         expect(mockAutocomplete).toHaveBeenCalledWith('request.method', '')
         expect(result.suggestions.length).toBe(3)
         expect(result.suggestions.map((s) => s.label)).toContain('GET')
     })
 
-    it('value cache used for discovered paths on second call', async () => {
+    it('onAutocomplete called on every invocation (no caching)', async () => {
         const mockAutocomplete = vi.fn(async () => ({ items: ['GET', 'POST'] }))
-        const valueCache = {}
-        await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', mockAutocomplete, valueCache, () => {})
+        await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', mockAutocomplete, () => {})
         expect(mockAutocomplete).toHaveBeenCalledTimes(1)
 
-        const result2 = await getValueSuggestions(
-            MIXED_COLUMNS,
-            'request.method',
-            '',
-            '',
-            mockAutocomplete,
-            valueCache,
-            () => {},
-        )
-        expect(mockAutocomplete).toHaveBeenCalledTimes(1) // cached
+        const result2 = await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', mockAutocomplete, () => {})
+        expect(mockAutocomplete).toHaveBeenCalledTimes(2)
         expect(result2.suggestions.length).toBe(2)
     })
 
     it('no onAutocomplete: returns empty for discovered path', async () => {
-        const result = await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', null, {}, () => {})
+        const result = await getValueSuggestions(MIXED_COLUMNS, 'request.method', '', '', null, () => {})
         expect(result.suggestions).toEqual([])
     })
 
     it('flat unknown key without dot: returns empty (no fallthrough)', async () => {
         const mockAutocomplete = vi.fn(async () => ({ items: ['x'] }))
-        const result = await getValueSuggestions(MIXED_COLUMNS, 'unknown', '', '', mockAutocomplete, {}, () => {})
+        const result = await getValueSuggestions(MIXED_COLUMNS, 'unknown', '', '', mockAutocomplete, () => {})
         expect(result.suggestions).toEqual([])
         expect(mockAutocomplete).not.toHaveBeenCalled()
     })

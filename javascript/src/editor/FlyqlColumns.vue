@@ -52,7 +52,7 @@
         </div>
         <!-- Suggestion panel -->
         <Teleport to="body">
-            <div v-if="focused && activated" class="flyql-panel" @mousedown.prevent :style="panelStyle">
+            <div v-if="focused && activated" ref="panelRef" class="flyql-panel" @mousedown.prevent :style="panelStyle">
                 <div v-if="debug" class="flyql-panel__header flyql-panel__debug">
                     <span v-if="context"
                         >state={{ context.state }} expecting={{ context.expecting }} col={{ context.column }} mod={{
@@ -63,14 +63,18 @@
                 </div>
                 <div class="flyql-panel__header">
                     Suggestions: <span class="flyql-panel__state">{{ stateLabel }}</span>
+                    <span
+                        v-if="isLoading && suggestions.length > 0"
+                        class="flyql-panel__spinner flyql-panel__spinner--inline"
+                    ></span>
                 </div>
                 <div class="flyql-panel__body" aria-live="polite">
-                    <div v-if="isLoading" class="flyql-panel__loading">
+                    <div v-if="isLoading && suggestions.length === 0" class="flyql-panel__loading">
                         <slot name="loading">
                             <span class="flyql-panel__spinner"></span>
                         </slot>
                     </div>
-                    <ul v-else-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
+                    <ul v-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
                         <li
                             v-for="(item, index) in suggestions"
                             :key="index"
@@ -89,9 +93,14 @@
                             <span v-if="item.detail" class="flyql-panel__detail">{{ item.detail }}</span>
                         </li>
                     </ul>
-                    <div v-else-if="!isLoading && message" class="flyql-panel__message">{{ message }}</div>
-                    <div v-else-if="!isLoading" class="flyql-panel__empty">No suggestions</div>
+                    <div v-if="!isLoading && suggestions.length === 0 && message" class="flyql-panel__message">
+                        {{ message }}
+                    </div>
+                    <div v-if="!isLoading && suggestions.length === 0 && !message" class="flyql-panel__empty">
+                        No suggestions
+                    </div>
                 </div>
+                <div v-if="suggestions.length > 0" class="flyql-panel__spacer"></div>
             </div>
         </Teleport>
     </div>
@@ -100,6 +109,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ColumnsEngine } from './columns-engine.js'
+import './flyql.css'
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -130,6 +140,7 @@ const editorRoot = ref(null)
 const listRef = ref(null)
 const focused = ref(false)
 const activated = ref(false)
+const panelRef = ref(null)
 const panelLeft = ref(0)
 const panelTop = ref(0)
 
@@ -209,8 +220,15 @@ function updatePanelPosition(ctx) {
         const spanRect = span.getBoundingClientRect()
         const mirrorRect = mirror.getBoundingClientRect()
         const taRect = ta.getBoundingClientRect()
-        panelLeft.value = taRect.left + (spanRect.left - mirrorRect.left) - ta.scrollLeft
-        const panelHeight = 400
+        const cursorLeft = taRect.left + (spanRect.left - mirrorRect.left) - ta.scrollLeft
+        const panelWidth = panelRef.value?.offsetWidth || 600
+        const viewportWidth = document.documentElement.clientWidth
+        if (cursorLeft + panelWidth > viewportWidth) {
+            panelLeft.value = Math.max(0, cursorLeft - panelWidth)
+        } else {
+            panelLeft.value = cursorLeft
+        }
+        const panelHeight = panelRef.value?.offsetHeight || 280
         const spaceBelow = window.innerHeight - taRect.bottom - 4
         if (spaceBelow < panelHeight && taRect.top > panelHeight) {
             panelTop.value = taRect.top - panelHeight - 4

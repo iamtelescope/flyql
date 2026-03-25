@@ -553,18 +553,10 @@ describe('EditorEngine', () => {
         })
     })
 
-    describe('clearValueCache', () => {
-        it('clears the value cache', () => {
-            const engine = new EditorEngine(TEST_COLUMNS)
-            engine.valueCache['test'] = ['a', 'b']
-            engine.clearValueCache()
-            expect(engine.valueCache).toEqual({})
-        })
-    })
-
     describe('async value loading', () => {
         it('loads values via onAutocomplete', async () => {
             const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
                 onAutocomplete: async (key) => ({
                     items: ['host-1', 'host-2'],
                 }),
@@ -573,29 +565,55 @@ describe('EditorEngine', () => {
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
             expect(engine.suggestions.length).toBe(2)
-            // Should be cached
-            expect(engine.valueCache['host']).toEqual(['host-1', 'host-2'])
         })
 
-        it('uses cached values on subsequent calls', async () => {
+        it('re-fetches on every update when incomplete is true', async () => {
             let callCount = 0
             const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
                 onAutocomplete: async (key) => {
                     callCount++
-                    return { items: ['host-1'] }
+                    return { items: ['host-1'], incomplete: true }
                 },
             })
             engine.setQuery('host=')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
             expect(callCount).toBe(1)
+            engine.setQuery('host=h')
+            engine.setCursorPosition(6)
             await engine.updateSuggestions()
-            expect(callCount).toBe(1)
+            expect(callCount).toBe(2)
         })
 
-        it('fetches with empty prefix for full list caching', async () => {
+        it('does not re-fetch when incomplete is false (client-side filter)', async () => {
+            let callCount = 0
+            const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
+                onAutocomplete: async (key) => {
+                    callCount++
+                    return { items: ['host-1', 'host-2', 'other'], incomplete: false }
+                },
+            })
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            expect(callCount).toBe(1)
+            expect(engine.suggestions.length).toBe(3)
+
+            // Type more — should filter client-side, no new server call
+            engine.setQuery('host=h')
+            engine.setCursorPosition(6)
+            await engine.updateSuggestions()
+            expect(callCount).toBe(1) // no additional call
+            expect(engine.suggestions.length).toBe(2) // host-1, host-2
+            expect(engine.suggestions[0].label).toBe('host-1')
+        })
+
+        it('passes typed value prefix to onAutocomplete', async () => {
             let lastValue = null
             const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
                 onAutocomplete: async (key, value) => {
                     lastValue = value
                     return { items: ['host-1', 'host-2'] }
@@ -604,12 +622,13 @@ describe('EditorEngine', () => {
             engine.setQuery('host=h')
             engine.setCursorPosition(6)
             await engine.updateSuggestions()
-            expect(lastValue).toBe('')
+            expect(lastValue).toBe('h')
         })
 
         it('discards stale async results via sequence counter', async () => {
             let resolveFirst
             const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
                 onAutocomplete: async (key) => {
                     if (!resolveFirst) {
                         return new Promise((resolve) => {
@@ -626,7 +645,6 @@ describe('EditorEngine', () => {
             const first = engine.updateSuggestions()
 
             // Start second (fast) request — invalidates the first
-            engine.clearValueCache()
             engine.setQuery('host=')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
@@ -638,6 +656,120 @@ describe('EditorEngine', () => {
             // Stale result should have been discarded
             expect(engine.suggestions.length).toBe(2)
             expect(engine.suggestions[0].label).toBe('fresh-1')
+        })
+
+        it('initial load has no debounce', async () => {
+            let callCount = 0
+            const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 300,
+                onAutocomplete: async () => {
+                    callCount++
+                    return { items: ['host-1'], incomplete: false }
+                },
+            })
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            // Should not need to wait for debounce — initial load is immediate
+            await engine.updateSuggestions()
+            expect(callCount).toBe(1)
+            expect(engine.suggestions.length).toBe(1)
+        })
+
+        it('debounces keystrokes while initial fetch is in flight', async () => {
+            let callCount = 0
+            let resolveFirst
+            const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 300,
+                onAutocomplete: async () => {
+                    callCount++
+                    if (callCount === 1) {
+                        return new Promise((resolve) => {
+                            resolveFirst = () => resolve({ items: ['host-1', 'host-2'], incomplete: true })
+                        })
+                    }
+                    return { items: ['host-1'], incomplete: true }
+                },
+            })
+
+            // Start initial load (in flight, no debounce for first fetch)
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            const first = engine.updateSuggestions()
+
+            // Type more while first is in flight — hits refinement branch with debounce
+            engine.setQuery('host=h')
+            engine.setCursorPosition(6)
+            const second = engine.updateSuggestions()
+
+            // Only 1 call should have been made (the initial one);
+            // the second is waiting on the 300ms debounce timer
+            expect(callCount).toBe(1)
+
+            // Resolve the first to let it settle
+            resolveFirst()
+            await first
+            // Second is still debouncing — seq mismatch discards it
+        })
+
+        it('resets _valueState when key changes', async () => {
+            let callCount = 0
+            const columns = {
+                host: { type: 'string', suggest: true, autocomplete: true },
+                service: { type: 'string', suggest: true, autocomplete: true },
+            }
+            const engine = new EditorEngine(columns, {
+                debounceMs: 0,
+                onAutocomplete: async (key) => {
+                    callCount++
+                    return { items: [key + '-val'], incomplete: false }
+                },
+            })
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            expect(callCount).toBe(1)
+
+            // Same key, should use client-side filter
+            engine.setQuery('host=h')
+            engine.setCursorPosition(6)
+            await engine.updateSuggestions()
+            expect(callCount).toBe(1)
+
+            // Different key — should reset and fetch again
+            engine.setQuery('service=')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            expect(callCount).toBe(2)
+        })
+
+        it('shows "No matching values" when server returns 0 items', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
+                onAutocomplete: async () => ({ items: [], incomplete: false }),
+            })
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.length).toBe(0)
+            expect(engine.message).toBe('No matching values')
+        })
+
+        it('does not show "No matching values" for empty client-side filter', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS, {
+                debounceMs: 0,
+                onAutocomplete: async () => ({ items: ['alpha', 'beta'], incomplete: false }),
+            })
+            engine.setQuery('host=')
+            engine.setCursorPosition(5)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.length).toBe(2)
+
+            // Client-side filter yields 0 — no message
+            engine.setQuery('host=zzz')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.length).toBe(0)
+            expect(engine.message).toBe('')
         })
     })
 

@@ -22,12 +22,12 @@ const COL_CHAR_TYPE_CLASS = {
 }
 
 const STATE_LABELS = {
-    column: 'Columns',
-    modifier: 'Modifiers',
-    delimiter: 'Next',
-    alias: 'Next',
-    argument: 'Arguments',
-    next: 'Next',
+    column: 'column name',
+    modifier: 'modifiers',
+    delimiter: 'next',
+    alias: 'next',
+    argument: 'arguments',
+    next: 'column name, separator or modifier',
     none: '',
 }
 
@@ -248,8 +248,8 @@ export class ColumnsEngine {
                     { label: '|', insertText: '|', type: 'delimiter', detail: 'add modifier' },
                 ]
                 const otherColumns = columnSuggestions.filter((s) => s.label.toLowerCase() !== prefix)
-                this.suggestions = [...nextSteps, ...otherColumns]
-                this.suggestionType = 'column'
+                this.suggestions = [...otherColumns, ...nextSteps]
+                this.suggestionType = 'next'
             } else {
                 this.suggestions = columnSuggestions
                 this.suggestionType = 'column'
@@ -283,8 +283,8 @@ export class ColumnsEngine {
                     if (!mod.toLowerCase().startsWith(prefix)) continue
                     otherMods.push({ label: mod, insertText: mod, type: 'modifier', detail: modifierDetail(mod) })
                 }
-                this.suggestions = [...nextSteps, ...otherMods]
-                this.suggestionType = 'modifier'
+                this.suggestions = [...otherMods, ...nextSteps]
+                this.suggestionType = 'next'
             } else {
                 const suggestions = []
                 for (const mod of KNOWN_MODIFIERS) {

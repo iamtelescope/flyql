@@ -6,7 +6,13 @@
 
 import { Parser, CharType, State, VALID_KEY_VALUE_OPERATORS } from '../core/index.js'
 import { EditorState } from './state.js'
-import { updateSuggestions, getInsertRange, STATE_LABELS } from './suggestions.js'
+import {
+    updateSuggestions,
+    prepareSuggestionValues,
+    resolveColumnDef,
+    getInsertRange,
+    STATE_LABELS,
+} from './suggestions.js'
 
 const CHAR_TYPE_CLASS = {
     [CharType.KEY]: 'flyql-key',
@@ -44,15 +50,18 @@ export class EditorEngine {
         this.onAutocomplete = options.onAutocomplete || null
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
+        this.debounceMs = options.debounceMs ?? 300
         this.state = new EditorState()
         this.context = null
         this.suggestions = []
         this.suggestionType = ''
+        this.incomplete = false
         this.message = ''
         this.isLoading = false
-        this.valueCache = {}
         this.keyCache = {}
         this._suggestionSeq = 0
+        this._debounceTimer = null
+        this._valueState = null
     }
 
     /**
@@ -182,23 +191,138 @@ export class EditorEngine {
 
     /**
      * Update suggestions based on current cursor position.
+     * Debounces async calls (value/key loading) to avoid excessive requests.
      * Returns a promise (may be async for value loading).
      */
     async updateSuggestions() {
         const seq = ++this._suggestionSeq
+        if (this._debounceTimer) {
+            clearTimeout(this._debounceTimer)
+            this._debounceTimer = null
+        }
         const textBeforeCursor = this.state.getTextBeforeCursor()
         const ctx = this.buildContext(textBeforeCursor)
         this.context = ctx
         this.message = ''
-        this.isLoading = false
+        this.suggestionType = ctx ? ctx.expecting || '' : 'column'
+
+        // Reset value state when leaving value context or changing key
+        if (!ctx || ctx.expecting !== 'value' || (this._valueState && this._valueState.key !== ctx.key)) {
+            this._valueState = null
+        }
+
+        // Only enter async _valueState flow when the column actually needs server fetch:
+        // - column has autocomplete enabled AND no static values, OR
+        // - column is unknown (unresolved dotted key — let onAutocomplete try)
+        const _needsAsyncValue =
+            ctx &&
+            ctx.expecting === 'value' &&
+            this.onAutocomplete &&
+            (() => {
+                const col = resolveColumnDef(this.columns, ctx.key)
+                if (!col) return true
+                if (!col.autocomplete) return false
+                return !col.values || col.values.length === 0
+            })()
+
+        // Complete list: client-side filter, no server call
+        if (_needsAsyncValue && this._valueState && !this._valueState.incomplete) {
+            this.suggestions = prepareSuggestionValues(this._valueState.items, ctx.quoteChar, ctx.value)
+            this.incomplete = false
+            this.isLoading = false
+            this.state.selectedIndex = 0
+            return ctx
+        }
+
+        // Incomplete list refinement: keep current suggestions, debounce re-fetch
+        if (_needsAsyncValue && this._valueState && this._valueState.incomplete) {
+            // Don't clear suggestions — keep showing current values
+            this.isLoading = true
+            if (this.onLoadingChange) this.onLoadingChange(true)
+            if (this.debounceMs > 0) {
+                await new Promise((resolve) => {
+                    this._debounceTimer = setTimeout(resolve, this.debounceMs)
+                })
+                if (seq !== this._suggestionSeq) return ctx
+            }
+
+            const result = await updateSuggestions(
+                ctx,
+                this.columns,
+                this.onAutocomplete,
+                this.onKeyDiscovery,
+                this.keyCache,
+                (loading) => {
+                    if (seq !== this._suggestionSeq) return
+                    this.isLoading = loading
+                    if (this.onLoadingChange) this.onLoadingChange(loading)
+                },
+            )
+
+            if (seq !== this._suggestionSeq) return ctx
+
+            this._valueState = {
+                key: ctx.key,
+                value: ctx.value,
+                items: result.rawItems || this._valueState.items,
+                incomplete: result.incomplete,
+            }
+            this.suggestions = result.suggestions
+            this.suggestionType = result.suggestionType
+            this.incomplete = result.incomplete || false
+            this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+            this.state.selectedIndex = 0
+            return ctx
+        }
+
+        // Initial value load: no debounce
+        if (_needsAsyncValue && !this._valueState) {
+            // Mark pending so subsequent keystrokes hit the debounced refinement branch
+            this._valueState = { key: ctx.key, value: ctx.value, items: [], incomplete: true }
+            this.suggestions = []
+            this.incomplete = false
+            this.isLoading = true
+            this.state.selectedIndex = 0
+
+            const result = await updateSuggestions(
+                ctx,
+                this.columns,
+                this.onAutocomplete,
+                this.onKeyDiscovery,
+                this.keyCache,
+                (loading) => {
+                    if (seq !== this._suggestionSeq) return
+                    this.isLoading = loading
+                    if (this.onLoadingChange) this.onLoadingChange(loading)
+                },
+            )
+
+            if (seq !== this._suggestionSeq) return ctx
+
+            this._valueState = {
+                key: ctx.key,
+                value: ctx.value,
+                items: result.rawItems || [],
+                incomplete: result.incomplete,
+            }
+            this.suggestions = result.suggestions
+            this.suggestionType = result.suggestionType
+            this.incomplete = result.incomplete || false
+            this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+            this.state.selectedIndex = 0
+            return ctx
+        }
+
+        // Non-value suggestions (columns, operators, boolOps) or value with static values
         this.suggestions = []
+        this.incomplete = false
+        this.isLoading = false
         this.state.selectedIndex = 0
 
         const result = await updateSuggestions(
             ctx,
             this.columns,
             this.onAutocomplete,
-            this.valueCache,
             this.onKeyDiscovery,
             this.keyCache,
             (loading) => {
@@ -212,6 +336,7 @@ export class EditorEngine {
 
         this.suggestions = result.suggestions
         this.suggestionType = result.suggestionType
+        this.incomplete = result.incomplete || false
         this.message = result.message
         this.state.selectedIndex = 0
 
@@ -291,6 +416,7 @@ export class EditorEngine {
             suggestions: this.suggestions,
             suggestionType: this.suggestionType,
             message: this.message,
+            incomplete: this.incomplete,
             isLoading: this.isLoading,
         }
     }
@@ -378,13 +504,6 @@ export class EditorEngine {
      */
     getFilterPrefix() {
         return this.state.getFilterPrefix(this.context)
-    }
-
-    /**
-     * Clear the value cache (e.g., when deactivating).
-     */
-    clearValueCache() {
-        this.valueCache = {}
     }
 
     /**

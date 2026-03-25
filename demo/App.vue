@@ -5,70 +5,91 @@
 
         <div class="toolbar">
             <button @click="toggleDark">{{ isDark ? 'Light' : 'Dark' }} mode</button>
-            <button @click="query = ''">Clear</button>
-            <button @click="query = 'level=&quot;error&quot; and service~&quot;api.*&quot;'">Sample query</button>
-            <button @click="focusEditor">Focus</button>
-            <button @click="checkStatus">Check status</button>
         </div>
 
-        <div class="section">
-            <div class="section-title">Columns</div>
-            <FlyqlColumns
-                v-model="columnsExpr"
-                :columns="columns"
-                :on-key-discovery="onKeyDiscovery"
-                placeholder="message, status|upper, host as h"
-                :debug="false"
-                @update:parsed="onColumnsParsed"
-                @submit="onSubmit"
-            />
+        <div class="tabs">
+            <button class="tab" :class="{ 'tab--active': tab === 'query' }" @click="tab = 'query'">Query</button>
+            <button class="tab" :class="{ 'tab--active': tab === 'columns' }" @click="tab = 'columns'">Columns</button>
         </div>
 
-        <div v-if="parsedColumns.length > 0" class="section">
-            <div class="section-title">Parsed columns ({{ parsedColumns.length }})</div>
-            <div class="status">{{ parsedColumnsText }}</div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">Query</div>
-            <FlyqlEditor
-                ref="editor"
-                v-model="query"
-                :columns="columns"
-                :on-autocomplete="onAutocomplete"
-                :on-key-discovery="onKeyDiscovery"
-                placeholder="Type a FlyQL query..."
-                :autofocus="true"
-                :debug="false"
-                @submit="onSubmit"
-                @focus="addLog('focus')"
-                @blur="addLog('blur')"
-                @parse-error="(err) => addLog(`parse-error: ${err || '(cleared)'}`)"
-            />
-        </div>
-
-        <div class="section">
-            <div class="section-title">SQL Generator</div>
-            <div class="generator">
-                <select v-model="dialect" class="dialect-select">
-                    <option value="clickhouse">ClickHouse</option>
-                    <option value="postgresql">PostgreSQL</option>
-                    <option value="starrocks">StarRocks</option>
-                </select>
-                <button class="generate-btn" :disabled="!isValid || generating" @click="generate">
-                    {{ generating ? 'Generating...' : 'Generate SQL' }}
-                </button>
+        <!-- Query tab -->
+        <template v-if="tab === 'query'">
+            <div class="tab-toolbar">
+                <button @click="query = ''">Clear</button>
+                <button @click="query = 'level=&quot;error&quot; and service~&quot;api.*&quot;'">Sample query</button>
+                <button @click="focusEditor">Focus</button>
+                <button @click="checkStatus">Check status</button>
             </div>
-            <div v-if="generatedSQL" class="sql-output">
-                <pre><code class="language-sql" v-html="highlightedSQL"></code></pre>
-            </div>
-            <div v-if="generateError" class="sql-error">{{ generateError }}</div>
-        </div>
 
-        <div class="section">
-            <div class="section-title">Model value</div>
-            <div class="status" :class="statusClass">{{ query || '(empty)' }}</div>
-        </div>
+            <div class="section">
+                <FlyqlEditor
+                    ref="editor"
+                    v-model="query"
+                    :columns="columns"
+                    :on-autocomplete="onAutocomplete"
+                    :on-key-discovery="onKeyDiscovery"
+                    placeholder="Type a FlyQL query..."
+                    :autofocus="tab === 'query'"
+                    :debug="false"
+                    @submit="onSubmit"
+                    @focus="addLog('focus')"
+                    @blur="addLog('blur')"
+                    @parse-error="(err) => addLog(`parse-error: ${err || '(cleared)'}`)"
+                />
+            </div>
+
+            <div class="section">
+                <div class="section-title">SQL Generator</div>
+                <div class="generator">
+                    <select v-model="dialect" class="dialect-select">
+                        <option value="clickhouse">ClickHouse</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="starrocks">StarRocks</option>
+                    </select>
+                    <button class="generate-btn" :disabled="!isValid || generating" @click="generate">
+                        {{ generating ? 'Generating...' : 'Generate SQL' }}
+                    </button>
+                </div>
+                <div v-if="generatedSQL" class="sql-output">
+                    <pre><code class="language-sql" v-html="highlightedSQL"></code></pre>
+                </div>
+                <div v-if="generateError" class="sql-error">{{ generateError }}</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Model value</div>
+                <div class="status" :class="statusClass">{{ query || '(empty)' }}</div>
+            </div>
+        </template>
+
+        <!-- Columns tab -->
+        <template v-if="tab === 'columns'">
+            <div class="tab-toolbar">
+                <button @click="columnsExpr = ''">Clear</button>
+            </div>
+
+            <div class="section">
+                <FlyqlColumns
+                    v-model="columnsExpr"
+                    :columns="columns"
+                    :on-key-discovery="onKeyDiscovery"
+                    placeholder="message, status|upper, host as h"
+                    :debug="false"
+                    @update:parsed="onColumnsParsed"
+                    @submit="onSubmit"
+                />
+            </div>
+
+            <div v-if="parsedColumns.length > 0" class="section">
+                <div class="section-title">Parsed columns ({{ parsedColumns.length }})</div>
+                <div class="status">{{ parsedColumnsText }}</div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Model value</div>
+                <div class="status">{{ columnsExpr || '(empty)' }}</div>
+            </div>
+        </template>
 
         <div class="section">
             <div class="section-title">Event log</div>
@@ -87,6 +108,7 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { FlyqlEditor, FlyqlColumns } from '../javascript/src/editor/index.js'
 
+const tab = ref('query')
 const query = ref('')
 const columnsExpr = ref('')
 const parsedColumns = ref([])
@@ -294,9 +316,10 @@ h1 {
     display: flex;
     gap: 12px;
     align-items: center;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
-.toolbar button {
+.toolbar button,
+.tab-toolbar button {
     padding: 6px 14px;
     border: 1px solid #ccc;
     border-radius: 6px;
@@ -304,14 +327,61 @@ h1 {
     cursor: pointer;
     font-size: 13px;
 }
-.dark .toolbar button {
+.dark .toolbar button,
+.dark .tab-toolbar button {
     background: #2a2a2a;
     border-color: #555;
     color: #d4d4d4;
 }
-.toolbar button:hover {
+.toolbar button:hover,
+.tab-toolbar button:hover {
     opacity: 0.8;
 }
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+}
+.dark .tabs {
+    border-bottom-color: #444;
+}
+.tab {
+    padding: 8px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #888;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+.tab:hover {
+    color: #555;
+}
+.dark .tab:hover {
+    color: #bbb;
+}
+.tab--active {
+    color: #075985;
+    border-bottom-color: #075985;
+}
+.dark .tab--active {
+    color: #6e9fff;
+    border-bottom-color: #6e9fff;
+}
+
+.tab-toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
 .section {
     margin-bottom: 24px;
 }
@@ -385,6 +455,8 @@ h1 {
     font-size: 13px;
     line-height: 1.5;
     color: #1e1e1e;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
 }
 .dark .sql-output code {
     color: #d4d4d4;

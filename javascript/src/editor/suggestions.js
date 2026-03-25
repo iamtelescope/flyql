@@ -205,59 +205,60 @@ export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
         })
 }
 
-export async function getValueSuggestions(columns, key, value, quoteChar, onAutocomplete, valueCache, setLoading) {
+export async function getValueSuggestions(columns, key, value, quoteChar, onAutocomplete, setLoading) {
     const col = resolveColumnDef(columns, key)
     if (!col) {
         // For unresolved dotted keys (e.g., discovered paths like request.method),
         // fall through to onAutocomplete so the host app can provide value suggestions.
         if (key && key.includes('.') && onAutocomplete) {
-            if (valueCache[key]) {
-                return { suggestions: prepareSuggestionValues(valueCache[key], quoteChar, value), message: '' }
-            }
             const loadingTimer = setTimeout(() => {
                 setLoading(true)
             }, 200)
             try {
-                const result = await onAutocomplete(key, '')
+                const result = await onAutocomplete(key, value)
                 if (result && result.items) {
-                    valueCache[key] = result.items
-                    return { suggestions: prepareSuggestionValues(result.items, quoteChar, value), message: '' }
+                    return {
+                        suggestions: prepareSuggestionValues(result.items, quoteChar, value),
+                        rawItems: result.items,
+                        incomplete: !!result.incomplete,
+                        message: '',
+                    }
                 }
             } finally {
                 clearTimeout(loadingTimer)
                 setLoading(false)
             }
         }
-        return { suggestions: [], message: '' }
+        return { suggestions: [], incomplete: false, message: '' }
     }
     if (!col.autocomplete) {
-        return { suggestions: [], message: 'Autocompletion is disabled for this column' }
+        return { suggestions: [], incomplete: false, message: 'Autocompletion is disabled for this column' }
     }
 
     if (col.values && col.values.length > 0) {
-        return { suggestions: prepareSuggestionValues(col.values, quoteChar, value), message: '' }
+        return { suggestions: prepareSuggestionValues(col.values, quoteChar, value), incomplete: false, message: '' }
     }
 
     if (onAutocomplete) {
-        if (valueCache[key]) {
-            return { suggestions: prepareSuggestionValues(valueCache[key], quoteChar, value), message: '' }
-        }
         const loadingTimer = setTimeout(() => {
             setLoading(true)
         }, 200)
         try {
-            // Fetch full list (empty prefix) so cache is complete for client-side filtering
-            const result = await onAutocomplete(key, '')
+            const result = await onAutocomplete(key, value)
             if (result && result.items) {
-                valueCache[key] = result.items
-                return { suggestions: prepareSuggestionValues(result.items, quoteChar, value), message: '' }
+                return {
+                    suggestions: prepareSuggestionValues(result.items, quoteChar, value),
+                    rawItems: result.items,
+                    incomplete: !!result.incomplete,
+                    message: '',
+                }
             }
         } finally {
             clearTimeout(loadingTimer)
             setLoading(false)
         }
     }
-    return { suggestions: [], message: '' }
+    return { suggestions: [], incomplete: false, message: '' }
 }
 
 export async function getKeyDiscoverySuggestions(columns, prefix, onKeyDiscovery, keyCache, setLoading) {
@@ -369,27 +370,21 @@ export function getInsertRange(ctx, fullText, suggestionType) {
     return { start: cursorPos, end: cursorPos }
 }
 
-export async function updateSuggestions(
-    ctx,
-    columns,
-    onAutocomplete,
-    valueCache,
-    onKeyDiscovery,
-    keyCache,
-    setLoading,
-) {
+export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDiscovery, keyCache, setLoading) {
     let message = ''
     let suggestions = []
     let suggestionType = ''
+    let incomplete = false
+    let rawItems
 
     if (!ctx) {
         suggestions = getKeySuggestions(columns, '')
         suggestionType = 'column'
-        return { suggestions, suggestionType, message }
+        return { suggestions, suggestionType, incomplete, message }
     }
 
     if (ctx.state === 'ERROR') {
-        return { suggestions: [], suggestionType: '', message: ctx.error }
+        return { suggestions: [], suggestionType: '', incomplete, message: ctx.error }
     }
 
     if (ctx.expecting === 'column') {
@@ -421,16 +416,10 @@ export async function updateSuggestions(
         suggestionType = 'value'
     } else if (ctx.expecting === 'value') {
         suggestionType = 'value'
-        const result = await getValueSuggestions(
-            columns,
-            ctx.key,
-            ctx.value,
-            ctx.quoteChar,
-            onAutocomplete,
-            valueCache,
-            setLoading,
-        )
+        const result = await getValueSuggestions(columns, ctx.key, ctx.value, ctx.quoteChar, onAutocomplete, setLoading)
         suggestions = result.suggestions
+        incomplete = result.incomplete
+        rawItems = result.rawItems
         message = result.message
     } else if (ctx.expecting === 'boolOp') {
         suggestions = getBoolSuggestions()
@@ -446,5 +435,5 @@ export async function updateSuggestions(
         message = ''
     }
 
-    return { suggestions, suggestionType, message }
+    return { suggestions, suggestionType, incomplete, rawItems, message }
 }

@@ -43,6 +43,8 @@ export class Parser {
         this.inListValuesType = null
         this.isNotIn = false
         this.isNotHas = false
+        this.valueQuoteChar = ''
+        this.inListQuoteChar = ''
     }
 
     setState(state) {
@@ -63,6 +65,7 @@ export class Parser {
 
     setValueIsString() {
         this.valueIsString = true
+        this.valueQuoteChar = this.char.value
     }
 
     setErrorState(errorText, errno) {
@@ -125,7 +128,10 @@ export class Parser {
         let value
         let valueType
         if (this.inListCurrentValueIsString) {
-            value = this.inListCurrentValue
+            value =
+                this.inListQuoteChar === "'"
+                    ? this.inListCurrentValue.replace(/\\'/g, "'")
+                    : this.inListCurrentValue.replace(/\\"/g, '"')
             valueType = 'string'
         } else {
             const numValue = Number(this.inListCurrentValue)
@@ -198,7 +204,19 @@ export class Parser {
     }
 
     newExpression() {
-        return new Expression(parseKey(this.key), this.keyValueOperator, this.value, this.valueIsString)
+        let value = this.value
+        if (
+            this.valueIsString &&
+            this.keyValueOperator !== Operator.REGEX &&
+            this.keyValueOperator !== Operator.NOT_REGEX
+        ) {
+            if (this.valueQuoteChar === "'") {
+                value = value.replace(/\\'/g, "'")
+            } else {
+                value = value.replace(/\\"/g, '"')
+            }
+        }
+        return new Expression(parseKey(this.key), this.keyValueOperator, value, this.valueIsString)
     }
 
     newTruthyExpression() {
@@ -930,10 +948,12 @@ export class Parser {
             this.setState(State.EXPECT_BOOL_OP)
         } else if (this.char.isSingleQuote()) {
             this.inListCurrentValueIsString = true
+            this.inListQuoteChar = this.char.value
             this.storeTypedChar(CharType.VALUE)
             this.setState(State.IN_LIST_SINGLE_QUOTED_VALUE)
         } else if (this.char.isDoubleQuote()) {
             this.inListCurrentValueIsString = true
+            this.inListQuoteChar = this.char.value
             this.storeTypedChar(CharType.VALUE)
             this.setState(State.IN_LIST_DOUBLE_QUOTED_VALUE)
         } else if (this.char.isValue()) {

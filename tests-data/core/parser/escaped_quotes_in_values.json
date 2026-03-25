@@ -1,0 +1,198 @@
+{
+  "version": "1.0",
+  "description": "FlyQL parser test cases for escaped quotes in values",
+  "test_suite": "escaped_quotes_in_values",
+  "tests": [
+    {
+      "name": "escaped_double_quote_in_value",
+      "input": "name = \"hello\\\"world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "hello\"world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_single_quote_in_value",
+      "input": "name = 'hello\\'world'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "hello'world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_quote_at_start",
+      "input": "name = \"\\\"start\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "\"start",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_quote_at_end",
+      "input": "name = \"end\\\"\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "end\"",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "multiple_escaped_quotes",
+      "input": "name = \"a\\\"b\\\"c\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "a\"b\"c",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "regex_preserves_backslash",
+      "input": "name ~ \"hello\\\"world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "~",
+          "value": "hello\\\"world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_regex_preserves_backslash",
+      "input": "name !~ \"hello\\\"world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "!~",
+          "value": "hello\\\"world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "xss_value_with_escaped_quote",
+      "input": "name = \"\\\"><script src=x></script>\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "=",
+          "value": "\"><script src=x></script>",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "escaped_quote_in_compound_expression",
+      "input": "name = \"hello\\\"world\" and status = \"active\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "name",
+            "operator": "=",
+            "value": "hello\"world",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": "active",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "in_list_escaped_double_quote",
+      "input": "name in [\"hello\\\"world\", \"normal\"]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "in",
+          "values": ["hello\"world", "normal"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_list_escaped_single_quote",
+      "input": "name in ['hello\\'world', 'normal']",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "name",
+          "operator": "in",
+          "values": ["hello'world", "normal"],
+          "values_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

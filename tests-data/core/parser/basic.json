@@ -231,7 +231,7 @@
         "expression": {
           "key": "text",
           "operator": "=",
-          "value": "john\\'s book",
+          "value": "john's book",
           "value_type": "string"
         },
         "left": null,
@@ -247,7 +247,7 @@
         "expression": {
           "key": "text",
           "operator": "=",
-          "value": "say \\\"hello\\\"",
+          "value": "say \"hello\"",
           "value_type": "string"
         },
         "left": null,

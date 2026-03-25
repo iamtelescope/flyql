@@ -32,6 +32,10 @@ export function astToDict(node) {
             value_type: typeof node.expression.value === 'string' ? 'string' : 'number',
             value_bigint: typeof node.expression.value === 'bigint',
         }
+        if (node.expression.values !== null) {
+            result.expression.values = node.expression.values
+            result.expression.values_type = node.expression.valuesType
+        }
     }
 
     if (node.left !== null) {
@@ -146,15 +150,28 @@ function compareExpressions(actual, expected) {
 
     if (actual.key !== expected.key) return false
     if (actual.operator !== expected.operator) return false
-    if (actual.value_type !== expected.value_type) return false
 
-    // BigInt values from the parser must be compared to their string representation
-    // in the test data (since JSON cannot encode large integers without precision loss)
-    if (actual.value_bigint) {
-        return actual.value.toString() === String(expected.value)
+    // Skip value/value_type comparison for IN expressions (they use values/values_type)
+    if (expected.values === undefined) {
+        if (actual.value_type !== expected.value_type) return false
+
+        // BigInt values from the parser must be compared to their string representation
+        // in the test data (since JSON cannot encode large integers without precision loss)
+        if (actual.value_bigint) {
+            return actual.value.toString() === String(expected.value)
+        }
+
+        if (actual.value !== expected.value) return false
+    } else {
+        if (actual.values === undefined) return false
+        if (actual.values_type !== expected.values_type) return false
+        if (actual.values.length !== expected.values.length) return false
+        for (let i = 0; i < expected.values.length; i++) {
+            if (actual.values[i] !== expected.values[i]) return false
+        }
     }
 
-    return actual.value === expected.value
+    return true
 }
 
 export function formatAstMismatchMessage(testName, input, expected, actual) {

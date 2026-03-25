@@ -80,6 +80,12 @@
       "input": "status in ['200', '300']",
       "expected_result": "error",
       "expected_error_contains": "type mismatch"
+    },
+    {
+      "name": "in_escaped_quote_in_string",
+      "input": "message in [\"hello\\\"world\", \"normal\"]",
+      "expected_result": "success",
+      "expected_sql": "message IN ('hello\"world', 'normal')"
     }
   ]
 }

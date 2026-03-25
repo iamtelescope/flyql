@@ -147,6 +147,16 @@ describe('Parser Has Tests', () => {
     })
 })
 
+describe('Parser Escaped Quotes in Values Tests', () => {
+    const testData = loadTestData('escaped_quotes_in_values.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Hyphen Keys Tests', () => {
     it('should parse unquoted keys with hyphens correctly', () => {
         // Test simple hyphenated key

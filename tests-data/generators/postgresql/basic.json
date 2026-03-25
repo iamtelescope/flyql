@@ -121,7 +121,7 @@
       "name": "escape_single_quote",
       "input": "message='it\\'s test'",
       "expected_result": "success",
-      "expected_sql": "\"message\" = 'it\\\\\\'s test'"
+      "expected_sql": "\"message\" = 'it\\'s test'"
     },
     {
       "name": "enum_valid_value",

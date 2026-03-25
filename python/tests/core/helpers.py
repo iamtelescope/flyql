@@ -51,7 +51,7 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
     }
 
     if node.expression is not None:
-        result["expression"] = {
+        expr = {
             "key": node.expression.key.raw,
             "operator": node.expression.operator,
             "value": node.expression.value,
@@ -59,6 +59,10 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
                 "string" if isinstance(node.expression.value, str) else "number"
             ),
         }
+        if node.expression.values is not None:
+            expr["values"] = node.expression.values
+            expr["values_type"] = node.expression.values_type
+        result["expression"] = expr
 
     if node.left is not None:
         result["left"] = ast_to_dict(node.left)
@@ -124,13 +128,25 @@ def _expressions_equal(actual: Dict[str, Any], expected: Dict[str, Any]) -> bool
         return False
     if actual["operator"] != expected["operator"]:
         return False
-    if actual["value_type"] != expected["value_type"]:
-        return False
-    # Large integer values are stored as strings in test data to avoid JSON
-    # precision loss. Compare by converting both sides to string.
-    if actual["value_type"] == "number" and isinstance(expected["value"], str):
-        return str(actual["value"]) == expected["value"]
-    return actual["value"] == expected["value"]
+    # Skip value/value_type comparison for IN expressions (they use values/values_type)
+    if "values" not in expected:
+        if actual["value_type"] != expected["value_type"]:
+            return False
+        # Large integer values are stored as strings in test data to avoid JSON
+        # precision loss. Compare by converting both sides to string.
+        if actual["value_type"] == "number" and isinstance(expected["value"], str):
+            if str(actual["value"]) != expected["value"]:
+                return False
+        elif actual["value"] != expected["value"]:
+            return False
+    else:
+        if "values" not in actual:
+            return False
+        if actual["values"] != expected["values"]:
+            return False
+        if actual.get("values_type") != expected.get("values_type"):
+            return False
+    return True
 
 
 def compare_ast(

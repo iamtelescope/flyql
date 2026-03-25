@@ -1,6 +1,9 @@
 package flyql
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var validKeyValueOperators = map[string]bool{
 	OpEquals:          true,
@@ -56,6 +59,8 @@ type Parser struct {
 	inListValuesType           *ValueType
 	isNotIn                    bool
 	isNotHas                   bool
+	valueQuoteChar             rune
+	inListQuoteChar            rune
 }
 
 func NewParser() *Parser {
@@ -112,6 +117,7 @@ func (p *Parser) extendInListCurrentValue() {
 func (p *Parser) setInListCurrentValueIsString() {
 	t := true
 	p.inListCurrentValueIsString = &t
+	p.inListQuoteChar = p.char.value
 }
 
 func (p *Parser) finalizeInListValue() bool {
@@ -123,7 +129,7 @@ func (p *Parser) finalizeInListValue() bool {
 	var valueType ValueType
 
 	if p.inListCurrentValueIsString != nil && *p.inListCurrentValueIsString {
-		value = p.inListCurrentValue
+		value = unescapeQuotes(p.inListCurrentValue, p.inListQuoteChar)
 		valueType = ValueTypeString
 	} else {
 		value, valueType = tryConvertToNumber(p.inListCurrentValue)
@@ -149,6 +155,7 @@ func (p *Parser) resetBoolOperator() {
 func (p *Parser) setValueIsString() {
 	t := true
 	p.valueIsString = &t
+	p.valueQuoteChar = p.char.value
 }
 
 func (p *Parser) extendKey() {
@@ -185,10 +192,21 @@ func (p *Parser) extendBoolOpStack() {
 	p.boolOpStack = append(p.boolOpStack, p.boolOperator)
 }
 
+func unescapeQuotes(s string, quoteChar rune) string {
+	if quoteChar == '\'' {
+		return strings.ReplaceAll(s, `\'`, `'`)
+	}
+	return strings.ReplaceAll(s, `\"`, `"`)
+}
+
 func (p *Parser) newExpression() *Expression {
 	key, _ := ParseKey(p.key)
 	valueIsString := p.valueIsString != nil && *p.valueIsString
-	return NewExpression(key, p.keyValueOperator, p.value, valueIsString)
+	value := p.value
+	if valueIsString && p.keyValueOperator != OpRegex && p.keyValueOperator != OpNotRegex {
+		value = unescapeQuotes(value, p.valueQuoteChar)
+	}
+	return NewExpression(key, p.keyValueOperator, value, valueIsString)
 }
 
 func (p *Parser) newTruthyExpression() *Expression {

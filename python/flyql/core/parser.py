@@ -56,6 +56,8 @@ class Parser:
         self.in_list_values_type: Optional[str] = None
         self.is_not_in: bool = False
         self.is_not_has: bool = False
+        self.value_quote_char: str = ""
+        self.in_list_quote_char: str = ""
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -71,6 +73,8 @@ class Parser:
 
     def set_value_is_string(self) -> None:
         self.value_is_string = True
+        if self.char is not None:
+            self.value_quote_char = self.char.value
 
     def set_error_state(self, error_text: str, errno: int) -> None:
         self.state = State.ERROR
@@ -123,7 +127,9 @@ class Parser:
             return True
 
         if self.in_list_current_value_is_string:
-            value: Any = self.in_list_current_value
+            value: Any = self._unescape_quotes(
+                self.in_list_current_value, self.in_list_quote_char
+            )
             value_type = "string"
         else:
             value = try_convert_to_number(self.in_list_current_value)
@@ -186,11 +192,23 @@ class Parser:
             negated=negated,
         )
 
+    @staticmethod
+    def _unescape_quotes(value: str, quote_char: str) -> str:
+        if quote_char == "'":
+            return value.replace("\\'", "'")
+        return value.replace('\\"', '"')
+
     def new_expression(self) -> Expression:
+        value = self.value
+        if self.value_is_string and self.key_value_operator not in (
+            Operator.REGEX.value,
+            Operator.NOT_REGEX.value,
+        ):
+            value = self._unescape_quotes(value, self.value_quote_char)
         return Expression(
             key=parse_key(self.key),
             operator=self.key_value_operator,
-            value=self.value,
+            value=value,
             value_is_string=self.value_is_string,
         )
 
@@ -880,10 +898,12 @@ class Parser:
             self.set_state(State.EXPECT_BOOL_OP)
         elif self.char.is_single_quote():
             self.in_list_current_value_is_string = True
+            self.in_list_quote_char = self.char.value
             self.store_typed_char(CharType.VALUE)
             self.set_state(State.IN_LIST_SINGLE_QUOTED_VALUE)
         elif self.char.is_double_quote():
             self.in_list_current_value_is_string = True
+            self.in_list_quote_char = self.char.value
             self.store_typed_char(CharType.VALUE)
             self.set_state(State.IN_LIST_DOUBLE_QUOTED_VALUE)
         elif self.char.is_value():

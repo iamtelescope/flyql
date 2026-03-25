@@ -42,10 +42,12 @@ type expectedAST struct {
 }
 
 type expectedExpression struct {
-	Key       string `json:"key"`
-	Operator  string `json:"operator"`
-	Value     any    `json:"value"`
-	ValueType string `json:"value_type"`
+	Key        string `json:"key"`
+	Operator   string `json:"operator"`
+	Value      any    `json:"value"`
+	ValueType  string `json:"value_type"`
+	Values     []any  `json:"values,omitempty"`
+	ValuesType string `json:"values_type,omitempty"`
 }
 
 func nodeToExpectedAST(node *Node) *expectedAST {
@@ -63,12 +65,21 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 		if node.Expression.ValueType == ValueTypeNumber {
 			valueType = "number"
 		}
-		result.Expression = &expectedExpression{
+		expr := &expectedExpression{
 			Key:       node.Expression.Key.Raw,
 			Operator:  node.Expression.Operator,
 			Value:     node.Expression.Value,
 			ValueType: valueType,
 		}
+		if node.Expression.Values != nil {
+			expr.Values = node.Expression.Values
+			valuesType := "string"
+			if node.Expression.ValuesType != nil && *node.Expression.ValuesType == ValueTypeNumber {
+				valuesType = "number"
+			}
+			expr.ValuesType = valuesType
+		}
+		result.Expression = expr
 	}
 
 	result.Left = nodeToExpectedAST(node.Left)
@@ -153,8 +164,11 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 			t.Errorf("%s: Operator mismatch: got %q, want %q", path, got.Expression.Operator, want.Expression.Operator)
 		}
 
-		if got.Expression.ValueType != want.Expression.ValueType {
-			t.Errorf("%s: ValueType mismatch: got %v, want %v", path, got.Expression.ValueType, want.Expression.ValueType)
+		// Skip value/valueType comparison for IN expressions (they use values/valuesType instead)
+		if want.Expression.Values == nil {
+			if got.Expression.ValueType != want.Expression.ValueType {
+				t.Errorf("%s: ValueType mismatch: got %v, want %v", path, got.Expression.ValueType, want.Expression.ValueType)
+			}
 		}
 
 		switch wv := want.Expression.Value.(type) {
@@ -203,6 +217,46 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 				}
 			}
 		}
+
+		if want.Expression.Values != nil {
+			if got.Expression.Values == nil {
+				t.Errorf("%s: expected values but got nil", path)
+			} else {
+				if got.Expression.ValuesType != want.Expression.ValuesType {
+					t.Errorf("%s: ValuesType mismatch: got %q, want %q", path, got.Expression.ValuesType, want.Expression.ValuesType)
+				}
+				if len(got.Expression.Values) != len(want.Expression.Values) {
+					t.Errorf("%s: Values length mismatch: got %d, want %d", path, len(got.Expression.Values), len(want.Expression.Values))
+				} else {
+					for i, wv := range want.Expression.Values {
+						gv := got.Expression.Values[i]
+						switch wval := wv.(type) {
+						case string:
+							if gval, ok := gv.(string); !ok || gval != wval {
+								t.Errorf("%s: Values[%d] mismatch: got %v, want %q", path, i, gv, wval)
+							}
+						case float64:
+							switch gval := gv.(type) {
+							case float64:
+								if gval != wval {
+									t.Errorf("%s: Values[%d] mismatch: got %v, want %v", path, i, gval, wval)
+								}
+							case int64:
+								if float64(gval) != wval {
+									t.Errorf("%s: Values[%d] mismatch: got %v, want %v", path, i, gval, wval)
+								}
+							case uint64:
+								if float64(gval) != wval {
+									t.Errorf("%s: Values[%d] mismatch: got %v, want %v", path, i, gval, wval)
+								}
+							default:
+								t.Errorf("%s: Values[%d] type mismatch: got %T, want number", path, i, gv)
+							}
+						}
+					}
+				}
+			}
+		}
 	} else if got.Expression != nil {
 		t.Errorf("%s: expected nil expression but got non-nil", path)
 	}
@@ -224,6 +278,7 @@ func TestParser(t *testing.T) {
 		"parser/not.json",
 		"parser/int64.json",
 		"parser/has.json",
+		"parser/escaped_quotes_in_values.json",
 	}
 
 	for _, file := range files {

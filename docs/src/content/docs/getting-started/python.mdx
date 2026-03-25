@@ -72,6 +72,23 @@ matches = evaluator.evaluate(result.root, Record(data))
 print(f"Matches: {matches}")  # True
 ```
 
+## Parse Column Expressions
+
+Parse a columns expression into structured data with segments, modifiers, and aliases:
+
+```python
+from flyql.columns import parse, parse_to_json
+
+# Parse to objects
+parsed = parse("message|chars(25) as msg, status")
+for col in parsed:
+    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
+
+# Or serialize directly to JSON for API responses
+json_str = parse_to_json("message, status|upper")
+print(json_str)
+```
+
 ## What's Next
 
 - [Syntax Reference](/syntax/) — all operators, boolean logic, patterns, and more

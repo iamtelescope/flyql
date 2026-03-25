@@ -82,28 +82,38 @@ func NormalizeStarRocksType(srType string) string {
 }
 
 type Column struct {
-	Name           string
-	JSONString     bool
-	Type           string
-	Values         []string
-	NormalizedType string
-	IsMap          bool
-	IsArray        bool
-	IsStruct       bool
-	IsJSON         bool
+	Name           string   `json:"name" yaml:"name"`
+	JSONString     bool     `json:"jsonstring" yaml:"jsonstring"`
+	Type           string   `json:"type" yaml:"type"`
+	Values         []string `json:"values,omitempty" yaml:"values,omitempty"`
+	NormalizedType string   `json:"normalized_type" yaml:"normalized_type"`
+	IsMap          bool     `json:"is_map" yaml:"is_map"`
+	IsArray        bool     `json:"is_array" yaml:"is_array"`
+	IsStruct       bool     `json:"is_struct" yaml:"is_struct"`
+	IsJSON         bool     `json:"is_json" yaml:"is_json"`
+	DisplayName    string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 }
 
-func NewColumn(name string, jsonString bool, columnType string, values []string) *Column {
-	normalizedType := NormalizeStarRocksType(columnType)
+type ColumnDef struct {
+	Name        string   `json:"name" yaml:"name"`
+	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
+	Type        string   `json:"type" yaml:"type"`
+	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+}
+
+func NewColumn(def ColumnDef) *Column {
+	normalizedType := NormalizeStarRocksType(def.Type)
 	return &Column{
-		Name:           name,
-		JSONString:     jsonString,
-		Type:           columnType,
-		Values:         values,
+		Name:           def.Name,
+		JSONString:     def.JSONString,
+		Type:           def.Type,
+		Values:         def.Values,
 		NormalizedType: normalizedType,
 		IsMap:          normalizedType == NormalizedTypeMap,
 		IsArray:        normalizedType == NormalizedTypeArray,
 		IsStruct:       normalizedType == NormalizedTypeStruct,
 		IsJSON:         normalizedType == NormalizedTypeJSON,
+		DisplayName:    def.DisplayName,
 	}
 }

@@ -64,36 +64,40 @@ func NormalizePostgreSQLType(pgType string) string {
 }
 
 type Column struct {
-	Name           string
-	Type           string
-	Values         []string
-	NormalizedType string
-	IsArray        bool
-	IsJSONB        bool
-	IsHstore       bool
+	Name           string   `json:"name" yaml:"name"`
+	Type           string   `json:"type" yaml:"type"`
+	Values         []string `json:"values,omitempty" yaml:"values,omitempty"`
+	NormalizedType string   `json:"normalized_type" yaml:"normalized_type"`
+	IsArray        bool     `json:"is_array" yaml:"is_array"`
+	IsJSONB        bool     `json:"is_jsonb" yaml:"is_jsonb"`
+	IsHstore       bool     `json:"is_hstore" yaml:"is_hstore"`
 	// RawIdentifier, if set, is used as-is in generated SQL instead of
 	// EscapeIdentifier(Name). Use this for table-qualified references
 	// (e.g. "r.environment") when the column name would otherwise be
 	// ambiguous across joined tables.
-	RawIdentifier string
+	RawIdentifier string `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
+	DisplayName   string `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 }
 
-func NewColumn(name string, columnType string, values []string) *Column {
-	normalizedType := NormalizePostgreSQLType(columnType)
+type ColumnDef struct {
+	Name          string   `json:"name" yaml:"name"`
+	Type          string   `json:"type" yaml:"type"`
+	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
+}
+
+func NewColumn(def ColumnDef) *Column {
+	normalizedType := NormalizePostgreSQLType(def.Type)
 	return &Column{
-		Name:           name,
-		Type:           columnType,
-		Values:         values,
+		Name:           def.Name,
+		Type:           def.Type,
+		Values:         def.Values,
 		NormalizedType: normalizedType,
 		IsArray:        normalizedType == NormalizedTypeArray,
 		IsJSONB:        normalizedType == NormalizedTypeJSON,
 		IsHstore:       normalizedType == NormalizedTypeHstore,
+		RawIdentifier:  def.RawIdentifier,
+		DisplayName:    def.DisplayName,
 	}
-}
-
-// WithRawIdentifier sets a table-qualified SQL expression used in place of
-// the escaped column name. Returns the column for chaining.
-func (c *Column) WithRawIdentifier(identifier string) *Column {
-	c.RawIdentifier = identifier
-	return c
 }

@@ -12,9 +12,18 @@ export function parse(text) {
     const columns = []
     for (const columnDict of parser.columns) {
         const key = parseKey(columnDict.name)
-        columns.push(new ParsedColumn(columnDict.name, columnDict.modifiers, columnDict.alias, key))
+        const alias = columnDict.alias
+        columns.push(new ParsedColumn(columnDict.name, columnDict.modifiers, alias, key, alias || ''))
     }
     return columns
+}
+
+export function parseToDicts(text) {
+    return parse(text).map((col) => col.asDict())
+}
+
+export function parseToJson(text) {
+    return JSON.stringify(parseToDicts(text))
 }
 
 export {

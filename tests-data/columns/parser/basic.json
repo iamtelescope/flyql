@@ -15,7 +15,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -33,7 +34,8 @@
             "labels",
             "tier"
           ],
-          "is_segmented": true
+          "is_segmented": true,
+          "display_name": ""
         }
       ]
     },
@@ -51,7 +53,8 @@
             "profile",
             "name"
           ],
-          "is_segmented": true
+          "is_segmented": true,
+          "display_name": ""
         }
       ]
     },
@@ -67,7 +70,8 @@
           "segments": [
             "user_id"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -83,7 +87,8 @@
           "segments": [
             "request-id"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -99,7 +104,8 @@
           "segments": [
             "path/to/column"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -112,8 +118,11 @@
           "name": "user@host",
           "modifiers": [],
           "alias": null,
-          "segments": ["user@host"],
-          "is_segmented": false
+          "segments": [
+            "user@host"
+          ],
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -129,7 +138,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": "msg"
         }
       ]
     },
@@ -150,7 +160,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -173,7 +184,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -189,7 +201,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         },
         {
           "name": "status",
@@ -198,7 +211,8 @@
           "segments": [
             "status"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         },
         {
           "name": "user_id",
@@ -207,7 +221,8 @@
           "segments": [
             "user_id"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -228,7 +243,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         },
         {
           "name": "status",
@@ -242,7 +258,8 @@
           "segments": [
             "status"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -258,7 +275,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -274,7 +292,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         },
         {
           "name": "status",
@@ -283,7 +302,8 @@
           "segments": [
             "status"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         },
         {
           "name": "user_id",
@@ -292,7 +312,8 @@
           "segments": [
             "user_id"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     }

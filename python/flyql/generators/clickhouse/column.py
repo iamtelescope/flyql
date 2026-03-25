@@ -117,6 +117,7 @@ class Column:
         jsonstring: bool,
         _type: str,
         values: Optional[List[str]] = None,
+        display_name: str = "",
     ):
         self.name = _escape_identifier(name)
         self.jsonstring = jsonstring
@@ -126,3 +127,4 @@ class Column:
         self.is_map = self.normalized_type == NORMALIZED_TYPE_MAP
         self.is_array = self.normalized_type == NORMALIZED_TYPE_ARRAY
         self.is_json = self.normalized_type == NORMALIZED_TYPE_JSON
+        self.display_name = display_name

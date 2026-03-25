@@ -1,4 +1,5 @@
-from typing import List
+import json
+from typing import Any, Dict, List
 from .parser import Parser
 from .column import ParsedColumn
 from .exceptions import ParserError
@@ -31,15 +32,32 @@ def parse(text: str) -> List[ParsedColumn]:
     for column_dict in parser.columns:
         # Parse the column name as a path with segments
         key = parse_key(column_dict["name"])
+        alias = column_dict["alias"]
         columns.append(
             ParsedColumn(
                 name=column_dict["name"],
                 modifiers=column_dict["modifiers"],
-                alias=column_dict["alias"],
+                alias=alias,
                 key=key,
+                display_name=alias if alias else "",
             )
         )
     return columns
 
 
-__all__ = ["parse", "Parser", "ParsedColumn", "ParserError"]
+def parse_to_dicts(text: str) -> List[Dict[str, Any]]:
+    return [col.as_dict() for col in parse(text)]
+
+
+def parse_to_json(text: str) -> str:
+    return json.dumps(parse_to_dicts(text))
+
+
+__all__ = [
+    "parse",
+    "parse_to_dicts",
+    "parse_to_json",
+    "Parser",
+    "ParsedColumn",
+    "ParserError",
+]

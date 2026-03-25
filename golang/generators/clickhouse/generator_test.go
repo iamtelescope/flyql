@@ -58,7 +58,12 @@ func loadColumns(t *testing.T) map[string]*Column {
 
 	columns := make(map[string]*Column)
 	for name, fd := range ff.Columns {
-		columns[name] = NewColumn(fd.Name, fd.JSONString, fd.Type, fd.Values)
+		columns[name] = NewColumn(ColumnDef{
+			Name:       fd.Name,
+			JSONString: fd.JSONString,
+			Type:       fd.Type,
+			Values:     fd.Values,
+		})
 	}
 	return columns
 }

@@ -296,6 +296,17 @@ function onPaste() {
 }
 
 function onKeydown(e) {
+    if (e.key === 'PageUp' || e.key === 'PageDown') {
+        e.preventDefault()
+        if (suggestions.value.length > 0) {
+            const len = suggestions.value.length
+            let idx = engine.state.selectedIndex
+            idx = e.key === 'PageUp' ? Math.max(0, idx - 10) : Math.min(len - 1, idx + 10)
+            engine.state.selectedIndex = idx
+            selectedIndex.value = idx
+        }
+        return
+    }
     if (suggestions.value.length > 0) {
         if (e.key === 'ArrowUp') {
             e.preventDefault()

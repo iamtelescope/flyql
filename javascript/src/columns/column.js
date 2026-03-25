@@ -1,9 +1,10 @@
 export class ParsedColumn {
-    constructor(name, modifiers, alias, key = null) {
+    constructor(name, modifiers, alias, key = null, displayName = '') {
         this.name = name
         this.modifiers = modifiers
         this.alias = alias
         this.key = key
+        this.displayName = displayName
     }
 
     get segments() {
@@ -21,6 +22,11 @@ export class ParsedColumn {
             alias: this.alias,
             segments: this.segments,
             is_segmented: this.isSegmented,
+            display_name: this.displayName,
         }
+    }
+
+    asJson() {
+        return JSON.stringify(this.asDict())
     }
 }

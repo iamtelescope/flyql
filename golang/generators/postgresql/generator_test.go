@@ -58,11 +58,12 @@ func loadColumns(t *testing.T) map[string]*Column {
 
 	columns := make(map[string]*Column)
 	for name, fd := range ff.Columns {
-		col := NewColumn(fd.Name, fd.Type, fd.Values)
-		if fd.RawIdentifier != "" {
-			col.WithRawIdentifier(fd.RawIdentifier)
-		}
-		columns[name] = col
+		columns[name] = NewColumn(ColumnDef{
+			Name:          fd.Name,
+			Type:          fd.Type,
+			Values:        fd.Values,
+			RawIdentifier: fd.RawIdentifier,
+		})
 	}
 	return columns
 }

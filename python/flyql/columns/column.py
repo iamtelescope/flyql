@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict, Any, Optional
 from flyql.core.key import Key
 
@@ -9,11 +10,13 @@ class ParsedColumn:
         modifiers: List[Dict[str, Any]],
         alias: Optional[str],
         key: Optional[Key] = None,
+        display_name: str = "",
     ):
         self.name = name
         self.modifiers = modifiers
         self.alias = alias
         self.key = key
+        self.display_name = display_name
 
     @property
     def segments(self) -> List[str]:
@@ -30,4 +33,8 @@ class ParsedColumn:
             "alias": self.alias,
             "segments": self.segments,
             "is_segmented": self.is_segmented,
+            "display_name": self.display_name,
         }
+
+    def as_json(self) -> str:
+        return json.dumps(self.as_dict())

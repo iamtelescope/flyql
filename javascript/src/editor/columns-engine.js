@@ -8,7 +8,7 @@
 import { Parser } from '../columns/parser.js'
 import { parse as parseColumns } from '../columns/index.js'
 import { State } from '../columns/state.js'
-import { CharType, KNOWN_MODIFIERS, MODIFIER_INFO } from '../columns/constants.js'
+import { CharType, KNOWN_MODIFIERS, MODIFIER_INFO, MODIFIER_OPERATOR, COLUMNS_DELIMITER } from '../columns/constants.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 
@@ -184,8 +184,18 @@ export class ColumnsEngine {
                 const resolvedCol = resolveColumnDef(this.columns, ctx.column)
                 if (resolvedCol && !resolvedCol.children) {
                     const nextSteps = [
-                        { label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' },
-                        { label: '|', insertText: '|', type: 'delimiter', detail: 'add modifier' },
+                        {
+                            label: COLUMNS_DELIMITER,
+                            insertText: COLUMNS_DELIMITER + ' ',
+                            type: 'delimiter',
+                            detail: 'next column',
+                        },
+                        {
+                            label: MODIFIER_OPERATOR,
+                            insertText: MODIFIER_OPERATOR,
+                            type: 'delimiter',
+                            detail: 'add modifier',
+                        },
                     ]
                     const nested = getNestedColumnSuggestions(this.columns, ctx.column).filter(
                         (s) => !existing.includes(s.label) && s.label.toLowerCase() !== prefix,
@@ -244,8 +254,18 @@ export class ColumnsEngine {
             if (hasExactMatch && prefix) {
                 // Exact match — show next-step actions first, then remaining columns
                 const nextSteps = [
-                    { label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' },
-                    { label: '|', insertText: '|', type: 'delimiter', detail: 'add modifier' },
+                    {
+                        label: COLUMNS_DELIMITER,
+                        insertText: COLUMNS_DELIMITER + ' ',
+                        type: 'delimiter',
+                        detail: 'next column',
+                    },
+                    {
+                        label: MODIFIER_OPERATOR,
+                        insertText: MODIFIER_OPERATOR,
+                        type: 'delimiter',
+                        detail: 'add modifier',
+                    },
                 ]
                 const otherColumns = columnSuggestions.filter((s) => s.label.toLowerCase() !== prefix)
                 this.suggestions = [...otherColumns, ...nextSteps]
@@ -266,7 +286,14 @@ export class ColumnsEngine {
                 const info =
                     MODIFIER_INFO[prefix] || MODIFIER_INFO[KNOWN_MODIFIERS.find((m) => m.toLowerCase() === prefix)]
                 const hasArgs = info && info.args.length > 0
-                const nextSteps = [{ label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' }]
+                const nextSteps = [
+                    {
+                        label: COLUMNS_DELIMITER,
+                        insertText: COLUMNS_DELIMITER + ' ',
+                        type: 'delimiter',
+                        detail: 'next column',
+                    },
+                ]
                 if (hasArgs) {
                     nextSteps.push({
                         label: '()',
@@ -276,7 +303,12 @@ export class ColumnsEngine {
                         cursorOffset: -1,
                     })
                 }
-                nextSteps.push({ label: '|', insertText: '|', type: 'delimiter', detail: 'chain modifier' })
+                nextSteps.push({
+                    label: MODIFIER_OPERATOR,
+                    insertText: MODIFIER_OPERATOR,
+                    type: 'delimiter',
+                    detail: 'chain modifier',
+                })
                 const otherMods = []
                 for (const mod of KNOWN_MODIFIERS) {
                     if (mod.toLowerCase() === prefix) continue
@@ -298,17 +330,49 @@ export class ColumnsEngine {
                 }
             }
         } else if (ctx.expecting === 'alias') {
-            // After column or modifier+space — suggest pipe for modifiers or comma for next column
-            this.suggestions = [
-                { label: '|', insertText: '|', type: 'delimiter', detail: 'add modifier' },
-                { label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' },
-            ]
+            if (ctx.state === State.EXPECT_ALIAS) {
+                // Inside alias value (e.g. "column as RC") — only separator is valid
+                this.suggestions = [
+                    {
+                        label: COLUMNS_DELIMITER,
+                        insertText: COLUMNS_DELIMITER + ' ',
+                        type: 'delimiter',
+                        detail: 'next column',
+                    },
+                ]
+            } else {
+                // After column/modifier+space, before alias operator — pipe and comma are valid
+                this.suggestions = [
+                    {
+                        label: MODIFIER_OPERATOR,
+                        insertText: MODIFIER_OPERATOR,
+                        type: 'delimiter',
+                        detail: 'add modifier',
+                    },
+                    {
+                        label: COLUMNS_DELIMITER,
+                        insertText: COLUMNS_DELIMITER + ' ',
+                        type: 'delimiter',
+                        detail: 'next column',
+                    },
+                ]
+            }
             this.suggestionType = 'delimiter'
         } else if (ctx.expecting === 'next') {
             // After modifier with args completes — suggest comma or pipe
             this.suggestions = [
-                { label: ',', insertText: ', ', type: 'delimiter', detail: 'next column' },
-                { label: '|', insertText: '|', type: 'delimiter', detail: 'chain modifier' },
+                {
+                    label: COLUMNS_DELIMITER,
+                    insertText: COLUMNS_DELIMITER + ' ',
+                    type: 'delimiter',
+                    detail: 'next column',
+                },
+                {
+                    label: MODIFIER_OPERATOR,
+                    insertText: MODIFIER_OPERATOR,
+                    type: 'delimiter',
+                    detail: 'chain modifier',
+                },
             ]
             this.suggestionType = 'delimiter'
         } else if (ctx.expecting === 'error') {

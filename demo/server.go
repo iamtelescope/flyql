@@ -157,9 +157,9 @@ func buildGeneratorColumns() (map[string]*clickhouse.Column, map[string]*postgre
 				}
 			}
 		}
-		ch[name] = clickhouse.NewColumn(name, col.CHJsonStr, col.CHType, enumValues)
-		pg[name] = postgresql.NewColumn(name, col.PGType, enumValues)
-		sr[name] = starrocks.NewColumn(name, col.SRJsonStr, col.SRType, enumValues)
+		ch[name] = clickhouse.NewColumn(clickhouse.ColumnDef{Name: name, JSONString: col.CHJsonStr, Type: col.CHType, Values: enumValues})
+		pg[name] = postgresql.NewColumn(postgresql.ColumnDef{Name: name, Type: col.PGType, Values: enumValues})
+		sr[name] = starrocks.NewColumn(starrocks.ColumnDef{Name: name, JSONString: col.SRJsonStr, Type: col.SRType, Values: enumValues})
 	}
 	return ch, pg, sr
 }

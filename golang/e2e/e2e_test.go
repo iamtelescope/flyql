@@ -29,16 +29,18 @@ type testCasesFile struct {
 }
 
 type chColumnDef struct {
-	Name       string   `json:"name"`
-	JSONString bool     `json:"jsonstring"`
-	Type       string   `json:"type"`
-	Values     []string `json:"values"`
+	Name        string   `json:"name"`
+	JSONString  bool     `json:"jsonstring"`
+	Type        string   `json:"type"`
+	Values      []string `json:"values"`
+	DisplayName string   `json:"display_name"`
 }
 
 type pgColumnDef struct {
-	Name   string   `json:"name"`
-	Type   string   `json:"type"`
-	Values []string `json:"values"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Values      []string `json:"values"`
+	DisplayName string   `json:"display_name"`
 }
 
 type chColumnsFile struct {
@@ -184,7 +186,13 @@ func loadClickHouseColumns(t *testing.T) map[string]*clickhousegen.Column {
 	}
 	cols := make(map[string]*clickhousegen.Column, len(f.Columns))
 	for name, def := range f.Columns {
-		cols[name] = clickhousegen.NewColumn(def.Name, def.JSONString, def.Type, def.Values)
+		cols[name] = clickhousegen.NewColumn(clickhousegen.ColumnDef{
+			Name:        def.Name,
+			JSONString:  def.JSONString,
+			Type:        def.Type,
+			Values:      def.Values,
+			DisplayName: def.DisplayName,
+		})
 	}
 	return cols
 }
@@ -201,16 +209,22 @@ func loadPostgreSQLColumns(t *testing.T) map[string]*postgresqlgen.Column {
 	}
 	cols := make(map[string]*postgresqlgen.Column, len(f.Columns))
 	for name, def := range f.Columns {
-		cols[name] = postgresqlgen.NewColumn(def.Name, def.Type, def.Values)
+		cols[name] = postgresqlgen.NewColumn(postgresqlgen.ColumnDef{
+			Name:        def.Name,
+			Type:        def.Type,
+			Values:      def.Values,
+			DisplayName: def.DisplayName,
+		})
 	}
 	return cols
 }
 
 type srColumnDef struct {
-	Name       string   `json:"name"`
-	JSONString bool     `json:"jsonstring"`
-	Type       string   `json:"type"`
-	Values     []string `json:"values"`
+	Name        string   `json:"name"`
+	JSONString  bool     `json:"jsonstring"`
+	Type        string   `json:"type"`
+	Values      []string `json:"values"`
+	DisplayName string   `json:"display_name"`
 }
 
 type srColumnsFile struct {
@@ -229,7 +243,13 @@ func loadStarRocksColumns(t *testing.T) map[string]*starrocksgen.Column {
 	}
 	cols := make(map[string]*starrocksgen.Column, len(f.Columns))
 	for name, def := range f.Columns {
-		cols[name] = starrocksgen.NewColumn(def.Name, def.JSONString, def.Type, def.Values)
+		cols[name] = starrocksgen.NewColumn(starrocksgen.ColumnDef{
+			Name:        def.Name,
+			JSONString:  def.JSONString,
+			Type:        def.Type,
+			Values:      def.Values,
+			DisplayName: def.DisplayName,
+		})
 	}
 	return cols
 }

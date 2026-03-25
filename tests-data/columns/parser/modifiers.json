@@ -20,7 +20,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -43,7 +44,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -66,7 +68,8 @@
           "segments": [
             "value"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -93,7 +96,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -117,7 +121,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -140,7 +145,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -163,7 +169,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -187,7 +194,8 @@
           "segments": [
             "text"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -208,7 +216,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": "MSG"
         }
       ]
     },
@@ -235,7 +244,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": "msg"
         }
       ]
     },
@@ -258,7 +268,8 @@
             "labels",
             "tier"
           ],
-          "is_segmented": true
+          "is_segmented": true,
+          "display_name": ""
         }
       ]
     },
@@ -295,7 +306,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -316,7 +328,8 @@
           "segments": [
             "message"
           ],
-          "is_segmented": false
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     }

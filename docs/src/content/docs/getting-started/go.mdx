@@ -52,8 +52,8 @@ func main() {
 	}
 
 	columns := map[string]*clickhouse.Column{
-		"status": clickhouse.NewColumn("status", false, "UInt32", nil),
-		"host":   clickhouse.NewColumn("host", false, "String", nil),
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
 	}
 
 	sql, err := clickhouse.ToSQL(result.Root, columns)
@@ -90,6 +90,33 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## Parse Column Expressions
+
+Parse a columns expression into structured data with segments, modifiers, and aliases:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	parsed, err := columns.Parse("message|chars(25) as msg, status")
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	// Or serialize directly to JSON for API responses
+	jsonBytes, _ := columns.ParseToJSON("message, status|upper")
+	fmt.Println(string(jsonBytes))
 }
 ```
 

@@ -33,6 +33,40 @@ message~"connection (refused|reset)"
 host~"^prod-[0-9]+"
 ```
 
+### Case-Insensitive Matching
+
+To perform case-insensitive regex matching, use the `(?i)` flag at the start of your pattern:
+
+```
+message~"(?i)error"
+level~"(?i)^(warn|error|fatal)$"
+```
+
+The `(?i)` inline flag is a regex feature — support varies by backend:
+
+| Backend | `(?i)` support | Notes |
+|---------|----------------|-------|
+| **ClickHouse** | Yes | RE2 syntax |
+| **PostgreSQL** | Yes | POSIX regex |
+| **StarRocks** | Yes | RE2 syntax |
+| **Go in-memory matcher** | Yes | Go `regexp` (RE2) |
+| **Python in-memory matcher** | Yes | `google-re2` |
+| **JavaScript in-memory matcher** | No | ECMAScript `RegExp` does not support `(?i)` inline flags |
+
+For the JavaScript in-memory matcher, use a character-class approach instead to achieve case-insensitive matching:
+
+```
+message~"[eE][rR][rR][oO][rR]"
+```
+
+Or, when targeting SQL backends only, `(?i)` works reliably across all three dialects.
+
+Combine case-insensitive matching with negation to exclude patterns regardless of case:
+
+```
+message~"(?i)error" and message!~"(?i)warning"
+```
+
 ## Wildcard Matching
 
 Use `*` at the end of an unquoted value for glob-style prefix matching:

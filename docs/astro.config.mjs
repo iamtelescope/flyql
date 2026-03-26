@@ -53,6 +53,12 @@ export default defineConfig({
           ],
         },
         {
+          label: "Advanced",
+          items: [
+            { label: "AST & Custom Generators", link: "/advanced/ast/" },
+          ],
+        },
+        {
           label: "SQL Dialects",
           items: [
             { label: "Overview", link: "/sql/" },

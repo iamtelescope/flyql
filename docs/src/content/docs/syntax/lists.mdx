@@ -45,6 +45,27 @@ status in []        # always false — nothing matches an empty list
 status not in []    # always true — everything is "not in" an empty list
 ```
 
+## Type Consistency
+
+Lists **must** contain values of a uniform type — all strings or all numbers. Mixing types within a single list causes a parse error:
+
+```
+# Valid — all numbers
+status in [200, 201, 204]
+
+# Valid — all strings
+env in ['prod', 'staging']
+
+# Invalid — mixed types (parse error)
+values in [200, 'ok']
+```
+
+The parser tracks the type of the first value in the list and rejects any subsequent value of a different type. This is enforced at parse time, before the query reaches any generator or matcher.
+
+When a SQL generator processes a list, it additionally validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
+
+The `valuesType` field on the parsed expression indicates whether the list contains `"string"` or `"number"` values. For empty lists, `valuesType` is `null`.
+
 ## Combined with Other Operators
 
 List operators combine with boolean operators like any other condition:

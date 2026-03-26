@@ -20,7 +20,20 @@ const result = parse("status=200 and active")
 console.log(result.root)
 ```
 
-`parse()` returns a `Parser` object with a `root` node representing the AST. It throws on invalid input.
+`parse()` returns a `Parser` object with a `root` node representing the AST. It throws a `ParserError` on invalid input:
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status=200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
 
 ## Generate SQL
 

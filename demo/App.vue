@@ -31,6 +31,7 @@
                     placeholder="Type a FlyQL query..."
                     :autofocus="tab === 'query'"
                     :debug="false"
+                    :dark="isDark"
                     @submit="onSubmit"
                     @focus="addLog('focus')"
                     @blur="addLog('blur')"
@@ -75,6 +76,7 @@
                     :on-key-discovery="onKeyDiscovery"
                     placeholder="message, status|upper, host as h"
                     :debug="false"
+                    :dark="isDark"
                     @update:parsed="onColumnsParsed"
                     @submit="onSubmit"
                 />
@@ -174,7 +176,6 @@ function addLog(text) {
 function toggleDark() {
     isDark.value = !isDark.value
     document.documentElement.classList.toggle('dark', isDark.value)
-    document.documentElement.classList.toggle('flyql-dark', isDark.value)
     addLog(`Theme: ${isDark.value ? 'dark' : 'light'}`)
 }
 

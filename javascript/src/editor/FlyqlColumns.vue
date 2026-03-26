@@ -52,7 +52,14 @@
         </div>
         <!-- Suggestion panel -->
         <Teleport to="body">
-            <div v-if="focused && activated" ref="panelRef" class="flyql-panel" @mousedown.prevent :style="panelStyle">
+            <div
+                v-if="focused && activated"
+                ref="panelRef"
+                class="flyql-panel"
+                :class="{ 'flyql-dark': dark }"
+                @mousedown.prevent
+                :style="panelStyle"
+            >
                 <div v-if="debug" class="flyql-panel__header flyql-panel__debug">
                     <span v-if="context"
                         >state={{ context.state }} expecting={{ context.expecting }} col={{ context.column }} mod={{
@@ -119,6 +126,7 @@ const props = defineProps({
     placeholder: { type: String, default: '' },
     autofocus: { type: Boolean, default: false },
     debug: { type: Boolean, default: false },
+    dark: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'update:parsed', 'submit', 'parse-error', 'focus', 'blur'])

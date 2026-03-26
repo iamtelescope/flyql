@@ -54,22 +54,19 @@ The light theme is the default. No additional classes are needed:
 
 ## Dark Theme
 
-Apply the `flyql-dark` class to the document root or any ancestor element:
-
-```javascript
-// Toggle dark mode
-document.documentElement.classList.add('flyql-dark')
-
-// Or toggle dynamically
-document.documentElement.classList.toggle('flyql-dark', isDark)
-```
-
-Or in your template:
+Use the `dark` prop to enable the built-in dark theme:
 
 ```html
-<div :class="{ 'flyql-dark': isDark }">
-    <FlyqlEditor v-model="query" :columns="columns" />
-</div>
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+The `dark` prop applies the `flyql-dark` class to the suggestion panel, which is teleported to `<body>` and can't inherit from ancestor wrappers. The editor input itself continues to inherit CSS variables from its ancestors as normal, so wrapper-level overrides still work.
+
+Alternatively, you can apply the `flyql-dark` class to `<html>` or `<body>`, which will reach both the editor and the teleported panel via CSS variable inheritance:
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
 ```
 
 ## Custom Theme

@@ -90,6 +90,41 @@ describe('suggestions', () => {
             expect(inOp).toBeTruthy()
             expect(inOp.insertText).toBe(' in ')
         })
+
+        it('includes HAS operator with spaces', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'status')
+            const hasOp = result.find((s) => s.label === 'has')
+            expect(hasOp).toBeTruthy()
+            expect(hasOp.insertText).toBe(' has ')
+            expect(hasOp.detail).toBe('has value')
+        })
+
+        it('sorts HAS after IN', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'status')
+            const labels = result.map((s) => s.label)
+            const inIndex = labels.indexOf('in')
+            const hasIndex = labels.indexOf('has')
+            expect(inIndex).toBeGreaterThanOrEqual(0)
+            expect(hasIndex).toBeGreaterThan(inIndex)
+        })
+
+        it('excludes HAS for number columns', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'count')
+            const labels = result.map((s) => s.label)
+            expect(labels).not.toContain('has')
+        })
+
+        it('includes HAS for string columns', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'host')
+            const labels = result.map((s) => s.label)
+            expect(labels).toContain('has')
+        })
+
+        it('does not suggest NOT_HAS directly', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'host')
+            const labels = result.map((s) => s.label)
+            expect(labels).not.toContain('not has')
+        })
     })
 
     describe('getBoolSuggestions', () => {

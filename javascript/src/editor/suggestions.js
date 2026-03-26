@@ -14,6 +14,7 @@ const OPERATOR_NAMES = {
     [Operator.LOWER_THAN]: 'lower than',
     [Operator.LOWER_OR_EQUALS_THAN]: 'lower or equals',
     [Operator.IN]: 'in list',
+    [Operator.HAS]: 'has value',
 }
 
 export const STATE_LABELS = {
@@ -159,7 +160,11 @@ export function getOperatorSuggestions(columns, fieldName) {
         { label: Operator.LOWER_THAN, insertText: Operator.LOWER_THAN, sortText: 'g' },
         { label: Operator.LOWER_OR_EQUALS_THAN, insertText: Operator.LOWER_OR_EQUALS_THAN, sortText: 'h' },
         { label: Operator.IN, insertText: ' ' + Operator.IN + ' ', sortText: 'i' },
+        { label: Operator.HAS, insertText: ' ' + Operator.HAS + ' ', sortText: 'j' },
     ]
+    if (col && col.type === 'number') {
+        ops.pop() // remove HAS — not supported for number columns
+    }
     if (!col || (col.type !== 'enum' && col.type !== 'number')) {
         ops.push({ label: Operator.REGEX, insertText: Operator.REGEX, sortText: 'c' })
         ops.push({ label: Operator.NOT_REGEX, insertText: Operator.NOT_REGEX, sortText: 'd' })

@@ -138,6 +138,12 @@ describe('EditorEngine', () => {
             expect(ctx.keyValueOperator).toBe('!')
         })
 
+        it('returns none expecting for EXPECT_HAS_KEYWORD state', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('status not h')
+            expect(ctx.expecting).toBe('none')
+        })
+
         it('returns ERROR for invalid input', () => {
             const engine = new EditorEngine(TEST_COLUMNS)
             const ctx = engine.buildContext('===')

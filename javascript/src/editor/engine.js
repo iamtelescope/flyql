@@ -184,6 +184,8 @@ export class EditorEngine {
             ctx.expecting = 'column'
         } else if (parser.state === State.EXPECT_IN_KEYWORD) {
             ctx.expecting = 'none'
+        } else if (parser.state === State.EXPECT_HAS_KEYWORD) {
+            ctx.expecting = 'none'
         }
 
         return ctx

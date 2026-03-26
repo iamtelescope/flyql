@@ -134,6 +134,30 @@
       "input": "details.items.'0'.name",
       "expected_result": "success",
       "expected_sql": "\"details\"->'items'->'0'->'name' AS \"details.items.'0'.name\""
+    },
+    {
+      "name": "jsonstring_single_path",
+      "input": "json_meta.key",
+      "expected_result": "success",
+      "expected_sql": "(\"json_meta\"::jsonb)->'key' AS \"json_meta.key\""
+    },
+    {
+      "name": "jsonstring_nested_path",
+      "input": "json_meta.user.name",
+      "expected_result": "success",
+      "expected_sql": "(\"json_meta\"::jsonb)->'user'->'name' AS \"json_meta.user.name\""
+    },
+    {
+      "name": "jsonstring_with_alias",
+      "input": "json_meta.user.name as uname",
+      "expected_result": "success",
+      "expected_sql": "(\"json_meta\"::jsonb)->'user'->'name' AS \"uname\""
+    },
+    {
+      "name": "jsonstring_root_column",
+      "input": "json_meta",
+      "expected_result": "success",
+      "expected_sql": "\"json_meta\""
     }
   ]
 }

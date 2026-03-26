@@ -62,7 +62,12 @@ def build_columns() -> dict[str, Column]:
     col_data = load_json(TEST_DATA_DIR / "postgresql" / "columns.json")
     columns: dict[str, Column] = {}
     for key, col in col_data["columns"].items():
-        c = Column(name=col["name"], _type=col["type"], values=col.get("values"))
+        c = Column(
+            name=col["name"],
+            _type=col["type"],
+            values=col.get("values"),
+            jsonstring=col.get("jsonstring", False),
+        )
         if col.get("raw_identifier"):
             c.with_raw_identifier(col["raw_identifier"])
         columns[key] = c
@@ -186,8 +191,10 @@ def test_postgresql_select(
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
         raw_rows = pg_query_rows(query)
         # Strip JSON quotes from raw jsonb values (psql returns "value" for jsonb ->)
-        rows = [
-            [
+        expected_col_count = len(expected_rows[0]) if expected_rows else 0
+        rows = []
+        for row in raw_rows:
+            cleaned = [
                 (
                     cell[1:-1]
                     if len(cell) >= 2 and cell.startswith('"') and cell.endswith('"')
@@ -195,8 +202,10 @@ def test_postgresql_select(
                 )
                 for cell in row
             ]
-            for row in raw_rows
-        ]
+            # psql omits trailing tab-separated NULLs; pad to expected column count
+            while len(cleaned) < expected_col_count:
+                cleaned.append("")
+            rows.append(cleaned)
         result["returned_rows"] = rows
         result["passed"] = rows == expected_rows
 

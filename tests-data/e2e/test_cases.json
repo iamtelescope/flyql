@@ -385,6 +385,72 @@
       "flyql": "message has 'error' or message has 'world'",
       "expected_ids": [2, 3, 5],
       "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "jsonstring_segmented_string_equals",
+      "flyql": "json_meta.region='us-east'",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_segmented_number_equals",
+      "flyql": "json_meta.count=42",
+      "expected_ids": [1],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_segmented_number_greater",
+      "flyql": "json_meta.count>50",
+      "expected_ids": [3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_segmented_regex",
+      "flyql": "json_meta.level~'err.*'",
+      "expected_ids": [3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_segmented_in_list",
+      "flyql": "json_meta.level in ['info', 'error']",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_truthy_object",
+      "flyql": "json_meta",
+      "expected_ids": [1, 2, 3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_falsy_null_and_empty",
+      "flyql": "not json_meta",
+      "expected_ids": [4, 5, 6],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_truthy_segmented",
+      "flyql": "json_meta.region",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_falsy_segmented",
+      "flyql": "not json_meta.region",
+      "expected_ids": [2, 4, 5, 6],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_has_key",
+      "flyql": "json_meta has 'region'",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql"]
+    },
+    {
+      "name": "jsonstring_not_has_key",
+      "flyql": "json_meta not has 'region'",
+      "expected_ids": [2, 5, 6],
+      "databases": ["postgresql"]
     }
   ]
 }

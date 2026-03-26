@@ -255,13 +255,14 @@ function expressionToSQLSegmented(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (column.normalizedType) {
+    if (column.normalizedType && !column.jsonString) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
     const identifier = getIdentifier(column)
 
-    if (column.isJSONB) {
+    if (column.isJSONB || column.jsonString) {
+        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
         const jsonPath = expr.key.segments.slice(1)
         const allQuoted = extractQuotedSegments(expr.key.raw)
         const jsonPathQuoted = allQuoted.slice(1)
@@ -269,7 +270,7 @@ function expressionToSQLSegmented(expr, columns) {
             validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
         }
 
-        const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+        const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
         const value = escapeParam(expr.value)
 
         switch (true) {
@@ -278,11 +279,11 @@ function expressionToSQLSegmented(expr, columns) {
             case expr.operator === Operator.NOT_REGEX:
                 return `${pathExpr} !~ ${value}`
             case typeof expr.value === 'number' || typeof expr.value === 'bigint': {
-                const jsonbRaw = buildJSONBPathRaw(identifier, jsonPath, jsonPathQuoted)
+                const jsonbRaw = buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
                 return `(jsonb_typeof(${jsonbRaw}) = 'number' AND (${pathExpr})::numeric ${expr.operator} ${value})`
             }
             case typeof expr.value === 'string': {
-                const jsonbRaw = buildJSONBPathRaw(identifier, jsonPath, jsonPathQuoted)
+                const jsonbRaw = buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
                 return `(jsonb_typeof(${jsonbRaw}) = 'string' AND ${pathExpr} ${expr.operator} ${value})`
             }
             default:
@@ -350,14 +351,15 @@ function inExpressionToSQL(expr, columns) {
     const identifier = getIdentifier(column)
 
     if (expr.key.isSegmented) {
-        if (column.isJSONB) {
+        if (column.isJSONB || column.jsonString) {
+            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
             return `${pathExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
@@ -388,14 +390,15 @@ function truthyExpressionToSQL(expr, columns) {
     const identifier = getIdentifier(column)
 
     if (expr.key.isSegmented) {
-        if (column.isJSONB) {
+        if (column.isJSONB || column.jsonString) {
+            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
             return `(${pathExpr} IS NOT NULL AND ${pathExpr} != '')`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
@@ -412,6 +415,10 @@ function truthyExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (column.jsonString) {
+        return `(${identifier} IS NOT NULL AND ${identifier} != '' AND CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) > 0 WHEN 'object' THEN ${identifier}::jsonb != '{}'::jsonb ELSE false END)`
     }
 
     switch (column.normalizedType) {
@@ -439,14 +446,15 @@ function falsyExpressionToSQL(expr, columns) {
     const identifier = getIdentifier(column)
 
     if (expr.key.isSegmented) {
-        if (column.isJSONB) {
+        if (column.isJSONB || column.jsonString) {
+            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
             return `(${pathExpr} IS NULL OR ${pathExpr} = '')`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
@@ -463,6 +471,10 @@ function falsyExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (column.jsonString) {
+        return `(${identifier} IS NULL OR ${identifier} = '' OR CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) = 0 WHEN 'object' THEN ${identifier}::jsonb = '{}'::jsonb ELSE true END)`
     }
 
     switch (column.normalizedType) {
@@ -492,14 +504,15 @@ function hasExpressionToSQL(expr, columns) {
     const value = escapeParam(expr.value)
 
     if (expr.key.isSegmented) {
-        if (column.isJSONB) {
+        if (column.isJSONB || column.jsonString) {
+            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
             if (isNotHas) {
                 return `position(${value} in ${pathExpr}) = 0`
             }
@@ -536,11 +549,12 @@ function hasExpressionToSQL(expr, columns) {
         return `${value} = ANY(${identifier})`
     }
 
-    if (column.isJSONB) {
+    if (column.isJSONB || column.jsonString) {
+        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
         if (isNotHas) {
-            return `NOT (${identifier} ? ${value})`
+            return `NOT (${castIdentifier} ? ${value})`
         }
-        return `${identifier} ? ${value}`
+        return `${castIdentifier} ? ${value}`
     }
 
     if (column.isHstore) {
@@ -693,11 +707,12 @@ function buildSelectExpr(identifier, column, path, pathQuoted) {
         return identifier
     }
 
-    if (column.isJSONB) {
+    if (column.isJSONB || column.jsonString) {
+        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
         for (let i = 0; i < path.length; i++) {
             validateJSONPathPart(path[i], pathQuoted[i])
         }
-        return buildJSONBPathRaw(identifier, path, pathQuoted)
+        return buildJSONBPathRaw(castIdentifier, path, pathQuoted)
     }
 
     if (column.isHstore) {

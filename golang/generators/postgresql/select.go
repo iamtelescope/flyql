@@ -76,13 +76,17 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 		return identifier, nil
 	}
 
-	if column.IsJSONB {
+	if column.IsJSONB || column.JSONString {
+		castIdentifier := identifier
+		if column.JSONString {
+			castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+		}
 		for i, part := range path {
 			if err := validateJSONPathPart(part, pathQuoted[i]); err != nil {
 				return "", err
 			}
 		}
-		return buildJSONBPathRaw(identifier, path, pathQuoted), nil
+		return buildJSONBPathRaw(castIdentifier, path, pathQuoted), nil
 	}
 
 	if column.IsHstore {

@@ -56,7 +56,7 @@ function buildColumns() {
     const colData = loadJSON(path.join(testDataDir, 'postgresql', 'columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        const column = newColumn(col.name, col.type, col.values)
+        const column = newColumn(col.name, col.jsonstring, col.type, col.values)
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }
@@ -181,13 +181,19 @@ describe('PostgreSQL E2E', () => {
                     // psql returns raw jsonb with JSON quotes (e.g., '"us-east"').
                     // Go's pgx driver auto-converts jsonb to string, stripping quotes.
                     // Strip surrounding JSON quotes to match expected text values.
-                    const rows = rawRows.map((row) =>
-                        row.map((cell) =>
+                    const expectedColCount = expectedRows.length > 0 ? expectedRows[0].length : 0
+                    const rows = rawRows.map((row) => {
+                        const cleaned = row.map((cell) =>
                             cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')
                                 ? cell.slice(1, -1)
                                 : cell,
-                        ),
-                    )
+                        )
+                        // psql omits trailing tab-separated NULLs; pad to expected column count
+                        while (cleaned.length < expectedColCount) {
+                            cleaned.push('')
+                        }
+                        return cleaned
+                    })
                     result.returned_rows = rows
                     result.passed = JSON.stringify(rows) === JSON.stringify(expectedRows)
 

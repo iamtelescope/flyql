@@ -40,6 +40,7 @@ def load_test_cases() -> list[dict[str, Any]]:
                 "meta.'dc.region'",
                 "meta.'0'",
                 "meta.tags.",
+                "json_meta",
                 "hello*'",
                 "'*@",
                 "created_at<=",

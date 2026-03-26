@@ -65,6 +65,7 @@ func NormalizePostgreSQLType(pgType string) string {
 
 type Column struct {
 	Name           string   `json:"name" yaml:"name"`
+	JSONString     bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type           string   `json:"type" yaml:"type"`
 	Values         []string `json:"values,omitempty" yaml:"values,omitempty"`
 	NormalizedType string   `json:"normalized_type" yaml:"normalized_type"`
@@ -81,6 +82,7 @@ type Column struct {
 
 type ColumnDef struct {
 	Name          string   `json:"name" yaml:"name"`
+	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type          string   `json:"type" yaml:"type"`
 	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
 	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
@@ -91,6 +93,7 @@ func NewColumn(def ColumnDef) *Column {
 	normalizedType := NormalizePostgreSQLType(def.Type)
 	return &Column{
 		Name:           def.Name,
+		JSONString:     def.JSONString,
 		Type:           def.Type,
 		Values:         def.Values,
 		NormalizedType: normalizedType,

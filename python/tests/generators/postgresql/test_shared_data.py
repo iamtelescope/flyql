@@ -21,7 +21,12 @@ def load_columns():
 
     columns = {}
     for name, fd in data["columns"].items():
-        col = Column(fd["name"], fd["type"], fd.get("values"))
+        col = Column(
+            fd["name"],
+            fd["type"],
+            fd.get("values"),
+            jsonstring=fd.get("jsonstring", False),
+        )
         if fd.get("raw_identifier"):
             col.with_raw_identifier(fd["raw_identifier"])
         columns[name] = col

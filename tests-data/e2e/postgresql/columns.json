@@ -4,66 +4,85 @@
   "columns": {
     "id": {
       "name": "id",
+      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "message": {
       "name": "message",
+      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "count": {
       "name": "count",
+      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "price": {
       "name": "price",
+      "jsonstring": false,
       "type": "real",
       "values": null
     },
     "active": {
       "name": "active",
+      "jsonstring": false,
       "type": "boolean",
       "values": null
     },
     "created_at": {
       "name": "created_at",
+      "jsonstring": false,
       "type": "date",
       "values": null
     },
     "status": {
       "name": "status",
+      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "name": {
       "name": "name",
+      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "env": {
       "name": "env",
+      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "meta": {
       "name": "meta",
+      "jsonstring": false,
       "type": "jsonb",
       "values": null
     },
     "tags": {
       "name": "tags",
+      "jsonstring": false,
       "type": "text[]",
       "values": null
     },
     "metadata": {
       "name": "metadata",
+      "jsonstring": false,
       "type": "hstore",
       "values": null
     },
     "user@host": {
       "name": "user@host",
+      "jsonstring": false,
+      "type": "text",
+      "values": null
+    },
+    "json_meta": {
+      "name": "json_meta",
+      "jsonstring": true,
       "type": "text",
       "values": null
     }

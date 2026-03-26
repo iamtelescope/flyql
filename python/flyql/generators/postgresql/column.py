@@ -72,6 +72,7 @@ class Column:
         values: Optional[List[str]] = None,
         display_name: str = "",
         raw_identifier: str = "",
+        jsonstring: bool = False,
     ):
         self.name = name
         self.type = _type
@@ -82,6 +83,7 @@ class Column:
         self.is_hstore = self.normalized_type == NORMALIZED_TYPE_HSTORE
         self.display_name = display_name
         self.raw_identifier = raw_identifier
+        self.jsonstring = jsonstring
 
     def with_raw_identifier(self, identifier: str) -> "Column":
         self.raw_identifier = identifier

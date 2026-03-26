@@ -28,6 +28,7 @@ function loadTestCases() {
         !tc.flyql.includes("meta.'dc.region'") &&
         !tc.flyql.includes("meta.'0'") &&
         !tc.flyql.includes('meta.tags.') &&
+        !tc.flyql.includes('json_meta') &&
         !tc.flyql.includes("hello*'") &&
         !tc.flyql.includes("'*@") &&
         !tc.flyql.includes('created_at<=')

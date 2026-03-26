@@ -38,6 +38,7 @@ type chColumnDef struct {
 
 type pgColumnDef struct {
 	Name        string   `json:"name"`
+	JSONString  bool     `json:"jsonstring"`
 	Type        string   `json:"type"`
 	Values      []string `json:"values"`
 	DisplayName string   `json:"display_name"`
@@ -211,6 +212,7 @@ func loadPostgreSQLColumns(t *testing.T) map[string]*postgresqlgen.Column {
 	for name, def := range f.Columns {
 		cols[name] = postgresqlgen.NewColumn(postgresqlgen.ColumnDef{
 			Name:        def.Name,
+			JSONString:  def.JSONString,
 			Type:        def.Type,
 			Values:      def.Values,
 			DisplayName: def.DisplayName,

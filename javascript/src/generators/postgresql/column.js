@@ -120,8 +120,9 @@ export function normalizePostgreSQLType(pgType) {
 }
 
 export class Column {
-    constructor(name, type, values) {
+    constructor(name, jsonString, type, values) {
         this.name = name
+        this.jsonString = !!jsonString
         this.type = type
         this.values = values || []
         this.normalizedType = normalizePostgreSQLType(type)
@@ -137,6 +138,6 @@ export class Column {
     }
 }
 
-export function newColumn(name, type, values) {
-    return new Column(name, type, values)
+export function newColumn(name, jsonString, type, values) {
+    return new Column(name, jsonString, type, values)
 }

@@ -24,6 +24,7 @@ type columnsFile struct {
 
 type columnDef struct {
 	Name          string   `json:"name"`
+	JSONString    bool     `json:"jsonstring"`
 	Type          string   `json:"type"`
 	Values        []string `json:"values"`
 	RawIdentifier string   `json:"raw_identifier,omitempty"`
@@ -60,6 +61,7 @@ func loadColumns(t *testing.T) map[string]*Column {
 	for name, fd := range ff.Columns {
 		columns[name] = NewColumn(ColumnDef{
 			Name:          fd.Name,
+			JSONString:    fd.JSONString,
 			Type:          fd.Type,
 			Values:        fd.Values,
 			RawIdentifier: fd.RawIdentifier,

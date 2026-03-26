@@ -212,14 +212,15 @@ def expression_to_sql_segmented(
 
     column = columns[column_name]
 
-    if column.normalized_type is not None:
+    if column.normalized_type is not None and not column.jsonstring:
         validate_operation(
             expression.value, column.normalized_type, expression.operator
         )
 
     identifier = get_identifier(column)
 
-    if column.is_jsonb:
+    if column.is_jsonb or column.jsonstring:
+        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         json_path = expression.key.segments[1:]
         json_path_quoted = expression.key.quoted_segments[1:]
         for i, part in enumerate(json_path):
@@ -227,7 +228,7 @@ def expression_to_sql_segmented(
                 part, json_path_quoted[i] if i < len(json_path_quoted) else False
             )
 
-        path_expr = _build_jsonb_path(identifier, json_path, json_path_quoted)
+        path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
         value = escape_param(expression.value)
 
         if expression.operator == Operator.REGEX.value:
@@ -237,13 +238,17 @@ def expression_to_sql_segmented(
         elif isinstance(expression.value, (int, float)) and not isinstance(
             expression.value, bool
         ):
-            jsonb_raw = _build_jsonb_path_raw(identifier, json_path, json_path_quoted)
+            jsonb_raw = _build_jsonb_path_raw(
+                cast_identifier, json_path, json_path_quoted
+            )
             return (
                 f"(jsonb_typeof({jsonb_raw}) = 'number' AND "
                 f"({path_expr})::numeric {expression.operator} {value})"
             )
         elif isinstance(expression.value, str):
-            jsonb_raw = _build_jsonb_path_raw(identifier, json_path, json_path_quoted)
+            jsonb_raw = _build_jsonb_path_raw(
+                cast_identifier, json_path, json_path_quoted
+            )
             return (
                 f"(jsonb_typeof({jsonb_raw}) = 'string' AND "
                 f"{path_expr} {expression.operator} {value})"
@@ -307,14 +312,17 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb:
+        if column.is_jsonb or column.jsonstring:
+            cast_identifier = (
+                f"({identifier}::jsonb)" if column.jsonstring else identifier
+            )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
             for i, part in enumerate(json_path):
                 validate_json_path_part(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
-            path_expr = _build_jsonb_path(identifier, json_path, json_path_quoted)
+            path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
             return f"{path_expr} {sql_op} ({values_sql})"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
@@ -346,14 +354,17 @@ def truthy_expression_to_sql(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb:
+        if column.is_jsonb or column.jsonstring:
+            cast_identifier = (
+                f"({identifier}::jsonb)" if column.jsonstring else identifier
+            )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
             for i, part in enumerate(json_path):
                 validate_json_path_part(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
-            path_expr = _build_jsonb_path(identifier, json_path, json_path_quoted)
+            path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
             return f"({path_expr} IS NOT NULL AND {path_expr} != '')"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
@@ -378,6 +389,16 @@ def truthy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
 
+    if column.jsonstring:
+        empty_obj = "'{}'::jsonb"
+        return (
+            f"({identifier} IS NOT NULL AND {identifier} != '' AND "
+            f"CASE jsonb_typeof({identifier}::jsonb) "
+            f"WHEN 'array' THEN jsonb_array_length({identifier}::jsonb) > 0 "
+            f"WHEN 'object' THEN {identifier}::jsonb != {empty_obj} "
+            f"ELSE false END)"
+        )
+
     if column.normalized_type == NORMALIZED_TYPE_BOOL:
         return identifier
     elif column.normalized_type == NORMALIZED_TYPE_STRING:
@@ -401,14 +422,17 @@ def falsy_expression_to_sql(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb:
+        if column.is_jsonb or column.jsonstring:
+            cast_identifier = (
+                f"({identifier}::jsonb)" if column.jsonstring else identifier
+            )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
             for i, part in enumerate(json_path):
                 validate_json_path_part(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
-            path_expr = _build_jsonb_path(identifier, json_path, json_path_quoted)
+            path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
             return f"({path_expr} IS NULL OR {path_expr} = '')"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
@@ -433,6 +457,16 @@ def falsy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
 
+    if column.jsonstring:
+        empty_obj = "'{}'::jsonb"
+        return (
+            f"({identifier} IS NULL OR {identifier} = '' OR "
+            f"CASE jsonb_typeof({identifier}::jsonb) "
+            f"WHEN 'array' THEN jsonb_array_length({identifier}::jsonb) = 0 "
+            f"WHEN 'object' THEN {identifier}::jsonb = {empty_obj} "
+            f"ELSE true END)"
+        )
+
     if column.normalized_type == NORMALIZED_TYPE_BOOL:
         return f"NOT {identifier}"
     elif column.normalized_type == NORMALIZED_TYPE_STRING:
@@ -456,14 +490,17 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
     value = escape_param(expression.value)
 
     if expression.key.is_segmented:
-        if column.is_jsonb:
+        if column.is_jsonb or column.jsonstring:
+            cast_identifier = (
+                f"({identifier}::jsonb)" if column.jsonstring else identifier
+            )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
             for i, part in enumerate(json_path):
                 validate_json_path_part(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
-            path_expr = _build_jsonb_path(identifier, json_path, json_path_quoted)
+            path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
             if is_not_has:
                 return f"position({value} in {path_expr}) = 0"
             return f"position({value} in {path_expr}) > 0"
@@ -494,10 +531,11 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         if is_not_has:
             return f"NOT ({value} = ANY({identifier}))"
         return f"{value} = ANY({identifier})"
-    elif column.is_jsonb:
+    elif column.is_jsonb or column.jsonstring:
+        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         if is_not_has:
-            return f"NOT ({identifier} ? {value})"
-        return f"{identifier} ? {value}"
+            return f"NOT ({cast_identifier} ? {value})"
+        return f"{cast_identifier} ? {value}"
     elif column.is_hstore:
         if is_not_has:
             return f"NOT ({identifier} ? {value})"
@@ -615,12 +653,13 @@ def _build_select_expr(
     if not path:
         return identifier
 
-    if column.is_jsonb:
+    if column.is_jsonb or column.jsonstring:
+        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         for i, part in enumerate(path):
             validate_json_path_part(
                 part, path_quoted[i] if i < len(path_quoted) else False
             )
-        return _build_jsonb_path_raw(identifier, path, path_quoted)
+        return _build_jsonb_path_raw(cast_identifier, path, path_quoted)
 
     if column.is_hstore:
         map_key = ".".join(path)

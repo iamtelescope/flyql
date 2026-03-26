@@ -290,7 +290,11 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	identifier := getIdentifier(column)
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSONB {
+		if column.IsJSONB || column.JSONString {
+			castIdentifier := identifier
+			if column.JSONString {
+				castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+			}
 			jsonPath := expr.Key.Segments[1:]
 			jsonPathQuoted := expr.Key.QuotedSegments[1:]
 			for i, part := range jsonPath {
@@ -298,7 +302,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 					return "", err
 				}
 			}
-			pathExpr := buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("%s %s (%s)", pathExpr, sqlOp, valuesSQL), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -339,7 +343,11 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	identifier := getIdentifier(column)
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSONB {
+		if column.IsJSONB || column.JSONString {
+			castIdentifier := identifier
+			if column.JSONString {
+				castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+			}
 			jsonPath := expr.Key.Segments[1:]
 			jsonPathQuoted := expr.Key.QuotedSegments[1:]
 			for i, part := range jsonPath {
@@ -347,7 +355,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 					return "", err
 				}
 			}
-			pathExpr := buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 			if isNotHas {
 				return fmt.Sprintf("position(%s in %s) = 0", value, pathExpr), nil
 			}
@@ -380,7 +388,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		}
 	}
 
-	if column.NormalizedType == NormalizedTypeString {
+	if column.NormalizedType == NormalizedTypeString && !column.JSONString {
 		if isNotHas {
 			return fmt.Sprintf("(%s IS NULL OR position(%s in %s) = 0)", identifier, value, identifier), nil
 		}
@@ -390,11 +398,15 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			return fmt.Sprintf("NOT (%s = ANY(%s))", value, identifier), nil
 		}
 		return fmt.Sprintf("%s = ANY(%s)", value, identifier), nil
-	} else if column.IsJSONB {
-		if isNotHas {
-			return fmt.Sprintf("NOT (%s ? %s)", identifier, value), nil
+	} else if column.IsJSONB || column.JSONString {
+		castIdentifier := identifier
+		if column.JSONString {
+			castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
 		}
-		return fmt.Sprintf("%s ? %s", identifier, value), nil
+		if isNotHas {
+			return fmt.Sprintf("NOT (%s ? %s)", castIdentifier, value), nil
+		}
+		return fmt.Sprintf("%s ? %s", castIdentifier, value), nil
 	} else if column.IsHstore {
 		if isNotHas {
 			return fmt.Sprintf("NOT (%s ? %s)", identifier, value), nil
@@ -415,7 +427,11 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 	identifier := getIdentifier(column)
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSONB {
+		if column.IsJSONB || column.JSONString {
+			castIdentifier := identifier
+			if column.JSONString {
+				castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+			}
 			jsonPath := expr.Key.Segments[1:]
 			jsonPathQuoted := expr.Key.QuotedSegments[1:]
 			for i, part := range jsonPath {
@@ -423,7 +439,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 					return "", err
 				}
 			}
-			pathExpr := buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", pathExpr, pathExpr), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -445,6 +461,10 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
+	}
+
+	if column.JSONString {
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != '' AND CASE jsonb_typeof(%s::jsonb) WHEN 'array' THEN jsonb_array_length(%s::jsonb) > 0 WHEN 'object' THEN %s::jsonb != '{}'::jsonb ELSE false END)", identifier, identifier, identifier, identifier, identifier), nil
 	}
 
 	switch column.NormalizedType {
@@ -471,7 +491,11 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 	identifier := getIdentifier(column)
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSONB {
+		if column.IsJSONB || column.JSONString {
+			castIdentifier := identifier
+			if column.JSONString {
+				castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+			}
 			jsonPath := expr.Key.Segments[1:]
 			jsonPathQuoted := expr.Key.QuotedSegments[1:]
 			for i, part := range jsonPath {
@@ -479,7 +503,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 					return "", err
 				}
 			}
-			pathExpr := buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(%s IS NULL OR %s = '')", pathExpr, pathExpr), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -501,6 +525,10 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
+	}
+
+	if column.JSONString {
+		return fmt.Sprintf("(%s IS NULL OR %s = '' OR CASE jsonb_typeof(%s::jsonb) WHEN 'array' THEN jsonb_array_length(%s::jsonb) = 0 WHEN 'object' THEN %s::jsonb = '{}'::jsonb ELSE true END)", identifier, identifier, identifier, identifier, identifier), nil
 	}
 
 	switch column.NormalizedType {
@@ -525,7 +553,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" {
+	if column.NormalizedType != "" && !column.JSONString {
 		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
 			return "", err
 		}
@@ -533,7 +561,11 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 
 	identifier := getIdentifier(column)
 
-	if column.IsJSONB {
+	if column.IsJSONB || column.JSONString {
+		castIdentifier := identifier
+		if column.JSONString {
+			castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
+		}
 		jsonPath := expr.Key.Segments[1:]
 		jsonPathQuoted := expr.Key.QuotedSegments[1:]
 		for i, part := range jsonPath {
@@ -542,27 +574,23 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			}
 		}
 
-		pathExpr := buildJSONBPath(identifier, jsonPath, jsonPathQuoted)
+		pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 
 		value, err := EscapeParam(expr.Value)
 		if err != nil {
 			return "", err
 		}
 
-		// Add jsonb_typeof guards to enforce strict JSON type matching:
-		// - numeric literal (unquoted 1): only matches JSON numbers, not JSON strings "1"
-		// - string literal (quoted '1'):  only matches JSON strings, not JSON numbers 1
-		// Regex operators work on text output of ->>, so no type guard is applied.
 		switch {
 		case expr.Operator == flyql.OpRegex:
 			return fmt.Sprintf("%s ~ %s", pathExpr, value), nil
 		case expr.Operator == flyql.OpNotRegex:
 			return fmt.Sprintf("%s !~ %s", pathExpr, value), nil
 		case expr.ValueType == flyql.ValueTypeNumber:
-			jsonbRaw := buildJSONBPathRaw(identifier, jsonPath, jsonPathQuoted)
+			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(jsonb_typeof(%s) = 'number' AND (%s)::numeric %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
 		case expr.ValueType == flyql.ValueTypeString:
-			jsonbRaw := buildJSONBPathRaw(identifier, jsonPath, jsonPathQuoted)
+			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(jsonb_typeof(%s) = 'string' AND %s %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
 		default:
 			return fmt.Sprintf("%s %s %s", pathExpr, expr.Operator, value), nil

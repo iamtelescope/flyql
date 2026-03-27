@@ -5,12 +5,12 @@ import {
     DOT,
     COLON,
     SLASH,
-    MODIFIER_ARGUMENT_DELIMITER,
+    TRANSFORMER_ARGUMENT_DELIMITER,
     BRACKET_OPEN,
     BRACKET_CLOSE,
     DOUBLE_QUOTE,
     SINGLE_QUOTE,
-    MODIFIER_OPERATOR,
+    TRANSFORMER_OPERATOR,
     COLUMNS_DELIMITER,
     ALIAS_DELIMITER,
     SPACE,
@@ -41,19 +41,21 @@ export class Char {
         )
     }
 
-    isModifierArgumentValue() {
-        return this.value !== MODIFIER_ARGUMENT_DELIMITER && this.value !== BRACKET_OPEN && this.value !== BRACKET_CLOSE
+    isTransformerArgumentValue() {
+        return (
+            this.value !== TRANSFORMER_ARGUMENT_DELIMITER && this.value !== BRACKET_OPEN && this.value !== BRACKET_CLOSE
+        )
     }
 
-    isModifierDoubleQuotedArgumentValue() {
+    isTransformerDoubleQuotedArgumentValue() {
         return !this.isDoubleQuote()
     }
 
-    isModifierSingleQuotedArgumentValue() {
+    isTransformerSingleQuotedArgumentValue() {
         return !this.isSingleQuote()
     }
 
-    isModifierValue() {
+    isTransformerValue() {
         return /[a-zA-Z0-9]/.test(this.value) || this.value === UNDERSCORE
     }
 
@@ -77,12 +79,12 @@ export class Char {
         return this.value === SINGLE_QUOTE
     }
 
-    isModifierOperator() {
-        return this.value === MODIFIER_OPERATOR
+    isTransformerOperator() {
+        return this.value === TRANSFORMER_OPERATOR
     }
 
-    isModifierArgumentDelimiter() {
-        return this.value === MODIFIER_ARGUMENT_DELIMITER
+    isTransformerArgumentDelimiter() {
+        return this.value === TRANSFORMER_ARGUMENT_DELIMITER
     }
 
     isColumnsDelimiter() {

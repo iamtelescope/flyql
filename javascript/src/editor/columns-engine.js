@@ -8,14 +8,20 @@
 import { Parser } from '../columns/parser.js'
 import { parse as parseColumns } from '../columns/index.js'
 import { State } from '../columns/state.js'
-import { CharType, KNOWN_MODIFIERS, MODIFIER_INFO, MODIFIER_OPERATOR, COLUMNS_DELIMITER } from '../columns/constants.js'
+import {
+    CharType,
+    KNOWN_TRANSFORMERS,
+    TRANSFORMER_INFO,
+    TRANSFORMER_OPERATOR,
+    COLUMNS_DELIMITER,
+} from '../columns/constants.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 
 const COL_CHAR_TYPE_CLASS = {
     [CharType.COLUMN]: 'flyql-col-column',
     [CharType.OPERATOR]: 'flyql-col-operator',
-    [CharType.MODIFIER]: 'flyql-col-modifier',
+    [CharType.TRANSFORMER]: 'flyql-col-transformer',
     [CharType.ARGUMENT]: 'flyql-col-argument',
     [CharType.ALIAS]: 'flyql-col-alias',
     [CharType.ERROR]: 'flyql-col-error',
@@ -23,16 +29,16 @@ const COL_CHAR_TYPE_CLASS = {
 
 const STATE_LABELS = {
     column: 'column name',
-    modifier: 'modifiers',
+    transformer: 'transformers',
     delimiter: 'next',
     alias: 'next',
     argument: 'arguments',
-    next: 'column name, separator or modifier',
+    next: 'column name, separator or transformer',
     none: '',
 }
 
-function modifierDetail(name) {
-    const info = MODIFIER_INFO[name]
+function transformerDetail(name) {
+    const info = TRANSFORMER_INFO[name]
     if (!info || info.args.length === 0) return 'no args'
     const parts = info.args.map((a) => (a.optional ? a.type + '?' : a.type))
     return '(' + parts.join(', ') + ')'
@@ -54,7 +60,7 @@ function wrapSpan(charType, text) {
 export class ColumnsEngine {
     constructor(columns, options = {}) {
         this.columns = columns || {}
-        const capDefaults = { modifiers: false }
+        const capDefaults = { transformers: false }
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
@@ -84,7 +90,7 @@ export class ColumnsEngine {
             return {
                 expecting: 'column',
                 column: '',
-                modifier: '',
+                transformer: '',
                 state: State.EXPECT_COLUMN,
                 textBeforeCursor: '',
                 existingColumns: [],
@@ -98,7 +104,7 @@ export class ColumnsEngine {
             return {
                 expecting: 'error',
                 column: '',
-                modifier: '',
+                transformer: '',
                 state: State.ERROR,
                 error: e.message || 'Parse error',
                 textBeforeCursor,
@@ -110,7 +116,7 @@ export class ColumnsEngine {
             return {
                 expecting: 'error',
                 column: '',
-                modifier: '',
+                transformer: '',
                 state: State.ERROR,
                 error: parser.errorText || 'Parse error',
                 textBeforeCursor,
@@ -123,7 +129,7 @@ export class ColumnsEngine {
         const ctx = {
             state: parser.state,
             column: parser.column || '',
-            modifier: parser.modifier || '',
+            transformer: parser.transformer || '',
             expecting: 'none',
             textBeforeCursor,
             existingColumns,
@@ -131,8 +137,8 @@ export class ColumnsEngine {
 
         if (parser.state === State.EXPECT_COLUMN || parser.state === State.COLUMN) {
             ctx.expecting = 'column'
-        } else if (parser.state === State.EXPECT_MODIFIER || parser.state === State.MODIFIER) {
-            ctx.expecting = 'modifier'
+        } else if (parser.state === State.EXPECT_TRANSFORMER || parser.state === State.TRANSFORMER) {
+            ctx.expecting = 'transformer'
         } else if (
             parser.state === State.EXPECT_ALIAS ||
             parser.state === State.EXPECT_ALIAS_OPERATOR ||
@@ -140,22 +146,22 @@ export class ColumnsEngine {
         ) {
             ctx.expecting = 'alias'
         } else if (
-            parser.state === State.MODIFIER_ARGUMENT ||
-            parser.state === State.EXPECT_MODIFIER_ARGUMENT ||
-            parser.state === State.MODIFIER_ARGUMENT_DOUBLE_QUOTED ||
-            parser.state === State.MODIFIER_ARGUMENT_SINGLE_QUOTED ||
-            parser.state === State.EXPECT_MODIFIER_ARGUMENT_DELIMITER
+            parser.state === State.TRANSFORMER_ARGUMENT ||
+            parser.state === State.EXPECT_TRANSFORMER_ARGUMENT ||
+            parser.state === State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED ||
+            parser.state === State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED ||
+            parser.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER
         ) {
             // Peek at char after cursor: if it's ) and parser is between args
             // (waiting for comma or close), user is done — show next steps.
             // But NOT when actively typing an argument or in empty parens.
             const charAtCursor = fullText ? fullText[textBeforeCursor.length] : undefined
-            if (charAtCursor === ')' && parser.state === State.EXPECT_MODIFIER_ARGUMENT_DELIMITER) {
+            if (charAtCursor === ')' && parser.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER) {
                 ctx.expecting = 'next'
             } else {
                 ctx.expecting = 'argument'
             }
-        } else if (parser.state === State.MODIFIER_COMPLETE) {
+        } else if (parser.state === State.TRANSFORMER_COMPLETE) {
             ctx.expecting = 'next'
         }
 
@@ -193,12 +199,12 @@ export class ColumnsEngine {
                             detail: 'next column',
                         },
                     ]
-                    if (this.capabilities.modifiers) {
+                    if (this.capabilities.transformers) {
                         nextSteps.push({
-                            label: MODIFIER_OPERATOR,
-                            insertText: MODIFIER_OPERATOR,
+                            label: TRANSFORMER_OPERATOR,
+                            insertText: TRANSFORMER_OPERATOR,
                             type: 'delimiter',
-                            detail: 'add modifier',
+                            detail: 'add transformer',
                         })
                     }
                     const nested = getNestedColumnSuggestions(this.columns, ctx.column).filter(
@@ -265,12 +271,12 @@ export class ColumnsEngine {
                         detail: 'next column',
                     },
                 ]
-                if (this.capabilities.modifiers) {
+                if (this.capabilities.transformers) {
                     nextSteps.push({
-                        label: MODIFIER_OPERATOR,
-                        insertText: MODIFIER_OPERATOR,
+                        label: TRANSFORMER_OPERATOR,
+                        insertText: TRANSFORMER_OPERATOR,
                         type: 'delimiter',
-                        detail: 'add modifier',
+                        detail: 'add transformer',
                     })
                 }
                 const otherColumns = columnSuggestions.filter((s) => s.label.toLowerCase() !== prefix)
@@ -283,19 +289,20 @@ export class ColumnsEngine {
                     this.message = 'No matching columns'
                 }
             }
-        } else if (ctx.expecting === 'modifier') {
-            if (!this.capabilities.modifiers) {
-                this.message = 'modifiers are not enabled'
+        } else if (ctx.expecting === 'transformer') {
+            if (!this.capabilities.transformers) {
+                this.message = 'transformers are not enabled'
                 this.suggestionType = ''
                 return { ctx, seq }
             }
-            const prefix = ctx.modifier.toLowerCase()
-            const hasExactMatch = prefix && KNOWN_MODIFIERS.some((m) => m.toLowerCase() === prefix)
+            const prefix = ctx.transformer.toLowerCase()
+            const hasExactMatch = prefix && KNOWN_TRANSFORMERS.some((m) => m.toLowerCase() === prefix)
 
             if (hasExactMatch) {
-                // Exact modifier match — show next steps, then other matching modifiers
+                // Exact transformer match — show next steps, then other matching transformers
                 const info =
-                    MODIFIER_INFO[prefix] || MODIFIER_INFO[KNOWN_MODIFIERS.find((m) => m.toLowerCase() === prefix)]
+                    TRANSFORMER_INFO[prefix] ||
+                    TRANSFORMER_INFO[KNOWN_TRANSFORMERS.find((m) => m.toLowerCase() === prefix)]
                 const hasArgs = info && info.args.length > 0
                 const nextSteps = [
                     {
@@ -310,34 +317,39 @@ export class ColumnsEngine {
                         label: '()',
                         insertText: '()',
                         type: 'delimiter',
-                        detail: modifierDetail(prefix),
+                        detail: transformerDetail(prefix),
                         cursorOffset: -1,
                     })
                 }
                 nextSteps.push({
-                    label: MODIFIER_OPERATOR,
-                    insertText: MODIFIER_OPERATOR,
+                    label: TRANSFORMER_OPERATOR,
+                    insertText: TRANSFORMER_OPERATOR,
                     type: 'delimiter',
-                    detail: 'chain modifier',
+                    detail: 'chain transformer',
                 })
                 const otherMods = []
-                for (const mod of KNOWN_MODIFIERS) {
+                for (const mod of KNOWN_TRANSFORMERS) {
                     if (mod.toLowerCase() === prefix) continue
                     if (!mod.toLowerCase().startsWith(prefix)) continue
-                    otherMods.push({ label: mod, insertText: mod, type: 'modifier', detail: modifierDetail(mod) })
+                    otherMods.push({ label: mod, insertText: mod, type: 'transformer', detail: transformerDetail(mod) })
                 }
                 this.suggestions = [...otherMods, ...nextSteps]
                 this.suggestionType = 'next'
             } else {
                 const suggestions = []
-                for (const mod of KNOWN_MODIFIERS) {
+                for (const mod of KNOWN_TRANSFORMERS) {
                     if (prefix && !mod.toLowerCase().startsWith(prefix)) continue
-                    suggestions.push({ label: mod, insertText: mod, type: 'modifier', detail: modifierDetail(mod) })
+                    suggestions.push({
+                        label: mod,
+                        insertText: mod,
+                        type: 'transformer',
+                        detail: transformerDetail(mod),
+                    })
                 }
                 this.suggestions = suggestions
-                this.suggestionType = 'modifier'
+                this.suggestionType = 'transformer'
                 if (suggestions.length === 0 && prefix) {
-                    this.message = 'No matching modifiers'
+                    this.message = 'No matching transformers'
                 }
             }
         } else if (ctx.expecting === 'alias') {
@@ -352,14 +364,14 @@ export class ColumnsEngine {
                     },
                 ]
             } else {
-                // After column/modifier+space, before alias operator — pipe and comma are valid
+                // After column/transformer+space, before alias operator — pipe and comma are valid
                 const items = []
-                if (this.capabilities.modifiers) {
+                if (this.capabilities.transformers) {
                     items.push({
-                        label: MODIFIER_OPERATOR,
-                        insertText: MODIFIER_OPERATOR,
+                        label: TRANSFORMER_OPERATOR,
+                        insertText: TRANSFORMER_OPERATOR,
                         type: 'delimiter',
-                        detail: 'add modifier',
+                        detail: 'add transformer',
                     })
                 }
                 items.push({
@@ -372,7 +384,7 @@ export class ColumnsEngine {
             }
             this.suggestionType = 'delimiter'
         } else if (ctx.expecting === 'next') {
-            // After modifier with args completes — suggest comma or pipe
+            // After transformer with args completes — suggest comma or pipe
             const items = [
                 {
                     label: COLUMNS_DELIMITER,
@@ -381,12 +393,12 @@ export class ColumnsEngine {
                     detail: 'next column',
                 },
             ]
-            if (this.capabilities.modifiers) {
+            if (this.capabilities.transformers) {
                 items.push({
-                    label: MODIFIER_OPERATOR,
-                    insertText: MODIFIER_OPERATOR,
+                    label: TRANSFORMER_OPERATOR,
+                    insertText: TRANSFORMER_OPERATOR,
                     type: 'delimiter',
-                    detail: 'chain modifier',
+                    detail: 'chain transformer',
                 })
             }
             this.suggestions = items
@@ -507,8 +519,8 @@ export class ColumnsEngine {
             parser.state === State.EXPECT_COLUMN ||
             parser.state === State.EXPECT_ALIAS_OPERATOR ||
             parser.state === State.EXPECT_ALIAS ||
-            parser.state === State.MODIFIER ||
-            parser.state === State.MODIFIER_COMPLETE
+            parser.state === State.TRANSFORMER ||
+            parser.state === State.TRANSFORMER_COMPLETE
         ) {
             return { valid: true, message: 'Valid columns expression' }
         }
@@ -541,8 +553,8 @@ export class ColumnsEngine {
             const prefix = context.column || ''
             return { start: cursor - prefix.length, end: cursor }
         }
-        if (context.expecting === 'modifier') {
-            const prefix = context.modifier || ''
+        if (context.expecting === 'transformer') {
+            const prefix = context.transformer || ''
             return { start: cursor - prefix.length, end: cursor }
         }
         return { start: cursor, end: cursor }
@@ -575,7 +587,7 @@ export class ColumnsEngine {
     getFilterPrefix() {
         if (!this.context) return ''
         if (this.context.expecting === 'column') return this.context.column || ''
-        if (this.context.expecting === 'modifier') return this.context.modifier || ''
+        if (this.context.expecting === 'transformer') return this.context.transformer || ''
         return ''
     }
 

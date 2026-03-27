@@ -19,14 +19,14 @@ export function validateColumns(columns, schema, options = {}) {
 
         const schemaColumn = schema[columnName]
 
-        if (options.validateModifiers && column.modifiers) {
-            const allowedModifiers = options.allowedModifiers || []
-            for (const modifier of column.modifiers) {
-                if (allowedModifiers.length > 0 && !allowedModifiers.includes(modifier.name)) {
+        if (options.validateTransformers && column.transformers) {
+            const allowedTransformers = options.allowedTransformers || []
+            for (const transformer of column.transformers) {
+                if (allowedTransformers.length > 0 && !allowedTransformers.includes(transformer.name)) {
                     warnings.push({
                         column: column.name,
-                        modifier: modifier.name,
-                        warning: `Unknown modifier '${modifier.name}'`,
+                        transformer: transformer.name,
+                        warning: `Unknown transformer '${transformer.name}'`,
                     })
                 }
             }

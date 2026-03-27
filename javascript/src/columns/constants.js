@@ -2,8 +2,8 @@ export const AT = '@'
 export const DOT = '.'
 export const DOUBLE_QUOTE = '"'
 export const SINGLE_QUOTE = "'"
-export const MODIFIER_OPERATOR = '|'
-export const MODIFIER_ARGUMENT_DELIMITER = ','
+export const TRANSFORMER_OPERATOR = '|'
+export const TRANSFORMER_ARGUMENT_DELIMITER = ','
 export const COLUMNS_DELIMITER = ','
 export const SPACE = ' '
 export const ALIAS_DELIMITER = ' '
@@ -27,7 +27,7 @@ export const ESCAPE_SEQUENCES = {
     '\\': '\\',
 }
 
-export const MODIFIER_INFO = {
+export const TRANSFORMER_INFO = {
     chars: { args: [{ type: 'int' }, { type: 'int', optional: true }] },
     slice: { args: [{ type: 'int' }, { type: 'int', optional: true }] },
     lines: { args: [{ type: 'int' }, { type: 'int', optional: true }] },
@@ -48,14 +48,14 @@ export const MODIFIER_INFO = {
     href: { args: [{ type: 'string' }, { type: 'string', optional: true }] },
 }
 
-export const KNOWN_MODIFIERS = Object.keys(MODIFIER_INFO)
+export const KNOWN_TRANSFORMERS = Object.keys(TRANSFORMER_INFO)
 
 // Token types for Monaco editor syntax highlighting
 export const CharType = {
     COLUMN: 'column',
     ALIAS: 'alias',
     OPERATOR: 'operator',
-    MODIFIER: 'modifier',
+    TRANSFORMER: 'transformer',
     ARGUMENT: 'argument',
     ERROR: 'error',
 }
@@ -64,7 +64,7 @@ export const tokenTypes = [
     CharType.COLUMN,
     CharType.ALIAS,
     CharType.OPERATOR,
-    CharType.MODIFIER,
+    CharType.TRANSFORMER,
     CharType.ARGUMENT,
     CharType.ERROR,
 ]

@@ -6,7 +6,7 @@ import { generateMonacoTokens as generateTokens } from './monaco.js'
 
 export class Parser {
     constructor(capabilities) {
-        const defaults = { modifiers: false }
+        const defaults = { transformers: false }
         this.capabilities = capabilities ? { ...defaults, ...capabilities } : { ...defaults }
         this.line = 0
         this.linePos = 0
@@ -17,11 +17,11 @@ export class Parser {
         this.column = ''
         this.alias = ''
         this.aliasOperator = ''
-        this.modifier = ''
-        this.modifierArgument = ''
-        this.modifierArgumentType = 'auto'
-        this.modifiers = []
-        this.modifierArguments = []
+        this.transformer = ''
+        this.transformerArgument = ''
+        this.transformerArgumentType = 'auto'
+        this.transformers = []
+        this.transformerArguments = []
         this.columns = []
         this.text = ''
         this.typedChars = []
@@ -44,23 +44,23 @@ export class Parser {
     storeColumn() {
         this.columns.push({
             name: this.column,
-            modifiers: this.modifiers,
+            transformers: this.transformers,
             alias: this.alias || null,
         })
         this.resetData()
     }
 
-    storeModifier() {
-        this.modifiers.push({
-            name: this.modifier,
-            arguments: this.modifierArguments,
+    storeTransformer() {
+        this.transformers.push({
+            name: this.transformer,
+            arguments: this.transformerArguments,
         })
-        this.resetModifier()
+        this.resetTransformer()
     }
 
     storeArgument() {
-        let value = this.modifierArgument
-        if (this.modifierArgumentType === 'auto') {
+        let value = this.transformerArgument
+        if (this.transformerArgumentType === 'auto') {
             const intValue = parseInt(value, 10)
             const floatValue = parseFloat(value)
             if (!isNaN(intValue) && intValue.toString() === value) {
@@ -69,8 +69,8 @@ export class Parser {
                 value = floatValue
             }
         }
-        this.modifierArguments.push(value)
-        this.resetModifierArgument()
+        this.transformerArguments.push(value)
+        this.resetTransformerArgument()
     }
 
     setChar(char) {
@@ -81,10 +81,10 @@ export class Parser {
         this.state = state
     }
 
-    resetModifier() {
-        this.modifier = ''
-        this.modifierArguments = []
-        this.modifierArgument = ''
+    resetTransformer() {
+        this.transformer = ''
+        this.transformerArguments = []
+        this.transformerArgument = ''
     }
 
     resetColumn() {
@@ -99,20 +99,20 @@ export class Parser {
         this.alias = ''
     }
 
-    resetModifiers() {
-        this.modifiers = []
+    resetTransformers() {
+        this.transformers = []
     }
 
-    resetModifierArgument() {
-        this.modifierArgument = ''
-        this.modifierArgumentType = 'auto'
+    resetTransformerArgument() {
+        this.transformerArgument = ''
+        this.transformerArgumentType = 'auto'
     }
 
     resetData() {
         this.resetColumn()
         this.resetAlias()
-        this.resetModifier()
-        this.resetModifiers()
+        this.resetTransformer()
+        this.resetTransformers()
         this.resetAliasOperator()
     }
 
@@ -132,16 +132,16 @@ export class Parser {
         }
     }
 
-    extendModifier() {
+    extendTransformer() {
         if (this.char) {
-            this.modifier += this.char.value
-            this.trackChar(CharType.MODIFIER)
+            this.transformer += this.char.value
+            this.trackChar(CharType.TRANSFORMER)
         }
     }
 
-    extendModifierArgument() {
+    extendTransformerArgument() {
         if (this.char) {
-            this.modifierArgument += this.char.value
+            this.transformerArgument += this.char.value
             this.trackChar(CharType.ARGUMENT)
         }
     }
@@ -201,22 +201,22 @@ export class Parser {
                 this.inStateExpectAliasOperator()
             } else if (this.state === State.EXPECT_ALIAS_DELIMITER) {
                 this.inStateExpectAliasDelimiter()
-            } else if (this.state === State.EXPECT_MODIFIER) {
-                this.inStateExpectModifier()
-            } else if (this.state === State.EXPECT_MODIFIER_ARGUMENT) {
-                this.inStateExpectModifierArgument()
-            } else if (this.state === State.MODIFIER) {
-                this.inStateModifier()
-            } else if (this.state === State.MODIFIER_ARGUMENT) {
-                this.inStateModifierArgument()
-            } else if (this.state === State.MODIFIER_COMPLETE) {
-                this.inStateModifierComplete()
-            } else if (this.state === State.MODIFIER_ARGUMENT_DOUBLE_QUOTED) {
-                this.inStateModifierArgumentDoubleQuoted()
-            } else if (this.state === State.MODIFIER_ARGUMENT_SINGLE_QUOTED) {
-                this.inStateModifierArgumentSingleQuoted()
-            } else if (this.state === State.EXPECT_MODIFIER_ARGUMENT_DELIMITER) {
-                this.inStateExpectModifierArgumentDelimiter()
+            } else if (this.state === State.EXPECT_TRANSFORMER) {
+                this.inStateExpectTransformer()
+            } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT) {
+                this.inStateExpectTransformerArgument()
+            } else if (this.state === State.TRANSFORMER) {
+                this.inStateTransformer()
+            } else if (this.state === State.TRANSFORMER_ARGUMENT) {
+                this.inStateTransformerArgument()
+            } else if (this.state === State.TRANSFORMER_COMPLETE) {
+                this.inStateTransformerComplete()
+            } else if (this.state === State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED) {
+                this.inStateTransformerArgumentDoubleQuoted()
+            } else if (this.state === State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED) {
+                this.inStateTransformerArgumentSingleQuoted()
+            } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER) {
+                this.inStateExpectTransformerArgumentDelimiter()
             } else {
                 this.setErrorState(`unknown state: ${this.state}`, 1)
             }
@@ -256,29 +256,29 @@ export class Parser {
             }
         } else if (this.state === State.EXPECT_ALIAS_DELIMITER) {
             this.setErrorState('unexpected end of alias. Expected alias value', 14)
-        } else if (this.state === State.MODIFIER) {
-            if (this.modifier) {
-                this.storeModifier()
+        } else if (this.state === State.TRANSFORMER) {
+            if (this.transformer) {
+                this.storeTransformer()
             }
             if (this.column) {
                 this.storeColumn()
             }
-        } else if (this.state === State.MODIFIER_COMPLETE) {
-            this.storeModifier()
+        } else if (this.state === State.TRANSFORMER_COMPLETE) {
+            this.storeTransformer()
             this.storeColumn()
         } else if (
-            this.state === State.MODIFIER_ARGUMENT_DOUBLE_QUOTED ||
-            this.state === State.MODIFIER_ARGUMENT_SINGLE_QUOTED
+            this.state === State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED ||
+            this.state === State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED
         ) {
             this.setErrorState('unexpected end of quoted argument value', 12)
-        } else if (this.state === State.EXPECT_MODIFIER_ARGUMENT_DELIMITER) {
+        } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER) {
             this.setErrorState('unexpected end of arguments list', 15)
-        } else if (this.state === State.EXPECT_MODIFIER_ARGUMENT) {
+        } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT) {
             this.setErrorState('expected closing parenthesis', 16)
-        } else if (this.state === State.MODIFIER_ARGUMENT) {
+        } else if (this.state === State.TRANSFORMER_ARGUMENT) {
             this.setErrorState('expected closing parenthesis', 16)
-        } else if (this.state === State.EXPECT_MODIFIER) {
-            this.setErrorState('expected modifier after operator', 7)
+        } else if (this.state === State.EXPECT_TRANSFORMER) {
+            this.setErrorState('expected transformer after operator', 7)
         }
     }
 
@@ -305,183 +305,183 @@ export class Parser {
             this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
-        } else if (this.char.isModifierOperator()) {
-            if (!this.capabilities.modifiers) {
+        } else if (this.char.isTransformerOperator()) {
+            if (!this.capabilities.transformers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('modifiers are not enabled', 17)
+                this.setErrorState('transformers are not enabled', 17)
                 return
             }
             this.trackChar(CharType.OPERATOR)
-            this.setState(State.EXPECT_MODIFIER)
+            this.setState(State.EXPECT_TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character', 6)
         }
     }
 
-    inStateExpectModifier() {
+    inStateExpectTransformer() {
         if (!this.char) return
-        if (this.char.isModifierValue()) {
-            this.extendModifier()
-            this.setState(State.MODIFIER)
+        if (this.char.isTransformerValue()) {
+            this.extendTransformer()
+            this.setState(State.TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character, expected modifier', 7)
+            this.setErrorState('invalid character, expected transformer', 7)
         }
     }
 
-    inStateModifier() {
+    inStateTransformer() {
         if (!this.char) return
-        if (this.char.isModifierValue()) {
-            this.extendModifier()
+        if (this.char.isTransformerValue()) {
+            this.extendTransformer()
         } else if (this.char.isColumnsDelimiter()) {
             this.trackChar(CharType.OPERATOR)
-            this.storeModifier()
+            this.storeTransformer()
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
-        } else if (this.char.isModifierOperator()) {
+        } else if (this.char.isTransformerOperator()) {
             this.trackChar(CharType.OPERATOR)
-            this.storeModifier()
-            this.setState(State.EXPECT_MODIFIER)
+            this.storeTransformer()
+            this.setState(State.EXPECT_TRANSFORMER)
         } else if (this.char.isSpace()) {
-            this.storeModifier()
+            this.storeTransformer()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isBracketOpen()) {
             this.trackChar(CharType.OPERATOR)
-            this.setState(State.EXPECT_MODIFIER_ARGUMENT)
+            this.setState(State.EXPECT_TRANSFORMER_ARGUMENT)
         } else if (this.char.isBracketClose()) {
             this.trackChar(CharType.OPERATOR)
             this.storeArgument()
-            this.storeModifier()
+            this.storeTransformer()
             throw new Error('unsupported close bracket')
         } else {
             this.trackChar(CharType.ERROR)
-            throw new Error('unsupported char in modifier')
+            throw new Error('unsupported char in transformer')
         }
     }
 
-    inStateExpectModifierArgument() {
+    inStateExpectTransformerArgument() {
         if (!this.char) return
         if (this.char.isSpace()) {
             return
         }
         if (this.char.isDoubleQuote()) {
-            this.modifierArgumentType = 'str'
-            this.setState(State.MODIFIER_ARGUMENT_DOUBLE_QUOTED)
+            this.transformerArgumentType = 'str'
+            this.setState(State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED)
         } else if (this.char.isSingleQuote()) {
-            this.modifierArgumentType = 'str'
-            this.setState(State.MODIFIER_ARGUMENT_SINGLE_QUOTED)
-        } else if (this.char.isModifierArgumentValue()) {
-            this.extendModifierArgument()
-            this.setState(State.MODIFIER_ARGUMENT)
+            this.transformerArgumentType = 'str'
+            this.setState(State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED)
+        } else if (this.char.isTransformerArgumentValue()) {
+            this.extendTransformerArgument()
+            this.setState(State.TRANSFORMER_ARGUMENT)
         } else if (this.char.isBracketClose()) {
             this.trackChar(CharType.OPERATOR)
-            if (this.modifierArgument) {
+            if (this.transformerArgument) {
                 this.storeArgument()
             }
-            this.setState(State.MODIFIER_COMPLETE)
+            this.setState(State.TRANSFORMER_COMPLETE)
         }
     }
 
-    inStateModifierArgument() {
+    inStateTransformerArgument() {
         if (!this.char) return
-        if (this.char.isModifierArgumentDelimiter()) {
+        if (this.char.isTransformerArgumentDelimiter()) {
             this.trackChar(CharType.OPERATOR)
             this.storeArgument()
-            this.setState(State.EXPECT_MODIFIER_ARGUMENT)
-        } else if (this.char.isModifierArgumentValue()) {
-            this.extendModifierArgument()
+            this.setState(State.EXPECT_TRANSFORMER_ARGUMENT)
+        } else if (this.char.isTransformerArgumentValue()) {
+            this.extendTransformerArgument()
         } else if (this.char.isBracketClose()) {
             this.trackChar(CharType.OPERATOR)
             this.storeArgument()
-            this.setState(State.MODIFIER_COMPLETE)
+            this.setState(State.TRANSFORMER_COMPLETE)
         }
     }
 
-    inStateExpectModifierArgumentDelimiter() {
+    inStateExpectTransformerArgumentDelimiter() {
         if (!this.char) return
-        if (this.char.isModifierArgumentDelimiter()) {
-            this.setState(State.EXPECT_MODIFIER_ARGUMENT)
+        if (this.char.isTransformerArgumentDelimiter()) {
+            this.setState(State.EXPECT_TRANSFORMER_ARGUMENT)
         } else if (this.char.isBracketClose()) {
-            this.setState(State.MODIFIER_COMPLETE)
+            this.setState(State.TRANSFORMER_COMPLETE)
         } else {
-            this.setErrorState('invalid character. Expected bracket close or modifier argument delimiter', 9)
+            this.setErrorState('invalid character. Expected bracket close or transformer argument delimiter', 9)
         }
     }
 
-    inStateModifierArgumentDoubleQuoted() {
+    inStateTransformerArgumentDoubleQuoted() {
         if (!this.char) return
         if (this.char.isBackslash()) {
             const nextPos = this.char.pos + 1
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== DOUBLE_QUOTE) {
-                    this.extendModifierArgument()
+                    this.extendTransformerArgument()
                 }
             } else {
-                this.extendModifierArgument()
+                this.extendTransformerArgument()
             }
-        } else if (this.char.isModifierDoubleQuotedArgumentValue()) {
-            this.extendModifierArgument()
+        } else if (this.char.isTransformerDoubleQuotedArgumentValue()) {
+            this.extendTransformerArgument()
         } else if (this.char.isDoubleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendModifierArgument()
+                this.extendTransformerArgument()
             } else {
                 this.storeArgument()
-                this.setState(State.EXPECT_MODIFIER_ARGUMENT_DELIMITER)
+                this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
             this.setErrorState('invalid character', 10)
         }
     }
 
-    inStateModifierArgumentSingleQuoted() {
+    inStateTransformerArgumentSingleQuoted() {
         if (!this.char) return
         if (this.char.isBackslash()) {
             const nextPos = this.char.pos + 1
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== SINGLE_QUOTE) {
-                    this.extendModifierArgument()
+                    this.extendTransformerArgument()
                 }
             } else {
-                this.extendModifierArgument()
+                this.extendTransformerArgument()
             }
-        } else if (this.char.isModifierSingleQuotedArgumentValue()) {
-            this.extendModifierArgument()
+        } else if (this.char.isTransformerSingleQuotedArgumentValue()) {
+            this.extendTransformerArgument()
         } else if (this.char.isSingleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendModifierArgument()
+                this.extendTransformerArgument()
             } else {
                 this.storeArgument()
-                this.setState(State.EXPECT_MODIFIER_ARGUMENT_DELIMITER)
+                this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
             this.setErrorState('invalid character', 10)
         }
     }
 
-    inStateModifierComplete() {
+    inStateTransformerComplete() {
         if (!this.char) return
         if (this.char.isSpace()) {
-            this.storeModifier()
+            this.storeTransformer()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isColumnsDelimiter()) {
             this.trackChar(CharType.OPERATOR)
-            this.storeModifier()
+            this.storeTransformer()
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
-        } else if (this.char.isModifierOperator()) {
-            if (!this.capabilities.modifiers) {
+        } else if (this.char.isTransformerOperator()) {
+            if (!this.capabilities.transformers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('modifiers are not enabled', 17)
+                this.setErrorState('transformers are not enabled', 17)
                 return
             }
             this.trackChar(CharType.OPERATOR)
-            this.storeModifier()
-            this.setState(State.EXPECT_MODIFIER)
+            this.storeTransformer()
+            this.setState(State.EXPECT_TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character', 8)

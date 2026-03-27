@@ -80,8 +80,8 @@ describe('FlyqlColumns component', () => {
             expect(vueContent).toContain("return 'C'")
         })
 
-        it('shows M badge for modifiers', () => {
-            expect(vueContent).toContain("return 'M'")
+        it('shows T badge for transformers', () => {
+            expect(vueContent).toContain("return 'T'")
         })
     })
 
@@ -162,7 +162,7 @@ describe('FlyqlColumns component', () => {
         it('has highlight token CSS classes', () => {
             expect(vueContent).toContain('.flyql-col-column')
             expect(vueContent).toContain('.flyql-col-operator')
-            expect(vueContent).toContain('.flyql-col-modifier')
+            expect(vueContent).toContain('.flyql-col-transformer')
             expect(vueContent).toContain('.flyql-col-argument')
             expect(vueContent).toContain('.flyql-col-alias')
             expect(vueContent).toContain('.flyql-col-error')

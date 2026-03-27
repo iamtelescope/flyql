@@ -1,7 +1,7 @@
 export class ParsedColumn {
-    constructor(name, modifiers, alias, key = null, displayName = '') {
+    constructor(name, transformers, alias, key = null, displayName = '') {
         this.name = name
-        this.modifiers = modifiers
+        this.transformers = transformers
         this.alias = alias
         this.key = key
         this.displayName = displayName
@@ -18,7 +18,7 @@ export class ParsedColumn {
     asDict() {
         return {
             name: this.name,
-            modifiers: this.modifiers,
+            transformers: this.transformers,
             alias: this.alias,
             segments: this.segments,
             is_segmented: this.isSegmented,

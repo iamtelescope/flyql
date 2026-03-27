@@ -10,7 +10,7 @@ const TEST_COLUMNS = {
     host: { type: 'string', suggest: true },
 }
 
-const MODIFIERS_OPTS = { capabilities: { modifiers: true } }
+const TRANSFORMERS_OPTS = { capabilities: { transformers: true } }
 
 describe('ColumnsEngine', () => {
     describe('constructor', () => {
@@ -46,17 +46,17 @@ describe('ColumnsEngine', () => {
             expect(ctx.expecting).toBe('column')
         })
 
-        it('after pipe expects modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('after pipe expects transformer', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|')
-            expect(ctx.expecting).toBe('modifier')
+            expect(ctx.expecting).toBe('transformer')
         })
 
-        it('typing modifier expects modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('typing transformer expects transformer', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|up')
-            expect(ctx.expecting).toBe('modifier')
-            expect(ctx.modifier).toBe('up')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformer).toBe('up')
         })
 
         it('after space expects alias (alias operator phase)', () => {
@@ -65,8 +65,8 @@ describe('ColumnsEngine', () => {
             expect(ctx.expecting).toBe('alias')
         })
 
-        it('in modifier arguments expects argument', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('in transformer arguments expects argument', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|chars(')
             expect(ctx.expecting).toBe('argument')
         })
@@ -156,8 +156,8 @@ describe('ColumnsEngine', () => {
     })
 
     describe('updateSuggestions — exact match shows next-step actions (AC #2)', () => {
-        it('exact column match shows delimiter and modifier-pipe first', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('exact column match shows delimiter and transformer-pipe first', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('level')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
@@ -166,11 +166,11 @@ describe('ColumnsEngine', () => {
             expect(engine.suggestions[0].detail).toBe('next column')
             expect(engine.suggestions[1].type).toBe('delimiter')
             expect(engine.suggestions[1].label).toBe('|')
-            expect(engine.suggestions[1].detail).toBe('add modifier')
+            expect(engine.suggestions[1].detail).toBe('add transformer')
         })
 
         it('exact match still shows other matching columns below', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('host')
             engine.setCursorPosition(4)
             await engine.updateSuggestions()
@@ -178,7 +178,7 @@ describe('ColumnsEngine', () => {
             expect(engine.suggestions[1].type).toBe('delimiter')
         })
 
-        it('partial match does NOT show delimiter/modifier-pipe', async () => {
+        it('partial match does NOT show delimiter/transformer-pipe', async () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             engine.setQuery('lev')
             engine.setCursorPosition(3)
@@ -191,23 +191,23 @@ describe('ColumnsEngine', () => {
 
     describe('updateSuggestions — after column space (next-step suggestions)', () => {
         it('suggests pipe and comma after column + space', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message ')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
             expect(engine.suggestionType).toBe('delimiter')
             const pipe = engine.suggestions.find((s) => s.label === '|')
             expect(pipe.type).toBe('delimiter')
-            expect(pipe.detail).toBe('add modifier')
+            expect(pipe.detail).toBe('add transformer')
             const comma = engine.suggestions.find((s) => s.label === ',')
             expect(comma.type).toBe('delimiter')
             expect(comma.detail).toBe('next column')
         })
     })
 
-    describe('updateSuggestions — modifier exact match shows next steps', () => {
-        it('exact modifier without args shows comma and pipe (no parens)', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+    describe('updateSuggestions — transformer exact match shows next steps', () => {
+        it('exact transformer without args shows comma and pipe (no parens)', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('level|upper')
             engine.setCursorPosition(11)
             await engine.updateSuggestions()
@@ -218,8 +218,8 @@ describe('ColumnsEngine', () => {
             expect(labels).not.toContain('()')
         })
 
-        it('exact modifier with args shows comma, parens, and pipe', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('exact transformer with args shows comma, parens, and pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('level|chars')
             engine.setCursorPosition(11)
             await engine.updateSuggestions()
@@ -229,23 +229,23 @@ describe('ColumnsEngine', () => {
             expect(engine.suggestions[1].detail).toBe('(int, int?)')
             expect(engine.suggestions[1].cursorOffset).toBe(-1)
             expect(engine.suggestions[2].label).toBe('|')
-            expect(engine.suggestions[2].detail).toBe('chain modifier')
+            expect(engine.suggestions[2].detail).toBe('chain transformer')
         })
 
-        it('partial modifier match does NOT show next steps', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('partial transformer match does NOT show next steps', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('level|up')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
             const types = engine.suggestions.map((s) => s.type)
             expect(types).not.toContain('delimiter')
-            expect(types).toContain('modifier')
+            expect(types).toContain('transformer')
         })
     })
 
-    describe('getInsertRange with delimiter/modifier-pipe suggestions', () => {
+    describe('getInsertRange with delimiter/transformer-pipe suggestions', () => {
         it('delimiter suggestion inserts at cursor without replacing prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('level')
             const delimSuggestion = { label: ',', insertText: ', ', type: 'delimiter' }
             const range = engine.getInsertRange(ctx, 'level', delimSuggestion)
@@ -254,7 +254,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('pipe delimiter suggestion inserts at cursor without replacing prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('level')
             const pipeSuggestion = { label: '|', insertText: '|', type: 'delimiter' }
             const range = engine.getInsertRange(ctx, 'level', pipeSuggestion)
@@ -263,7 +263,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('column suggestion replaces prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('lev')
             const colSuggestion = { label: 'level', insertText: 'level', type: 'column' }
             const range = engine.getInsertRange(ctx, 'lev', colSuggestion)
@@ -272,21 +272,21 @@ describe('ColumnsEngine', () => {
         })
     })
 
-    describe('updateSuggestions — modifier phase (AC #3)', () => {
-        it('suggests modifiers after pipe', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+    describe('updateSuggestions — transformer phase (AC #3)', () => {
+        it('suggests transformers after pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
-            expect(engine.suggestionType).toBe('modifier')
+            expect(engine.suggestionType).toBe('transformer')
             const labels = engine.suggestions.map((s) => s.label)
             expect(labels).toContain('upper')
             expect(labels).toContain('lower')
             expect(labels).toContain('chars')
         })
 
-        it('filters modifiers by prefix', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('filters transformers by prefix', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|up')
             engine.setCursorPosition(10)
             await engine.updateSuggestions()
@@ -309,14 +309,14 @@ describe('ColumnsEngine', () => {
             expect(html).toContain('flyql-col-operator')
         })
 
-        it('highlights modifiers', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('highlights transformers', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const html = engine.getHighlightTokens('message|upper')
-            expect(html).toContain('flyql-col-modifier')
+            expect(html).toContain('flyql-col-transformer')
         })
 
         it('highlights arguments', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const html = engine.getHighlightTokens('message|chars(25)')
             expect(html).toContain('flyql-col-argument')
         })
@@ -340,7 +340,7 @@ describe('ColumnsEngine', () => {
             const cols = engine.getParsedColumns()
             expect(cols).toHaveLength(1)
             expect(cols[0].name).toBe('message')
-            expect(cols[0].modifiers).toEqual([])
+            expect(cols[0].transformers).toEqual([])
             expect(cols[0].alias).toBeNull()
         })
 
@@ -352,13 +352,13 @@ describe('ColumnsEngine', () => {
             expect(cols.map((c) => c.name)).toEqual(['level', 'service', 'message'])
         })
 
-        it('parses column with modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('parses column with transformer', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|upper')
             const cols = engine.getParsedColumns()
             expect(cols).toHaveLength(1)
-            expect(cols[0].modifiers).toHaveLength(1)
-            expect(cols[0].modifiers[0].name).toBe('upper')
+            expect(cols[0].transformers).toHaveLength(1)
+            expect(cols[0].transformers[0].name).toBe('upper')
         })
 
         it('parses column with alias', () => {
@@ -370,12 +370,12 @@ describe('ColumnsEngine', () => {
         })
 
         it('parses complex expression', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|upper|chars(25) as msg,level')
             const cols = engine.getParsedColumns()
             expect(cols).toHaveLength(2)
             expect(cols[0].name).toBe('message')
-            expect(cols[0].modifiers).toHaveLength(2)
+            expect(cols[0].transformers).toHaveLength(2)
             expect(cols[0].alias).toBe('msg')
             expect(cols[1].name).toBe('level')
         })
@@ -406,8 +406,8 @@ describe('ColumnsEngine', () => {
             expect(engine.getQueryStatus().valid).toBe(true)
         })
 
-        it('valid for column with modifier', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('valid for column with transformer', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|upper')
             expect(engine.getQueryStatus().valid).toBe(true)
         })
@@ -419,7 +419,7 @@ describe('ColumnsEngine', () => {
         })
 
         it('invalid for unclosed arguments', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('message|chars(')
             expect(engine.getQueryStatus().valid).toBe(false)
         })
@@ -455,8 +455,8 @@ describe('ColumnsEngine', () => {
             expect(range.end).toBe(3)
         })
 
-        it('returns range for modifier prefix', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('returns range for transformer prefix', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|up')
             const range = engine.getInsertRange(ctx, 'message|up')
             expect(range.start).toBe(8)
@@ -489,11 +489,11 @@ describe('ColumnsEngine', () => {
     })
 
     describe('capabilities', () => {
-        it('default engine (modifiers disabled): pipe in column triggers error', () => {
+        it('default engine (transformers disabled): pipe in column triggers error', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             const ctx = engine.buildContext('message|')
             expect(ctx.expecting).toBe('error')
-            expect(ctx.error).toContain('modifiers are not enabled')
+            expect(ctx.error).toContain('transformers are not enabled')
         })
 
         it('default engine: exact column suggestions do NOT include pipe', async () => {
@@ -516,14 +516,14 @@ describe('ColumnsEngine', () => {
             expect(labels).not.toContain('|')
         })
 
-        it('modifiers enabled: pipe in column returns modifier context', () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('transformers enabled: pipe in column returns transformer context', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|')
-            expect(ctx.expecting).toBe('modifier')
+            expect(ctx.expecting).toBe('transformer')
         })
 
-        it('modifiers enabled: exact column suggestions include pipe', async () => {
-            const engine = new ColumnsEngine(TEST_COLUMNS, MODIFIERS_OPTS)
+        it('transformers enabled: exact column suggestions include pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             engine.setQuery('level')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()

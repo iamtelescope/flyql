@@ -216,8 +216,8 @@ async function onKeyDiscovery(columnName, segments) {
 const parsedColumnsText = computed(() => {
     return parsedColumns.value.map((c) => {
         let text = c.name
-        if (c.modifiers && c.modifiers.length > 0) {
-            text += '|' + c.modifiers.map((m) => m.name + (m.arguments.length ? `(${m.arguments.join(',')})` : '')).join('|')
+        if (c.transformers && c.transformers.length > 0) {
+            text += '|' + c.transformers.map((m) => m.name + (m.arguments.length ? `(${m.arguments.join(',')})` : '')).join('|')
         }
         if (c.alias) text += ' as ' + c.alias
         return text

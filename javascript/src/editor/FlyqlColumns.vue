@@ -63,7 +63,7 @@
                 <div v-if="debug" class="flyql-panel__header flyql-panel__debug">
                     <span v-if="context"
                         >state={{ context.state }} expecting={{ context.expecting }} col={{ context.column }} mod={{
-                            context.modifier
+                            context.transformer
                         }}</span
                     >
                     <span v-else>no context</span>
@@ -503,8 +503,8 @@ function badgeText(type) {
     switch (type) {
         case 'column':
             return 'C'
-        case 'modifier':
-            return 'M'
+        case 'transformer':
+            return 'T'
         case 'delimiter':
             return 'S'
         default:
@@ -673,11 +673,11 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
     color: var(--flyql-operator-color);
 }
 
-.flyql-col-modifier {
+.flyql-col-transformer {
     color: #0089ab;
 }
 
-.flyql-dark .flyql-col-modifier {
+.flyql-dark .flyql-col-transformer {
     color: #fa83f8;
 }
 
@@ -696,12 +696,12 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
 }
 
 /* Columns panel badge styles */
-.flyql-panel__badge--modifier {
+.flyql-panel__badge--transformer {
     background: #0089ab;
     color: #fff;
 }
 
-.flyql-dark .flyql-panel__badge--modifier {
+.flyql-dark .flyql-panel__badge--transformer {
     background: #fa83f8;
     color: #1e1e1e;
 }

@@ -286,6 +286,71 @@
         ["5", ""],
         ["6", ""]
       ]
+    },
+    {
+      "name": "transformer_upper",
+      "select_columns": "id, message|upper as upper_message",
+      "expected_column_names": ["id", "upper_message"],
+      "expected_rows": [
+        ["1", "HELLO"],
+        ["2", "WORLD"],
+        ["3", "HELLO WORLD"],
+        ["4", ""],
+        ["5", "ERROR TEST"],
+        ["6", "HELLO TEST"]
+      ]
+    },
+    {
+      "name": "transformer_lower",
+      "select_columns": "id, message|lower as lower_message",
+      "expected_column_names": ["id", "lower_message"],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"],
+        ["6", "hello test"]
+      ]
+    },
+    {
+      "name": "transformer_len",
+      "select_columns": "id, message|len as message_length",
+      "expected_column_names": ["id", "message_length"],
+      "expected_rows": [
+        ["1", "5"],
+        ["2", "5"],
+        ["3", "11"],
+        ["4", "0"],
+        ["5", "10"],
+        ["6", "10"]
+      ]
+    },
+    {
+      "name": "transformer_chained_lower_len",
+      "select_columns": "id, message|lower|len as lower_message_length",
+      "expected_column_names": ["id", "lower_message_length"],
+      "expected_rows": [
+        ["1", "5"],
+        ["2", "5"],
+        ["3", "11"],
+        ["4", "0"],
+        ["5", "10"],
+        ["6", "10"]
+      ]
+    },
+    {
+      "name": "transformer_mixed_with_plain",
+      "select_columns": "id, message, message|upper as upper_message, count",
+      "expected_column_names": ["id", "message", "upper_message", "count"],
+      "expected_rows": [
+        ["1", "hello",       "HELLO",       "42"],
+        ["2", "world",       "WORLD",       "10"],
+        ["3", "hello world", "HELLO WORLD", "100"],
+        ["4", "",            "",            "0"],
+        ["5", "error test",  "ERROR TEST",  "5"],
+        ["6", "hello test",  "HELLO TEST",  "200"]
+      ]
     }
   ]
 }

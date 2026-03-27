@@ -451,6 +451,66 @@
       "flyql": "json_meta not has 'region'",
       "expected_ids": [2, 5, 6],
       "databases": ["postgresql"]
+    },
+    {
+      "name": "transformer_upper_equals",
+      "flyql": "message|upper = 'HELLO'",
+      "expected_ids": [1],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_lower_equals",
+      "flyql": "message|lower = 'world'",
+      "expected_ids": [2],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_len_greater_than",
+      "flyql": "message|len > 10",
+      "expected_ids": [3],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_len_equals_zero",
+      "flyql": "message|len = 0",
+      "expected_ids": [4],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_chained_lower_len_gt",
+      "flyql": "message|lower|len > 5",
+      "expected_ids": [3, 5, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_chained_upper_len_eq",
+      "flyql": "message|upper|len = 5",
+      "expected_ids": [1, 2],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_len_gte",
+      "flyql": "message|len >= 10",
+      "expected_ids": [3, 5, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_len_lt",
+      "flyql": "message|len < 5",
+      "expected_ids": [4],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_upper_and_active",
+      "flyql": "message|upper = 'HELLO' and active",
+      "expected_ids": [1],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "transformer_len_or_count",
+      "flyql": "message|len > 5 or count > 100",
+      "expected_ids": [3, 5, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
     }
   ]
 }

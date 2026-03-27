@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
 type SelectColumn struct {
@@ -142,6 +143,17 @@ func ToSQLSelect(text string, columns map[string]*Column) (*SelectResult, error)
 		sqlExpr, err := buildSelectExpr(col, path)
 		if err != nil {
 			return nil, fmt.Errorf("column %q: %w", raw.name, err)
+		}
+
+		if len(key.Transformers) > 0 {
+			registry := transformers.DefaultRegistry()
+			if err := validateTransformerChain(key.Transformers, registry); err != nil {
+				return nil, fmt.Errorf("column %q: %w", raw.name, err)
+			}
+			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "starrocks", registry)
+			if err != nil {
+				return nil, fmt.Errorf("column %q: %w", raw.name, err)
+			}
 		}
 
 		alias := raw.alias

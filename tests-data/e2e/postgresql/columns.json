@@ -86,5 +86,27 @@
       "type": "text",
       "values": null
     }
-  }
+  },
+  "transformer_columns": [
+    {
+      "name": "message|upper",
+      "alias": "upper_message"
+    },
+    {
+      "name": "message|lower",
+      "alias": "lower_message"
+    },
+    {
+      "name": "message|len",
+      "alias": "message_length"
+    },
+    {
+      "name": "message|upper|len",
+      "alias": "upper_message_length"
+    },
+    {
+      "name": "message|lower|len",
+      "alias": "lower_message_length"
+    }
+  ]
 }

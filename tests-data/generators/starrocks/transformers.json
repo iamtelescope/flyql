@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "description": "StarRocks generator transformer test cases",
+  "test_suite": "starrocks_transformers",
+  "tests": [
+    {
+      "name": "upper_equals",
+      "input": "message|upper = 'ERROR'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(message) = 'ERROR'"
+    },
+    {
+      "name": "lower_equals",
+      "input": "message|lower = 'error'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(message) = 'error'"
+    },
+    {
+      "name": "chained_lower_len_greater_than",
+      "input": "field|lower|len > 10",
+      "expected_result": "success",
+      "expected_sql": "LENGTH(LOWER(field)) > 10"
+    },
+    {
+      "name": "upper_not_equals",
+      "input": "message|upper != 'INFO'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(message) != 'INFO'"
+    },
+    {
+      "name": "len_greater_or_equals",
+      "input": "field|len >= 5",
+      "expected_result": "success",
+      "expected_sql": "LENGTH(field) >= 5"
+    }
+  ]
+}

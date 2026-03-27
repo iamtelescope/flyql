@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "description": "Transformer column parsing tests",
+  "test_suite": "columns_parser_transformers",
+  "default_capabilities": {"transformers": true},
+  "tests": [
+    {
+      "name": "single_transformer_no_args",
+      "input": "message|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [{"name": "upper", "arguments": []}],
+          "alias": null,
+          "segments": ["message"],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "chained_transformers",
+      "input": "message|upper|len",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {"name": "upper", "arguments": []},
+            {"name": "len", "arguments": []}
+          ],
+          "alias": null,
+          "segments": ["message"],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_with_alias",
+      "input": "message|upper as MSG",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [{"name": "upper", "arguments": []}],
+          "alias": "MSG",
+          "segments": ["message"],
+          "is_segmented": false,
+          "display_name": "MSG"
+        }
+      ]
+    },
+    {
+      "name": "nested_column_with_transformer",
+      "input": "metadata.labels.tier|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "metadata.labels.tier",
+          "transformers": [{"name": "upper", "arguments": []}],
+          "alias": null,
+          "segments": ["metadata", "labels", "tier"],
+          "is_segmented": true,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "complex_chain_with_alias",
+      "input": "message|lower|len as msg_length",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {"name": "lower", "arguments": []},
+            {"name": "len", "arguments": []}
+          ],
+          "alias": "msg_length",
+          "segments": ["message"],
+          "is_segmented": false,
+          "display_name": "msg_length"
+        }
+      ]
+    }
+  ]
+}

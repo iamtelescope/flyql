@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "description": "Matcher transformer test cases",
+  "test_suite": "matcher_transformers",
+  "tests": [
+    {
+      "name": "upper_applied_match",
+      "query": "message|upper = 'HELLO'",
+      "data": {"message": "hello"},
+      "expected": true
+    },
+    {
+      "name": "upper_applied_no_match",
+      "query": "message|upper = 'WORLD'",
+      "data": {"message": "hello"},
+      "expected": false
+    },
+    {
+      "name": "lower_applied_match",
+      "query": "message|lower = 'hello'",
+      "data": {"message": "HELLO"},
+      "expected": true
+    },
+    {
+      "name": "lower_applied_no_match",
+      "query": "message|lower = 'world'",
+      "data": {"message": "HELLO"},
+      "expected": false
+    },
+    {
+      "name": "chained_lower_len_match",
+      "query": "message|lower|len = 5",
+      "data": {"message": "HELLO"},
+      "expected": true
+    },
+    {
+      "name": "chained_lower_len_no_match",
+      "query": "message|lower|len > 10",
+      "data": {"message": "HELLO"},
+      "expected": false
+    },
+    {
+      "name": "len_comparison",
+      "query": "field|len >= 3",
+      "data": {"field": "abc"},
+      "expected": true
+    },
+    {
+      "name": "len_comparison_fail",
+      "query": "field|len >= 5",
+      "data": {"field": "abc"},
+      "expected": false
+    }
+  ]
+}

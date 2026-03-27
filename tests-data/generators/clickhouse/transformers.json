@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "description": "ClickHouse generator transformer test cases",
+  "test_suite": "clickhouse_transformers",
+  "tests": [
+    {
+      "name": "upper_equals",
+      "input": "message|upper = 'ERROR'",
+      "expected_result": "success",
+      "expected_sql": "upper(message) = 'ERROR'"
+    },
+    {
+      "name": "lower_equals",
+      "input": "message|lower = 'error'",
+      "expected_result": "success",
+      "expected_sql": "lower(message) = 'error'"
+    },
+    {
+      "name": "chained_lower_len_greater_than",
+      "input": "field|lower|len > 10",
+      "expected_result": "success",
+      "expected_sql": "length(lower(field)) > 10"
+    },
+    {
+      "name": "upper_not_equals",
+      "input": "message|upper != 'INFO'",
+      "expected_result": "success",
+      "expected_sql": "upper(message) != 'INFO'"
+    },
+    {
+      "name": "len_greater_or_equals",
+      "input": "field|len >= 5",
+      "expected_result": "success",
+      "expected_sql": "length(field) >= 5"
+    }
+  ]
+}

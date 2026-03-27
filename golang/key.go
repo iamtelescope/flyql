@@ -1,9 +1,21 @@
 package flyql
 
+import (
+	"fmt"
+	"strings"
+)
+
+// KeyTransformer represents a transformer applied to a key (e.g., upper, len).
+type KeyTransformer struct {
+	Name      string `json:"name"`
+	Arguments []any  `json:"arguments"`
+}
+
 type Key struct {
 	Segments       []string
 	QuotedSegments []bool
 	Raw            string
+	Transformers   []KeyTransformer
 }
 
 func (k Key) IsSegmented() bool {
@@ -167,6 +179,28 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 }
 
 func ParseKey(keyString string) (Key, error) {
+	parts := strings.Split(keyString, "|")
+	baseKeyString := parts[0]
+	transformerNames := parts[1:]
+
 	parser := &keyParser{}
-	return parser.parse(keyString)
+	key, err := parser.parse(baseKeyString)
+	if err != nil {
+		return key, err
+	}
+
+	if len(transformerNames) > 0 {
+		for _, name := range transformerNames {
+			if name == "" {
+				return Key{}, fmt.Errorf("empty transformer name in key")
+			}
+		}
+		key.Transformers = make([]KeyTransformer, len(transformerNames))
+		for i, name := range transformerNames {
+			key.Transformers[i] = KeyTransformer{Name: name, Arguments: []any{}}
+		}
+		key.Raw = keyString
+	}
+
+	return key, nil
 }

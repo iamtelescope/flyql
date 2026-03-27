@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
 type Evaluator struct {
@@ -111,6 +112,17 @@ func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
 func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool {
 	key := NewKey(expr.Key.Raw)
 	value := record.GetValue(key)
+
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		for _, t := range expr.Key.Transformers {
+			transformer := registry.Get(t.Name)
+			if transformer == nil {
+				return false
+			}
+			value = transformer.Apply(value)
+		}
+	}
 
 	switch expr.Operator {
 	case flyql.OpTruthy:

@@ -189,3 +189,8 @@ func TestStruct(t *testing.T) {
 	columns := loadColumns(t)
 	runWhereTestSuite(t, columns, "struct.json")
 }
+
+func TestTransformers(t *testing.T) {
+	columns := loadColumns(t)
+	runWhereTestSuite(t, columns, "transformers.json")
+}

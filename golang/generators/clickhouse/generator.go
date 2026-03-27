@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
 var operatorToClickHouseFunc = map[string]string{
@@ -532,7 +533,38 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 	}
 }
 
+func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
+	result := columnRef
+	for _, t := range keyTransformers {
+		transformer := registry.Get(t.Name)
+		if transformer == nil {
+			return "", fmt.Errorf("unknown transformer: %s", t.Name)
+		}
+		result = transformer.SQL(dialect, result)
+	}
+	return result, nil
+}
+
+func validateTransformerChain(keyTransformers []flyql.KeyTransformer, registry *transformers.TransformerRegistry) error {
+	currentType := transformers.TransformerTypeString
+	for i, t := range keyTransformers {
+		transformer := registry.Get(t.Name)
+		if transformer == nil {
+			return fmt.Errorf("unknown transformer: %s", t.Name)
+		}
+		if transformer.InputType() != currentType {
+			return fmt.Errorf("transformer chain type error: '%s' at position %d requires %s input, but received %s",
+				t.Name, i, transformer.InputType(), currentType)
+		}
+		currentType = transformer.OutputType()
+	}
+	return nil
+}
+
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+	if len(expr.Key.Transformers) > 0 {
+		return "", fmt.Errorf("transformers on segmented (nested path) keys are not supported")
+	}
 	reverseOperator := ""
 	if expr.Operator == flyql.OpNotRegex {
 		reverseOperator = "not "
@@ -656,8 +688,21 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 		}
 	}
 
-	if column.NormalizedType != "" {
+	if column.NormalizedType != "" && len(expr.Key.Transformers) == 0 {
 		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
+			return "", err
+		}
+	}
+
+	colRef := column.Name
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "clickhouse", registry)
+		if err != nil {
 			return "", err
 		}
 	}
@@ -668,14 +713,14 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("match(%s, %s)", column.Name, value), nil
+		return fmt.Sprintf("match(%s, %s)", colRef, value), nil
 
 	case flyql.OpNotRegex:
 		value, err := EscapeParam(fmt.Sprintf("%v", expr.Value))
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("not match(%s, %s)", column.Name, value), nil
+		return fmt.Sprintf("not match(%s, %s)", colRef, value), nil
 
 	case flyql.OpEquals, flyql.OpNotEquals:
 		operator := expr.Operator
@@ -692,14 +737,14 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 				operator = "NOT LIKE"
 			}
 		}
-		return fmt.Sprintf("%s %s %s", column.Name, operator, escapedValue), nil
+		return fmt.Sprintf("%s %s %s", colRef, operator, escapedValue), nil
 
 	default:
 		value, err := EscapeParam(expr.Value)
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s %s %s", column.Name, expr.Operator, value), nil
+		return fmt.Sprintf("%s %s %s", colRef, expr.Operator, value), nil
 	}
 }
 

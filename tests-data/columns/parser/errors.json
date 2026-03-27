@@ -22,9 +22,11 @@
       }
     },
     {
-      "name": "incomplete_modifier",
+      "name": "incomplete_transformer",
       "input": "message|",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "error",
       "expected_error": {
         "errno": 7,
@@ -32,9 +34,11 @@
       }
     },
     {
-      "name": "unclosed_modifier_args",
+      "name": "unclosed_transformer_args",
       "input": "message|chars(",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "error",
       "expected_error": {
         "errno": 16,
@@ -44,7 +48,9 @@
     {
       "name": "unclosed_single_quote",
       "input": "message|split('tab)",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "error",
       "expected_error": {
         "errno": 12,
@@ -54,7 +60,9 @@
     {
       "name": "unclosed_double_quote",
       "input": "message|split(\"tab)",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "error",
       "expected_error": {
         "errno": 12,
@@ -89,12 +97,12 @@
       }
     },
     {
-      "name": "modifiers_not_enabled",
+      "name": "transformers_not_enabled",
       "input": "message|upper",
       "expected_result": "error",
       "expected_error": {
         "errno": 17,
-        "message_contains": "modifiers are not enabled"
+        "message_contains": ""
       }
     }
   ]

@@ -14,7 +14,7 @@ def parse(
 
     Args:
         text: Columns definition string (e.g., "message, status|upper as code")
-        capabilities: Optional capabilities config (e.g., {"modifiers": True})
+        capabilities: Optional capabilities config (e.g., {"transformers": True})
 
     Returns:
         List of ParsedColumn objects with parsed path segments
@@ -25,8 +25,8 @@ def parse(
     Examples:
         >>> columns = parse("message")
         >>> columns = parse("message, status, user_id")
-        >>> columns = parse("message|chars(25) as msg", {"modifiers": True})
-        >>> columns = parse("metadata.labels.tier|upper", {"modifiers": True})
+        >>> columns = parse("message|chars(25) as msg", {"transformers": True})
+        >>> columns = parse("metadata.labels.tier|upper", {"transformers": True})
         >>> columns = parse("data.'key.with.dots'.nested")
     """
     parser = Parser(capabilities=capabilities)
@@ -39,7 +39,7 @@ def parse(
         columns.append(
             ParsedColumn(
                 name=column_dict["name"],
-                modifiers=column_dict["modifiers"],
+                transformers=column_dict["transformers"],
                 alias=alias,
                 key=key,
                 display_name=alias if alias else "",

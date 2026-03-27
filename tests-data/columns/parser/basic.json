@@ -10,7 +10,7 @@
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "message"
@@ -27,7 +27,7 @@
       "expected_columns": [
         {
           "name": "metadata.labels.tier",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "metadata",
@@ -46,7 +46,7 @@
       "expected_columns": [
         {
           "name": "user.profile.name",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "user",
@@ -65,7 +65,7 @@
       "expected_columns": [
         {
           "name": "user_id",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "user_id"
@@ -82,7 +82,7 @@
       "expected_columns": [
         {
           "name": "request-id",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "request-id"
@@ -99,7 +99,7 @@
       "expected_columns": [
         {
           "name": "path/to/column",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "path/to/column"
@@ -116,7 +116,7 @@
       "expected_columns": [
         {
           "name": "user@host",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "user@host"
@@ -133,7 +133,7 @@
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [],
+          "transformers": [],
           "alias": "msg",
           "segments": [
             "message"
@@ -144,14 +144,16 @@
       ]
     },
     {
-      "name": "column_with_modifier",
+      "name": "column_with_transformer",
       "input": "message|chars",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "success",
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [
+          "transformers": [
             {
               "name": "chars",
               "arguments": []
@@ -167,14 +169,16 @@
       ]
     },
     {
-      "name": "column_with_modifier_and_args",
+      "name": "column_with_transformer_and_args",
       "input": "message|chars(25)",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "success",
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [
+          "transformers": [
             {
               "name": "chars",
               "arguments": [
@@ -198,7 +202,7 @@
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "message"
@@ -208,7 +212,7 @@
         },
         {
           "name": "status",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "status"
@@ -218,7 +222,7 @@
         },
         {
           "name": "user_id",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "user_id"
@@ -229,14 +233,16 @@
       ]
     },
     {
-      "name": "multiple_columns_with_modifiers",
+      "name": "multiple_columns_with_transformers",
       "input": "message|upper, status|lower",
-      "capabilities": {"modifiers": true},
+      "capabilities": {
+        "transformers": true
+      },
       "expected_result": "success",
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [
+          "transformers": [
             {
               "name": "upper",
               "arguments": []
@@ -251,7 +257,7 @@
         },
         {
           "name": "status",
-          "modifiers": [
+          "transformers": [
             {
               "name": "lower",
               "arguments": []
@@ -273,7 +279,7 @@
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "message"
@@ -290,7 +296,7 @@
       "expected_columns": [
         {
           "name": "message",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "message"
@@ -300,7 +306,7 @@
         },
         {
           "name": "status",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "status"
@@ -310,7 +316,7 @@
         },
         {
           "name": "user_id",
-          "modifiers": [],
+          "transformers": [],
           "alias": null,
           "segments": [
             "user_id"

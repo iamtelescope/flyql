@@ -37,7 +37,7 @@ def run_test_case(test_case, suite_capabilities=None):
 
 
 _basic_data = load_test_data("basic.json")
-_modifiers_data = load_test_data("modifiers.json")
+_transformers_data = load_test_data("transformers.json")
 _errors_data = load_test_data("errors.json")
 
 
@@ -46,9 +46,9 @@ def test_basic_parsing(test_case):
     run_test_case(test_case, _basic_data.get("default_capabilities"))
 
 
-@pytest.mark.parametrize("test_case", _modifiers_data["tests"])
-def test_modifiers_parsing(test_case):
-    run_test_case(test_case, _modifiers_data.get("default_capabilities"))
+@pytest.mark.parametrize("test_case", _transformers_data["tests"])
+def test_transformers_parsing(test_case):
+    run_test_case(test_case, _transformers_data.get("default_capabilities"))
 
 
 @pytest.mark.parametrize("test_case", _errors_data["tests"])

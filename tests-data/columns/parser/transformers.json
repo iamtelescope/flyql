@@ -2,7 +2,9 @@
   "version": "1.0",
   "description": "Transformer column parsing tests",
   "test_suite": "columns_parser_transformers",
-  "default_capabilities": {"transformers": true},
+  "default_capabilities": {
+    "transformers": true
+  },
   "tests": [
     {
       "name": "single_transformer_no_args",
@@ -11,9 +13,64 @@
       "expected_columns": [
         {
           "name": "message",
-          "transformers": [{"name": "upper", "arguments": []}],
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
           "alias": null,
-          "segments": ["message"],
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "single_transformer_with_int_arg",
+      "input": "message|chars(10)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "chars",
+              "arguments": [
+                10
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "single_transformer_with_float_arg",
+      "input": "value|round(2.5)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "value",
+          "transformers": [
+            {
+              "name": "round",
+              "arguments": [
+                2.5
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "value"
+          ],
           "is_segmented": false,
           "display_name": ""
         }
@@ -21,17 +78,125 @@
     },
     {
       "name": "chained_transformers",
-      "input": "message|upper|len",
+      "input": "message|upper|chars(10)",
       "expected_result": "success",
       "expected_columns": [
         {
           "name": "message",
           "transformers": [
-            {"name": "upper", "arguments": []},
-            {"name": "len", "arguments": []}
+            {
+              "name": "upper",
+              "arguments": []
+            },
+            {
+              "name": "chars",
+              "arguments": [
+                10
+              ]
+            }
           ],
           "alias": null,
-          "segments": ["message"],
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_multiple_args",
+      "input": "message|chars(5,10)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "chars",
+              "arguments": [
+                5,
+                10
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_string_arg_single_quote",
+      "input": "message|split('\\t')",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_string_arg_double_quote",
+      "input": "message|split(\"\\t\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_mixed_args",
+      "input": "text|substr(0,'.')",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "text",
+          "transformers": [
+            {
+              "name": "substr",
+              "arguments": [
+                0,
+                "."
+              ]
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "text"
+          ],
           "is_segmented": false,
           "display_name": ""
         }
@@ -44,11 +209,130 @@
       "expected_columns": [
         {
           "name": "message",
-          "transformers": [{"name": "upper", "arguments": []}],
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
           "alias": "MSG",
-          "segments": ["message"],
+          "segments": [
+            "message"
+          ],
           "is_segmented": false,
           "display_name": "MSG"
+        }
+      ]
+    },
+    {
+      "name": "chained_transformers_with_alias",
+      "input": "message|upper|chars(25) as msg",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            },
+            {
+              "name": "chars",
+              "arguments": [
+                25
+              ]
+            }
+          ],
+          "alias": "msg",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "msg"
+        }
+      ]
+    },
+    {
+      "name": "nested_column_with_transformers",
+      "input": "metadata.labels.tier|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "metadata.labels.tier",
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "metadata",
+            "labels",
+            "tier"
+          ],
+          "is_segmented": true,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "complex_chain",
+      "input": "message|split('\\t')|slice(-1)|join|upper",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "split",
+              "arguments": [
+                "\t"
+              ]
+            },
+            {
+              "name": "slice",
+              "arguments": [
+                -1
+              ]
+            },
+            {
+              "name": "join",
+              "arguments": []
+            },
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "transformer_empty_args",
+      "input": "message|format()",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [
+            {
+              "name": "format",
+              "arguments": []
+            }
+          ],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
         }
       ]
     },
@@ -59,9 +343,18 @@
       "expected_columns": [
         {
           "name": "metadata.labels.tier",
-          "transformers": [{"name": "upper", "arguments": []}],
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
           "alias": null,
-          "segments": ["metadata", "labels", "tier"],
+          "segments": [
+            "metadata",
+            "labels",
+            "tier"
+          ],
           "is_segmented": true,
           "display_name": ""
         }
@@ -75,11 +368,19 @@
         {
           "name": "message",
           "transformers": [
-            {"name": "lower", "arguments": []},
-            {"name": "len", "arguments": []}
+            {
+              "name": "lower",
+              "arguments": []
+            },
+            {
+              "name": "len",
+              "arguments": []
+            }
           ],
           "alias": "msg_length",
-          "segments": ["message"],
+          "segments": [
+            "message"
+          ],
           "is_segmented": false,
           "display_name": "msg_length"
         }

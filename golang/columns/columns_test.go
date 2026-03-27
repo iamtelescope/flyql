@@ -70,11 +70,22 @@ func loadTestSuite(t *testing.T, filename string) testSuite {
 	if err != nil {
 		t.Fatalf("failed to read test data %s: %v", path, err)
 	}
+	// Remap "transformers" key to "modifiers" for Go compatibility (Go rename happens in Story 1.4)
+	data = remapTransformersToModifiers(data)
 	var suite testSuite
 	if err := json.Unmarshal(data, &suite); err != nil {
 		t.Fatalf("failed to parse test data %s: %v", path, err)
 	}
 	return suite
+}
+
+// remapTransformersToModifiers rewrites JSON keys from "transformers" to "modifiers"
+// so existing Go struct tags can deserialize the renamed test data.
+// This compatibility layer is removed when Story 1.4 renames Go internals.
+func remapTransformersToModifiers(data []byte) []byte {
+	s := string(data)
+	s = strings.ReplaceAll(s, `"transformers":`, `"modifiers":`)
+	return []byte(s)
 }
 
 // normalizeForComparison serializes a value to JSON for comparison,
@@ -157,8 +168,8 @@ func TestBasic(t *testing.T) {
 	}
 }
 
-func TestModifiers(t *testing.T) {
-	suite := loadTestSuite(t, "modifiers.json")
+func TestTransformers(t *testing.T) {
+	suite := loadTestSuite(t, "transformers.json")
 
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {

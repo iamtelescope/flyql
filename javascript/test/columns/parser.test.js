@@ -40,8 +40,8 @@ describe('Columns Parser', () => {
         })
     })
 
-    describe('modifiers parsing', () => {
-        const testData = loadTestData('modifiers.json')
+    describe('transformers parsing', () => {
+        const testData = loadTestData('transformers.json')
         testData.tests.forEach((testCase) => {
             it(`should handle ${testCase.name}`, () => {
                 runTestCase(testCase, testData.default_capabilities)

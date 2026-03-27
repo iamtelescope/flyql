@@ -12,7 +12,7 @@ from .constants import (
 
 class Parser:
     def __init__(self, capabilities: Optional[Dict[str, Any]] = None) -> None:
-        defaults: Dict[str, Any] = {"modifiers": False}
+        defaults: Dict[str, Any] = {"transformers": False}
         if capabilities is not None:
             defaults.update(capabilities)
         self.capabilities = defaults
@@ -25,11 +25,11 @@ class Parser:
         self.column = ""
         self.alias = ""
         self.alias_operator = ""
-        self.modifier = ""
-        self.modifier_argument = ""
-        self.modifier_argument_type = "auto"
-        self.modifiers: List[Dict[str, Any]] = []
-        self.modifier_arguments: List[Any] = []
+        self.transformer = ""
+        self.transformer_argument = ""
+        self.transformer_argument_type = "auto"
+        self.transformers: List[Dict[str, Any]] = []
+        self.transformer_arguments: List[Any] = []
         self.columns: List[Dict[str, Any]] = []
         self.text = ""
 
@@ -40,24 +40,24 @@ class Parser:
         self.columns.append(
             {
                 "name": self.column,
-                "modifiers": self.modifiers,
+                "transformers": self.transformers,
                 "alias": self.alias if self.alias else None,
             }
         )
         self.reset_data()
 
-    def store_modifier(self) -> None:
-        self.modifiers.append(
+    def store_transformer(self) -> None:
+        self.transformers.append(
             {
-                "name": self.modifier,
-                "arguments": self.modifier_arguments,
+                "name": self.transformer,
+                "arguments": self.transformer_arguments,
             }
         )
-        self.reset_modifier()
+        self.reset_transformer()
 
     def store_argument(self) -> None:
-        value: Any = self.modifier_argument
-        if self.modifier_argument_type == "auto":
+        value: Any = self.transformer_argument
+        if self.transformer_argument_type == "auto":
             try:
                 value = int(value)
             except ValueError:
@@ -65,8 +65,8 @@ class Parser:
                     value = float(value)
                 except ValueError:
                     pass
-        self.modifier_arguments.append(value)
-        self.reset_modifier_argument()
+        self.transformer_arguments.append(value)
+        self.reset_transformer_argument()
 
     def set_char(self, char: Char) -> None:
         self.char = char
@@ -74,10 +74,10 @@ class Parser:
     def set_state(self, state: State) -> None:
         self.state = state
 
-    def reset_modifier(self) -> None:
-        self.modifier = ""
-        self.modifier_arguments = []
-        self.modifier_argument = ""
+    def reset_transformer(self) -> None:
+        self.transformer = ""
+        self.transformer_arguments = []
+        self.transformer_argument = ""
 
     def reset_column(self) -> None:
         self.column = ""
@@ -88,18 +88,18 @@ class Parser:
     def reset_alias(self) -> None:
         self.alias = ""
 
-    def reset_modifiers(self) -> None:
-        self.modifiers = []
+    def reset_transformers(self) -> None:
+        self.transformers = []
 
-    def reset_modifier_argument(self) -> None:
-        self.modifier_argument = ""
-        self.modifier_argument_type = "auto"
+    def reset_transformer_argument(self) -> None:
+        self.transformer_argument = ""
+        self.transformer_argument_type = "auto"
 
     def reset_data(self) -> None:
         self.reset_column()
         self.reset_alias()
-        self.reset_modifier()
-        self.reset_modifiers()
+        self.reset_transformer()
+        self.reset_transformers()
         self.reset_alias_operator()
 
     def set_error_state(self, error_text: str, errno: int) -> None:
@@ -115,13 +115,13 @@ class Parser:
         if self.char:
             self.column += self.char.value
 
-    def extend_modifier(self) -> None:
+    def extend_transformer(self) -> None:
         if self.char:
-            self.modifier += self.char.value
+            self.transformer += self.char.value
 
-    def extend_modifier_argument(self) -> None:
+    def extend_transformer_argument(self) -> None:
         if self.char:
-            self.modifier_argument += self.char.value
+            self.transformer_argument += self.char.value
 
     def extend_alias(self) -> None:
         if self.char:
@@ -170,22 +170,22 @@ class Parser:
                 self.in_state_expect_alias_operator()
             elif self.state == State.EXPECT_ALIAS_DELIMITER:
                 self.in_state_expect_alias_delimiter()
-            elif self.state == State.EXPECT_MODIFIER:
-                self.in_state_expect_modifier()
-            elif self.state == State.EXPECT_MODIFIER_ARGUMENT:
-                self.in_state_expect_modifier_argument()
-            elif self.state == State.MODIFIER:
-                self.in_state_modifier()
-            elif self.state == State.MODIFIER_ARGUMENT:
-                self.in_state_modifier_argument()
-            elif self.state == State.MODIFIER_COMPLETE:
-                self.in_state_modifier_complete()
-            elif self.state == State.MODIFIER_ARGUMENT_DOUBLE_QUOTED:
-                self.in_state_modifier_argument_double_quoted()
-            elif self.state == State.MODIFIER_ARGUMENT_SINGLE_QUOTED:
-                self.in_state_modifier_argument_single_quoted()
-            elif self.state == State.EXPECT_MODIFIER_ARGUMENT_DELIMITER:
-                self.in_state_expect_modifier_argument_delimiter()
+            elif self.state == State.EXPECT_TRANSFORMER:
+                self.in_state_expect_transformer()
+            elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT:
+                self.in_state_expect_transformer_argument()
+            elif self.state == State.TRANSFORMER:
+                self.in_state_transformer()
+            elif self.state == State.TRANSFORMER_ARGUMENT:
+                self.in_state_transformer_argument()
+            elif self.state == State.TRANSFORMER_COMPLETE:
+                self.in_state_transformer_complete()
+            elif self.state == State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED:
+                self.in_state_transformer_argument_double_quoted()
+            elif self.state == State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED:
+                self.in_state_transformer_argument_single_quoted()
+            elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER:
+                self.in_state_expect_transformer_argument_delimiter()
             else:
                 self.set_error_state(f"unknown state: {self.state}", 1)
             i += 1
@@ -230,30 +230,30 @@ class Parser:
                 self.store_column()
         elif self.state == State.EXPECT_ALIAS_DELIMITER:
             self.set_error_state("unexpected end of alias. Expected alias value", 14)
-        elif self.state == State.MODIFIER:
-            if self.modifier:
-                self.store_modifier()
+        elif self.state == State.TRANSFORMER:
+            if self.transformer:
+                self.store_transformer()
             if self.column:
                 self.store_column()
-        elif self.state == State.MODIFIER_COMPLETE:
-            self.store_modifier()
+        elif self.state == State.TRANSFORMER_COMPLETE:
+            self.store_transformer()
             self.store_column()
         elif (
-            self.state == State.MODIFIER_ARGUMENT_DOUBLE_QUOTED
-            or self.state == State.MODIFIER_ARGUMENT_SINGLE_QUOTED
+            self.state == State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED
+            or self.state == State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED
         ):
             self.set_error_state("unexpected end of quoted argument value", 12)
-        elif self.state == State.EXPECT_MODIFIER_ARGUMENT_DELIMITER:
+        elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER:
             self.set_error_state("unexpected end of arguments list", 15)
-        elif self.state == State.EXPECT_MODIFIER_ARGUMENT:
-            # Ended while expecting modifier argument (unclosed parenthesis)
+        elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT:
+            # Ended while expecting transformer argument (unclosed parenthesis)
             self.set_error_state("expected closing parenthesis", 16)
-        elif self.state == State.MODIFIER_ARGUMENT:
+        elif self.state == State.TRANSFORMER_ARGUMENT:
             # Ended in middle of reading argument
             self.set_error_state("expected closing parenthesis", 16)
-        elif self.state == State.EXPECT_MODIFIER:
-            # Ended after | with no modifier name
-            self.set_error_state("expected modifier after operator", 7)
+        elif self.state == State.EXPECT_TRANSFORMER:
+            # Ended after | with no transformer name
+            self.set_error_state("expected transformer after operator", 7)
 
     def in_state_expect_column(self) -> None:
         if not self.char:
@@ -276,92 +276,92 @@ class Parser:
         elif self.char.is_columns_delimiter():
             self.set_state(State.EXPECT_COLUMN)
             self.store_column()
-        elif self.char.is_modifier_operator():
-            if not self.capabilities["modifiers"]:
-                self.set_error_state("modifiers are not enabled", 17)
+        elif self.char.is_transformer_operator():
+            if not self.capabilities["transformers"]:
+                self.set_error_state("transformers are not enabled", 17)
                 return
-            self.set_state(State.EXPECT_MODIFIER)
+            self.set_state(State.EXPECT_TRANSFORMER)
         else:
             self.set_error_state("invalid character", 6)
 
-    def in_state_expect_modifier(self) -> None:
+    def in_state_expect_transformer(self) -> None:
         if not self.char:
             return
-        if self.char.is_modifier_value():
-            self.extend_modifier()
-            self.set_state(State.MODIFIER)
+        if self.char.is_transformer_value():
+            self.extend_transformer()
+            self.set_state(State.TRANSFORMER)
         else:
-            self.set_error_state("invalid character, expected modifier", 7)
+            self.set_error_state("invalid character, expected transformer", 7)
 
-    def in_state_modifier(self) -> None:
+    def in_state_transformer(self) -> None:
         if not self.char:
             return
-        if self.char.is_modifier_value():
-            self.extend_modifier()
+        if self.char.is_transformer_value():
+            self.extend_transformer()
         elif self.char.is_columns_delimiter():
-            self.store_modifier()
+            self.store_transformer()
             self.store_column()
             self.set_state(State.EXPECT_COLUMN)
-        elif self.char.is_modifier_operator():
-            self.store_modifier()
-            self.set_state(State.EXPECT_MODIFIER)
+        elif self.char.is_transformer_operator():
+            self.store_transformer()
+            self.set_state(State.EXPECT_TRANSFORMER)
         elif self.char.is_space():
-            self.store_modifier()
+            self.store_transformer()
             self.set_state(State.EXPECT_ALIAS_OPERATOR)
         elif self.char.is_bracket_open():
-            self.set_state(State.EXPECT_MODIFIER_ARGUMENT)
+            self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT)
         elif self.char.is_bracket_close():
             self.store_argument()
-            self.store_modifier()
+            self.store_transformer()
             raise ValueError("unsupported close bracket")
         else:
-            raise ValueError("unsupported char in modifier")
+            raise ValueError("unsupported char in transformer")
 
-    def in_state_expect_modifier_argument(self) -> None:
+    def in_state_expect_transformer_argument(self) -> None:
         if not self.char:
             return
         if self.char.is_space():
             return
         if self.char.is_double_quote():
-            self.modifier_argument_type = "str"
-            self.set_state(State.MODIFIER_ARGUMENT_DOUBLE_QUOTED)
+            self.transformer_argument_type = "str"
+            self.set_state(State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED)
         elif self.char.is_single_quote():
-            self.modifier_argument_type = "str"
-            self.set_state(State.MODIFIER_ARGUMENT_SINGLE_QUOTED)
-        elif self.char.is_modifier_argument_value():
-            self.extend_modifier_argument()
-            self.set_state(State.MODIFIER_ARGUMENT)
+            self.transformer_argument_type = "str"
+            self.set_state(State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED)
+        elif self.char.is_transformer_argument_value():
+            self.extend_transformer_argument()
+            self.set_state(State.TRANSFORMER_ARGUMENT)
         elif self.char.is_bracket_close():
-            if self.modifier_argument:
+            if self.transformer_argument:
                 self.store_argument()
-            self.set_state(State.MODIFIER_COMPLETE)
+            self.set_state(State.TRANSFORMER_COMPLETE)
 
-    def in_state_modifier_argument(self) -> None:
+    def in_state_transformer_argument(self) -> None:
         if not self.char:
             return
-        if self.char.is_modifier_argument_delimiter():
+        if self.char.is_transformer_argument_delimiter():
             self.store_argument()
-            self.set_state(State.EXPECT_MODIFIER_ARGUMENT)
-        elif self.char.is_modifier_argument_value():
-            self.extend_modifier_argument()
+            self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT)
+        elif self.char.is_transformer_argument_value():
+            self.extend_transformer_argument()
         elif self.char.is_bracket_close():
             self.store_argument()
-            self.set_state(State.MODIFIER_COMPLETE)
+            self.set_state(State.TRANSFORMER_COMPLETE)
 
-    def in_state_expect_modifier_argument_delimiter(self) -> None:
+    def in_state_expect_transformer_argument_delimiter(self) -> None:
         if not self.char:
             return
-        if self.char.is_modifier_argument_delimiter():
-            self.set_state(State.EXPECT_MODIFIER_ARGUMENT)
+        if self.char.is_transformer_argument_delimiter():
+            self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT)
         elif self.char.is_bracket_close():
-            self.set_state(State.MODIFIER_COMPLETE)
+            self.set_state(State.TRANSFORMER_COMPLETE)
         else:
             self.set_error_state(
-                "invalid character. Expected bracket close or modifier argument delimiter",
+                "invalid character. Expected bracket close or transformer argument delimiter",
                 9,
             )
 
-    def in_state_modifier_argument_double_quoted(self) -> None:
+    def in_state_transformer_argument_double_quoted(self) -> None:
         if not self.char:
             return
         if self.char.is_backslash():
@@ -369,23 +369,23 @@ class Parser:
             try:
                 next_char = self.text[next_pos]
             except IndexError:
-                self.extend_modifier_argument()
+                self.extend_transformer_argument()
             else:
                 if next_char != DOUBLE_QUOTE:
-                    self.extend_modifier_argument()
-        elif self.char.is_modifier_double_quoted_argument_value():
-            self.extend_modifier_argument()
+                    self.extend_transformer_argument()
+        elif self.char.is_transformer_double_quoted_argument_value():
+            self.extend_transformer_argument()
         elif self.char.is_double_quote():
             prev_pos = self.char.pos - 1
             if self.text[prev_pos] == "\\":
-                self.extend_modifier_argument()
+                self.extend_transformer_argument()
             else:
                 self.store_argument()
-                self.set_state(State.EXPECT_MODIFIER_ARGUMENT_DELIMITER)
+                self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
             self.set_error_state("invalid character", 10)
 
-    def in_state_modifier_argument_single_quoted(self) -> None:
+    def in_state_transformer_argument_single_quoted(self) -> None:
         if not self.char:
             return
         if self.char.is_backslash():
@@ -393,38 +393,38 @@ class Parser:
             try:
                 next_char = self.text[next_pos]
             except IndexError:
-                self.extend_modifier_argument()
+                self.extend_transformer_argument()
             else:
                 if next_char != SINGLE_QUOTE:
-                    self.extend_modifier_argument()
-        elif self.char.is_modifier_single_quoted_argument_value():
-            self.extend_modifier_argument()
+                    self.extend_transformer_argument()
+        elif self.char.is_transformer_single_quoted_argument_value():
+            self.extend_transformer_argument()
         elif self.char.is_single_quote():
             prev_pos = self.char.pos - 1
             if self.text[prev_pos] == "\\":
-                self.extend_modifier_argument()
+                self.extend_transformer_argument()
             else:
                 self.store_argument()
-                self.set_state(State.EXPECT_MODIFIER_ARGUMENT_DELIMITER)
+                self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
             self.set_error_state("invalid character", 10)
 
-    def in_state_modifier_complete(self) -> None:
+    def in_state_transformer_complete(self) -> None:
         if not self.char:
             return
         if self.char.is_space():
-            self.store_modifier()
+            self.store_transformer()
             self.set_state(State.EXPECT_ALIAS_OPERATOR)
         elif self.char.is_columns_delimiter():
-            self.store_modifier()
+            self.store_transformer()
             self.store_column()
             self.set_state(State.EXPECT_COLUMN)
-        elif self.char.is_modifier_operator():
-            if not self.capabilities["modifiers"]:
-                self.set_error_state("modifiers are not enabled", 17)
+        elif self.char.is_transformer_operator():
+            if not self.capabilities["transformers"]:
+                self.set_error_state("transformers are not enabled", 17)
                 return
-            self.store_modifier()
-            self.set_state(State.EXPECT_MODIFIER)
+            self.store_transformer()
+            self.set_state(State.EXPECT_TRANSFORMER)
         else:
             self.set_error_state("invalid character", 8)
 

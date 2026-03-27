@@ -5,12 +5,12 @@ from .constants import (
     DOT,
     COLON,
     SLASH,
-    MODIFIER_ARGUMENT_DELIMITER,
+    TRANSFORMER_ARGUMENT_DELIMITER,
     BRACKET_OPEN,
     BRACKET_CLOSE,
     DOUBLE_QUOTE,
     SINGLE_QUOTE,
-    MODIFIER_OPERATOR,
+    TRANSFORMER_OPERATOR,
     COLUMNS_DELIMITER,
     ALIAS_DELIMITER,
     SPACE,
@@ -40,20 +40,20 @@ class Char:
             or self.value == AT
         )
 
-    def is_modifier_argument_value(self) -> bool:
+    def is_transformer_argument_value(self) -> bool:
         return (
-            self.value != MODIFIER_ARGUMENT_DELIMITER
+            self.value != TRANSFORMER_ARGUMENT_DELIMITER
             and self.value != BRACKET_OPEN
             and self.value != BRACKET_CLOSE
         )
 
-    def is_modifier_double_quoted_argument_value(self) -> bool:
+    def is_transformer_double_quoted_argument_value(self) -> bool:
         return not self.is_double_quote()
 
-    def is_modifier_single_quoted_argument_value(self) -> bool:
+    def is_transformer_single_quoted_argument_value(self) -> bool:
         return not self.is_single_quote()
 
-    def is_modifier_value(self) -> bool:
+    def is_transformer_value(self) -> bool:
         return self.value.isalnum() or self.value == UNDERSCORE
 
     def is_alias_char(self) -> bool:
@@ -71,11 +71,11 @@ class Char:
     def is_single_quote(self) -> bool:
         return self.value == SINGLE_QUOTE
 
-    def is_modifier_operator(self) -> bool:
-        return self.value == MODIFIER_OPERATOR
+    def is_transformer_operator(self) -> bool:
+        return self.value == TRANSFORMER_OPERATOR
 
-    def is_modifier_argument_delimiter(self) -> bool:
-        return self.value == MODIFIER_ARGUMENT_DELIMITER
+    def is_transformer_argument_delimiter(self) -> bool:
+        return self.value == TRANSFORMER_ARGUMENT_DELIMITER
 
     def is_columns_delimiter(self) -> bool:
         return self.value == COLUMNS_DELIMITER

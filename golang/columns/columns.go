@@ -18,20 +18,20 @@ type ParserError struct {
 
 func (e *ParserError) Error() string { return e.Message }
 
-// Modifier represents a column modifier (e.g., upper, chars(25)).
-type Modifier struct {
+// Transformer represents a column transformer (e.g., upper, chars(25)).
+type Transformer struct {
 	Name      string `json:"name"`
 	Arguments []any  `json:"arguments"`
 }
 
 // ParsedColumn represents a fully parsed column with segments and metadata.
 type ParsedColumn struct {
-	Name        string     `json:"name"`
-	Modifiers   []Modifier `json:"modifiers"`
-	Alias       *string    `json:"alias"`
-	Segments    []string   `json:"segments"`
-	IsSegmented bool       `json:"is_segmented"`
-	DisplayName string     `json:"display_name"`
+	Name         string        `json:"name"`
+	Transformers []Transformer `json:"transformers"`
+	Alias        *string       `json:"alias"`
+	Segments     []string      `json:"segments"`
+	IsSegmented  bool          `json:"is_segmented"`
+	DisplayName  string        `json:"display_name"`
 }
 
 type state int
@@ -42,14 +42,14 @@ const (
 	stateExpectAliasOperator
 	stateExpectAliasDelimiter
 	stateExpectAlias
-	stateExpectModifier
-	stateModifier
-	stateModifierComplete
-	stateExpectModifierArgument
-	stateModifierArgument
-	stateModifierArgumentDoubleQuoted
-	stateModifierArgumentSingleQuoted
-	stateExpectModifierArgumentDelimiter
+	stateExpectTransformer
+	stateTransformer
+	stateTransformerComplete
+	stateExpectTransformerArgument
+	stateTransformerArgument
+	stateTransformerArgumentDoubleQuoted
+	stateTransformerArgumentSingleQuoted
+	stateExpectTransformerArgumentDelimiter
 	stateError
 )
 
@@ -64,42 +64,42 @@ var escapeSequences = map[byte]string{
 }
 
 type columnData struct {
-	name      string
-	modifiers []Modifier
-	alias     string
+	name         string
+	transformers []Transformer
+	alias        string
 }
 
 // Capabilities controls which parser features are enabled.
 type Capabilities struct {
-	Modifiers bool
+	Transformers bool
 }
 
 type parser struct {
-	capabilities         Capabilities
-	text                 string
-	state                state
-	errorText            string
-	errno                int
-	charValue            string
-	charPos              int
-	column               string
-	alias                string
-	aliasOperator        string
-	modifier             string
-	modifierArgument     string
-	modifierArgumentType string
-	modifiers            []Modifier
-	modifierArguments    []any
-	columns              []columnData
+	capabilities            Capabilities
+	text                    string
+	state                   state
+	errorText               string
+	errno                   int
+	charValue               string
+	charPos                 int
+	column                  string
+	alias                   string
+	aliasOperator           string
+	transformer             string
+	transformerArgument     string
+	transformerArgumentType string
+	transformers            []Transformer
+	transformerArguments    []any
+	columns                 []columnData
 }
 
 func newParser(capabilities Capabilities) *parser {
 	return &parser{
-		capabilities:         capabilities,
-		state:                stateExpectColumn,
-		modifierArgumentType: "auto",
-		modifiers:            []Modifier{},
-		modifierArguments:    []any{},
+		capabilities:            capabilities,
+		state:                   stateExpectColumn,
+		transformerArgumentType: "auto",
+		transformers:            []Transformer{},
+		transformerArguments:    []any{},
 	}
 }
 
@@ -111,53 +111,53 @@ func (p *parser) storeColumn() {
 	}
 	_ = alias // used below
 	p.columns = append(p.columns, columnData{
-		name:      p.column,
-		modifiers: p.modifiers,
-		alias:     p.alias,
+		name:         p.column,
+		transformers: p.transformers,
+		alias:        p.alias,
 	})
 	p.resetData()
 }
 
-func (p *parser) storeModifier() {
-	p.modifiers = append(p.modifiers, Modifier{
-		Name:      p.modifier,
-		Arguments: p.modifierArguments,
+func (p *parser) storeTransformer() {
+	p.transformers = append(p.transformers, Transformer{
+		Name:      p.transformer,
+		Arguments: p.transformerArguments,
 	})
-	p.resetModifier()
+	p.resetTransformerData()
 }
 
 func (p *parser) storeArgument() {
-	var value any = p.modifierArgument
-	if p.modifierArgumentType == "auto" {
-		if iv, err := strconv.Atoi(p.modifierArgument); err == nil {
+	var value any = p.transformerArgument
+	if p.transformerArgumentType == "auto" {
+		if iv, err := strconv.Atoi(p.transformerArgument); err == nil {
 			value = iv
-		} else if fv, err := strconv.ParseFloat(p.modifierArgument, 64); err == nil {
+		} else if fv, err := strconv.ParseFloat(p.transformerArgument, 64); err == nil {
 			value = fv
 		}
 	}
-	p.modifierArguments = append(p.modifierArguments, value)
-	p.resetModifierArgument()
+	p.transformerArguments = append(p.transformerArguments, value)
+	p.resetTransformerArgument()
 }
 
-func (p *parser) resetModifier() {
-	p.modifier = ""
-	p.modifierArguments = []any{}
-	p.modifierArgument = ""
+func (p *parser) resetTransformerData() {
+	p.transformer = ""
+	p.transformerArguments = []any{}
+	p.transformerArgument = ""
 }
 
-func (p *parser) resetModifierArgument() {
-	p.modifierArgument = ""
-	p.modifierArgumentType = "auto"
+func (p *parser) resetTransformerArgument() {
+	p.transformerArgument = ""
+	p.transformerArgumentType = "auto"
 }
 
 func (p *parser) resetData() {
 	p.column = ""
 	p.alias = ""
-	p.modifier = ""
-	p.modifiers = []Modifier{}
-	p.modifierArguments = []any{}
-	p.modifierArgument = ""
-	p.modifierArgumentType = "auto"
+	p.transformer = ""
+	p.transformers = []Transformer{}
+	p.transformerArguments = []any{}
+	p.transformerArgument = ""
+	p.transformerArgumentType = "auto"
 	p.aliasOperator = ""
 }
 
@@ -188,7 +188,7 @@ func isColumnValue(ch string) bool {
 	return false
 }
 
-func isModifierValue(ch string) bool {
+func isTransformerValue(ch string) bool {
 	if len(ch) == 1 {
 		r := rune(ch[0])
 		return unicode.IsLetter(r) || unicode.IsDigit(r) || ch == "_"
@@ -196,7 +196,7 @@ func isModifierValue(ch string) bool {
 	return false
 }
 
-func isModifierArgumentValue(ch string) bool {
+func isTransformerArgumentValue(ch string) bool {
 	return ch != "," && ch != "(" && ch != ")"
 }
 
@@ -252,22 +252,22 @@ func (p *parser) parse(text string) error {
 			p.inStateExpectAliasOperator()
 		case stateExpectAliasDelimiter:
 			p.inStateExpectAliasDelimiter()
-		case stateExpectModifier:
-			p.inStateExpectModifier()
-		case stateExpectModifierArgument:
-			p.inStateExpectModifierArgument()
-		case stateModifier:
-			p.inStateModifier()
-		case stateModifierArgument:
-			p.inStateModifierArgument()
-		case stateModifierComplete:
-			p.inStateModifierComplete()
-		case stateModifierArgumentDoubleQuoted:
-			p.inStateModifierArgumentDoubleQuoted()
-		case stateModifierArgumentSingleQuoted:
-			p.inStateModifierArgumentSingleQuoted()
-		case stateExpectModifierArgumentDelimiter:
-			p.inStateExpectModifierArgumentDelimiter()
+		case stateExpectTransformer:
+			p.inStateExpectTransformer()
+		case stateExpectTransformerArgument:
+			p.inStateExpectTransformerArgument()
+		case stateTransformer:
+			p.inStateTransformer()
+		case stateTransformerArgument:
+			p.inStateTransformerArgument()
+		case stateTransformerComplete:
+			p.inStateTransformerComplete()
+		case stateTransformerArgumentDoubleQuoted:
+			p.inStateTransformerArgumentDoubleQuoted()
+		case stateTransformerArgumentSingleQuoted:
+			p.inStateTransformerArgumentSingleQuoted()
+		case stateExpectTransformerArgumentDelimiter:
+			p.inStateExpectTransformerArgumentDelimiter()
 		default:
 			p.setErrorState(fmt.Sprintf("unknown state: %d", p.state), 1)
 		}
@@ -309,26 +309,26 @@ func (p *parser) inStateLastChar() {
 		}
 	case stateExpectAliasDelimiter:
 		p.setErrorState("unexpected end of alias. Expected alias value", 14)
-	case stateModifier:
-		if p.modifier != "" {
-			p.storeModifier()
+	case stateTransformer:
+		if p.transformer != "" {
+			p.storeTransformer()
 		}
 		if p.column != "" {
 			p.storeColumn()
 		}
-	case stateModifierComplete:
-		p.storeModifier()
+	case stateTransformerComplete:
+		p.storeTransformer()
 		p.storeColumn()
-	case stateModifierArgumentDoubleQuoted, stateModifierArgumentSingleQuoted:
+	case stateTransformerArgumentDoubleQuoted, stateTransformerArgumentSingleQuoted:
 		p.setErrorState("unexpected end of quoted argument value", 12)
-	case stateExpectModifierArgumentDelimiter:
+	case stateExpectTransformerArgumentDelimiter:
 		p.setErrorState("unexpected end of arguments list", 15)
-	case stateExpectModifierArgument:
+	case stateExpectTransformerArgument:
 		p.setErrorState("expected closing parenthesis", 16)
-	case stateModifierArgument:
+	case stateTransformerArgument:
 		p.setErrorState("expected closing parenthesis", 16)
-	case stateExpectModifier:
-		p.setErrorState("expected modifier after operator", 7)
+	case stateExpectTransformer:
+		p.setErrorState("expected transformer after operator", 7)
 	}
 }
 
@@ -352,160 +352,160 @@ func (p *parser) inStateColumn() {
 		p.state = stateExpectColumn
 		p.storeColumn()
 	} else if p.charValue == "|" {
-		if !p.capabilities.Modifiers {
-			p.setErrorState("modifiers are not enabled", 17)
+		if !p.capabilities.Transformers {
+			p.setErrorState("transformers are not enabled", 17)
 			return
 		}
-		p.state = stateExpectModifier
+		p.state = stateExpectTransformer
 	} else {
 		p.setErrorState("invalid character", 6)
 	}
 }
 
-func (p *parser) inStateExpectModifier() {
-	if isModifierValue(p.charValue) {
-		p.modifier += p.charValue
-		p.state = stateModifier
+func (p *parser) inStateExpectTransformer() {
+	if isTransformerValue(p.charValue) {
+		p.transformer += p.charValue
+		p.state = stateTransformer
 	} else {
-		p.setErrorState("invalid character, expected modifier", 7)
+		p.setErrorState("invalid character, expected transformer", 7)
 	}
 }
 
-func (p *parser) inStateModifier() {
-	if isModifierValue(p.charValue) {
-		p.modifier += p.charValue
+func (p *parser) inStateTransformer() {
+	if isTransformerValue(p.charValue) {
+		p.transformer += p.charValue
 	} else if p.charValue == "," {
-		p.storeModifier()
+		p.storeTransformer()
 		p.storeColumn()
 		p.state = stateExpectColumn
 	} else if p.charValue == "|" {
-		p.storeModifier()
-		p.state = stateExpectModifier
+		p.storeTransformer()
+		p.state = stateExpectTransformer
 	} else if p.charValue == " " {
-		p.storeModifier()
+		p.storeTransformer()
 		p.state = stateExpectAliasOperator
 	} else if p.charValue == "(" {
-		p.state = stateExpectModifierArgument
+		p.state = stateExpectTransformerArgument
 	} else if p.charValue == ")" {
 		p.storeArgument()
-		p.storeModifier()
+		p.storeTransformer()
 		// Python raises ValueError here, but let's match the behavior
 		p.setErrorState("unsupported close bracket", 8)
 	} else {
-		p.setErrorState("unsupported char in modifier", 8)
+		p.setErrorState("unsupported char in transformer", 8)
 	}
 }
 
-func (p *parser) inStateExpectModifierArgument() {
+func (p *parser) inStateExpectTransformerArgument() {
 	if p.charValue == " " {
 		return
 	}
 	if p.charValue == "\"" {
-		p.modifierArgumentType = "str"
-		p.state = stateModifierArgumentDoubleQuoted
+		p.transformerArgumentType = "str"
+		p.state = stateTransformerArgumentDoubleQuoted
 	} else if p.charValue == "'" {
-		p.modifierArgumentType = "str"
-		p.state = stateModifierArgumentSingleQuoted
-	} else if isModifierArgumentValue(p.charValue) {
-		p.modifierArgument += p.charValue
-		p.state = stateModifierArgument
+		p.transformerArgumentType = "str"
+		p.state = stateTransformerArgumentSingleQuoted
+	} else if isTransformerArgumentValue(p.charValue) {
+		p.transformerArgument += p.charValue
+		p.state = stateTransformerArgument
 	} else if p.charValue == ")" {
-		if p.modifierArgument != "" {
+		if p.transformerArgument != "" {
 			p.storeArgument()
 		}
-		p.state = stateModifierComplete
+		p.state = stateTransformerComplete
 	}
 }
 
-func (p *parser) inStateModifierArgument() {
+func (p *parser) inStateTransformerArgument() {
 	if p.charValue == "," {
 		p.storeArgument()
-		p.state = stateExpectModifierArgument
-	} else if isModifierArgumentValue(p.charValue) {
-		p.modifierArgument += p.charValue
+		p.state = stateExpectTransformerArgument
+	} else if isTransformerArgumentValue(p.charValue) {
+		p.transformerArgument += p.charValue
 	} else if p.charValue == ")" {
 		p.storeArgument()
-		p.state = stateModifierComplete
+		p.state = stateTransformerComplete
 	}
 }
 
-func (p *parser) inStateExpectModifierArgumentDelimiter() {
+func (p *parser) inStateExpectTransformerArgumentDelimiter() {
 	if p.charValue == "," {
-		p.state = stateExpectModifierArgument
+		p.state = stateExpectTransformerArgument
 	} else if p.charValue == ")" {
-		p.state = stateModifierComplete
+		p.state = stateTransformerComplete
 	} else {
-		p.setErrorState("invalid character. Expected bracket close or modifier argument delimiter", 9)
+		p.setErrorState("invalid character. Expected bracket close or transformer argument delimiter", 9)
 	}
 }
 
-func (p *parser) inStateModifierArgumentDoubleQuoted() {
+func (p *parser) inStateTransformerArgumentDoubleQuoted() {
 	if p.charValue == "\\" {
 		nextPos := p.charPos + 1
 		if nextPos < len(p.text) {
 			nextChar := p.text[nextPos]
 			if nextChar != '"' {
-				p.modifierArgument += p.charValue
+				p.transformerArgument += p.charValue
 			}
 		} else {
-			p.modifierArgument += p.charValue
+			p.transformerArgument += p.charValue
 		}
 	} else if p.charValue != "\"" {
-		p.modifierArgument += p.charValue
+		p.transformerArgument += p.charValue
 	} else if p.charValue == "\"" {
 		prevPos := p.charPos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
-			p.modifierArgument += p.charValue
+			p.transformerArgument += p.charValue
 		} else {
 			p.storeArgument()
-			p.state = stateExpectModifierArgumentDelimiter
+			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
 		p.setErrorState("invalid character", 10)
 	}
 }
 
-func (p *parser) inStateModifierArgumentSingleQuoted() {
+func (p *parser) inStateTransformerArgumentSingleQuoted() {
 	if p.charValue == "\\" {
 		nextPos := p.charPos + 1
 		if nextPos < len(p.text) {
 			nextChar := p.text[nextPos]
 			if nextChar != '\'' {
-				p.modifierArgument += p.charValue
+				p.transformerArgument += p.charValue
 			}
 		} else {
-			p.modifierArgument += p.charValue
+			p.transformerArgument += p.charValue
 		}
 	} else if p.charValue != "'" {
-		p.modifierArgument += p.charValue
+		p.transformerArgument += p.charValue
 	} else if p.charValue == "'" {
 		prevPos := p.charPos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
-			p.modifierArgument += p.charValue
+			p.transformerArgument += p.charValue
 		} else {
 			p.storeArgument()
-			p.state = stateExpectModifierArgumentDelimiter
+			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
 		p.setErrorState("invalid character", 10)
 	}
 }
 
-func (p *parser) inStateModifierComplete() {
+func (p *parser) inStateTransformerComplete() {
 	if p.charValue == " " {
-		p.storeModifier()
+		p.storeTransformer()
 		p.state = stateExpectAliasOperator
 	} else if p.charValue == "," {
-		p.storeModifier()
+		p.storeTransformer()
 		p.storeColumn()
 		p.state = stateExpectColumn
 	} else if p.charValue == "|" {
-		if !p.capabilities.Modifiers {
-			p.setErrorState("modifiers are not enabled", 17)
+		if !p.capabilities.Transformers {
+			p.setErrorState("transformers are not enabled", 17)
 			return
 		}
-		p.storeModifier()
-		p.state = stateExpectModifier
+		p.storeTransformer()
+		p.state = stateExpectTransformer
 	} else {
 		p.setErrorState("invalid character", 8)
 	}
@@ -576,15 +576,15 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 			displayName = col.alias
 		}
 
-		// Ensure modifiers is never nil for JSON serialization
-		mods := col.modifiers
-		if mods == nil {
-			mods = []Modifier{}
+		// Ensure transformers is never nil for JSON serialization
+		transformers := col.transformers
+		if transformers == nil {
+			transformers = []Transformer{}
 		}
-		// Ensure each modifier's Arguments is never nil
-		for i := range mods {
-			if mods[i].Arguments == nil {
-				mods[i].Arguments = []any{}
+		// Ensure each transformer's Arguments is never nil
+		for i := range transformers {
+			if transformers[i].Arguments == nil {
+				transformers[i].Arguments = []any{}
 			}
 		}
 
@@ -594,12 +594,12 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 		}
 
 		result = append(result, ParsedColumn{
-			Name:        col.name,
-			Modifiers:   mods,
-			Alias:       alias,
-			Segments:    segments,
-			IsSegmented: key.IsSegmented(),
-			DisplayName: displayName,
+			Name:         col.name,
+			Transformers: transformers,
+			Alias:        alias,
+			Segments:     segments,
+			IsSegmented:  key.IsSegmented(),
+			DisplayName:  displayName,
 		})
 	}
 

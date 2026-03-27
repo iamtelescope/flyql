@@ -14,18 +14,18 @@ func testDataPath(filename string) string {
 	return filepath.Join(filepath.Dir(file), "..", "..", "tests-data", "columns", "parser", filename)
 }
 
-type expectedModifier struct {
+type expectedTransformer struct {
 	Name      string `json:"name"`
 	Arguments []any  `json:"arguments"`
 }
 
 type expectedColumn struct {
-	Name        string             `json:"name"`
-	Modifiers   []expectedModifier `json:"modifiers"`
-	Alias       *string            `json:"alias"`
-	Segments    []string           `json:"segments"`
-	IsSegmented bool               `json:"is_segmented"`
-	DisplayName string             `json:"display_name"`
+	Name         string                `json:"name"`
+	Transformers []expectedTransformer `json:"transformers"`
+	Alias        *string               `json:"alias"`
+	Segments     []string              `json:"segments"`
+	IsSegmented  bool                  `json:"is_segmented"`
+	DisplayName  string                `json:"display_name"`
 }
 
 type expectedError struct {
@@ -34,7 +34,7 @@ type expectedError struct {
 }
 
 type testCapabilities struct {
-	Modifiers *bool `json:"modifiers,omitempty"`
+	Transformers *bool `json:"transformers,omitempty"`
 }
 
 type testCase struct {
@@ -57,8 +57,8 @@ func resolveCapabilities(tc testCase, suite testSuite) Capabilities {
 	if src == nil {
 		src = suite.DefaultCapabilities
 	}
-	if src != nil && src.Modifiers != nil {
-		caps.Modifiers = *src.Modifiers
+	if src != nil && src.Transformers != nil {
+		caps.Transformers = *src.Transformers
 	}
 	return caps
 }
@@ -70,22 +70,11 @@ func loadTestSuite(t *testing.T, filename string) testSuite {
 	if err != nil {
 		t.Fatalf("failed to read test data %s: %v", path, err)
 	}
-	// Remap "transformers" key to "modifiers" for Go compatibility (Go rename happens in Story 1.4)
-	data = remapTransformersToModifiers(data)
 	var suite testSuite
 	if err := json.Unmarshal(data, &suite); err != nil {
 		t.Fatalf("failed to parse test data %s: %v", path, err)
 	}
 	return suite
-}
-
-// remapTransformersToModifiers rewrites JSON keys from "transformers" to "modifiers"
-// so existing Go struct tags can deserialize the renamed test data.
-// This compatibility layer is removed when Story 1.4 renames Go internals.
-func remapTransformersToModifiers(data []byte) []byte {
-	s := string(data)
-	s = strings.ReplaceAll(s, `"transformers":`, `"modifiers":`)
-	return []byte(s)
 }
 
 // normalizeForComparison serializes a value to JSON for comparison,
@@ -134,11 +123,11 @@ func compareParsedColumn(t *testing.T, idx int, got ParsedColumn, want expectedC
 		t.Errorf("column[%d].Segments = %s, want %s", idx, gotSegJSON, wantSegJSON)
 	}
 
-	// Compare modifiers via JSON to handle int/float64 differences
-	gotModJSON := normalizeForComparison(t, got.Modifiers)
-	wantModJSON := normalizeForComparison(t, want.Modifiers)
-	if gotModJSON != wantModJSON {
-		t.Errorf("column[%d].Modifiers = %s, want %s", idx, gotModJSON, wantModJSON)
+	// Compare transformers via JSON to handle int/float64 differences
+	gotTrJSON := normalizeForComparison(t, got.Transformers)
+	wantTrJSON := normalizeForComparison(t, want.Transformers)
+	if gotTrJSON != wantTrJSON {
+		t.Errorf("column[%d].Transformers = %s, want %s", idx, gotTrJSON, wantTrJSON)
 	}
 }
 
@@ -225,7 +214,7 @@ func TestErrors(t *testing.T) {
 }
 
 func TestJSONSerialization(t *testing.T) {
-	// Test that empty modifiers serialize as [] not null
+	// Test that empty transformers serialize as [] not null
 	columns, err := Parse("message", Capabilities{})
 	if err != nil {
 		t.Fatalf("Parse failed: %v", err)
@@ -237,8 +226,8 @@ func TestJSONSerialization(t *testing.T) {
 	}
 
 	jsonStr := string(data)
-	if strings.Contains(jsonStr, `"modifiers":null`) {
-		t.Error("modifiers serialized as null instead of []")
+	if strings.Contains(jsonStr, `"transformers":null`) {
+		t.Error("transformers serialized as null instead of []")
 	}
 	if strings.Contains(jsonStr, `"arguments":null`) {
 		t.Error("arguments serialized as null instead of []")
@@ -249,7 +238,7 @@ func TestJSONSerialization(t *testing.T) {
 }
 
 func TestParseToJSON(t *testing.T) {
-	data, err := ParseToJSON("message|upper as MSG", Capabilities{Modifiers: true})
+	data, err := ParseToJSON("message|upper as MSG", Capabilities{Transformers: true})
 	if err != nil {
 		t.Fatalf("ParseToJSON failed: %v", err)
 	}

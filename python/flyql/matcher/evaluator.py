@@ -10,6 +10,7 @@ from flyql.core.tree import Node
 
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
+from flyql.transformers.registry import default_registry
 
 # Regex engine constants
 REGEX_ENGINE_RE2: Final = "re2"
@@ -117,6 +118,14 @@ class Evaluator:
 
         key = Key(expression.key.raw)
         value = record.get_value(key)
+
+        if expression.key.transformers:
+            registry = default_registry()
+            for t_dict in expression.key.transformers:
+                transformer = registry.get(t_dict["name"])
+                if transformer is None:
+                    raise FlyqlError(f"unknown transformer: {t_dict['name']}")
+                value = transformer.apply(value)
 
         # Handle truthy operator (standalone key check)
         if expression.operator == Operator.TRUTHY.value:

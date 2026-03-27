@@ -16,6 +16,7 @@ import {
     GREATER_THAN,
     DOUBLE_QUOTE,
     SINGLE_QUOTE,
+    PIPE,
     NEWLINE,
     VALID_BOOL_OPERATORS_CHARS,
 } from './constants.js'
@@ -40,7 +41,8 @@ export class Char {
             this.value === COLON ||
             this.value === SLASH ||
             this.value === HYPHEN ||
-            this.value === AT
+            this.value === AT ||
+            this.value === PIPE
         )
     }
 

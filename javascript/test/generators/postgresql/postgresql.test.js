@@ -112,6 +112,7 @@ describe('PostgreSQL Generator', () => {
     runTestSuite('truthy.json')
     runTestSuite('not.json')
     runTestSuite('errors.json')
+    runTestSuite('transformers.json')
 
     // SELECT clause tests
     runSelectTestSuite('select_basic.json')

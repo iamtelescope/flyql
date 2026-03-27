@@ -11,6 +11,7 @@ import {
     NormalizedTypeDate,
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
+import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
 
 export { Column, newColumn, normalizeStarRocksType }
 
@@ -115,16 +116,24 @@ function expressionToSQLSimple(expr, columns) {
         if (!column.values.includes(String(expr.value))) throw new Error(`unknown value: ${expr.value}`)
     }
 
-    if (column.normalizedType) validateOperation(expr.value, column.normalizedType, expr.operator)
+    if (column.normalizedType && !expr.key.transformers.length) {
+        validateOperation(expr.value, column.normalizedType, expr.operator)
+    }
+
+    let colRef = `\`${column.name}\``
+    if (expr.key.transformers.length) {
+        validateTransformerChain(expr.key.transformers)
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
+    }
 
     switch (expr.operator) {
         case Operator.REGEX: {
             const value = escapeParam(String(expr.value))
-            return `regexp(\`${column.name}\`, ${value})`
+            return `regexp(${colRef}, ${value})`
         }
         case Operator.NOT_REGEX: {
             const value = escapeParam(String(expr.value))
-            return `not regexp(\`${column.name}\`, ${value})`
+            return `not regexp(${colRef}, ${value})`
         }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
@@ -134,19 +143,22 @@ function expressionToSQLSimple(expr, columns) {
             if (patternFound) {
                 operator = expr.operator === Operator.EQUALS ? 'LIKE' : 'NOT LIKE'
             }
-            return `\`${column.name}\` ${operator} ${escapedValue}`
+            return `${colRef} ${operator} ${escapedValue}`
         }
         default: {
             if (typeof expr.value === 'number' || typeof expr.value === 'bigint') {
-                return `\`${column.name}\` ${expr.operator} ${expr.value}`
+                return `${colRef} ${expr.operator} ${expr.value}`
             }
             const value = escapeParam(String(expr.value))
-            return `\`${column.name}\` ${expr.operator} ${value}`
+            return `${colRef} ${expr.operator} ${value}`
         }
     }
 }
 
 function expressionToSQLSegmented(expr, columns) {
+    if (expr.key.transformers.length) {
+        throw new Error('transformers on segmented (nested path) keys are not supported')
+    }
     const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
     const operator = operatorToStarRocksOperator[expr.operator]
     const columnName = expr.key.segments[0]
@@ -548,6 +560,10 @@ export function generateSelect(text, columns) {
         const key = parseKey(raw.name)
         const { column, path } = resolveColumn(key, columns)
         let sqlExpr = buildSelectExpr(column, path)
+        if (key.transformers.length) {
+            validateTransformerChain(key.transformers)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'starrocks')
+        }
 
         let alias = raw.alias
         if (alias) {

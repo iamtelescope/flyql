@@ -15,6 +15,7 @@ export const LOWER_THAN = '<'
 export const GREATER_THAN = '>'
 export const DOUBLE_QUOTE = '"'
 export const SINGLE_QUOTE = "'"
+export const PIPE = '|'
 export const NEWLINE = '\n'
 
 export const CharType = Object.freeze({

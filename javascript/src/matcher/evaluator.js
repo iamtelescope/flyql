@@ -1,4 +1,5 @@
 import { Operator, BoolOperator } from '../core/constants.js'
+import { defaultRegistry } from '../transformers/index.js'
 
 function isFalsy(value) {
     if (value === null || value === undefined) return true
@@ -154,7 +155,16 @@ export class Evaluator {
     }
 
     evalExpression(expr, record) {
-        const value = record.getValue(expr.key.raw)
+        let value = record.getValue(expr.key.raw)
+
+        if (expr.key.transformers && expr.key.transformers.length) {
+            const registry = defaultRegistry()
+            for (const tDict of expr.key.transformers) {
+                const transformer = registry.get(tDict.name)
+                if (!transformer) throw new Error(`unknown transformer: ${tDict.name}`)
+                value = transformer.apply(value)
+            }
+        }
 
         switch (expr.operator) {
             case Operator.TRUTHY:

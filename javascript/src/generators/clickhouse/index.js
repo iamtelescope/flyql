@@ -12,6 +12,7 @@ import {
     NormalizedTypeJSON,
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
+import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
 
 export { Column, newColumn, normalizeClickHouseType }
 
@@ -127,18 +128,24 @@ function expressionToSQLSimple(expr, columns) {
         }
     }
 
-    if (column.normalizedType) {
+    if (column.normalizedType && !expr.key.transformers.length) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
+    }
+
+    let colRef = column.name
+    if (expr.key.transformers.length) {
+        validateTransformerChain(expr.key.transformers)
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
 
     switch (expr.operator) {
         case Operator.REGEX: {
             const value = escapeParam(String(expr.value))
-            return `match(${column.name}, ${value})`
+            return `match(${colRef}, ${value})`
         }
         case Operator.NOT_REGEX: {
             const value = escapeParam(String(expr.value))
-            return `not match(${column.name}, ${value})`
+            return `not match(${colRef}, ${value})`
         }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
@@ -149,11 +156,11 @@ function expressionToSQLSimple(expr, columns) {
             if (patternFound) {
                 operator = expr.operator === Operator.EQUALS ? 'LIKE' : 'NOT LIKE'
             }
-            return `${column.name} ${operator} ${escapedValue}`
+            return `${colRef} ${operator} ${escapedValue}`
         }
         default: {
             const value = escapeParam(expr.value)
-            return `${column.name} ${expr.operator} ${value}`
+            return `${colRef} ${expr.operator} ${value}`
         }
     }
 }
@@ -161,6 +168,9 @@ function expressionToSQLSimple(expr, columns) {
 const validAliasPattern = /^[a-zA-Z_][a-zA-Z0-9_.]*$/
 
 function expressionToSQLSegmented(expr, columns) {
+    if (expr.key.transformers.length) {
+        throw new Error('transformers on segmented (nested path) keys are not supported')
+    }
     const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
     const funcName = operatorToClickHouseFunc[expr.operator]
     if (!funcName) {
@@ -657,6 +667,10 @@ export function generateSelect(text, columns) {
         const { column, path } = resolveColumn(key, columns)
 
         let sqlExpr = buildSelectExpr(column, path)
+        if (key.transformers.length) {
+            validateTransformerChain(key.transformers)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'clickhouse')
+        }
 
         let alias = raw.alias
         if (alias) {

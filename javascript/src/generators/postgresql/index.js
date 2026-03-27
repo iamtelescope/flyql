@@ -13,6 +13,7 @@ import {
     NormalizedTypeHstore,
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
+import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
 
 export { Column, newColumn, normalizePostgreSQLType }
 
@@ -215,11 +216,15 @@ function expressionToSQLSimple(expr, columns) {
         }
     }
 
-    if (column.normalizedType) {
+    if (column.normalizedType && !expr.key.transformers.length) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
-    const identifier = getIdentifier(column)
+    let identifier = getIdentifier(column)
+    if (expr.key.transformers.length) {
+        validateTransformerChain(expr.key.transformers)
+        identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
+    }
 
     switch (expr.operator) {
         case Operator.REGEX: {
@@ -249,6 +254,9 @@ function expressionToSQLSimple(expr, columns) {
 }
 
 function expressionToSQLSegmented(expr, columns) {
+    if (expr.key.transformers.length) {
+        throw new Error('transformers on segmented (nested path) keys are not supported')
+    }
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
@@ -744,6 +752,10 @@ export function generateSelect(text, columns) {
 
         const identifier = getIdentifier(column)
         let sqlExpr = buildSelectExpr(identifier, column, path, pathQuoted)
+        if (key.transformers.length) {
+            validateTransformerChain(key.transformers)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql')
+        }
 
         let alias = raw.alias
         if (alias) {

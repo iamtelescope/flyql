@@ -1,10 +1,11 @@
 import { FlyqlError } from './exceptions.js'
 
 export class Key {
-    constructor(segments, raw = null) {
+    constructor(segments, raw = null, transformers = []) {
         this.segments = segments
         this.isSegmented = segments.length > 1
         this.raw = raw !== null ? raw : segments.join('.')
+        this.transformers = transformers
     }
 }
 
@@ -128,6 +129,22 @@ export class KeyParser {
 }
 
 export function parseKey(keyString) {
+    const parts = keyString.split('|')
+    const baseKeyString = parts[0]
+    const transformerNames = parts.length > 1 ? parts.slice(1) : []
+
     const parser = new KeyParser()
-    return parser.parse(keyString)
+    const key = parser.parse(baseKeyString)
+
+    if (transformerNames.length > 0) {
+        for (const name of transformerNames) {
+            if (!name) {
+                throw new FlyqlError('empty transformer name in key')
+            }
+        }
+        key.transformers = transformerNames.map((name) => ({ name, arguments: [] }))
+        key.raw = keyString
+    }
+
+    return key
 }

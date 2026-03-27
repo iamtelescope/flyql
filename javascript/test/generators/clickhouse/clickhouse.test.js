@@ -77,6 +77,7 @@ describe('ClickHouse Generator', () => {
     runTestSuite('truthy.json')
     runTestSuite('not.json')
     runTestSuite('errors.json')
+    runTestSuite('transformers.json')
 })
 
 describe('escapeParam', () => {

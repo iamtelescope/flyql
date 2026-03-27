@@ -32,6 +32,12 @@
       "input": "field|len >= 5",
       "expected_result": "success",
       "expected_sql": "length(field) >= 5"
+    },
+    {
+      "name": "type_incompatible_chain_error",
+      "input": "field|len|upper > 5",
+      "expected_result": "error",
+      "expected_error_contains": "transformer chain type error"
     }
   ]
 }

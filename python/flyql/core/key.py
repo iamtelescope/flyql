@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from flyql.core.exceptions import FlyqlError
 
 
@@ -8,12 +8,16 @@ class Key:
         segments: List[str],
         raw: Optional[str] = None,
         quoted_segments: Optional[List[bool]] = None,
+        transformers: Optional[List[Dict[str, Any]]] = None,
     ):
         self.segments = segments
         self.is_segmented = len(segments) > 1
         self.raw = raw if raw is not None else ":".join(segments)
         self.quoted_segments = (
             quoted_segments if quoted_segments is not None else [False] * len(segments)
+        )
+        self.transformers: List[Dict[str, Any]] = (
+            transformers if transformers is not None else []
         )
 
 
@@ -142,5 +146,20 @@ class KeyParser:
 
 
 def parse_key(key_string: str) -> Key:
+    parts = key_string.split("|")
+    base_key_string = parts[0]
+    transformer_names = parts[1:] if len(parts) > 1 else []
+
     parser = KeyParser()
-    return parser.parse(key_string)
+    key = parser.parse(base_key_string)
+
+    if transformer_names:
+        for name in transformer_names:
+            if not name:
+                raise FlyqlError("empty transformer name in key")
+        key.transformers = [
+            {"name": name, "arguments": []} for name in transformer_names
+        ]
+        key.raw = key_string
+
+    return key

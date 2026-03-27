@@ -24,6 +24,10 @@ from flyql.generators.postgresql.constants import (
     NORMALIZED_TYPE_BOOL,
     NORMALIZED_TYPE_DATE,
 )
+from flyql.generators.transformer_helpers import (
+    apply_transformer_sql,
+    validate_transformer_chain,
+)
 
 BOOL_OP_TO_SQL = {
     "and": "AND",
@@ -176,12 +180,17 @@ def expression_to_sql_simple(
     if column.values and str(expression.value) not in column.values:
         raise FlyqlError(f"unknown value: {expression.value}")
 
-    if column.normalized_type is not None:
+    if column.normalized_type is not None and not expression.key.transformers:
         validate_operation(
             expression.value, column.normalized_type, expression.operator
         )
 
     identifier = get_identifier(column)
+    if expression.key.transformers:
+        validate_transformer_chain(expression.key.transformers)
+        identifier = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
 
     if expression.operator == Operator.REGEX.value:
         value = escape_param(str(expression.value))
@@ -206,6 +215,10 @@ def expression_to_sql_simple(
 def expression_to_sql_segmented(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
+    if expression.key.transformers:
+        raise FlyqlError(
+            "transformers on segmented (nested path) keys are not supported"
+        )
     column_name = expression.key.segments[0]
     if column_name not in columns:
         raise FlyqlError(f"unknown column: {column_name}")
@@ -691,6 +704,9 @@ def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
 
         identifier = get_identifier(column)
         sql_expr = _build_select_expr(identifier, column, path, path_quoted)
+        if key.transformers:
+            validate_transformer_chain(key.transformers)
+            sql_expr = apply_transformer_sql(sql_expr, key.transformers, "postgresql")
 
         if alias:
             sql_expr = f"{sql_expr} AS {escape_identifier(alias)}"

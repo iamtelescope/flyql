@@ -122,6 +122,12 @@
       "jsonstring": true,
       "type": "text",
       "values": null
+    },
+    "field": {
+      "name": "field",
+      "jsonstring": false,
+      "type": "text",
+      "values": null
     }
   }
 }

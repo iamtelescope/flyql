@@ -24,6 +24,10 @@ from flyql.generators.starrocks.constants import (
     NORMALIZED_TYPE_BOOL,
     NORMALIZED_TYPE_DATE,
 )
+from flyql.generators.transformer_helpers import (
+    apply_transformer_sql,
+    validate_transformer_chain,
+)
 
 OPERATOR_TO_STARROCKS_OPERATOR = {
     Operator.EQUALS.value: "=",
@@ -440,6 +444,10 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
 
     # TODO: support arbitrary nesting for map, array, struct types
     if expression.key.is_segmented:
+        if expression.key.transformers:
+            raise FlyqlError(
+                "transformers on segmented (nested path) keys are not supported"
+            )
         reverse_operator = ""
         if expression.operator == Operator.NOT_REGEX.value:
             reverse_operator = "not "
@@ -529,17 +537,24 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
         if column.values and str(expression.value) not in column.values:
             raise FlyqlError(f"unknown value: {expression.value}")
 
-        if column.normalized_type is not None:
+        if column.normalized_type is not None and not expression.key.transformers:
             validate_operation(
                 expression.value, column.normalized_type, expression.operator
             )
 
+        col_ref = f"`{column.name}`"
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers)
+            col_ref = apply_transformer_sql(
+                col_ref, expression.key.transformers, "starrocks"
+            )
+
         if expression.operator == Operator.REGEX.value:
             value = escape_param(str(expression.value))
-            text = f"regexp(`{column.name}`, {value})"
+            text = f"regexp({col_ref}, {value})"
         elif expression.operator == Operator.NOT_REGEX.value:
             value = escape_param(str(expression.value))
-            text = f"not regexp(`{column.name}`, {value})"
+            text = f"not regexp({col_ref}, {value})"
         elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:
             operator = expression.operator
             is_like_pattern, value = prepare_like_pattern_value(str(expression.value))
@@ -549,13 +564,13 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
                     operator = "LIKE"
                 else:
                     operator = "NOT LIKE"
-            text = f"`{column.name}` {operator} {value}"
+            text = f"{col_ref} {operator} {value}"
         else:
             if isinstance(expression.value, (int, float)):
                 value = str(expression.value)
             else:
                 value = escape_param(str(expression.value))
-            text = f"`{column.name}` {expression.operator} {value}"
+            text = f"{col_ref} {expression.operator} {value}"
     return text
 
 
@@ -694,6 +709,9 @@ def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
         column, path = _resolve_column(key, columns)
 
         sql_expr = _build_select_expr(column, path)
+        if key.transformers:
+            validate_transformer_chain(key.transformers)
+            sql_expr = apply_transformer_sql(sql_expr, key.transformers, "starrocks")
 
         if alias:
             if not VALID_ALIAS_PATTERN.match(alias):

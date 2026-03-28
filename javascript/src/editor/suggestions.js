@@ -38,8 +38,8 @@ const COLUMN_TYPE_TO_TRANSFORMER_TYPE = {
     float: TransformerType.FLOAT,
 }
 
-export function getTransformerSuggestions(columns, ctx) {
-    const registry = defaultRegistry()
+export function getTransformerSuggestions(columns, ctx, registry = null) {
+    if (!registry) registry = defaultRegistry()
     const names = registry.names()
 
     // Determine the expected input type for filtering
@@ -205,12 +205,12 @@ export function getKeySuggestions(columns, prefix) {
     return result
 }
 
-export function getOperatorSuggestions(columns, fieldName) {
+export function getOperatorSuggestions(columns, fieldName, registry = null) {
     const col = resolveColumnDef(columns, fieldName)
     const result = []
 
     // Offer pipe for transformer access when column has compatible transformers
-    const registry = defaultRegistry()
+    if (!registry) registry = defaultRegistry()
     const colType = col && col.type ? COLUMN_TYPE_TO_TRANSFORMER_TYPE[col.type.toLowerCase()] : null
     const hasTransformers = registry.names().some((name) => {
         const t = registry.get(name)
@@ -449,7 +449,15 @@ export function getInsertRange(ctx, fullText, suggestionType) {
     return { start: cursorPos, end: cursorPos }
 }
 
-export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDiscovery, keyCache, setLoading) {
+export async function updateSuggestions(
+    ctx,
+    columns,
+    onAutocomplete,
+    onKeyDiscovery,
+    keyCache,
+    setLoading,
+    registry = null,
+) {
     let message = ''
     let suggestions = []
     let suggestionType = ''
@@ -471,7 +479,7 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
         const resolvedCol = resolveColumnDef(columns, ctx.key)
         const isExactLeaf = resolvedCol && !resolvedCol.children
         if (isExactLeaf) {
-            suggestions = getOperatorSuggestions(columns, ctx.key)
+            suggestions = getOperatorSuggestions(columns, ctx.key, registry)
             suggestionType = 'operator'
         } else {
             const keySuggestions = getKeySuggestions(columns, ctx.key)
@@ -485,10 +493,12 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
             }
         }
     } else if (ctx.expecting === 'operatorOrBool') {
-        suggestions = [...getOperatorSuggestions(columns, ctx.key), ...getBoolSuggestions()]
+        suggestions = [...getOperatorSuggestions(columns, ctx.key, registry), ...getBoolSuggestions()]
         suggestionType = 'operator'
     } else if (ctx.expecting === 'operatorPrefix') {
-        suggestions = getOperatorSuggestions(columns, ctx.key).filter((op) => op.label.startsWith(ctx.keyValueOperator))
+        suggestions = getOperatorSuggestions(columns, ctx.key, registry).filter((op) =>
+            op.label.startsWith(ctx.keyValueOperator),
+        )
         suggestionType = 'operator'
     } else if (ctx.expecting === 'list') {
         suggestions = [{ label: '[]', insertText: '[]', type: 'value', detail: 'empty list', cursorOffset: -1 }]
@@ -504,15 +514,15 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
         suggestions = getBoolSuggestions()
         suggestionType = 'boolOp'
     } else if (ctx.expecting === 'transformer') {
-        const registry = defaultRegistry()
-        const exactMatch = ctx.transformerPrefix && registry.get(ctx.transformerPrefix)
+        const _registry = registry || defaultRegistry()
+        const exactMatch = ctx.transformerPrefix && _registry.get(ctx.transformerPrefix)
         if (exactMatch) {
             // Check type compatibility with chain before showing operators
             let typeError = false
             if (ctx.transformerChain) {
                 const chainParts = ctx.transformerChain.split('|')
                 const lastInChain = chainParts[chainParts.length - 1]
-                const lastT = registry.get(lastInChain)
+                const lastT = _registry.get(lastInChain)
                 if (lastT && lastT.outputType !== exactMatch.inputType) {
                     message = `${lastInChain} outputs ${lastT.outputType}, ${ctx.transformerPrefix} requires ${exactMatch.inputType} input`
                     suggestionType = 'transformer'
@@ -523,15 +533,15 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
                 // Complete transformer — show operators and pipe for chaining
                 ctx.expecting = 'operatorOrBool'
                 const outputType = exactMatch.outputType
-                const hasChainable = registry.names().some((name) => {
-                    const tr = registry.get(name)
+                const hasChainable = _registry.names().some((name) => {
+                    const tr = _registry.get(name)
                     return tr && tr.inputType === outputType
                 })
                 if (hasChainable) {
                     suggestions.push({ label: '|', insertText: '|', type: 'transformer', detail: 'chain transformer' })
                 }
                 suggestions.push(
-                    ...getOperatorSuggestions(columns, ctx.transformerBaseKey)
+                    ...getOperatorSuggestions(columns, ctx.transformerBaseKey, registry)
                         .filter((s) => s.label !== '|')
                         .map((s) => ({
                             ...s,
@@ -541,17 +551,17 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
                 suggestionType = 'operator'
             }
         } else {
-            suggestions = getTransformerSuggestions(columns, ctx)
+            suggestions = getTransformerSuggestions(columns, ctx, registry)
             suggestionType = 'transformer'
             if (suggestions.length === 0) {
                 // Determine specific error: type incompatibility or unknown transformer
                 if (ctx.transformerChain) {
                     const chainParts = ctx.transformerChain.split('|')
                     const lastInChain = chainParts[chainParts.length - 1]
-                    const lastT = registry.get(lastInChain)
+                    const lastT = _registry.get(lastInChain)
                     if (lastT) {
                         if (ctx.transformerPrefix) {
-                            const attempted = registry.get(ctx.transformerPrefix)
+                            const attempted = _registry.get(ctx.transformerPrefix)
                             if (attempted) {
                                 message = `${lastInChain} outputs ${lastT.outputType}, ${ctx.transformerPrefix} requires ${attempted.inputType} input`
                             } else {

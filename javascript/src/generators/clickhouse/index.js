@@ -114,7 +114,7 @@ export function prepareLikePatternValue(value) {
     return { patternFound, value: newValue }
 }
 
-function expressionToSQLSimple(expr, columns) {
+function expressionToSQLSimple(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
@@ -134,8 +134,8 @@ function expressionToSQLSimple(expr, columns) {
 
     let colRef = column.name
     if (expr.key.transformers.length) {
-        validateTransformerChain(expr.key.transformers)
-        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
+        validateTransformerChain(expr.key.transformers, registry)
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse', registry)
     }
 
     switch (expr.operator) {
@@ -507,7 +507,7 @@ function validateBoolOperator(op) {
     }
 }
 
-function expressionToSQL(expr, columns) {
+function expressionToSQL(expr, columns, registry = null) {
     validateOperator(expr.operator)
     if (expr.operator === Operator.TRUTHY) {
         return truthyExpressionToSQL(expr, columns)
@@ -521,7 +521,7 @@ function expressionToSQL(expr, columns) {
     if (expr.key.isSegmented) {
         return expressionToSQLSegmented(expr, columns)
     }
-    return expressionToSQLSimple(expr, columns)
+    return expressionToSQLSimple(expr, columns, registry)
 }
 
 function findSingleLeafExpression(node) {
@@ -533,7 +533,7 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns) {
+export function generateWhere(root, columns, registry = null) {
     if (!root) {
         return ''
     }
@@ -546,7 +546,7 @@ export function generateWhere(root, columns) {
             text = falsyExpressionToSQL(root.expression, columns)
             isNegated = false
         } else {
-            text = expressionToSQL(root.expression, columns)
+            text = expressionToSQL(root.expression, columns, registry)
         }
     } else if (isNegated && !root.expression && !(root.left && root.right)) {
         const child = root.left || root.right
@@ -560,11 +560,11 @@ export function generateWhere(root, columns) {
     let right = ''
 
     if (root.left) {
-        left = generateWhere(root.left, columns)
+        left = generateWhere(root.left, columns, registry)
     }
 
     if (root.right) {
-        right = generateWhere(root.right, columns)
+        right = generateWhere(root.right, columns, registry)
     }
 
     if (left && right) {
@@ -657,7 +657,7 @@ function buildSelectExpr(column, path) {
     throw new Error(`path access on non-composite column type: ${column.name}`)
 }
 
-export function generateSelect(text, columns) {
+export function generateSelect(text, columns, registry = null) {
     const raws = parseRawSelectColumns(text)
     const selectColumns = []
     const exprs = []
@@ -668,8 +668,8 @@ export function generateSelect(text, columns) {
 
         let sqlExpr = buildSelectExpr(column, path)
         if (key.transformers.length) {
-            validateTransformerChain(key.transformers)
-            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'clickhouse')
+            validateTransformerChain(key.transformers, registry)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'clickhouse', registry)
         }
 
         let alias = raw.alias

@@ -202,7 +202,7 @@ function buildJSONBPathRaw(identifier, pathParts, quoted) {
     return result
 }
 
-function expressionToSQLSimple(expr, columns) {
+function expressionToSQLSimple(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
@@ -222,8 +222,8 @@ function expressionToSQLSimple(expr, columns) {
 
     let identifier = getIdentifier(column)
     if (expr.key.transformers.length) {
-        validateTransformerChain(expr.key.transformers)
-        identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
+        validateTransformerChain(expr.key.transformers, registry)
+        identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql', registry)
     }
 
     switch (expr.operator) {
@@ -594,7 +594,7 @@ function validateBoolOperator(op) {
     }
 }
 
-function expressionToSQL(expr, columns) {
+function expressionToSQL(expr, columns, registry = null) {
     validateOperator(expr.operator)
     if (expr.operator === Operator.TRUTHY) {
         return truthyExpressionToSQL(expr, columns)
@@ -608,7 +608,7 @@ function expressionToSQL(expr, columns) {
     if (expr.key.isSegmented) {
         return expressionToSQLSegmented(expr, columns)
     }
-    return expressionToSQLSimple(expr, columns)
+    return expressionToSQLSimple(expr, columns, registry)
 }
 
 function findSingleLeafExpression(node) {
@@ -620,7 +620,7 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns) {
+export function generateWhere(root, columns, registry = null) {
     if (!root) {
         return ''
     }
@@ -633,7 +633,7 @@ export function generateWhere(root, columns) {
             text = falsyExpressionToSQL(root.expression, columns)
             isNegated = false
         } else {
-            text = expressionToSQL(root.expression, columns)
+            text = expressionToSQL(root.expression, columns, registry)
         }
     } else if (isNegated && !root.expression && !(root.left && root.right)) {
         const child = root.left || root.right
@@ -647,11 +647,11 @@ export function generateWhere(root, columns) {
     let right = ''
 
     if (root.left) {
-        left = generateWhere(root.left, columns)
+        left = generateWhere(root.left, columns, registry)
     }
 
     if (root.right) {
-        right = generateWhere(root.right, columns)
+        right = generateWhere(root.right, columns, registry)
     }
 
     if (left && right) {
@@ -741,7 +741,7 @@ function buildSelectExpr(identifier, column, path, pathQuoted) {
     throw new Error(`path access on non-composite column type: ${column.name}`)
 }
 
-export function generateSelect(text, columns) {
+export function generateSelect(text, columns, registry = null) {
     const raws = parseRawSelectColumns(text)
     const selectColumns = []
     const exprs = []
@@ -753,8 +753,8 @@ export function generateSelect(text, columns) {
         const identifier = getIdentifier(column)
         let sqlExpr = buildSelectExpr(identifier, column, path, pathQuoted)
         if (key.transformers.length) {
-            validateTransformerChain(key.transformers)
-            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql')
+            validateTransformerChain(key.transformers, registry)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql', registry)
         }
 
         let alias = raw.alias

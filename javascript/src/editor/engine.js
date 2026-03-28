@@ -52,6 +52,7 @@ export class EditorEngine {
         this.onAutocomplete = options.onAutocomplete || null
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
+        this.registry = options.registry || null
         this.debounceMs = options.debounceMs ?? 300
         this.state = new EditorState()
         this.context = null
@@ -277,6 +278,7 @@ export class EditorEngine {
                     this.isLoading = loading
                     if (this.onLoadingChange) this.onLoadingChange(loading)
                 },
+                this.registry,
             )
 
             if (seq !== this._suggestionSeq) return ctx
@@ -315,6 +317,7 @@ export class EditorEngine {
                     this.isLoading = loading
                     if (this.onLoadingChange) this.onLoadingChange(loading)
                 },
+                this.registry,
             )
 
             if (seq !== this._suggestionSeq) return ctx
@@ -350,6 +353,7 @@ export class EditorEngine {
                 this.isLoading = loading
                 if (this.onLoadingChange) this.onLoadingChange(loading)
             },
+            this.registry,
         )
 
         if (seq !== this._suggestionSeq) return ctx

@@ -104,8 +104,9 @@ function valueInList(value, list) {
 }
 
 export class Evaluator {
-    constructor() {
+    constructor(registry = null) {
         this.regexCache = new Map()
+        this._registry = registry || defaultRegistry()
     }
 
     getRegex(pattern) {
@@ -158,9 +159,8 @@ export class Evaluator {
         let value = record.getValue(expr.key.raw)
 
         if (expr.key.transformers && expr.key.transformers.length) {
-            const registry = defaultRegistry()
             for (const tDict of expr.key.transformers) {
-                const transformer = registry.get(tDict.name)
+                const transformer = this._registry.get(tDict.name)
                 if (!transformer) throw new Error(`unknown transformer: ${tDict.name}`)
                 value = transformer.apply(value)
             }

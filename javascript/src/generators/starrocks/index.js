@@ -107,7 +107,7 @@ export function prepareLikePatternValue(value) {
     return { patternFound, value: newValue }
 }
 
-function expressionToSQLSimple(expr, columns) {
+function expressionToSQLSimple(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
@@ -122,8 +122,8 @@ function expressionToSQLSimple(expr, columns) {
 
     let colRef = `\`${column.name}\``
     if (expr.key.transformers.length) {
-        validateTransformerChain(expr.key.transformers)
-        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
+        validateTransformerChain(expr.key.transformers, registry)
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
     }
 
     switch (expr.operator) {
@@ -435,7 +435,7 @@ function hasExpressionToSQL(expr, columns) {
     throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
 }
 
-function expressionToSQL(expr, columns) {
+function expressionToSQL(expr, columns, registry = null) {
     if (expr.operator === Operator.TRUTHY) return truthyExpressionToSQL(expr, columns)
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) return inExpressionToSQL(expr, columns)
     if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) return hasExpressionToSQL(expr, columns)
@@ -443,7 +443,7 @@ function expressionToSQL(expr, columns) {
         throw new Error(`invalid operator: ${expr.operator}`)
     }
     if (expr.key.isSegmented) return expressionToSQLSegmented(expr, columns)
-    return expressionToSQLSimple(expr, columns)
+    return expressionToSQLSimple(expr, columns, registry)
 }
 
 function findSingleLeafExpression(node) {
@@ -455,7 +455,7 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns) {
+export function generateWhere(root, columns, registry = null) {
     if (!root) return ''
 
     let text = ''
@@ -466,7 +466,7 @@ export function generateWhere(root, columns) {
             text = falsyExpressionToSQL(root.expression, columns)
             isNegated = false
         } else {
-            text = expressionToSQL(root.expression, columns)
+            text = expressionToSQL(root.expression, columns, registry)
         }
     } else if (isNegated && !root.expression && !(root.left && root.right)) {
         const child = root.left || root.right
@@ -478,8 +478,8 @@ export function generateWhere(root, columns) {
 
     let left = ''
     let right = ''
-    if (root.left) left = generateWhere(root.left, columns)
-    if (root.right) right = generateWhere(root.right, columns)
+    if (root.left) left = generateWhere(root.left, columns, registry)
+    if (root.right) right = generateWhere(root.right, columns, registry)
 
     if (left && right) {
         if (!VALID_BOOL_OPERATORS.includes(root.boolOperator)) {
@@ -551,7 +551,7 @@ function buildSelectExpr(column, path) {
     throw new Error(`path access on non-composite column type: ${column.name}`)
 }
 
-export function generateSelect(text, columns) {
+export function generateSelect(text, columns, registry = null) {
     const raws = parseRawSelectColumns(text)
     const selectColumns = []
     const exprs = []
@@ -561,8 +561,8 @@ export function generateSelect(text, columns) {
         const { column, path } = resolveColumn(key, columns)
         let sqlExpr = buildSelectExpr(column, path)
         if (key.transformers.length) {
-            validateTransformerChain(key.transformers)
-            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'starrocks')
+            validateTransformerChain(key.transformers, registry)
+            sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'starrocks', registry)
         }
 
         let alias = raw.alias

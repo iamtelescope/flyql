@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from typing import List, Mapping, Tuple, Any
+from typing import List, Mapping, Optional, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
@@ -28,6 +28,7 @@ from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
     validate_transformer_chain,
 )
+from flyql.transformers.registry import TransformerRegistry
 
 OPERATOR_TO_CLICKHOUSE_FUNC = {
     Operator.EQUALS.value: "equals",
@@ -389,7 +390,11 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         )
 
 
-def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+def expression_to_sql(
+    expression: Expression,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql(expression, columns)
 
@@ -487,9 +492,9 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
 
         col_ref = column.name
         if expression.key.transformers:
-            validate_transformer_chain(expression.key.transformers)
+            validate_transformer_chain(expression.key.transformers, registry=registry)
             col_ref = apply_transformer_sql(
-                col_ref, expression.key.transformers, "clickhouse"
+                col_ref, expression.key.transformers, "clickhouse", registry=registry
             )
 
         if expression.operator == Operator.REGEX.value:
@@ -517,7 +522,11 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
     return text
 
 
-def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
+def to_sql(
+    root: Node,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
     """
     Returns ClickHouse WHERE clause for given tree and columns
     """
@@ -532,13 +541,15 @@ def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
             text = falsy_expression_to_sql(expression=root.expression, columns=columns)
             is_negated = False  # Already handled
         else:
-            text = expression_to_sql(expression=root.expression, columns=columns)
+            text = expression_to_sql(
+                expression=root.expression, columns=columns, registry=registry
+            )
 
     if root.left is not None:
-        left = to_sql(root=root.left, columns=columns)
+        left = to_sql(root=root.left, columns=columns, registry=registry)
 
     if root.right is not None:
-        right = to_sql(root=root.right, columns=columns)
+        right = to_sql(root=root.right, columns=columns, registry=registry)
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)
@@ -637,7 +648,11 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
     raise FlyqlError(f"path access on non-composite column type: {column.name}")
 
 
-def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
+def generate_select(
+    text: str,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> SelectResult:
     """Generate a ClickHouse SELECT clause from a column expression string."""
     raws = _parse_raw_select_columns(text)
     select_columns: List[SelectColumn] = []
@@ -649,8 +664,10 @@ def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
 
         sql_expr = _build_select_expr(column, path)
         if key.transformers:
-            validate_transformer_chain(key.transformers)
-            sql_expr = apply_transformer_sql(sql_expr, key.transformers, "clickhouse")
+            validate_transformer_chain(key.transformers, registry=registry)
+            sql_expr = apply_transformer_sql(
+                sql_expr, key.transformers, "clickhouse", registry=registry
+            )
 
         if alias:
             if not VALID_ALIAS_PATTERN.match(alias):

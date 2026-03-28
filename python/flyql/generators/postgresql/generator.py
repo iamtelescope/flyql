@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass, field
-from typing import Any, List, Mapping, Tuple
+from typing import Any, List, Mapping, Optional, Tuple
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
@@ -28,6 +28,7 @@ from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
     validate_transformer_chain,
 )
+from flyql.transformers.registry import TransformerRegistry
 
 BOOL_OP_TO_SQL = {
     "and": "AND",
@@ -169,7 +170,9 @@ def _build_jsonb_path_raw(
 
 
 def expression_to_sql_simple(
-    expression: Expression, columns: Mapping[str, Column]
+    expression: Expression,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
 ) -> str:
     column_name = expression.key.segments[0]
     if column_name not in columns:
@@ -187,9 +190,9 @@ def expression_to_sql_simple(
 
     identifier = get_identifier(column)
     if expression.key.transformers:
-        validate_transformer_chain(expression.key.transformers)
+        validate_transformer_chain(expression.key.transformers, registry=registry)
         identifier = apply_transformer_sql(
-            identifier, expression.key.transformers, "postgresql"
+            identifier, expression.key.transformers, "postgresql", registry=registry
         )
 
     if expression.operator == Operator.REGEX.value:
@@ -563,7 +566,11 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         )
 
 
-def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+def expression_to_sql(
+    expression: Expression,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql(expression, columns)
     if expression.operator in (Operator.IN.value, Operator.NOT_IN.value):
@@ -573,10 +580,14 @@ def expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> 
     validate_operator(expression.operator)
     if expression.key.is_segmented:
         return expression_to_sql_segmented(expression, columns)
-    return expression_to_sql_simple(expression, columns)
+    return expression_to_sql_simple(expression, columns, registry=registry)
 
 
-def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
+def to_sql(
+    root: Node,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
     """Returns PostgreSQL WHERE clause for given tree and columns."""
     left = ""
     right = ""
@@ -588,13 +599,15 @@ def to_sql(root: Node, columns: Mapping[str, Column]) -> str:
             text = falsy_expression_to_sql(expression=root.expression, columns=columns)
             is_negated = False
         else:
-            text = expression_to_sql(expression=root.expression, columns=columns)
+            text = expression_to_sql(
+                expression=root.expression, columns=columns, registry=registry
+            )
 
     if root.left is not None:
-        left = to_sql(root=root.left, columns=columns)
+        left = to_sql(root=root.left, columns=columns, registry=registry)
 
     if root.right is not None:
-        right = to_sql(root=root.right, columns=columns)
+        right = to_sql(root=root.right, columns=columns, registry=registry)
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)
@@ -692,7 +705,11 @@ def _build_select_expr(
     raise FlyqlError(f"path access on non-composite column type: {column.name}")
 
 
-def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
+def generate_select(
+    text: str,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> SelectResult:
     """Generate a PostgreSQL SELECT clause from a column expression string."""
     raws = _parse_raw_select_columns(text)
     select_columns: List[SelectColumn] = []
@@ -705,8 +722,10 @@ def generate_select(text: str, columns: Mapping[str, Column]) -> SelectResult:
         identifier = get_identifier(column)
         sql_expr = _build_select_expr(identifier, column, path, path_quoted)
         if key.transformers:
-            validate_transformer_chain(key.transformers)
-            sql_expr = apply_transformer_sql(sql_expr, key.transformers, "postgresql")
+            validate_transformer_chain(key.transformers, registry=registry)
+            sql_expr = apply_transformer_sql(
+                sql_expr, key.transformers, "postgresql", registry=registry
+            )
 
         if alias:
             sql_expr = f"{sql_expr} AS {escape_identifier(alias)}"

@@ -10,7 +10,7 @@ from flyql.core.tree import Node
 
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
-from flyql.transformers.registry import default_registry
+from flyql.transformers.registry import TransformerRegistry, default_registry
 
 # Regex engine constants
 REGEX_ENGINE_RE2: Final = "re2"
@@ -47,9 +47,11 @@ class Evaluator:
     def __init__(
         self,
         regex_engine: RegexEngine = REGEX_ENGINE_RE2,
+        registry: Optional[TransformerRegistry] = None,
     ) -> None:
         self.cache: Dict[str, Any] = {}
         self.regex_engine = regex_engine
+        self._registry = registry or default_registry()
 
         # Select regex module
         # REGEX_ENGINE_PYTHON_STD uses Python's standard re module
@@ -120,9 +122,8 @@ class Evaluator:
         value = record.get_value(key)
 
         if expression.key.transformers:
-            registry = default_registry()
             for t_dict in expression.key.transformers:
-                transformer = registry.get(t_dict["name"])
+                transformer = self._registry.get(t_dict["name"])
                 if transformer is None:
                     raise FlyqlError(f"unknown transformer: {t_dict['name']}")
                 value = transformer.apply(value)

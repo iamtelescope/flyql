@@ -3,6 +3,7 @@
  */
 
 import { Operator, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
+import { defaultRegistry, TransformerType } from '../transformers/index.js'
 
 const OPERATOR_NAMES = {
     [Operator.EQUALS]: 'equals',
@@ -24,6 +25,60 @@ export const STATE_LABELS = {
     operatorOrBool: 'operator or boolean',
     value: 'value',
     boolOp: 'boolean operator',
+    transformer: 'transformer',
+}
+
+const COLUMN_TYPE_TO_TRANSFORMER_TYPE = {
+    string: TransformerType.STRING,
+    text: TransformerType.STRING,
+    enum: TransformerType.STRING,
+    number: TransformerType.INT,
+    int: TransformerType.INT,
+    integer: TransformerType.INT,
+    float: TransformerType.FLOAT,
+}
+
+export function getTransformerSuggestions(columns, ctx) {
+    const registry = defaultRegistry()
+    const names = registry.names()
+
+    // Determine the expected input type for filtering
+    let inputType = null
+    if (ctx.transformerChain) {
+        // Chained: compute output type of the last transformer in the chain
+        const chainParts = ctx.transformerChain.split('|')
+        for (const tName of chainParts) {
+            const t = registry.get(tName)
+            if (t) {
+                inputType = t.outputType
+            } else {
+                inputType = null
+                break
+            }
+        }
+    } else {
+        // First transformer: resolve column type
+        const colDef = resolveColumnDef(columns, ctx.transformerBaseKey)
+        if (colDef && colDef.type) {
+            inputType = COLUMN_TYPE_TO_TRANSFORMER_TYPE[colDef.type.toLowerCase()] || null
+        }
+    }
+
+    const prefix = (ctx.transformerPrefix || '').toLowerCase()
+    const results = []
+    for (const name of names) {
+        const t = registry.get(name)
+        if (!t) continue
+        if (inputType && t.inputType !== inputType) continue
+        if (prefix && !name.toLowerCase().startsWith(prefix)) continue
+        results.push({
+            label: name,
+            insertText: name,
+            type: 'transformer',
+            detail: `${t.inputType} → ${t.outputType}`,
+        })
+    }
+    return results
 }
 
 /**
@@ -152,6 +207,19 @@ export function getKeySuggestions(columns, prefix) {
 
 export function getOperatorSuggestions(columns, fieldName) {
     const col = resolveColumnDef(columns, fieldName)
+    const result = []
+
+    // Offer pipe for transformer access when column has compatible transformers
+    const registry = defaultRegistry()
+    const colType = col && col.type ? COLUMN_TYPE_TO_TRANSFORMER_TYPE[col.type.toLowerCase()] : null
+    const hasTransformers = registry.names().some((name) => {
+        const t = registry.get(name)
+        return !colType || t.inputType === colType
+    })
+    if (hasTransformers) {
+        result.push({ label: '|', insertText: '|', type: 'transformer', detail: 'transformer (pipe)' })
+    }
+
     const ops = [
         { label: Operator.EQUALS, insertText: Operator.EQUALS, sortText: 'a' },
         { label: Operator.NOT_EQUALS, insertText: Operator.NOT_EQUALS, sortText: 'b' },
@@ -170,12 +238,15 @@ export function getOperatorSuggestions(columns, fieldName) {
         ops.push({ label: Operator.NOT_REGEX, insertText: Operator.NOT_REGEX, sortText: 'd' })
     }
     ops.sort((a, b) => a.sortText.localeCompare(b.sortText))
-    return ops.map((op) => ({
-        label: op.label,
-        insertText: op.insertText,
-        type: 'operator',
-        detail: OPERATOR_NAMES[op.label] || '',
-    }))
+    result.push(
+        ...ops.map((op) => ({
+            label: op.label,
+            insertText: op.insertText,
+            type: 'operator',
+            detail: OPERATOR_NAMES[op.label] || '',
+        })),
+    )
+    return result
 }
 
 export function getBoolSuggestions() {
@@ -348,7 +419,10 @@ export function getInsertRange(ctx, fullText, suggestionType) {
         }
     }
 
-    if (ctx.expecting === 'column') {
+    if (ctx.expecting === 'transformer') {
+        const prefixLen = (ctx.transformerPrefix || '').length
+        return { start: cursorPos - prefixLen, end: endPos }
+    } else if (ctx.expecting === 'column') {
         if (suggestionType === 'operator') {
             return { start: cursorPos, end: endPos }
         }
@@ -429,6 +503,36 @@ export async function updateSuggestions(ctx, columns, onAutocomplete, onKeyDisco
     } else if (ctx.expecting === 'boolOp') {
         suggestions = getBoolSuggestions()
         suggestionType = 'boolOp'
+    } else if (ctx.expecting === 'transformer') {
+        const registry = defaultRegistry()
+        const exactMatch = ctx.transformerPrefix && registry.get(ctx.transformerPrefix)
+        if (exactMatch) {
+            // Complete transformer — show operators and pipe for chaining
+            ctx.expecting = 'operatorOrBool'
+            const outputType = exactMatch.outputType
+            const hasChainable = registry.names().some((name) => {
+                const tr = registry.get(name)
+                return tr && tr.inputType === outputType
+            })
+            if (hasChainable) {
+                suggestions.push({ label: '|', insertText: '|', type: 'transformer', detail: 'chain transformer' })
+            }
+            suggestions.push(
+                ...getOperatorSuggestions(columns, ctx.transformerBaseKey)
+                    .filter((s) => s.label !== '|')
+                    .map((s) => ({
+                        ...s,
+                        insertText: s.insertText.startsWith(' ') ? s.insertText : ' ' + s.insertText,
+                    })),
+            )
+            suggestionType = 'operator'
+        } else {
+            suggestions = getTransformerSuggestions(columns, ctx)
+            suggestionType = 'transformer'
+            if (suggestions.length === 0) {
+                message = 'No matching transformers'
+            }
+        }
     }
 
     if (suggestions.length === 0 && !suggestionType && ctx.expecting !== 'none') {

@@ -674,11 +674,11 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
 }
 
 .flyql-col-transformer {
-    color: #0089ab;
+    color: var(--flyql-transformer-color);
 }
 
 .flyql-dark .flyql-col-transformer {
-    color: #fa83f8;
+    color: var(--flyql-transformer-color);
 }
 
 .flyql-col-argument {
@@ -697,13 +697,8 @@ defineExpose({ focus, blur, getQueryStatus, getParsedColumns })
 
 /* Columns panel badge styles */
 .flyql-panel__badge--transformer {
-    background: #0089ab;
+    background: var(--flyql-transformer-color);
     color: #fff;
-}
-
-.flyql-dark .flyql-panel__badge--transformer {
-    background: #fa83f8;
-    color: #1e1e1e;
 }
 
 .flyql-panel__badge--delimiter {

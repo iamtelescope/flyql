@@ -5,6 +5,7 @@ import {
     getBoolSuggestions,
     prepareSuggestionValues,
     getInsertRange,
+    getTransformerSuggestions,
 } from '../../src/editor/suggestions.js'
 
 const TEST_COLUMNS = {
@@ -77,11 +78,27 @@ describe('suggestions', () => {
             expect(labels).toContain('!~')
         })
 
-        it('all items have operator type', () => {
+        it('all non-pipe items have operator type', () => {
             const result = getOperatorSuggestions(TEST_COLUMNS, 'host')
             for (const item of result) {
-                expect(item.type).toBe('operator')
+                if (item.label !== '|') {
+                    expect(item.type).toBe('operator')
+                }
             }
+        })
+
+        it('includes pipe suggestion for string column', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'host')
+            const pipe = result.find((s) => s.label === '|')
+            expect(pipe).toBeTruthy()
+            expect(pipe.type).toBe('transformer')
+            expect(pipe.detail).toBe('transformer (pipe)')
+        })
+
+        it('omits pipe suggestion for number column with no int-input transformers', () => {
+            const result = getOperatorSuggestions(TEST_COLUMNS, 'count')
+            const pipe = result.find((s) => s.label === '|')
+            expect(pipe).toBeUndefined()
         })
 
         it('includes IN operator with spaces', () => {
@@ -211,6 +228,88 @@ describe('suggestions', () => {
             const ctx = { expecting: 'boolOp', textBeforeCursor: 'status=info an' }
             const range = getInsertRange(ctx, 'status=info an', 'boolOp')
             expect(range.start).toBe(12)
+        })
+
+        it('returns transformer range covering only prefix after pipe', () => {
+            const ctx = { expecting: 'transformer', transformerPrefix: 'up', textBeforeCursor: 'host|up' }
+            const range = getInsertRange(ctx, 'host|up', 'transformer')
+            expect(range.start).toBe(5)
+            expect(range.end).toBe(7)
+        })
+
+        it('returns transformer range at pipe with no prefix', () => {
+            const ctx = { expecting: 'transformer', transformerPrefix: '', textBeforeCursor: 'host|' }
+            const range = getInsertRange(ctx, 'host|', 'transformer')
+            expect(range.start).toBe(5)
+            expect(range.end).toBe(5)
+        })
+    })
+
+    describe('getTransformerSuggestions', () => {
+        it('returns all string-input transformers for string column', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            expect(result.length).toBe(3)
+            expect(result.map((s) => s.label)).toContain('upper')
+            expect(result.map((s) => s.label)).toContain('lower')
+            expect(result.map((s) => s.label)).toContain('len')
+        })
+
+        it('sets type to transformer on all suggestions', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            for (const s of result) {
+                expect(s.type).toBe('transformer')
+            }
+        })
+
+        it('includes type detail string', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            const upper = result.find((s) => s.label === 'upper')
+            expect(upper.detail).toBe('string → string')
+            const len = result.find((s) => s.label === 'len')
+            expect(len.detail).toBe('string → int')
+        })
+
+        it('filters by prefix', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: 'up', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            expect(result.length).toBe(1)
+            expect(result[0].label).toBe('upper')
+        })
+
+        it('filters by chained output type', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: 'upper' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            // upper outputs string, so string-input transformers shown
+            expect(result.length).toBe(3)
+        })
+
+        it('returns empty for int-input after len (no int-input builtins)', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: 'len' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            // len outputs int, no built-in transformers accept int input
+            expect(result.length).toBe(0)
+        })
+
+        it('returns no transformers for number column (no int-input builtins)', () => {
+            const ctx = { transformerBaseKey: 'count', transformerPrefix: '', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            expect(result.length).toBe(0)
+        })
+
+        it('returns all transformers for unknown column', () => {
+            const ctx = { transformerBaseKey: 'unknown', transformerPrefix: '', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            expect(result.length).toBe(3)
+        })
+
+        it('filters by prefix case-insensitively', () => {
+            const ctx = { transformerBaseKey: 'host', transformerPrefix: 'UP', transformerChain: '' }
+            const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
+            expect(result.length).toBe(1)
+            expect(result[0].label).toBe('upper')
         })
     })
 })

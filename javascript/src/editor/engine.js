@@ -138,6 +138,22 @@ export class EditorEngine {
             nestingDepth: parser.nodesStack ? parser.nodesStack.length : 0,
         }
 
+        // Detect transformer context: key contains pipe character
+        const keyStr = ctx.key
+        const pipeIndex = keyStr.indexOf('|')
+        if (pipeIndex >= 0) {
+            const lastPipeIndex = keyStr.lastIndexOf('|')
+            ctx.transformerBaseKey = keyStr.substring(0, pipeIndex)
+            ctx.transformerPrefix = keyStr.substring(lastPipeIndex + 1)
+            ctx.transformerChain = pipeIndex < lastPipeIndex ? keyStr.substring(pipeIndex + 1, lastPipeIndex) : ''
+            // Normalize key to base column for all downstream lookups
+            ctx.key = ctx.transformerBaseKey
+            if (parser.state === State.KEY) {
+                ctx.expecting = 'transformer'
+                return ctx
+            }
+        }
+
         if (
             parser.state === State.KEY ||
             parser.state === State.INITIAL ||

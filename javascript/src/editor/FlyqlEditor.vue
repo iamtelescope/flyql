@@ -474,7 +474,19 @@ function acceptSuggestion(index) {
     }
     let insertText = suggestion.insertText
 
-    if (!suggestion.cursorOffset && !insertText.endsWith(' ') && !insertText.endsWith('.')) {
+    // Pipe must attach directly to column — consume any preceding whitespace
+    if (suggestion.type === 'transformer' && suggestion.label === '|') {
+        while (range.start > 0 && currentValue[range.start - 1] === ' ') {
+            range.start--
+        }
+    }
+
+    if (
+        !suggestion.cursorOffset &&
+        !insertText.endsWith(' ') &&
+        !insertText.endsWith('.') &&
+        suggestion.type !== 'transformer'
+    ) {
         const charAfter = currentValue[range.end] || ''
         if (charAfter === ' ') {
             range.end += 1
@@ -592,6 +604,8 @@ function badgeText(type) {
             return 'V'
         case 'boolOp':
             return 'B'
+        case 'transformer':
+            return 'T'
         default:
             return '?'
     }

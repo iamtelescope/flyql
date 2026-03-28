@@ -163,6 +163,73 @@ describe('EditorEngine', () => {
             expect(ctx.expecting).toBe('value')
             expect(ctx.quoteChar).toBe("'")
         })
+
+        it('returns transformer expecting after pipe on column', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformerBaseKey).toBe('host')
+            expect(ctx.transformerPrefix).toBe('')
+            expect(ctx.transformerChain).toBe('')
+        })
+
+        it('returns transformer expecting with partial prefix', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|up')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformerBaseKey).toBe('host')
+            expect(ctx.transformerPrefix).toBe('up')
+            expect(ctx.transformerChain).toBe('')
+        })
+
+        it('returns transformer expecting for chained transformer', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|upper|')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformerBaseKey).toBe('host')
+            expect(ctx.transformerPrefix).toBe('')
+            expect(ctx.transformerChain).toBe('upper')
+        })
+
+        it('returns transformer expecting for chained with prefix', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|upper|le')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformerBaseKey).toBe('host')
+            expect(ctx.transformerPrefix).toBe('le')
+            expect(ctx.transformerChain).toBe('upper')
+        })
+
+        it('returns transformer expecting for multi-chain', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|lower|upper|')
+            expect(ctx.expecting).toBe('transformer')
+            expect(ctx.transformerBaseKey).toBe('host')
+            expect(ctx.transformerPrefix).toBe('')
+            expect(ctx.transformerChain).toBe('lower|upper')
+        })
+
+        it('returns transformer expecting after complete transformer with space', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|upper ')
+            expect(ctx.expecting).toBe('operatorOrBool')
+            expect(ctx.key).toBe('host')
+        })
+
+        it('normalizes key to base column after transformer in value state', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|upper =')
+            expect(ctx.expecting).toBe('value')
+            expect(ctx.key).toBe('host')
+            expect(ctx.transformerBaseKey).toBe('host')
+        })
+
+        it('normalizes key to base column after chained transformer in value state', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const ctx = engine.buildContext('host|upper|lower =')
+            expect(ctx.expecting).toBe('value')
+            expect(ctx.key).toBe('host')
+        })
     })
 
     describe('updateSuggestions', () => {
@@ -301,6 +368,68 @@ describe('EditorEngine', () => {
             engine.setCursorPosition(6)
             await engine.updateSuggestions()
             expect(engine.message).toBe('Autocompletion is disabled for this column')
+        })
+
+        it('suggests operators and pipe after complete transformer', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upper')
+            engine.setCursorPosition(10)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('|')
+            expect(labels).toContain('=')
+            expect(labels).toContain('!=')
+            expect(engine.suggestionType).toBe('operator')
+        })
+
+        it('operators after transformer have leading space in insertText', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upper')
+            engine.setCursorPosition(10)
+            await engine.updateSuggestions()
+            const eq = engine.suggestions.find((s) => s.label === '=')
+            expect(eq.insertText).toBe(' =')
+            const neq = engine.suggestions.find((s) => s.label === '!=')
+            expect(neq.insertText).toBe(' !=')
+        })
+
+        it('pipe after complete transformer has type transformer', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upper')
+            engine.setCursorPosition(10)
+            await engine.updateSuggestions()
+            const pipe = engine.suggestions.find((s) => s.label === '|')
+            expect(pipe).toBeTruthy()
+            expect(pipe.type).toBe('transformer')
+        })
+
+        it('no pipe after len transformer (int output, no int-input builtins)', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|len')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).not.toContain('|')
+            expect(labels).toContain('=')
+        })
+
+        it('suggests operators and pipe after chained transformer', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upper|lower')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('|')
+            expect(labels).toContain('=')
+        })
+
+        it('suggests transformer names for partial prefix after pipe', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|up')
+            engine.setCursorPosition(7)
+            await engine.updateSuggestions()
+            expect(engine.suggestionType).toBe('transformer')
+            expect(engine.suggestions.map((s) => s.label)).toContain('upper')
         })
     })
 

@@ -164,7 +164,13 @@ func PrepareLikePatternValue(value string) (bool, string) {
 	return patternFound, newValue.String()
 }
 
-func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
+	var reg *transformers.TransformerRegistry
+	if len(registry) > 0 && registry[0] != nil {
+		reg = registry[0]
+	} else {
+		reg = transformers.DefaultRegistry()
+	}
 	if expr.Operator == flyql.OpTruthy {
 		return truthyExpressionToSQL(expr, columns)
 	}
@@ -180,7 +186,7 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string
 	if expr.Key.IsSegmented() {
 		return expressionToSQLSegmented(expr, columns)
 	}
-	return expressionToSQLSimple(expr, columns)
+	return expressionToSQLSimple(expr, columns, reg)
 }
 
 func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
@@ -666,7 +672,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 	}
 }
 
-func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, registry *transformers.TransformerRegistry) (string, error) {
 	columnName := expr.Key.Segments[0]
 
 	column, ok := columns[columnName]
@@ -696,7 +702,6 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 
 	colRef := column.Name
 	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
 		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
 			return "", err
 		}
@@ -748,7 +753,7 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column) (
 	}
 }
 
-func ToSQL(root *flyql.Node, columns map[string]*Column) (string, error) {
+func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	if root == nil {
 		return "", nil
 	}
@@ -766,7 +771,7 @@ func ToSQL(root *flyql.Node, columns map[string]*Column) (string, error) {
 			text = sql
 			isNegated = false // Already handled
 		} else {
-			sql, err := ExpressionToSQL(root.Expression, columns)
+			sql, err := ExpressionToSQL(root.Expression, columns, registry...)
 			if err != nil {
 				return "", err
 			}
@@ -778,14 +783,14 @@ func ToSQL(root *flyql.Node, columns map[string]*Column) (string, error) {
 	var err error
 
 	if root.Left != nil {
-		left, err = ToSQL(root.Left, columns)
+		left, err = ToSQL(root.Left, columns, registry...)
 		if err != nil {
 			return "", err
 		}
 	}
 
 	if root.Right != nil {
-		right, err = ToSQL(root.Right, columns)
+		right, err = ToSQL(root.Right, columns, registry...)
 		if err != nil {
 			return "", err
 		}

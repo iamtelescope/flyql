@@ -11,11 +11,20 @@ import (
 
 type Evaluator struct {
 	regexCache map[string]*regexp.Regexp
+	registry   *transformers.TransformerRegistry
 }
 
 func NewEvaluator() *Evaluator {
+	return NewEvaluatorWithRegistry(nil)
+}
+
+func NewEvaluatorWithRegistry(registry *transformers.TransformerRegistry) *Evaluator {
+	if registry == nil {
+		registry = transformers.DefaultRegistry()
+	}
 	return &Evaluator{
 		regexCache: make(map[string]*regexp.Regexp),
+		registry:   registry,
 	}
 }
 
@@ -114,9 +123,8 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 	value := record.GetValue(key)
 
 	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
 		for _, t := range expr.Key.Transformers {
-			transformer := registry.Get(t.Name)
+			transformer := e.registry.Get(t.Name)
 			if transformer == nil {
 				return false
 			}

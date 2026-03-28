@@ -118,7 +118,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 	return "", fmt.Errorf("path access on non-composite column type: %s", column.Name)
 }
 
-func ToSQLSelect(text string, columns map[string]*Column) (*SelectResult, error) {
+func ToSQLSelect(text string, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (*SelectResult, error) {
 	raws, err := parseRawSelectColumns(text)
 	if err != nil {
 		return nil, err
@@ -146,11 +146,16 @@ func ToSQLSelect(text string, columns map[string]*Column) (*SelectResult, error)
 		}
 
 		if len(key.Transformers) > 0 {
-			registry := transformers.DefaultRegistry()
-			if err := validateTransformerChain(key.Transformers, registry); err != nil {
+			var reg *transformers.TransformerRegistry
+			if len(registry) > 0 && registry[0] != nil {
+				reg = registry[0]
+			} else {
+				reg = transformers.DefaultRegistry()
+			}
+			if err := validateTransformerChain(key.Transformers, reg); err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
 			}
-			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "starrocks", registry)
+			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "starrocks", reg)
 			if err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
 			}

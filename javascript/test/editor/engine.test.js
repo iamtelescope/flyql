@@ -431,6 +431,32 @@ describe('EditorEngine', () => {
             expect(engine.suggestionType).toBe('transformer')
             expect(engine.suggestions.map((s) => s.label)).toContain('upper')
         })
+
+        it('shows type incompatibility error for field|len|', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|len|')
+            engine.setCursorPosition(9)
+            await engine.updateSuggestions()
+            expect(engine.suggestions).toHaveLength(0)
+            expect(engine.message).toContain('len outputs int')
+        })
+
+        it('shows specific type mismatch naming the attempted transformer', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|len|upper')
+            engine.setCursorPosition(14)
+            await engine.updateSuggestions()
+            expect(engine.message).toBe('len outputs int, upper requires string input')
+        })
+
+        it('shows unknown transformer error for field|bogus', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|bogus')
+            engine.setCursorPosition(10)
+            await engine.updateSuggestions()
+            expect(engine.suggestions).toHaveLength(0)
+            expect(engine.message).toBe('Unknown transformer: bogus')
+        })
     })
 
     describe('getHighlightTokens', () => {
@@ -462,6 +488,30 @@ describe('EditorEngine', () => {
             const html = engine.getHighlightTokens()
             expect(html).not.toContain('<script>')
             expect(html).toContain('&lt;script&gt;')
+        })
+
+        it('highlights transformer with distinct class', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('host|upper=value')
+            expect(html).toContain('flyql-key')
+            expect(html).toContain('flyql-transformer')
+            expect(html).toContain('flyql-operator')
+            expect(html).toContain('flyql-value')
+        })
+
+        it('highlights chained transformers', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('field|lower|len>10')
+            // Both pipe and transformer names should get flyql-transformer class
+            const transformerMatches = html.match(/flyql-transformer/g)
+            // At minimum: |, lower, |, len = 4 spans (may merge consecutive same-type)
+            expect(transformerMatches.length).toBeGreaterThanOrEqual(2)
+        })
+
+        it('does not use transformer class for queries without pipe', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info')
+            expect(html).not.toContain('flyql-transformer')
         })
     })
 

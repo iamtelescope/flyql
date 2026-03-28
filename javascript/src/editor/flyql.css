@@ -322,6 +322,10 @@
     color: var(--flyql-number-color);
 }
 
+.flyql-transformer {
+    color: var(--flyql-transformer-color);
+}
+
 .flyql-error {
     color: var(--flyql-error-color);
     text-decoration: wavy underline;

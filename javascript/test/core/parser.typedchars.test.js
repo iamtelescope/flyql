@@ -141,4 +141,57 @@ describe('Parser typedChars functionality', () => {
         expect(parser.typedChars[1][0].pos).toBe(1) // '='
         expect(parser.typedChars[2][0].pos).toBe(2) // 'b'
     })
+
+    it('should assign PIPE type to pipe character in key', () => {
+        const parser = parse('host|upper=value')
+
+        // h,o,s,t = KEY; | = PIPE; u,p,p,e,r = TRANSFORMER; = = OPERATOR; v,a,l,u,e = VALUE
+        expect(parser.typedChars[0][1]).toBe(CharType.KEY) // h
+        expect(parser.typedChars[3][1]).toBe(CharType.KEY) // t
+        expect(parser.typedChars[4][1]).toBe(CharType.PIPE) // |
+        expect(parser.typedChars[4][0].value).toBe('|')
+        expect(parser.typedChars[5][1]).toBe(CharType.TRANSFORMER) // u
+        expect(parser.typedChars[9][1]).toBe(CharType.TRANSFORMER) // r
+        expect(parser.typedChars[10][1]).toBe(CharType.OPERATOR) // =
+        expect(parser.typedChars[11][1]).toBe(CharType.VALUE) // v
+    })
+
+    it('should handle chained transformers', () => {
+        const parser = parse('field|lower|len>10')
+
+        // f,i,e,l,d = KEY; | = PIPE; l,o,w,e,r = TRANSFORMER; | = PIPE; l,e,n = TRANSFORMER; > = OPERATOR; 1,0 = VALUE
+        expect(parser.typedChars[4][1]).toBe(CharType.KEY) // d
+        expect(parser.typedChars[5][1]).toBe(CharType.PIPE) // first |
+        expect(parser.typedChars[6][1]).toBe(CharType.TRANSFORMER) // l (lower)
+        expect(parser.typedChars[10][1]).toBe(CharType.TRANSFORMER) // r (lower)
+        expect(parser.typedChars[11][1]).toBe(CharType.PIPE) // second |
+        expect(parser.typedChars[12][1]).toBe(CharType.TRANSFORMER) // l (len)
+        expect(parser.typedChars[14][1]).toBe(CharType.TRANSFORMER) // n (len)
+        expect(parser.typedChars[15][1]).toBe(CharType.OPERATOR) // >
+    })
+
+    it('should handle transformer with spaces around operator', () => {
+        const parser = parse('message|upper = "ERROR"')
+
+        // message = KEY (7); | = PIPE; upper = TRANSFORMER (5); space; = = OPERATOR; space; "ERROR" = VALUE
+        const types = parser.typedChars.map(([_, type]) => type)
+        // message chars
+        for (let i = 0; i < 7; i++) expect(types[i]).toBe(CharType.KEY)
+        // pipe
+        expect(types[7]).toBe(CharType.PIPE)
+        // upper
+        for (let i = 8; i < 13; i++) expect(types[i]).toBe(CharType.TRANSFORMER)
+        // space
+        expect(types[13]).toBe(CharType.SPACE)
+        // =
+        expect(types[14]).toBe(CharType.OPERATOR)
+    })
+
+    it('should not use PIPE/TRANSFORMER types for keys without pipe', () => {
+        const parser = parse('status=info')
+
+        const types = new Set(parser.typedChars.map(([_, type]) => type))
+        expect(types.has(CharType.PIPE)).toBe(false)
+        expect(types.has(CharType.TRANSFORMER)).toBe(false)
+    })
 })

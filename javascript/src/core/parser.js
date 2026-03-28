@@ -6,6 +6,7 @@ import { parseKey } from './key.js'
 import {
     State,
     CharType,
+    PIPE,
     VALID_KEY_VALUE_OPERATORS,
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
@@ -35,6 +36,7 @@ export class Parser {
         this.errno = 0
         this.root = null
         this.typedChars = []
+        this._pipeSeenInKey = false
         this.pendingNegation = false
         this.negationStack = []
         this.inListValues = []
@@ -83,6 +85,7 @@ export class Parser {
 
     resetKey() {
         this.key = ''
+        this._pipeSeenInKey = false
     }
 
     resetValue() {
@@ -341,7 +344,14 @@ export class Parser {
             this.storeTypedChar(CharType.SPACE)
         } else if (this.char.isKey()) {
             this.extendKey()
-            this.storeTypedChar(CharType.KEY)
+            if (this.char.value === PIPE) {
+                this._pipeSeenInKey = true
+                this.storeTypedChar(CharType.PIPE)
+            } else if (this._pipeSeenInKey) {
+                this.storeTypedChar(CharType.TRANSFORMER)
+            } else {
+                this.storeTypedChar(CharType.KEY)
+            }
         } else if (this.char.isSingleQuote()) {
             this.extendKey()
             this.setState(State.SINGLE_QUOTED_KEY)

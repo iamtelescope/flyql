@@ -111,3 +111,14 @@ const columns = {
     log:     newColumn("log", true, "STRING", null),       // JSON string
 }
 ```
+
+## Transformers
+
+Transformers generate StarRocks-standard function calls with backtick-quoted column names:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `status\|upper = "ERROR"` | `` UPPER(`status`) = 'ERROR' `` |
+| `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
+| `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
+| `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |

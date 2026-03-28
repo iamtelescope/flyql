@@ -113,3 +113,14 @@ const columns = {
     log:     newColumn("log", true, "String", null),       // JSON string
 }
 ```
+
+## Transformers
+
+Transformers generate ClickHouse-specific function calls:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
+| `status\|lower = "info"` | `equals(lower(status), 'info')` |
+| `message\|len > 100` | `length(message) > 100` |
+| `message\|lower\|len > 100` | `length(lower(message)) > 100` |

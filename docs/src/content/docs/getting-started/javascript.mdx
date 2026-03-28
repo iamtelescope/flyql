@@ -86,24 +86,43 @@ console.log(`Matches: ${matches}`) // true
 
 ## Parse Column Expressions
 
-Parse a columns expression into structured data with segments, modifiers, and aliases:
+Parse a columns expression into structured data with segments, transformers, and aliases:
 
 ```javascript
 import { parse, parseToJson } from 'flyql/columns'
 
-// Parse basic columns (modifiers disabled by default)
+// Parse basic columns (transformers disabled by default)
 const parsed = parse("message, status")
 for (const col of parsed) {
     console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
 }
 
-// Enable modifiers via capabilities
-const withMods = parse("message|chars(25) as msg, status", { modifiers: true })
+// Enable transformers via capabilities
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
 
 // Or serialize directly to JSON for API responses
-const json = parseToJson("message, status|upper", { modifiers: true })
+const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
+
+## Transformers in Queries
+
+Parse a query with transformers and generate SQL:
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// Parse a transformer query
+const result = parse("message|upper = 'ERROR'")
+
+// Generate SQL for ClickHouse
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql) // equals(upper(message), 'ERROR')
+```
+
+See [Transformers](/syntax/transformers/) for the full syntax reference.
 
 ## Available Subpath Imports
 

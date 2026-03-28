@@ -32,6 +32,7 @@ export default defineConfig({
             { label: "Lists", link: "/syntax/lists/" },
             { label: "Values & Expressions", link: "/syntax/values/" },
             { label: "Nested Keys", link: "/syntax/nested-keys/" },
+            { label: "Transformers", link: "/syntax/transformers/" },
           ],
         },
         {
@@ -56,6 +57,7 @@ export default defineConfig({
           label: "Advanced",
           items: [
             { label: "AST & Custom Generators", link: "/advanced/ast/" },
+            { label: "Custom Transformers", link: "/advanced/custom-transformers/" },
           ],
         },
         {

@@ -1,0 +1,83 @@
+---
+title: Transformers
+description: Transform column values with pipe-chained functions before comparison
+---
+
+Transformers modify column values before they are compared in queries or emitted in SQL. They use the pipe (`|`) syntax, applied left-to-right.
+
+## Pipe Syntax
+
+Apply a transformer to a column with `|`:
+
+```
+message|upper = "ERROR"
+```
+
+This transforms the value of `message` using `upper` before comparing with `"ERROR"`.
+
+## Chaining
+
+Chain multiple transformers with additional pipes:
+
+```
+message|lower|len > 100
+```
+
+Transformers apply left-to-right: `lower` runs first (string to string), then `len` (string to int). The result is compared with `> 100`.
+
+## Type System
+
+Each transformer declares an input type and output type. Chained transformers must be type-compatible — the output type of one must match the input type of the next.
+
+| Type | Description |
+|------|-------------|
+| `string` | Text values |
+| `int` | Integer numbers |
+| `float` | Floating-point numbers |
+
+## Built-in Transformers
+
+| Transformer | Input | Output | Description |
+|-------------|-------|--------|-------------|
+| `upper` | string | string | Convert to uppercase |
+| `lower` | string | string | Convert to lowercase |
+| `len` | string | int | Get string length |
+
+## SQL Output by Dialect
+
+Transformers generate dialect-specific SQL function calls. Chained transformers produce nested calls (innermost first):
+
+**Single transformer:** `status|upper = "ERROR"`
+
+| Dialect | Generated SQL |
+|---------|---------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**Chained transformers:** `message|lower|len > 100`
+
+| Dialect | Generated SQL |
+|---------|---------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+## Type Errors
+
+If a chain has incompatible types, the editor shows an error:
+
+```
+message|len|upper
+```
+
+This fails because `len` outputs `int`, but `upper` requires `string` input. The editor displays: "len outputs int, upper requires string input".
+
+## Examples
+
+```
+status|upper = "ERROR"           # Uppercase comparison
+message|lower|len > 100          # Chain: lowercase then length
+host|lower != "localhost"        # Case-insensitive not-equals
+path|len > 0                     # Non-empty check
+```

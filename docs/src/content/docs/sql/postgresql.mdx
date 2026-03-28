@@ -114,3 +114,14 @@ const columns = {
     data:    newColumn("data", "jsonb", null),
 }
 ```
+
+## Transformers
+
+Transformers generate PostgreSQL-standard function calls:
+
+| FlyQL | Generated SQL |
+|-------|--------------|
+| `status\|upper = "ERROR"` | `UPPER(status) = 'ERROR'` |
+| `status\|lower = "info"` | `LOWER(status) = 'info'` |
+| `message\|len > 100` | `LENGTH(message) > 100` |
+| `message\|lower\|len > 100` | `LENGTH(LOWER(message)) > 100` |

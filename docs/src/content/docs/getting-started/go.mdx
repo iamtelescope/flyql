@@ -95,9 +95,9 @@ func main() {
 
 ## Parse Column Expressions
 
-Parse a columns expression into structured data with segments, modifiers, and aliases.
+Parse a columns expression into structured data with segments, transformers, and aliases.
 The second argument is a `Capabilities` struct that controls which features are enabled.
-Modifiers are disabled by default.
+Transformers are disabled by default.
 
 ```go
 package main
@@ -108,7 +108,7 @@ import (
 )
 
 func main() {
-	// Parse basic columns (modifiers disabled by default)
+	// Parse basic columns (transformers disabled by default)
 	parsed, err := columns.Parse("message, status", columns.Capabilities{})
 	if err != nil {
 		panic(err)
@@ -117,19 +117,44 @@ func main() {
 		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
 	}
 
-	// Enable modifiers via capabilities
-	caps := columns.Capabilities{Modifiers: true}
-	withMods, err := columns.Parse("message|chars(25) as msg, status", caps)
+	// Enable transformers via capabilities
+	caps := columns.Capabilities{Transformers: true}
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(withMods[0].Modifiers)
+	fmt.Println(withTransforms[0].Transformers)
 
 	// Or serialize directly to JSON for API responses
 	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
 	fmt.Println(string(jsonBytes))
 }
 ```
+
+## Transformers in Queries
+
+Parse a query with transformers and generate SQL:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, _ := flyql.Parse("message|upper = 'ERROR'")
+	columns := map[string]*clickhousegen.Column{
+		"message": clickhousegen.NewColumn("message", false, "String", nil),
+	}
+	sql, _ := clickhousegen.ToSQL(result.Root, columns)
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+See [Transformers](/syntax/transformers/) for the full syntax reference.
 
 ## What's Next
 

@@ -74,23 +74,42 @@ print(f"Matches: {matches}")  # True
 
 ## Parse Column Expressions
 
-Parse a columns expression into structured data with segments, modifiers, and aliases:
+Parse a columns expression into structured data with segments, transformers, and aliases:
 
 ```python
 from flyql.columns import parse, parse_to_json
 
-# Parse basic columns (modifiers disabled by default)
+# Parse basic columns (transformers disabled by default)
 parsed = parse("message, status")
 for col in parsed:
     print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
 
-# Enable modifiers via capabilities
-with_mods = parse("message|chars(25) as msg, status", capabilities={"modifiers": True})
+# Enable transformers via capabilities
+with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
 
 # Or serialize directly to JSON for API responses
-json_str = parse_to_json("message, status|upper", capabilities={"modifiers": True})
+json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
 print(json_str)
 ```
+
+## Transformers in Queries
+
+Parse a query with transformers and generate SQL:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql, Column
+
+# Parse a transformer query
+result = parse("message|upper = 'ERROR'")
+
+# Generate SQL for ClickHouse
+columns = {"message": Column("message", False, "String")}
+sql = to_sql(result.root, columns)
+print(sql)  # equals(upper(message), 'ERROR')
+```
+
+See [Transformers](/syntax/transformers/) for the full syntax reference.
 
 ## What's Next
 

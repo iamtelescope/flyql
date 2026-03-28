@@ -1,0 +1,200 @@
+---
+title: Custom Transformers
+description: Register domain-specific transformers to extend FlyQL with custom value transformations
+---
+
+FlyQL's transformer system is extensible. You can register custom transformers that work identically to built-ins (`upper`, `lower`, `len`) across parsers, SQL generators, in-memory matcher, and editor autocomplete.
+
+## Transformer Interface
+
+Every transformer implements 5 members:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `name` | string | Unique lowercase identifier (e.g., `"firstoctet"`) |
+| `inputType` | TransformerType | Expected input type (`string`, `int`, `float`) |
+| `outputType` | TransformerType | Output type after transformation |
+| `sql(dialect, columnRef)` | string | Generate dialect-specific SQL wrapping the column reference |
+| `apply(value)` | any | Transform a runtime value in-memory |
+
+The `sql()` method receives the SQL dialect name (`"clickhouse"`, `"postgresql"`, `"starrocks"`) and a column reference string. It returns a SQL expression wrapping that reference. The `apply()` method receives a runtime value and returns the transformed value.
+
+## Registry API
+
+| Method | Description |
+|--------|-------------|
+| `defaultRegistry()` | Returns a fresh registry pre-loaded with built-in transformers |
+| `registry.register(transformer)` | Add a custom transformer (raises error if name already registered) |
+| `registry.get(name)` | Look up a transformer by name (returns null/None/nil if not found) |
+| `registry.names()` | List all registered transformer names |
+
+The pattern: get a default registry, register your custom transformers, pass the registry to generators and matcher.
+
+## Python
+
+Define a custom transformer by subclassing `Transformer`:
+
+```python
+from flyql.transformers import Transformer, TransformerType, default_registry
+
+class FirstOctetTransformer(Transformer):
+    @property
+    def name(self): return "firstoctet"
+    @property
+    def input_type(self): return TransformerType.STRING
+    @property
+    def output_type(self): return TransformerType.INT
+    def sql(self, dialect, column_ref):
+        if dialect == "clickhouse":
+            return f"toUInt8(splitByChar('.', {column_ref})[1])"
+        return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
+    def apply(self, value):
+        return int(str(value).split('.')[0])
+```
+
+Register and use:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.postgresql.generator import to_sql, Column
+
+registry = default_registry()
+registry.register(FirstOctetTransformer())
+
+result = parse("src_ip|firstoctet > 192")
+columns = {"src_ip": Column("src_ip", "text")}
+sql = to_sql(result.root, columns, registry=registry)
+# CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+For in-memory matching:
+
+```python
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+evaluator = Evaluator(registry=registry)
+record = Record({"src_ip": "193.0.0.1"})
+evaluator.evaluate(result.root, record)  # True (193 > 192)
+```
+
+## JavaScript
+
+Define a custom transformer by extending `Transformer`:
+
+```javascript
+import { Transformer, TransformerType, defaultRegistry } from 'flyql/transformers'
+
+class FirstOctetTransformer extends Transformer {
+    get name() { return 'firstoctet' }
+    get inputType() { return TransformerType.STRING }
+    get outputType() { return TransformerType.INT }
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
+        return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
+    }
+    apply(value) { return parseInt(String(value).split('.')[0], 10) }
+}
+```
+
+Register and use:
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+
+const registry = defaultRegistry()
+registry.register(new FirstOctetTransformer())
+
+const result = parse("src_ip|firstoctet > 192")
+const columns = { src_ip: newColumn('src_ip', false, 'text') }
+const sql = generateWhere(result.root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+For in-memory matching:
+
+```javascript
+import { match } from 'flyql/matcher'
+
+match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
+```
+
+For editor autocomplete — custom transformers appear alongside built-ins:
+
+```javascript
+import { EditorEngine } from 'flyql/editor'
+
+const engine = new EditorEngine(columns, { registry })
+// After typing "src_ip|", suggestions include "firstoctet", "upper", "lower", "len"
+```
+
+## Go
+
+Define a custom transformer by implementing the `Transformer` interface:
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+    "strings"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type FirstOctet struct{}
+
+func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
+func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f FirstOctet) SQL(dialect, colRef string) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
+    }
+    return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
+}
+func (f FirstOctet) Apply(value interface{}) interface{} {
+    parts := strings.SplitN(fmt.Sprint(value), ".", 2)
+    n, _ := strconv.Atoi(parts[0])
+    return n
+}
+```
+
+Register and use:
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    postgresqlgen "github.com/iamtelescope/flyql/golang/generators/postgresql"
+)
+
+registry := transformers.DefaultRegistry()
+registry.Register(FirstOctet{})
+
+result, _ := flyql.Parse("src_ip|firstoctet > 192")
+columns := map[string]*postgresqlgen.Column{
+    "src_ip": postgresqlgen.NewColumn("src_ip", "text", nil),
+}
+sql, _ := postgresqlgen.ToSQLWhere(result.Root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+For in-memory matching:
+
+```go
+import "github.com/iamtelescope/flyql/golang/matcher"
+
+matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": "193.0.0.1"}, registry)
+// matched == true
+```
+
+## Type Compatibility
+
+Custom transformers participate in the same type chain validation as built-ins. If you chain `field|firstoctet|upper`, the system detects that `firstoctet` outputs `int` but `upper` requires `string`, and raises a type error at generation time.
+
+Available types: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+
+## Security
+
+Custom transformers' `sql()` methods only receive column references (from the schema), never user-provided values. User values are escaped/parameterized by the generator. This preserves FlyQL's injection-proof guarantee — custom SQL wraps column names, not user input.

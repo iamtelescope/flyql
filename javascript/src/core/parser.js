@@ -37,6 +37,7 @@ export class Parser {
         this.root = null
         this.typedChars = []
         this._pipeSeenInKey = false
+        this._transformerParenDepth = 0
         this.pendingNegation = false
         this.negationStack = []
         this.inListValues = []
@@ -86,6 +87,7 @@ export class Parser {
     resetKey() {
         this.key = ''
         this._pipeSeenInKey = false
+        this._transformerParenDepth = 0
     }
 
     resetValue() {
@@ -334,6 +336,11 @@ export class Parser {
         }
 
         if (this.char.isDelimiter()) {
+            if (this._transformerParenDepth > 0) {
+                this.extendKey()
+                this.storeTypedChar(CharType.ARGUMENT)
+                return
+            }
             if (this.key === NOT_KEYWORD) {
                 this.togglePendingNegation()
                 this.resetKey()
@@ -352,6 +359,11 @@ export class Parser {
             } else {
                 this.storeTypedChar(CharType.KEY)
             }
+        } else if (this._pipeSeenInKey && '(),"\''.includes(this.char.value)) {
+            if (this.char.value === '(') this._transformerParenDepth++
+            else if (this.char.value === ')') this._transformerParenDepth--
+            this.extendKey()
+            this.storeTypedChar(CharType.ARGUMENT)
         } else if (this.char.isSingleQuote()) {
             this.extendKey()
             this.setState(State.SINGLE_QUOTED_KEY)

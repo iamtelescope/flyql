@@ -23,6 +23,7 @@ const CHAR_TYPE_CLASS = {
     [CharType.SPACE]: 'flyql-space',
     [CharType.PIPE]: 'flyql-transformer',
     [CharType.TRANSFORMER]: 'flyql-transformer',
+    [CharType.ARGUMENT]: 'flyql-argument',
 }
 
 function escapeHtml(str) {

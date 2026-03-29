@@ -10,7 +10,7 @@ export function applyTransformerSQL(columnRef, transformers, dialect, registry =
         if (!transformer) {
             throw new Error(`unknown transformer: ${tDict.name}`)
         }
-        result = transformer.sql(dialect, result)
+        result = transformer.sql(dialect, result, tDict.arguments || [])
     }
     return result
 }

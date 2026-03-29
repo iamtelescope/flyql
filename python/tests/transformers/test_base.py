@@ -37,10 +37,10 @@ class _StubTransformer(Transformer):
     def output_type(self) -> TransformerType:
         return TransformerType.STRING
 
-    def sql(self, dialect: str, column_ref: str) -> str:
+    def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         return f"STUB({column_ref})"
 
-    def apply(self, value: Any) -> Any:
+    def apply(self, value: Any, args: Any = None) -> Any:
         return value
 
 

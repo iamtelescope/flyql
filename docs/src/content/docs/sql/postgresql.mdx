@@ -125,3 +125,4 @@ Transformers generate PostgreSQL-standard function calls:
 | `status\|lower = "info"` | `LOWER(status) = 'info'` |
 | `message\|len > 100` | `LENGTH(message) > 100` |
 | `message\|lower\|len > 100` | `LENGTH(LOWER(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |

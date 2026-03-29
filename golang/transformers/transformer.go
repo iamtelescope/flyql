@@ -16,6 +16,6 @@ type Transformer interface {
 	Name() string
 	InputType() TransformerType
 	OutputType() TransformerType
-	SQL(dialect, columnRef string) string
-	Apply(value interface{}) interface{}
+	SQL(dialect, columnRef string, args []any) string
+	Apply(value interface{}, args []any) interface{}
 }

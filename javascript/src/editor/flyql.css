@@ -326,6 +326,10 @@
     color: var(--flyql-transformer-color);
 }
 
+.flyql-argument {
+    color: var(--flyql-value-color);
+}
+
 .flyql-error {
     color: var(--flyql-error-color);
     text-decoration: wavy underline;

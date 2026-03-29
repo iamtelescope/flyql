@@ -61,6 +61,8 @@ type Parser struct {
 	isNotHas                   bool
 	valueQuoteChar             rune
 	inListQuoteChar            rune
+	pipeSeenInKey              bool
+	transformerParenDepth      int
 }
 
 func NewParser() *Parser {
@@ -81,6 +83,8 @@ func (p *Parser) setErrorState(errorText string, errno int) {
 
 func (p *Parser) resetKey() {
 	p.key = ""
+	p.pipeSeenInKey = false
+	p.transformerParenDepth = 0
 }
 
 func (p *Parser) resetValue() {
@@ -334,6 +338,10 @@ func (p *Parser) inStateKey() {
 	}
 
 	if p.char.isDelimiter() {
+		if p.transformerParenDepth > 0 {
+			p.extendKey()
+			return
+		}
 		if p.key == NotKeyword {
 			p.togglePendingNegation()
 			p.resetKey()
@@ -342,6 +350,16 @@ func (p *Parser) inStateKey() {
 			p.state = stateKeyOrBoolOp
 		}
 	} else if p.char.isKey() {
+		if p.char.value == '|' {
+			p.pipeSeenInKey = true
+		}
+		p.extendKey()
+	} else if p.pipeSeenInKey && (p.char.isGroupOpen() || p.char.isGroupClose() || p.char.isDoubleQuote() || p.char.isSingleQuote() || p.char.value == ',') {
+		if p.char.isGroupOpen() {
+			p.transformerParenDepth++
+		} else if p.char.isGroupClose() {
+			p.transformerParenDepth--
+		}
 		p.extendKey()
 	} else if p.char.isSingleQuote() {
 		p.extendKey()

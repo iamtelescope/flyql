@@ -28,14 +28,14 @@ func TestUpperTransformer(t *testing.T) {
 		{"starrocks", "col", "UPPER(col)"},
 	}
 	for _, d := range dialects {
-		got := u.SQL(d.dialect, d.col)
+		got := u.SQL(d.dialect, d.col, nil)
 		if got != d.want {
 			t.Errorf("SQL(%q, %q) = %q, want %q", d.dialect, d.col, got, d.want)
 		}
 	}
 
 	// Apply
-	if got := u.Apply("hello"); got != "HELLO" {
+	if got := u.Apply("hello", nil); got != "HELLO" {
 		t.Errorf("Apply(%q) = %q, want %q", "hello", got, "HELLO")
 	}
 }
@@ -63,13 +63,13 @@ func TestLowerTransformer(t *testing.T) {
 		{"starrocks", "col", "LOWER(col)"},
 	}
 	for _, d := range dialects {
-		got := l.SQL(d.dialect, d.col)
+		got := l.SQL(d.dialect, d.col, nil)
 		if got != d.want {
 			t.Errorf("SQL(%q, %q) = %q, want %q", d.dialect, d.col, got, d.want)
 		}
 	}
 
-	if got := l.Apply("HELLO"); got != "hello" {
+	if got := l.Apply("HELLO", nil); got != "hello" {
 		t.Errorf("Apply(%q) = %q, want %q", "HELLO", got, "hello")
 	}
 }
@@ -97,13 +97,13 @@ func TestLenTransformer(t *testing.T) {
 		{"starrocks", "col", "LENGTH(col)"},
 	}
 	for _, d := range dialects {
-		got := l.SQL(d.dialect, d.col)
+		got := l.SQL(d.dialect, d.col, nil)
 		if got != d.want {
 			t.Errorf("SQL(%q, %q) = %q, want %q", d.dialect, d.col, got, d.want)
 		}
 	}
 
-	if got := l.Apply("hello"); got != 5 {
+	if got := l.Apply("hello", nil); got != 5 {
 		t.Errorf("Apply(%q) = %v, want %d", "hello", got, 5)
 	}
 }
@@ -113,4 +113,5 @@ func TestBuiltinsImplementTransformerInterface(t *testing.T) {
 	var _ Transformer = Upper{}
 	var _ Transformer = Lower{}
 	var _ Transformer = Len{}
+	var _ Transformer = Split{}
 }

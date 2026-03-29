@@ -162,7 +162,7 @@ export class Evaluator {
             for (const tDict of expr.key.transformers) {
                 const transformer = this._registry.get(tDict.name)
                 if (!transformer) throw new Error(`unknown transformer: ${tDict.name}`)
-                value = transformer.apply(value)
+                value = transformer.apply(value, tDict.arguments || [])
             }
         }
 

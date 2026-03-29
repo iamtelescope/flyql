@@ -122,3 +122,4 @@ Transformers generate StarRocks-standard function calls with backtick-quoted col
 | `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
 | `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
 | `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |
+| `tags\|split(",") has "urgent"` | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

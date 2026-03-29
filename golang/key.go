@@ -2,6 +2,7 @@ package flyql
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -178,10 +179,79 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 	return Key{Segments: p.segments, QuotedSegments: p.quotedSegments, Raw: keyString}, nil
 }
 
+func parseTransformerArguments(argsStr string) []any {
+	args := []any{}
+	i := 0
+	for i < len(argsStr) {
+		for i < len(argsStr) && argsStr[i] == ' ' {
+			i++
+		}
+		if i >= len(argsStr) {
+			break
+		}
+		if argsStr[i] == '"' || argsStr[i] == '\'' {
+			quote := argsStr[i]
+			i++
+			val := ""
+			for i < len(argsStr) && argsStr[i] != quote {
+				if argsStr[i] == '\\' && i+1 < len(argsStr) {
+					i++
+					switch argsStr[i] {
+					case 't':
+						val += "\t"
+					case 'n':
+						val += "\n"
+					default:
+						val += string(argsStr[i])
+					}
+				} else {
+					val += string(argsStr[i])
+				}
+				i++
+			}
+			if i < len(argsStr) {
+				i++
+			}
+			args = append(args, val)
+		} else {
+			val := ""
+			for i < len(argsStr) && argsStr[i] != ',' && argsStr[i] != ' ' {
+				val += string(argsStr[i])
+				i++
+			}
+			if n, err := strconv.Atoi(val); err == nil {
+				args = append(args, n)
+			} else if f, err := strconv.ParseFloat(val, 64); err == nil {
+				args = append(args, f)
+			} else {
+				args = append(args, val)
+			}
+		}
+		for i < len(argsStr) && (argsStr[i] == ' ' || argsStr[i] == ',') {
+			i++
+		}
+	}
+	return args
+}
+
+func parseTransformerSpec(spec string) KeyTransformer {
+	parenIdx := strings.Index(spec, "(")
+	if parenIdx == -1 {
+		return KeyTransformer{Name: spec, Arguments: []any{}}
+	}
+	name := spec[:parenIdx]
+	closeIdx := strings.LastIndex(spec, ")")
+	if closeIdx == -1 {
+		return KeyTransformer{Name: spec, Arguments: []any{}}
+	}
+	argsStr := spec[parenIdx+1 : closeIdx]
+	return KeyTransformer{Name: name, Arguments: parseTransformerArguments(argsStr)}
+}
+
 func ParseKey(keyString string) (Key, error) {
 	parts := strings.Split(keyString, "|")
 	baseKeyString := parts[0]
-	transformerNames := parts[1:]
+	transformerSpecs := parts[1:]
 
 	parser := &keyParser{}
 	key, err := parser.parse(baseKeyString)
@@ -189,15 +259,14 @@ func ParseKey(keyString string) (Key, error) {
 		return key, err
 	}
 
-	if len(transformerNames) > 0 {
-		for _, name := range transformerNames {
-			if name == "" {
+	if len(transformerSpecs) > 0 {
+		key.Transformers = make([]KeyTransformer, len(transformerSpecs))
+		for i, spec := range transformerSpecs {
+			parsed := parseTransformerSpec(spec)
+			if parsed.Name == "" {
 				return Key{}, fmt.Errorf("empty transformer name in key")
 			}
-		}
-		key.Transformers = make([]KeyTransformer, len(transformerNames))
-		for i, name := range transformerNames {
-			key.Transformers[i] = KeyTransformer{Name: name, Arguments: []any{}}
+			key.Transformers[i] = parsed
 		}
 		key.Raw = keyString
 	}

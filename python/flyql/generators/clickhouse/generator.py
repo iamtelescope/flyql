@@ -180,7 +180,12 @@ def truthy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        if column.jsonstring:
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                column.name, expression.key.transformers, "clickhouse"
+            )
+            return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
+        elif column.jsonstring:
             return (
                 f"({column.name} IS NOT NULL AND {column.name} != '' AND "
                 f"JSONLength({column.name}) > 0)"
@@ -250,7 +255,12 @@ def falsy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        if column.jsonstring:
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                column.name, expression.key.transformers, "clickhouse"
+            )
+            return f"({col_ref} IS NULL OR {col_ref} = '')"
+        elif column.jsonstring:
             return (
                 f"({column.name} IS NULL OR {column.name} = '' OR "
                 f"JSONLength({column.name}) = 0)"
@@ -313,7 +323,12 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        return f"{column.name} {sql_op} ({values_sql})"
+        col_ref = column.name
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                col_ref, expression.key.transformers, "clickhouse"
+            )
+        return f"{col_ref} {sql_op} ({values_sql})"
 
 
 def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
@@ -364,26 +379,38 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         else:
             raise FlyqlError("path search for unsupported column type")
 
-    if column.is_array:
+    col_ref = column.name
+    is_array_result = column.is_array
+    if expression.key.transformers:
+        col_ref = apply_transformer_sql(
+            col_ref, expression.key.transformers, "clickhouse"
+        )
+        from flyql.generators.transformer_helpers import get_transformer_output_type
+
+        out_type = get_transformer_output_type(expression.key.transformers)
+        if out_type and out_type.value == "array":
+            is_array_result = True
+
+    if is_array_result:
         if is_not_has:
-            return f"NOT has({column.name}, {value})"
-        return f"has({column.name}, {value})"
+            return f"NOT has({col_ref}, {value})"
+        return f"has({col_ref}, {value})"
     elif column.is_map:
         if is_not_has:
-            return f"NOT mapContains({column.name}, {value})"
-        return f"mapContains({column.name}, {value})"
+            return f"NOT mapContains({col_ref}, {value})"
+        return f"mapContains({col_ref}, {value})"
     elif column.is_json:
         if is_not_has:
-            return f"NOT JSON_EXISTS({column.name}, concat('$.', {value}))"
-        return f"JSON_EXISTS({column.name}, concat('$.', {value}))"
+            return f"NOT JSON_EXISTS({col_ref}, concat('$.', {value}))"
+        return f"JSON_EXISTS({col_ref}, concat('$.', {value}))"
     elif column.jsonstring:
         if is_not_has:
-            return f"NOT JSONHas({column.name}, {value})"
-        return f"JSONHas({column.name}, {value})"
+            return f"NOT JSONHas({col_ref}, {value})"
+        return f"JSONHas({col_ref}, {value})"
     elif column.normalized_type == NORMALIZED_TYPE_STRING:
         if is_not_has:
-            return f"({column.name} IS NULL OR position({column.name}, {value}) = 0)"
-        return f"position({column.name}, {value}) > 0"
+            return f"({col_ref} IS NULL OR position({col_ref}, {value}) = 0)"
+        return f"position({col_ref}, {value}) > 0"
     else:
         raise FlyqlError(
             f"has operator is not supported for column type: {column.normalized_type}"

@@ -8,11 +8,11 @@ func TestDefaultRegistry(t *testing.T) {
 	r := DefaultRegistry()
 	names := r.Names()
 
-	if len(names) != 3 {
-		t.Fatalf("DefaultRegistry has %d transformers, want 3", len(names))
+	if len(names) != 4 {
+		t.Fatalf("DefaultRegistry has %d transformers, want 4", len(names))
 	}
 
-	expected := []string{"len", "lower", "upper"}
+	expected := []string{"len", "lower", "split", "upper"}
 	for i, name := range names {
 		if name != expected[i] {
 			t.Errorf("Names()[%d] = %q, want %q", i, name, expected[i])

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional
 
 
 class TransformerType(Enum):
@@ -25,7 +25,9 @@ class Transformer(ABC):
     def output_type(self) -> TransformerType: ...
 
     @abstractmethod
-    def sql(self, dialect: str, column_ref: str) -> str: ...
+    def sql(
+        self, dialect: str, column_ref: str, args: Optional[List[Any]] = None
+    ) -> str: ...
 
     @abstractmethod
-    def apply(self, value: Any) -> Any: ...
+    def apply(self, value: Any, args: Optional[List[Any]] = None) -> Any: ...

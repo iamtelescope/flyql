@@ -48,6 +48,8 @@ class Parser:
         self.errno: int = 0
         self.root: Union[Node, None] = None
         self.typed_chars: List[tuple[Char, CharType]] = []
+        self._pipe_seen_in_key: bool = False
+        self._transformer_paren_depth: int = 0
         self.pending_negation: bool = False
         self.negation_stack: List[bool] = []
         self.in_list_values: List[Any] = []
@@ -90,6 +92,8 @@ class Parser:
 
     def reset_key(self) -> None:
         self.key = ""
+        self._pipe_seen_in_key = False
+        self._transformer_paren_depth = 0
 
     def reset_value(self) -> None:
         self.value = ""
@@ -363,6 +367,10 @@ class Parser:
             return
 
         if self.char.is_delimiter():
+            if self._transformer_paren_depth > 0:
+                self.extend_key()
+                self.store_typed_char(CharType.KEY)
+                return
             if self.key == NOT_KEYWORD:
                 self.toggle_pending_negation()
                 self.reset_key()
@@ -372,6 +380,15 @@ class Parser:
                 self.set_state(State.KEY_OR_BOOL_OP)
                 self.store_typed_char(CharType.SPACE)
         elif self.char.is_key():
+            if self.char.value == "|":
+                self._pipe_seen_in_key = True
+            self.extend_key()
+            self.store_typed_char(CharType.KEY)
+        elif self._pipe_seen_in_key and self.char.value in "(),\"'":
+            if self.char.value == "(":
+                self._transformer_paren_depth += 1
+            elif self.char.value == ")":
+                self._transformer_paren_depth -= 1
             self.extend_key()
             self.store_typed_char(CharType.KEY)
         elif self.char.is_single_quote():

@@ -13,6 +13,7 @@ import {
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
+import { defaultRegistry } from '../../transformers/index.js'
 
 export { Column, newColumn, normalizeClickHouseType }
 
@@ -290,7 +291,12 @@ function inExpressionToSQL(expr, columns) {
         }
     }
 
-    return `${column.name} ${sqlOp} (${valuesSQL})`
+    let colRef = column.name
+    if (expr.key.transformers && expr.key.transformers.length) {
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
+    }
+
+    return `${colRef} ${sqlOp} (${valuesSQL})`
 }
 
 function truthyExpressionToSQL(expr, columns) {
@@ -328,6 +334,11 @@ function truthyExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(column.name, expr.key.transformers, 'clickhouse')
+        return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
     if (column.jsonString) {
@@ -384,6 +395,11 @@ function falsyExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(column.name, expr.key.transformers, 'clickhouse')
+        return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
     if (column.jsonString) {
@@ -457,39 +473,51 @@ function hasExpressionToSQL(expr, columns) {
         }
     }
 
-    if (column.isArray) {
+    let colRef = column.name
+    if (expr.key.transformers && expr.key.transformers.length) {
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
+    }
+
+    let isArrayResult = column.isArray
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const reg = defaultRegistry()
+        const lastT = reg.get(expr.key.transformers[expr.key.transformers.length - 1].name)
+        if (lastT && lastT.outputType === 'array') isArrayResult = true
+    }
+
+    if (isArrayResult) {
         if (isNotHas) {
-            return `NOT has(${column.name}, ${value})`
+            return `NOT has(${colRef}, ${value})`
         }
-        return `has(${column.name}, ${value})`
+        return `has(${colRef}, ${value})`
     }
 
     if (column.isMap) {
         if (isNotHas) {
-            return `NOT mapContains(${column.name}, ${value})`
+            return `NOT mapContains(${colRef}, ${value})`
         }
-        return `mapContains(${column.name}, ${value})`
+        return `mapContains(${colRef}, ${value})`
     }
 
     if (column.isJSON) {
         if (isNotHas) {
-            return `NOT JSON_EXISTS(${column.name}, concat('$.', ${value}))`
+            return `NOT JSON_EXISTS(${colRef}, concat('$.', ${value}))`
         }
-        return `JSON_EXISTS(${column.name}, concat('$.', ${value}))`
+        return `JSON_EXISTS(${colRef}, concat('$.', ${value}))`
     }
 
     if (column.jsonString) {
         if (isNotHas) {
-            return `NOT JSONHas(${column.name}, ${value})`
+            return `NOT JSONHas(${colRef}, ${value})`
         }
-        return `JSONHas(${column.name}, ${value})`
+        return `JSONHas(${colRef}, ${value})`
     }
 
     if (column.normalizedType === NormalizedTypeString) {
         if (isNotHas) {
-            return `(${column.name} IS NULL OR position(${column.name}, ${value}) = 0)`
+            return `(${colRef} IS NULL OR position(${colRef}, ${value}) = 0)`
         }
-        return `position(${column.name}, ${value}) > 0`
+        return `position(${colRef}, ${value}) > 0`
     }
 
     throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)

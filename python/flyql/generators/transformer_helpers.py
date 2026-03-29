@@ -22,8 +22,20 @@ def apply_transformer_sql(
         transformer = registry.get(t_dict["name"])
         if transformer is None:
             raise FlyqlError(f"unknown transformer: {t_dict['name']}")
-        result = transformer.sql(dialect, result)
+        result = transformer.sql(dialect, result, t_dict.get("arguments"))
     return result
+
+
+def get_transformer_output_type(
+    transformers: List[Dict[str, Any]],
+    registry: Optional[TransformerRegistry] = None,
+) -> Optional[TransformerType]:
+    if not transformers:
+        return None
+    if registry is None:
+        registry = default_registry()
+    last = registry.get(transformers[-1]["name"])
+    return last.output_type if last else None
 
 
 def validate_transformer_chain(

@@ -145,21 +145,78 @@ class KeyParser:
         return Key(self.segments, self.input, self.quoted_segments)
 
 
+def _parse_transformer_arguments(args_str: str) -> List[Any]:
+    args: List[Any] = []
+    i = 0
+    while i < len(args_str):
+        while i < len(args_str) and args_str[i] == " ":
+            i += 1
+        if i >= len(args_str):
+            break
+        if args_str[i] in ('"', "'"):
+            quote = args_str[i]
+            i += 1
+            val = ""
+            while i < len(args_str) and args_str[i] != quote:
+                if args_str[i] == "\\" and i + 1 < len(args_str):
+                    i += 1
+                    if args_str[i] == "t":
+                        val += "\t"
+                    elif args_str[i] == "n":
+                        val += "\n"
+                    else:
+                        val += args_str[i]
+                else:
+                    val += args_str[i]
+                i += 1
+            if i < len(args_str):
+                i += 1
+            args.append(val)
+        else:
+            val = ""
+            while i < len(args_str) and args_str[i] not in (",", " "):
+                val += args_str[i]
+                i += 1
+            try:
+                if "." in val:
+                    args.append(float(val))
+                else:
+                    args.append(int(val))
+            except ValueError:
+                args.append(val)
+        while i < len(args_str) and args_str[i] in (" ", ","):
+            i += 1
+    return args
+
+
+def _parse_transformer_spec(spec: str) -> Dict[str, Any]:
+    paren_index = spec.find("(")
+    if paren_index == -1:
+        return {"name": spec, "arguments": []}
+    name = spec[:paren_index]
+    close_index = spec.rfind(")")
+    if close_index == -1:
+        return {"name": spec, "arguments": []}
+    args_str = spec[paren_index + 1 : close_index]
+    return {"name": name, "arguments": _parse_transformer_arguments(args_str)}
+
+
 def parse_key(key_string: str) -> Key:
     parts = key_string.split("|")
     base_key_string = parts[0]
-    transformer_names = parts[1:] if len(parts) > 1 else []
+    transformer_specs = parts[1:] if len(parts) > 1 else []
 
     parser = KeyParser()
     key = parser.parse(base_key_string)
 
-    if transformer_names:
-        for name in transformer_names:
-            if not name:
+    if transformer_specs:
+        transformers = []
+        for spec in transformer_specs:
+            parsed = _parse_transformer_spec(spec)
+            if not parsed["name"]:
                 raise FlyqlError("empty transformer name in key")
-        key.transformers = [
-            {"name": name, "arguments": []} for name in transformer_names
-        ]
+            transformers.append(parsed)
+        key.transformers = transformers
         key.raw = key_string
 
     return key

@@ -26,6 +26,7 @@ from flyql.generators.starrocks.constants import (
 )
 from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
+    get_transformer_output_type,
     validate_transformer_chain,
 )
 from flyql.transformers.registry import TransformerRegistry
@@ -191,7 +192,12 @@ def truthy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        if column.jsonstring:
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                f"`{column.name}`", expression.key.transformers, "starrocks"
+            )
+            return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
+        elif column.jsonstring:
             if column.is_map or column.is_struct:
                 return (
                     f"(`{column.name}` IS NOT NULL AND "
@@ -274,7 +280,12 @@ def falsy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        if column.jsonstring:
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                f"`{column.name}`", expression.key.transformers, "starrocks"
+            )
+            return f"({col_ref} IS NULL OR {col_ref} = '')"
+        elif column.jsonstring:
             if column.is_map or column.is_struct:
                 return (
                     f"(`{column.name}` IS NULL OR "
@@ -347,7 +358,12 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        return f"`{column.name}` {sql_op} ({values_sql})"
+        col_ref = f"`{column.name}`"
+        if expression.key.transformers:
+            col_ref = apply_transformer_sql(
+                col_ref, expression.key.transformers, "starrocks"
+            )
+        return f"{col_ref} {sql_op} ({values_sql})"
 
 
 def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
@@ -408,22 +424,33 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         else:
             raise FlyqlError("path search for unsupported column type")
 
-    if column.is_array:
+    col_ref = f"`{column.name}`"
+    if expression.key.transformers:
+        col_ref = apply_transformer_sql(
+            col_ref, expression.key.transformers, "starrocks"
+        )
+
+    is_array_result = column.is_array
+    out_type = get_transformer_output_type(expression.key.transformers)
+    if out_type and out_type.value == "array":
+        is_array_result = True
+
+    if is_array_result:
         if is_not_has:
-            return f"NOT array_contains(`{column.name}`, {value})"
-        return f"array_contains(`{column.name}`, {value})"
+            return f"NOT array_contains({col_ref}, {value})"
+        return f"array_contains({col_ref}, {value})"
     elif column.is_map:
         if is_not_has:
-            return f"NOT array_contains(map_keys(`{column.name}`), {value})"
-        return f"array_contains(map_keys(`{column.name}`), {value})"
+            return f"NOT array_contains(map_keys({col_ref}), {value})"
+        return f"array_contains(map_keys({col_ref}), {value})"
     elif column.is_json:
         if is_not_has:
-            return f"NOT json_exists(`{column.name}`, concat('$.', {value}))"
-        return f"json_exists(`{column.name}`, concat('$.', {value}))"
+            return f"NOT json_exists({col_ref}, concat('$.', {value}))"
+        return f"json_exists({col_ref}, concat('$.', {value}))"
     elif column.normalized_type == NORMALIZED_TYPE_STRING:
         if is_not_has:
-            return f"(`{column.name}` IS NULL OR INSTR(`{column.name}`, {value}) = 0)"
-        return f"INSTR(`{column.name}`, {value}) > 0"
+            return f"({col_ref} IS NULL OR INSTR({col_ref}, {value}) = 0)"
+        return f"INSTR({col_ref}, {value}) > 0"
     else:
         raise FlyqlError(
             f"has operator is not supported for column type: {column.normalized_type}"

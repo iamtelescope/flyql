@@ -14,6 +14,7 @@ import {
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
+import { defaultRegistry } from '../../transformers/index.js'
 
 export { Column, newColumn, normalizePostgreSQLType }
 
@@ -356,7 +357,7 @@ function inExpressionToSQL(expr, columns) {
 
     const sqlOp = isNotIn ? 'NOT IN' : 'IN'
 
-    const identifier = getIdentifier(column)
+    let identifier = getIdentifier(column)
 
     if (expr.key.isSegmented) {
         if (column.isJSONB || column.jsonString) {
@@ -383,6 +384,10 @@ function inExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
     }
 
     return `${identifier} ${sqlOp} (${valuesSQL})`
@@ -423,6 +428,11 @@ function truthyExpressionToSQL(expr, columns) {
         } else {
             throw new Error('path search for unsupported column type')
         }
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
+        return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
     if (column.jsonString) {
@@ -485,6 +495,11 @@ function falsyExpressionToSQL(expr, columns) {
         return `(${identifier} IS NULL OR ${identifier} = '' OR CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) = 0 WHEN 'object' THEN ${identifier}::jsonb = '{}'::jsonb ELSE true END)`
     }
 
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
+        return `(${colRef} IS NULL OR ${colRef} = '')`
+    }
+
     switch (column.normalizedType) {
         case NormalizedTypeBool:
             return `NOT ${identifier}`
@@ -508,7 +523,7 @@ function hasExpressionToSQL(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    const identifier = getIdentifier(column)
+    let identifier = getIdentifier(column)
     const value = escapeParam(expr.value)
 
     if (expr.key.isSegmented) {
@@ -550,7 +565,18 @@ function hasExpressionToSQL(expr, columns) {
         }
     }
 
-    if (column.isArray) {
+    if (expr.key.transformers && expr.key.transformers.length) {
+        identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
+    }
+
+    let isArrayResult = column.isArray
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const reg = defaultRegistry()
+        const lastT = reg.get(expr.key.transformers[expr.key.transformers.length - 1].name)
+        if (lastT && lastT.outputType === 'array') isArrayResult = true
+    }
+
+    if (isArrayResult) {
         if (isNotHas) {
             return `NOT (${value} = ANY(${identifier}))`
         }

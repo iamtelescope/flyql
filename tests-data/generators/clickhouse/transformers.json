@@ -38,6 +38,18 @@
       "input": "field|len|upper > 5",
       "expected_result": "error",
       "expected_error_contains": "transformer chain type error"
+    },
+    {
+      "name": "split_has",
+      "input": "field|split(\",\") has 'first'",
+      "expected_result": "success",
+      "expected_sql": "has(splitByChar(',', field), 'first')"
+    },
+    {
+      "name": "split_truthy",
+      "input": "field|split(\".\")",
+      "expected_result": "success",
+      "expected_sql": "(splitByChar('.', field) IS NOT NULL AND splitByChar('.', field) != '')"
     }
   ]
 }

@@ -44,5 +44,6 @@ func DefaultRegistry() *TransformerRegistry {
 	_ = r.Register(Upper{})
 	_ = r.Register(Lower{})
 	_ = r.Register(Len{})
+	_ = r.Register(Split{})
 	return r
 }

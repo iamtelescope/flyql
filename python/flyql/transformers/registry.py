@@ -1,7 +1,12 @@
 from typing import Dict, List, Optional
 
 from .base import Transformer
-from .builtins import LenTransformer, LowerTransformer, UpperTransformer
+from .builtins import (
+    LenTransformer,
+    LowerTransformer,
+    SplitTransformer,
+    UpperTransformer,
+)
 
 
 class TransformerRegistry:
@@ -25,4 +30,5 @@ def default_registry() -> TransformerRegistry:
     registry.register(UpperTransformer())
     registry.register(LowerTransformer())
     registry.register(LenTransformer())
+    registry.register(SplitTransformer())
     return registry

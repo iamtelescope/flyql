@@ -29,12 +29,12 @@ class FirstOctetTransformer(Transformer):
     def output_type(self) -> TransformerType:
         return TransformerType.INT
 
-    def sql(self, dialect: str, column_ref: str) -> str:
+    def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         if dialect == "clickhouse":
             return f"toUInt8(splitByChar('.', {column_ref})[1])"
         return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
 
-    def apply(self, value: Any) -> Any:
+    def apply(self, value: Any, args: Any = None) -> Any:
         return int(str(value).split(".")[0])
 
 

@@ -1,4 +1,4 @@
-import { UpperTransformer, LowerTransformer, LenTransformer } from './builtins.js'
+import { UpperTransformer, LowerTransformer, LenTransformer, SplitTransformer } from './builtins.js'
 
 export class TransformerRegistry {
     constructor() {
@@ -26,5 +26,6 @@ export function defaultRegistry() {
     registry.register(new UpperTransformer())
     registry.register(new LowerTransformer())
     registry.register(new LenTransformer())
+    registry.register(new SplitTransformer())
     return registry
 }

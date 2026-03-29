@@ -38,6 +38,12 @@
       "input": "field|len|upper > 5",
       "expected_result": "error",
       "expected_error_contains": "transformer chain type error"
+    },
+    {
+      "name": "split_truthy",
+      "input": "field|split(\".\")",
+      "expected_result": "success",
+      "expected_sql": "(STRING_TO_ARRAY(\"field\", '.') IS NOT NULL AND STRING_TO_ARRAY(\"field\", '.') != '')"
     }
   ]
 }

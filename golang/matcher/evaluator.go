@@ -128,7 +128,7 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 			if transformer == nil {
 				return false
 			}
-			value = transformer.Apply(value)
+			value = transformer.Apply(value, t.Arguments)
 		}
 	}
 

@@ -18,10 +18,10 @@ class _DummyTransformer(Transformer):
     def output_type(self) -> TransformerType:
         return TransformerType.STRING
 
-    def sql(self, dialect: str, column_ref: str) -> str:
+    def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         return f"DUMMY({column_ref})"
 
-    def apply(self, value: Any) -> Any:
+    def apply(self, value: Any, args: Any = None) -> Any:
         return value
 
 
@@ -71,9 +71,9 @@ class TestDefaultRegistry:
         assert t is not None
         assert t.name == "len"
 
-    def test_has_exactly_three_builtins(self) -> None:
+    def test_has_exactly_four_builtins(self) -> None:
         reg = default_registry()
-        assert sorted(reg.names()) == ["len", "lower", "upper"]
+        assert sorted(reg.names()) == ["len", "lower", "split", "upper"]
 
     def test_returns_fresh_instance(self) -> None:
         reg1 = default_registry()

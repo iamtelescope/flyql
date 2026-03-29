@@ -128,21 +128,78 @@ export class KeyParser {
     }
 }
 
+function parseTransformerArguments(argsStr) {
+    const args = []
+    let i = 0
+    while (i < argsStr.length) {
+        // Skip whitespace
+        while (i < argsStr.length && argsStr[i] === ' ') i++
+        if (i >= argsStr.length) break
+
+        if (argsStr[i] === '"' || argsStr[i] === "'") {
+            // Quoted string argument
+            const quote = argsStr[i]
+            i++
+            let val = ''
+            while (i < argsStr.length && argsStr[i] !== quote) {
+                if (argsStr[i] === '\\' && i + 1 < argsStr.length) {
+                    i++
+                    if (argsStr[i] === 't') val += '\t'
+                    else if (argsStr[i] === 'n') val += '\n'
+                    else val += argsStr[i]
+                } else {
+                    val += argsStr[i]
+                }
+                i++
+            }
+            if (i < argsStr.length) i++ // skip closing quote
+            args.push(val)
+        } else {
+            // Unquoted argument (number or bare string)
+            let val = ''
+            while (i < argsStr.length && argsStr[i] !== ',' && argsStr[i] !== ' ') {
+                val += argsStr[i]
+                i++
+            }
+            const num = Number(val)
+            args.push(isNaN(num) ? val : num)
+        }
+        // Skip whitespace and comma
+        while (i < argsStr.length && (argsStr[i] === ' ' || argsStr[i] === ',')) i++
+    }
+    return args
+}
+
+function parseTransformerSpec(spec) {
+    const parenIndex = spec.indexOf('(')
+    if (parenIndex === -1) {
+        return { name: spec, arguments: [] }
+    }
+    const name = spec.substring(0, parenIndex)
+    const closeIndex = spec.lastIndexOf(')')
+    if (closeIndex === -1) {
+        return { name: spec, arguments: [] }
+    }
+    const argsStr = spec.substring(parenIndex + 1, closeIndex)
+    return { name, arguments: parseTransformerArguments(argsStr) }
+}
+
 export function parseKey(keyString) {
     const parts = keyString.split('|')
     const baseKeyString = parts[0]
-    const transformerNames = parts.length > 1 ? parts.slice(1) : []
+    const transformerSpecs = parts.length > 1 ? parts.slice(1) : []
 
     const parser = new KeyParser()
     const key = parser.parse(baseKeyString)
 
-    if (transformerNames.length > 0) {
-        for (const name of transformerNames) {
-            if (!name) {
+    if (transformerSpecs.length > 0) {
+        key.transformers = transformerSpecs.map((spec) => {
+            const parsed = parseTransformerSpec(spec)
+            if (!parsed.name) {
                 throw new FlyqlError('empty transformer name in key')
             }
-        }
-        key.transformers = transformerNames.map((name) => ({ name, arguments: [] }))
+            return parsed
+        })
         key.raw = keyString
     }
 

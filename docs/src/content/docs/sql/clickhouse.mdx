@@ -124,3 +124,4 @@ Transformers generate ClickHouse-specific function calls:
 | `status\|lower = "info"` | `equals(lower(status), 'info')` |
 | `message\|len > 100` | `length(message) > 100` |
 | `message\|lower\|len > 100` | `length(lower(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |

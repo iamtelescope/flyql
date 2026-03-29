@@ -12,6 +12,7 @@ import {
 } from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
+import { defaultRegistry } from '../../transformers/index.js'
 
 export { Column, newColumn, normalizeStarRocksType }
 
@@ -249,7 +250,12 @@ function inExpressionToSQL(expr, columns) {
         }
     }
 
-    return `\`${column.name}\` ${sqlOp} (${valuesSQL})`
+    let colRef = `\`${column.name}\``
+    if (expr.key.transformers && expr.key.transformers.length) {
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
+    }
+
+    return `${colRef} ${sqlOp} (${valuesSQL})`
 }
 
 function truthyExpressionToSQL(expr, columns) {
@@ -288,6 +294,11 @@ function truthyExpressionToSQL(expr, columns) {
             return `(\`${column.name}\` IS NOT NULL AND json_length(to_json(\`${column.name}\`)) > 0)`
         }
         return `(\`${column.name}\` IS NOT NULL AND \`${column.name}\` != '' AND json_length(\`${column.name}\`) > 0)`
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(`\`${column.name}\``, expr.key.transformers, 'starrocks')
+        return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
     switch (column.normalizedType) {
@@ -340,6 +351,11 @@ function falsyExpressionToSQL(expr, columns) {
             return `(\`${column.name}\` IS NULL OR json_length(to_json(\`${column.name}\`)) = 0)`
         }
         return `(\`${column.name}\` IS NULL OR \`${column.name}\` = '' OR json_length(\`${column.name}\`) = 0)`
+    }
+
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(`\`${column.name}\``, expr.key.transformers, 'starrocks')
+        return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
     switch (column.normalizedType) {
@@ -404,32 +420,44 @@ function hasExpressionToSQL(expr, columns) {
         }
     }
 
-    if (column.isArray) {
+    let colRef = `\`${column.name}\``
+    if (expr.key.transformers && expr.key.transformers.length) {
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
+    }
+
+    let isArrayResult = column.isArray
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const reg = defaultRegistry()
+        const lastT = reg.get(expr.key.transformers[expr.key.transformers.length - 1].name)
+        if (lastT && lastT.outputType === 'array') isArrayResult = true
+    }
+
+    if (isArrayResult) {
         if (isNotHas) {
-            return `NOT array_contains(\`${column.name}\`, ${value})`
+            return `NOT array_contains(${colRef}, ${value})`
         }
-        return `array_contains(\`${column.name}\`, ${value})`
+        return `array_contains(${colRef}, ${value})`
     }
 
     if (column.isMap) {
         if (isNotHas) {
-            return `NOT array_contains(map_keys(\`${column.name}\`), ${value})`
+            return `NOT array_contains(map_keys(${colRef}), ${value})`
         }
-        return `array_contains(map_keys(\`${column.name}\`), ${value})`
+        return `array_contains(map_keys(${colRef}), ${value})`
     }
 
     if (column.isJSON) {
         if (isNotHas) {
-            return `NOT json_exists(\`${column.name}\`, concat('$.', ${value}))`
+            return `NOT json_exists(${colRef}, concat('$.', ${value}))`
         }
-        return `json_exists(\`${column.name}\`, concat('$.', ${value}))`
+        return `json_exists(${colRef}, concat('$.', ${value}))`
     }
 
     if (column.normalizedType === NormalizedTypeString) {
         if (isNotHas) {
-            return `(\`${column.name}\` IS NULL OR INSTR(\`${column.name}\`, ${value}) = 0)`
+            return `(${colRef} IS NULL OR INSTR(${colRef}, ${value}) = 0)`
         }
-        return `INSTR(\`${column.name}\`, ${value}) > 0`
+        return `INSTR(${colRef}, ${value}) > 0`
     }
 
     throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)

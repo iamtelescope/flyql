@@ -19,11 +19,11 @@ export class Transformer {
         throw new Error('not implemented')
     }
 
-    sql(dialect, columnRef) {
+    sql(dialect, columnRef, args = []) {
         throw new Error('not implemented')
     }
 
-    apply(value) {
+    apply(value, args = []) {
         throw new Error('not implemented')
     }
 }

@@ -12,13 +12,13 @@ type FirstOctet struct{}
 func (f FirstOctet) Name() string                { return "firstoctet" }
 func (f FirstOctet) InputType() TransformerType  { return TransformerTypeString }
 func (f FirstOctet) OutputType() TransformerType { return TransformerTypeInt }
-func (f FirstOctet) SQL(dialect, colRef string) string {
+func (f FirstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
 	}
 	return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
 }
-func (f FirstOctet) Apply(value interface{}) interface{} {
+func (f FirstOctet) Apply(value interface{}, args []any) interface{} {
 	parts := strings.SplitN(fmt.Sprint(value), ".", 2)
 	n, _ := strconv.Atoi(parts[0])
 	return n
@@ -58,11 +58,11 @@ func TestCustomRegistrationBuiltinsStillAvailable(t *testing.T) {
 
 func TestCustomTransformerApply(t *testing.T) {
 	tr := FirstOctet{}
-	result := tr.Apply("192.168.1.1")
+	result := tr.Apply("192.168.1.1", nil)
 	if result != 192 {
 		t.Errorf("expected 192, got %v", result)
 	}
-	result = tr.Apply("10.0.0.1")
+	result = tr.Apply("10.0.0.1", nil)
 	if result != 10 {
 		t.Errorf("expected 10, got %v", result)
 	}
@@ -70,11 +70,11 @@ func TestCustomTransformerApply(t *testing.T) {
 
 func TestCustomTransformerSQL(t *testing.T) {
 	tr := FirstOctet{}
-	sql := tr.SQL("clickhouse", "src_ip")
+	sql := tr.SQL("clickhouse", "src_ip", nil)
 	if !strings.Contains(sql, "toUInt8(splitByChar") {
 		t.Errorf("unexpected clickhouse SQL: %s", sql)
 	}
-	sql = tr.SQL("postgresql", "src_ip")
+	sql = tr.SQL("postgresql", "src_ip", nil)
 	if !strings.Contains(sql, "CAST(SPLIT_PART") {
 		t.Errorf("unexpected postgresql SQL: %s", sql)
 	}

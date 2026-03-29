@@ -249,10 +249,11 @@ describe('suggestions', () => {
         it('returns all string-input transformers for string column', () => {
             const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: '' }
             const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
-            expect(result.length).toBe(3)
+            expect(result.length).toBe(4)
             expect(result.map((s) => s.label)).toContain('upper')
             expect(result.map((s) => s.label)).toContain('lower')
             expect(result.map((s) => s.label)).toContain('len')
+            expect(result.map((s) => s.label)).toContain('split')
         })
 
         it('sets type to transformer on all suggestions', () => {
@@ -283,7 +284,7 @@ describe('suggestions', () => {
             const ctx = { transformerBaseKey: 'host', transformerPrefix: '', transformerChain: 'upper' }
             const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
             // upper outputs string, so string-input transformers shown
-            expect(result.length).toBe(3)
+            expect(result.length).toBe(4)
         })
 
         it('returns empty for int-input after len (no int-input builtins)', () => {
@@ -302,7 +303,7 @@ describe('suggestions', () => {
         it('returns all transformers for unknown column', () => {
             const ctx = { transformerBaseKey: 'unknown', transformerPrefix: '', transformerChain: '' }
             const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
-            expect(result.length).toBe(3)
+            expect(result.length).toBe(4)
         })
 
         it('filters by prefix case-insensitively', () => {

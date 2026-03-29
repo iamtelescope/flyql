@@ -17,13 +17,13 @@ func (f firstOctet) InputType() transformers.TransformerType {
 	return transformers.TransformerTypeString
 }
 func (f firstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
-func (f firstOctet) SQL(dialect, colRef string) string {
+func (f firstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
 	}
 	return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
 }
-func (f firstOctet) Apply(value interface{}) interface{} {
+func (f firstOctet) Apply(value interface{}, args []any) interface{} {
 	parts := strings.SplitN(fmt.Sprint(value), ".", 2)
 	n, _ := strconv.Atoi(parts[0])
 	return n

@@ -26,6 +26,7 @@ from flyql.generators.postgresql.constants import (
 )
 from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
+    get_transformer_output_type,
     validate_transformer_chain,
 )
 from flyql.transformers.registry import TransformerRegistry
@@ -326,6 +327,10 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     values_sql = ", ".join(escape_param(v) for v in expression.values)
     sql_op = "NOT IN" if is_not_in else "IN"
     identifier = get_identifier(column)
+    if expression.key.transformers:
+        identifier = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
 
     if expression.key.is_segmented:
         if column.is_jsonb or column.jsonstring:
@@ -405,6 +410,12 @@ def truthy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
 
+    if expression.key.transformers:
+        col_ref = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
+        return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
+
     if column.jsonstring:
         empty_obj = "'{}'::jsonb"
         return (
@@ -473,6 +484,12 @@ def falsy_expression_to_sql(
         else:
             raise FlyqlError("path search for unsupported column type")
 
+    if expression.key.transformers:
+        col_ref = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
+        return f"({col_ref} IS NULL OR {col_ref} = '')"
+
     if column.jsonstring:
         empty_obj = "'{}'::jsonb"
         return (
@@ -503,6 +520,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
     column = columns[column_name]
     is_not_has = expression.operator == Operator.NOT_HAS.value
     identifier = get_identifier(column)
+    if expression.key.transformers:
+        identifier = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
     value = escape_param(expression.value)
 
     if expression.key.is_segmented:
@@ -543,7 +564,12 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         else:
             raise FlyqlError("path search for unsupported column type")
 
-    if column.is_array:
+    is_array_result = column.is_array
+    out_type = get_transformer_output_type(expression.key.transformers)
+    if out_type and out_type.value == "array":
+        is_array_result = True
+
+    if is_array_result:
         if is_not_has:
             return f"NOT ({value} = ANY({identifier}))"
         return f"{value} = ANY({identifier})"

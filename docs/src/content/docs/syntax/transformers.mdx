@@ -34,6 +34,7 @@ Each transformer declares an input type and output type. Chained transformers mu
 | `string` | Text values |
 | `int` | Integer numbers |
 | `float` | Floating-point numbers |
+| `array` | Array of values (use `has` operator to check membership) |
 
 ## Built-in Transformers
 
@@ -42,6 +43,7 @@ Each transformer declares an input type and output type. Chained transformers mu
 | `upper` | string | string | Convert to uppercase |
 | `lower` | string | string | Convert to lowercase |
 | `len` | string | int | Get string length |
+| `split` | string | array | Split by delimiter: `split(".")` |
 
 ## SQL Output by Dialect
 
@@ -63,6 +65,14 @@ Transformers generate dialect-specific SQL function calls. Chained transformers 
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
+**Split with has:** `message|split(" ") has "hello"`
+
+| Dialect | Generated SQL |
+|---------|---------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
 ## Type Errors
 
 If a chain has incompatible types, the editor shows an error:
@@ -80,4 +90,5 @@ status|upper = "ERROR"           # Uppercase comparison
 message|lower|len > 100          # Chain: lowercase then length
 host|lower != "localhost"        # Case-insensitive not-equals
 path|len > 0                     # Non-empty check
+tags|split(",") has "urgent"     # Split and check membership
 ```

@@ -211,6 +211,19 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		}
 	}
 
+	colRef := column.Name
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "clickhouse", registry)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	valueParts := make([]string, len(expr.Values))
 	for i, v := range expr.Values {
 		escaped, err := EscapeParam(v)
@@ -271,7 +284,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		}
 	}
 
-	return fmt.Sprintf("%s %s (%s)", column.Name, sqlOp, valuesSQL), nil
+	return fmt.Sprintf("%s %s (%s)", colRef, sqlOp, valuesSQL), nil
 }
 
 func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
@@ -286,6 +299,18 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	value, err := EscapeParam(expr.Value)
 	if err != nil {
 		return "", err
+	}
+
+	colRef := column.Name
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "clickhouse", registry)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if expr.Key.IsSegmented() {
@@ -349,31 +374,40 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		}
 	}
 
-	if column.JSONString {
-		if isNotHas {
-			return fmt.Sprintf("NOT JSONHas(%s, %s)", column.Name, value), nil
+	isArrayResult := column.IsArray
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		lastT := registry.Get(expr.Key.Transformers[len(expr.Key.Transformers)-1].Name)
+		if lastT != nil && lastT.OutputType() == transformers.TransformerTypeArray {
+			isArrayResult = true
 		}
-		return fmt.Sprintf("JSONHas(%s, %s)", column.Name, value), nil
-	} else if column.IsArray {
+	}
+
+	if isArrayResult {
 		if isNotHas {
-			return fmt.Sprintf("NOT has(%s, %s)", column.Name, value), nil
+			return fmt.Sprintf("NOT has(%s, %s)", colRef, value), nil
 		}
-		return fmt.Sprintf("has(%s, %s)", column.Name, value), nil
+		return fmt.Sprintf("has(%s, %s)", colRef, value), nil
+	} else if column.JSONString {
+		if isNotHas {
+			return fmt.Sprintf("NOT JSONHas(%s, %s)", colRef, value), nil
+		}
+		return fmt.Sprintf("JSONHas(%s, %s)", colRef, value), nil
 	} else if column.IsMap {
 		if isNotHas {
-			return fmt.Sprintf("NOT mapContains(%s, %s)", column.Name, value), nil
+			return fmt.Sprintf("NOT mapContains(%s, %s)", colRef, value), nil
 		}
-		return fmt.Sprintf("mapContains(%s, %s)", column.Name, value), nil
+		return fmt.Sprintf("mapContains(%s, %s)", colRef, value), nil
 	} else if column.IsJSON {
 		if isNotHas {
-			return fmt.Sprintf("NOT JSON_EXISTS(%s, concat('$.', %s))", column.Name, value), nil
+			return fmt.Sprintf("NOT JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
 		}
-		return fmt.Sprintf("JSON_EXISTS(%s, concat('$.', %s))", column.Name, value), nil
+		return fmt.Sprintf("JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
 	} else if column.NormalizedType == NormalizedTypeString {
 		if isNotHas {
-			return fmt.Sprintf("(%s IS NULL OR position(%s, %s) = 0)", column.Name, column.Name, value), nil
+			return fmt.Sprintf("(%s IS NULL OR position(%s, %s) = 0)", colRef, colRef, value), nil
 		}
-		return fmt.Sprintf("position(%s, %s) > 0", column.Name, value), nil
+		return fmt.Sprintf("position(%s, %s) > 0", colRef, value), nil
 	} else {
 		return "", fmt.Errorf("has operator is not supported for column type: %s", column.NormalizedType)
 	}
@@ -438,6 +472,18 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
+	}
+
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err := applyTransformerSQL(column.Name, expr.Key.Transformers, "clickhouse", registry)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", colRef, colRef), nil
 	}
 
 	if column.JSONString {
@@ -520,6 +566,18 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 		}
 	}
 
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err := applyTransformerSQL(column.Name, expr.Key.Transformers, "clickhouse", registry)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("(%s IS NULL OR %s = '')", colRef, colRef), nil
+	}
+
 	if column.JSONString {
 		return fmt.Sprintf("(%s IS NULL OR %s = '' OR JSONLength(%s) = 0)",
 			column.Name, column.Name, column.Name), nil
@@ -546,7 +604,7 @@ func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransforme
 		if transformer == nil {
 			return "", fmt.Errorf("unknown transformer: %s", t.Name)
 		}
-		result = transformer.SQL(dialect, result)
+		result = transformer.SQL(dialect, result, t.Arguments)
 	}
 	return result, nil
 }

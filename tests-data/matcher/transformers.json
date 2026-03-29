@@ -50,6 +50,24 @@
       "query": "field|len >= 5",
       "data": {"field": "abc"},
       "expected": false
+    },
+    {
+      "name": "split_has_match",
+      "query": "host|split(\".\") has '192'",
+      "data": {"host": "192.168.1.1"},
+      "expected": true
+    },
+    {
+      "name": "split_has_no_match",
+      "query": "host|split(\".\") has '10'",
+      "data": {"host": "192.168.1.1"},
+      "expected": false
+    },
+    {
+      "name": "split_truthy",
+      "query": "host|split(\".\")",
+      "data": {"host": "192.168.1.1"},
+      "expected": true
     }
   ]
 }

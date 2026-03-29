@@ -17,7 +17,7 @@ func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransforme
 		if transformer == nil {
 			return "", fmt.Errorf("unknown transformer: %s", t.Name)
 		}
-		result = transformer.SQL(dialect, result)
+		result = transformer.SQL(dialect, result, t.Arguments)
 	}
 	return result, nil
 }
@@ -323,6 +323,17 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	}
 
 	identifier := getIdentifier(column)
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	if expr.Key.IsSegmented() {
 		if column.IsJSONB || column.JSONString {
@@ -376,6 +387,16 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	}
 
 	identifier := getIdentifier(column)
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	if expr.Key.IsSegmented() {
 		if column.IsJSONB || column.JSONString {
@@ -423,16 +444,25 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		}
 	}
 
-	if column.NormalizedType == NormalizedTypeString && !column.JSONString {
-		if isNotHas {
-			return fmt.Sprintf("(%s IS NULL OR position(%s in %s) = 0)", identifier, value, identifier), nil
+	isArrayResult := column.IsArray
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		lastT := registry.Get(expr.Key.Transformers[len(expr.Key.Transformers)-1].Name)
+		if lastT != nil && lastT.OutputType() == transformers.TransformerTypeArray {
+			isArrayResult = true
 		}
-		return fmt.Sprintf("position(%s in %s) > 0", value, identifier), nil
-	} else if column.IsArray {
+	}
+
+	if isArrayResult {
 		if isNotHas {
 			return fmt.Sprintf("NOT (%s = ANY(%s))", value, identifier), nil
 		}
 		return fmt.Sprintf("%s = ANY(%s)", value, identifier), nil
+	} else if column.NormalizedType == NormalizedTypeString && !column.JSONString {
+		if isNotHas {
+			return fmt.Sprintf("(%s IS NULL OR position(%s in %s) = 0)", identifier, value, identifier), nil
+		}
+		return fmt.Sprintf("position(%s in %s) > 0", value, identifier), nil
 	} else if column.IsJSONB || column.JSONString {
 		castIdentifier := identifier
 		if column.JSONString {
@@ -498,6 +528,18 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 		}
 	}
 
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err := applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", colRef, colRef), nil
+	}
+
 	if column.JSONString {
 		return fmt.Sprintf("(%s IS NOT NULL AND %s != '' AND CASE jsonb_typeof(%s::jsonb) WHEN 'array' THEN jsonb_array_length(%s::jsonb) > 0 WHEN 'object' THEN %s::jsonb != '{}'::jsonb ELSE false END)", identifier, identifier, identifier, identifier, identifier), nil
 	}
@@ -560,6 +602,18 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
+	}
+
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err := applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("(%s IS NULL OR %s = '')", colRef, colRef), nil
 	}
 
 	if column.JSONString {

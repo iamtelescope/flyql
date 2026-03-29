@@ -50,6 +50,40 @@ export class LowerTransformer extends Transformer {
     }
 }
 
+export class SplitTransformer extends Transformer {
+    get name() {
+        return 'split'
+    }
+
+    get inputType() {
+        return TransformerType.STRING
+    }
+
+    get outputType() {
+        return TransformerType.ARRAY
+    }
+
+    sql(dialect, columnRef, args = []) {
+        const delimiter = args[0] || ','
+        const escaped = "'" + delimiter.replace(/'/g, "\\'") + "'"
+        if (dialect === 'clickhouse') {
+            if (delimiter.length === 1) {
+                return `splitByChar(${escaped}, ${columnRef})`
+            }
+            return `splitByString(${escaped}, ${columnRef})`
+        }
+        if (dialect === 'starrocks') {
+            return `SPLIT(${columnRef}, ${escaped})`
+        }
+        return `STRING_TO_ARRAY(${columnRef}, ${escaped})`
+    }
+
+    apply(value, args = []) {
+        const delimiter = args[0] || ','
+        return String(value).split(delimiter)
+    }
+}
+
 export class LenTransformer extends Transformer {
     get name() {
         return 'len'

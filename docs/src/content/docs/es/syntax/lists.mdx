@@ -1,0 +1,90 @@
+---
+title: Listas
+description: Operadores de pertenencia a listas en FlyQL (`in`, `not in`)
+---
+
+## Pertenencia a listas
+
+Usa `in` para comprobar si un valor está en una lista y `not in` para comprobar que no lo está:
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+## Reglas de sintaxis
+
+- Los valores van entre corchetes `[ ]` y se separan con comas
+- Todos los valores de una lista deben ser del mismo tipo: todos strings o todos números
+- Los strings deben ir entre comillas: `['a', 'b', 'c']`
+- Los valores numéricos no llevan comillas: `[1, 2, 3]`
+- Se permiten espacios alrededor de comas y corchetes
+
+### Listas de strings
+
+```
+method in ['GET', 'POST', 'PUT']
+env not in ['dev', 'test', 'local']
+```
+
+Se pueden usar comillas simples o dobles para los strings.
+
+### Listas numéricas
+
+```
+status in [200, 201, 204]
+port not in [80, 443]
+```
+
+### Listas vacías
+
+Se permiten listas vacías:
+
+```
+status in []        # always false — nothing matches an empty list
+status not in []    # always true — everything is "not in" an empty list
+```
+
+## Consistencia de tipos
+
+Las listas **deben** contener valores de un tipo uniforme: todos strings o todos números. Mezclar tipos dentro de una misma lista produce un error de parseo:
+
+```
+# Valid — all numbers
+status in [200, 201, 204]
+
+# Valid — all strings
+env in ['prod', 'staging']
+
+# Invalid — mixed types (parse error)
+values in [200, 'ok']
+```
+
+El parser rastrea el tipo del primer valor de la lista y rechaza cualquier valor posterior de un tipo distinto. Esto se valida en tiempo de parseo, antes de que la consulta llegue a cualquier generador o matcher.
+
+Cuando un generador SQL procesa una lista, además valida que los tipos de los valores sean compatibles con el tipo de la columna de destino. Por ejemplo, pasar strings a una columna numérica lanzará un error de validación durante la generación de SQL.
+
+El campo `valuesType` de la expresión parseada indica si la lista contiene valores `"string"` o `"number"`. En listas vacías, `valuesType` es `null`.
+
+## Combinación con otros operadores
+
+Los operadores de lista se combinan con los operadores booleanos como cualquier otra condición:
+
+```
+status in [200, 201] and method in ['GET', 'POST']
+level=error or status not in [200, 201, 204]
+(status in [500, 502, 503] or level=critical) and env=prod
+```
+
+## Ejemplos
+
+```
+# HTTP success codes
+status in [200, 201, 204]
+
+# Exclude test environments
+env not in ['dev', 'test', 'staging']
+
+# Multiple list conditions
+method in ['GET', 'POST'] and status not in [401, 403, 404]
+```

@@ -1,0 +1,94 @@
+---
+title: Transformers
+description: Transforma valores de columnas con funciones encadenadas por tuberías antes de compararlos
+---
+
+Los transformers modifican los valores de las columnas antes de compararlos en las consultas o de emitirlos en SQL. Usan la sintaxis de tubería (`|`) y se aplican de izquierda a derecha.
+
+## Sintaxis de tubería
+
+Aplica un transformer a una columna con `|`:
+
+```
+message|upper = "ERROR"
+```
+
+Esto transforma el valor de `message` con `upper` antes de compararlo con `"ERROR"`.
+
+## Encadenamiento
+
+Encadena varios transformers con tuberías adicionales:
+
+```
+message|lower|len > 100
+```
+
+Los transformers se aplican de izquierda a derecha: primero se ejecuta `lower` (de string a string) y luego `len` (de string a int). El resultado se compara con `> 100`.
+
+## Sistema de tipos
+
+Cada transformer declara un tipo de entrada y un tipo de salida. Los transformers encadenados deben ser compatibles entre sí: la salida de uno debe coincidir con la entrada del siguiente.
+
+| Tipo | Descripción |
+|------|-------------|
+| `string` | Valores de texto |
+| `int` | Números enteros |
+| `float` | Números de coma flotante |
+| `array` | Array de valores, normalmente usado con `has` |
+
+## Transformers integrados
+
+| Transformer | Entrada | Salida | Descripción |
+|-------------|---------|--------|-------------|
+| `upper` | string | string | Convierte a mayúsculas |
+| `lower` | string | string | Convierte a minúsculas |
+| `len` | string | int | Obtiene la longitud del string |
+| `split` | string | array | Divide por delimitador: `split(".")` |
+
+## Salida SQL por dialecto
+
+Los transformers generan llamadas a funciones SQL específicas de cada dialecto. Los transformers encadenados producen llamadas anidadas, de dentro hacia fuera:
+
+**Transformer único:** `status|upper = "ERROR"`
+
+| Dialecto | SQL generado |
+|---------|--------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**Transformers encadenados:** `message|lower|len > 100`
+
+| Dialecto | SQL generado |
+|---------|--------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split con has:** `message|split(" ") has "hello"`
+
+| Dialecto | SQL generado |
+|---------|--------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## Errores de tipo
+
+Si una cadena de transformers tiene tipos incompatibles, el editor muestra un error:
+
+```
+message|len|upper
+```
+
+Esto falla porque `len` devuelve `int`, pero `upper` requiere una entrada `string`. El editor muestra: "len outputs int, upper requires string input".
+
+## Ejemplos
+
+```
+status|upper = "ERROR"           # Uppercase comparison
+message|lower|len > 100          # Chain: lowercase then length
+host|lower != "localhost"        # Case-insensitive not-equals
+path|len > 0                     # Non-empty check
+tags|split(",") has "urgent"     # Split and check membership
+```

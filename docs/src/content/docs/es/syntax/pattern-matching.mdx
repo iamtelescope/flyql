@@ -1,0 +1,107 @@
+---
+title: Coincidencia de patrones
+description: Coincidencia regex y con comodines en FlyQL
+---
+
+## Coincidencia regex
+
+Usa `~` para comparar un valor con una expresión regular y `!~` para negar la coincidencia:
+
+```
+message~"error.*timeout"
+path!~"^/health"
+```
+
+| Operador | Significado |
+|----------|-------------|
+| `~` | El valor coincide con el patrón regex |
+| `!~` | El valor no coincide con el patrón regex |
+
+### Sintaxis de patrones regex
+
+La sintaxis regex depende del backend de destino:
+
+- **ClickHouse**: usa la función `match()` (sintaxis RE2)
+- **PostgreSQL**: usa los operadores `~` y `!~` (regex POSIX)
+- **StarRocks**: usa la función `regexp`
+- **Matcher en memoria**: usa el motor regex del lenguaje host (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Pon el patrón entre comillas cuando contenga espacios o caracteres especiales:
+
+```
+message~"connection (refused|reset)"
+host~"^prod-[0-9]+"
+```
+
+### Coincidencia sin distinguir mayúsculas y minúsculas
+
+Para hacer coincidencias regex sin distinguir mayúsculas y minúsculas, usa la bandera `(?i)` al inicio del patrón:
+
+```
+message~"(?i)error"
+level~"(?i)^(warn|error|fatal)$"
+```
+
+La bandera inline `(?i)` es una característica de regex y su compatibilidad varía según el backend:
+
+| Backend | Compatibilidad con `(?i)` | Notas |
+|---------|---------------------------|-------|
+| **ClickHouse** | Sí | Sintaxis RE2 |
+| **PostgreSQL** | Sí | Regex POSIX |
+| **StarRocks** | Sí | Sintaxis RE2 |
+| **Matcher en memoria de Go** | Sí | Go `regexp` (RE2) |
+| **Matcher en memoria de Python** | Sí | `google-re2` |
+| **Matcher en memoria de JavaScript** | No | `RegExp` de ECMAScript no admite banderas inline `(?i)` |
+
+Para el matcher en memoria de JavaScript, usa una clase de caracteres para lograr coincidencias sin distinguir mayúsculas y minúsculas:
+
+```
+message~"[eE][rR][rR][oO][rR]"
+```
+
+O, si solo apuntas a backends SQL, `(?i)` funciona de forma fiable en los tres dialectos.
+
+Combina la coincidencia sin distinción de mayúsculas con negación para excluir patrones sin importar el caso:
+
+```
+message~"(?i)error" and message!~"(?i)warning"
+```
+
+## Coincidencia con comodines
+
+Usa `*` al final de un valor sin comillas para hacer coincidencia por prefijo:
+
+```
+host=prod*
+service=api-*
+```
+
+Esto coincide con cualquier valor que empiece por el prefijo dado. Los comodines solo se admiten al final del valor; `*prod` y `pr*od` no están soportados.
+
+### Comodines frente a regex
+
+| Patrón | Sintaxis | Ejemplo |
+|--------|----------|---------|
+| Comodín por prefijo | `key=value*` | `host=prod*` |
+| Regex completa | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+
+Usa comodines para coincidencias simples por prefijo. Usa regex cuando necesites patrones más complejos.
+
+## Ejemplos
+
+```
+# Regex: messages containing "error" or "fail"
+message~"error|fail"
+
+# Regex: paths starting with /api/v2
+path~"^/api/v2"
+
+# Negated regex: exclude health check paths
+path!~"^/health"
+
+# Wildcard: hosts starting with "prod"
+host=prod*
+
+# Combined
+host=prod* and message~"timeout.*" and path!~"^/health"
+```

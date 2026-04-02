@@ -1,0 +1,199 @@
+---
+title: Configuración del esquema
+description: Estructura del esquema de columnas para el editor de FlyQL
+---
+
+La prop `columns` define el esquema de datos que alimenta las sugerencias del editor. Las claves son nombres de columna y los valores son definiciones de columna.
+
+## Esquema básico
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## Campos de la definición de columna
+
+| Campo | Tipo | Valor por defecto | Descripción |
+|-------|------|-------------------|-------------|
+| `type` | `string` | — | Tipo de columna: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | Muestra esta columna en las sugerencias |
+| `autocomplete` | `boolean` | `false` | Activa el autocompletado de valores para esta columna |
+| `values` | `string[]` o `number[]` | — | Valores estáticos para autocompletado, usados antes del callback `onAutocomplete` |
+| `children` | `object` | — | Definiciones de columnas anidadas para columnas de tipo objeto |
+| `display_name` | `string` | `''` | Nombre opcional legible para mostrar. En las columnas parseadas, el alias sobrescribe este valor |
+
+## Tipos de columna
+
+### `string`
+
+Columna de texto general. Todos los operadores de comparación están disponibles, incluidos los regex `~` y `!~`.
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+Columna numérica. Los operadores regex `~` y `!~` se excluyen de las sugerencias de operadores.
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+Columna enumerada con un conjunto fijo de valores. Igual que `number`, excluye operadores regex. Usa `values` para proporcionar el conjunto:
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+Columna anidada con hijos. Cuando el usuario escribe el nombre de la columna seguido de `.`, se sugieren las columnas hijas:
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## Autocompletado de valores
+
+### Valores estáticos
+
+Proporciona un array `values` para columnas con opciones conocidas:
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### Valores asíncronos
+
+Define `autocomplete: true` sin `values` y proporciona un callback `onAutocomplete` en el componente del editor. El callback se llama cuando el usuario llega a la posición del valor para esa columna.
+
+```javascript
+// Column definition — no static values
+{ type: 'string', suggest: true, autocomplete: true }
+
+// Editor callback fetches values from API
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## Columnas anidadas (JSONSchema)
+
+Define estructuras anidadas usando `children` en columnas de tipo objeto:
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+Al escribir `metadata.`, se sugieren `labels` y `version`. Al escribir `metadata.labels.`, se sugieren `tier` y `env`. No hay límite de profundidad.
+
+## Descubrimiento remoto de claves (sin esquema)
+
+Para columnas de tipo objeto cuyas claves anidadas no se conocen al definir el esquema, omite `children` y proporciona un callback `onKeyDiscovery`:
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true }, // no children — triggers discovery
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
+}
+```
+
+Cuando el usuario escribe `request.`, el callback se invoca con `('request', ['request'])`. Las claves descubiertas se almacenan en caché por sesión de activación.
+
+Si una columna tiene tanto `children` como `onKeyDiscovery`, los `children` estáticos tienen prioridad.
+
+## Ejemplo completo
+
+```javascript
+const columns = {
+    // Enum with static values
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+
+    // String with async autocomplete
+    service: { type: 'string', suggest: true, autocomplete: true },
+
+    // Number — excludes regex operators
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+
+    // Simple string
+    host: { type: 'string', suggest: true },
+
+    // Nested with known children
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+
+    // Schemaless — nested keys discovered at runtime
+    request: { type: 'object', suggest: true },
+}
+```

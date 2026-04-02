@@ -1,0 +1,96 @@
+---
+title: Dialectos SQL
+description: Cómo genera FlyQL SQL para ClickHouse, PostgreSQL y StarRocks
+---
+
+Los generadores de FlyQL producen un fragmento de cláusula WHERE como una cadena SQL plana con todos los valores embebidos y escapados. La misma consulta FlyQL genera SQL distinto según el dialecto de destino.
+
+## Dialectos compatibles
+
+- [ClickHouse](/es/sql/clickhouse/): sin comillas en nombres de columnas, `match()` para regex y funciones `JSONExtract` para strings JSON
+- [PostgreSQL](/es/sql/postgresql/): identificadores entre comillas dobles, `~` para regex y operadores JSONB
+- [StarRocks](/es/sql/starrocks/): identificadores entre backticks, `regexp()` para regex y `parse_json()` para strings JSON
+
+## Diferencias principales
+
+| Característica | ClickHouse | PostgreSQL | StarRocks |
+|----------------|-----------|------------|-----------|
+| Comillas en columnas | Ninguna | `"name"` | `` `name` `` |
+| Regex | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| Regex negada | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| Comodín | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| Operadores booleanos | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| `IN []` vacío | `0` | `FALSE` | `0` |
+| `NOT IN []` vacío | `1` | `TRUE` | `1` |
+| `has` sobre string | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| `has` sobre array | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| `has` sobre map | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| `has` sobre JSON | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+
+## Acceso a JSON: la mayor diferencia
+
+Cada dialecto maneja las columnas JSON anidadas de forma muy distinta.
+
+**Entrada FlyQL:** `data.user.name='john'`
+
+**ClickHouse** con columna JSON nativa:
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse** con JSON almacenado como string:
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL** con JSONB:
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks** con JSON nativo:
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+Consulta la página de cada dialecto para ver ejemplos completos.
+
+## Acceso a Map
+
+**Entrada FlyQL:** `metadata.key1='value1'`
+
+| Dialecto | SQL generado |
+|----------|--------------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. PostgreSQL usa el operador `->` de hstore. StarRocks usa la notación con corchetes directamente.
+
+## Acceso a Array
+
+**Entrada FlyQL:** `tags.0='first'` con índice base 0 en FlyQL
+
+| Dialecto | SQL generado | Indexación |
+|----------|--------------|------------|
+| ClickHouse | `equals(tags[0], 'first')` | Base 0 |
+| PostgreSQL | `"tags"[1] = 'first'` | Base 1, se convierte automáticamente |
+| StarRocks | `` `tags`[0] = 'first' `` | Base 0 |
+
+Los arrays de PostgreSQL son de base 1, así que FlyQL suma 1 al índice automáticamente.
+
+## Formato de salida
+
+Los generadores devuelven un fragmento de cláusula WHERE, sin la palabra clave `WHERE` y sin placeholders parametrizados. Todos los valores se escapan y se insertan directamente:
+
+```
+message = 'hello' and count > 10
+```
+
+No así:
+
+```
+WHERE message = ? AND count > ?
+```

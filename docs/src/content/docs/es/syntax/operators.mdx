@@ -1,0 +1,98 @@
+---
+title: Operadores de comparación
+description: Operadores de comparación de FlyQL para filtrar datos
+---
+
+FlyQL admite los siguientes operadores de comparación:
+
+## Igualdad
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `=` | Igual | `status=200` |
+| `!=` | Distinto | `env!=prod` |
+
+```
+status=200
+service!="api-gateway"
+```
+
+Ambos lados del operador son obligatorios: una clave y un valor.
+
+## Comparación numérica
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `>` | Mayor que | `status>399` |
+| `>=` | Mayor o igual que | `status>=400` |
+| `<` | Menor que | `duration<1000` |
+| `<=` | Menor o igual que | `duration<=500` |
+
+```
+status>=400 and duration<5000
+response_time>100 and response_time<=2000
+```
+
+Los operadores de comparación numérica funcionan sobre valores numéricos. Si se usan con cadenas, se aplica comparación lexicográfica.
+
+## Coincidencia regex
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `~` | Coincide con regex | `message~"error.*"` |
+| `!~` | No coincide con regex | `path!~"^/health"` |
+
+```
+message~"timeout|connection refused"
+host!~"^test-.*"
+```
+
+Los patrones regex siguen la sintaxis del runtime o la base de datos de destino.
+
+## Pertenencia a listas
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `in` | Está en la lista | `status in [200, 201]` |
+| `not in` | No está en la lista | `env not in ['dev', 'test']` |
+
+Consulta la página de [Listas](/es/syntax/lists/) para ver las reglas detalladas de sintaxis de listas.
+
+## Comprobación de contención
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `has` | Contiene | `message has 'error'` |
+| `not has` | No contiene | `message not has 'test'` |
+
+```
+message has 'timeout'
+tags not has 'deprecated'
+```
+
+El operador `has` realiza una comprobación de contención dependiente del tipo:
+
+- **String**: coincidencia por subcadena. `message has 'error'` es true si `message` contiene `"error"`
+- **Map**: existencia de clave. `metadata has 'region'` es true si el mapa tiene una clave `"region"`
+- **Array/List**: pertenencia de elemento. `tags has 'web'` es true si el array contiene `"web"`
+- **JSON**: existencia de clave. `data has 'name'` es true si el objeto JSON tiene una clave `"name"`
+- **Null/vacío**: siempre false para `has`, siempre true para `not has`
+
+`has` recibe un único valor, no una lista. Usa `in` para comprobar pertenencia dentro de un conjunto de valores.
+
+## Resumen de operadores
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| `=` | Igual | `status=200` |
+| `!=` | Distinto | `env!=prod` |
+| `>` | Mayor que | `count>10` |
+| `>=` | Mayor o igual que | `count>=10` |
+| `<` | Menor que | `count<100` |
+| `<=` | Menor o igual que | `count<=100` |
+| `~` | Coincide con regex | `msg~"err.*"` |
+| `!~` | No coincide con regex | `msg!~"^ok"` |
+| `in` | Está en la lista | `s in [1, 2]` |
+| `not in` | No está en la lista | `s not in [3]` |
+| `has` | Contiene | `msg has 'err'` |
+| `not has` | No contiene | `msg not has 'ok'` |

@@ -58,7 +58,7 @@ export function escapeParam(item) {
         }
         return result + "'"
     }
-    if (typeof item === 'boolean') return item ? 'True' : 'False'
+    if (typeof item === 'boolean') return item ? 'true' : 'false'
     if (typeof item === 'bigint') return String(item)
     if (typeof item === 'number') {
         if (!Number.isFinite(item)) throw new Error(`unsupported numeric value: ${item}`)
@@ -225,7 +225,8 @@ function inExpressionToSQL(expr, columns) {
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
 
-    if (column.normalizedType && !expr.key.isSegmented) {
+    const isHeterogeneous = expr.valuesTypes && new Set(expr.valuesTypes).size > 1
+    if (column.normalizedType && !expr.key.isSegmented && !isHeterogeneous) {
         validateInListTypes(expr.values, column.normalizedType)
     }
 

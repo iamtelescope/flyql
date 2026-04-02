@@ -107,12 +107,12 @@ describe('escapeParam', () => {
         expect(escapeParam('tab\there')).toBe("'tab\\there'")
     })
 
-    it('returns True for boolean true', () => {
-        expect(escapeParam(true)).toBe('True')
+    it('returns true for boolean true', () => {
+        expect(escapeParam(true)).toBe('true')
     })
 
-    it('returns False for boolean false', () => {
-        expect(escapeParam(false)).toBe('False')
+    it('returns false for boolean false', () => {
+        expect(escapeParam(false)).toBe('false')
     })
 
     it('converts integers to string', () => {

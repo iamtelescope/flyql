@@ -302,7 +302,16 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" && !expr.Key.IsSegmented() {
+	isHeterogeneous := len(expr.ValuesTypes) > 0 && func() bool {
+		first := expr.ValuesTypes[0]
+		for _, vt := range expr.ValuesTypes[1:] {
+			if vt != first {
+				return true
+			}
+		}
+		return false
+	}()
+	if column.NormalizedType != "" && !expr.Key.IsSegmented() && !isHeterogeneous {
 		if err := ValidateInListTypes(expr.Values, column.NormalizedType); err != nil {
 			return "", err
 		}

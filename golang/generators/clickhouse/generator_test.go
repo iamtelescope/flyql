@@ -187,8 +187,8 @@ func TestEscapeParam(t *testing.T) {
 		{"uint", uint(42), "42", false},
 		{"float32", float32(1.5), "1.5", false},
 		{"float64", 12.34, "12.34", false},
-		{"bool_true", true, "True", false},
-		{"bool_false", false, "False", false},
+		{"bool_true", true, "true", false},
+		{"bool_false", false, "false", false},
 		{"unknown_type", struct{ x int }{1}, "", true},
 	}
 

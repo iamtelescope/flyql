@@ -106,9 +106,9 @@ func EscapeParam(item any) (string, error) {
 		return sb.String(), nil
 	case bool:
 		if v {
-			return "True", nil
+			return "true", nil
 		}
-		return "False", nil
+		return "false", nil
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v), nil
 	case float32:
@@ -206,7 +206,16 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" && !expr.Key.IsSegmented() {
+	isHeterogeneous := len(expr.ValuesTypes) > 0 && func() bool {
+		first := expr.ValuesTypes[0]
+		for _, vt := range expr.ValuesTypes[1:] {
+			if vt != first {
+				return true
+			}
+		}
+		return false
+	}()
+	if column.NormalizedType != "" && !expr.Key.IsSegmented() && !isHeterogeneous {
 		if err := ValidateInListTypes(expr.Values, column.NormalizedType); err != nil {
 			return "", err
 		}

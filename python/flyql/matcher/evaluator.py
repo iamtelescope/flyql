@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict, Literal, Final
+from typing import Any, Optional, Dict, List, Literal, Final
 import re
 
 import re2  # type: ignore[import-untyped]
@@ -163,11 +163,11 @@ class Evaluator:
         elif expression.operator == Operator.IN.value:
             if not expression.values:
                 return False
-            return value in expression.values
+            return self._value_in_list(value, expression.values)
         elif expression.operator == Operator.NOT_IN.value:
             if not expression.values:
                 return True
-            return value not in expression.values
+            return not self._value_in_list(value, expression.values)
         elif expression.operator == Operator.HAS.value:
             return self._eval_has(value, expression.value)
         elif expression.operator == Operator.NOT_HAS.value:
@@ -176,6 +176,20 @@ class Evaluator:
             return not self._eval_has(value, expression.value)
         else:
             raise FlyqlError(f"Unknown expression operator: {expression.operator}")
+
+    @staticmethod
+    def _strict_equal(a: Any, b: Any) -> bool:
+        if isinstance(a, bool) != isinstance(b, bool):
+            return False
+        if a is None or b is None:
+            return a is b
+        return bool(a == b)
+
+    def _value_in_list(self, value: Any, items: List[Any]) -> bool:
+        for item in items:
+            if self._strict_equal(value, item):
+                return True
+        return False
 
     def _eval_has(self, value: Any, expr_value: Any) -> bool:
         if value is None:

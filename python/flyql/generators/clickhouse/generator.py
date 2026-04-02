@@ -289,7 +289,14 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     if not expression.values:
         return "1" if is_not_in else "0"
 
-    if column.normalized_type is not None and not expression.key.is_segmented:
+    is_heterogeneous = (
+        expression.values_types is not None and len(set(expression.values_types)) > 1
+    )
+    if (
+        column.normalized_type is not None
+        and not expression.key.is_segmented
+        and not is_heterogeneous
+    ):
         validate_in_list_types(expression.values, column.normalized_type)
 
     values_sql = ", ".join(escape_param(v) for v in expression.values)
@@ -543,10 +550,9 @@ def expression_to_sql(
                 text = f"{col_ref} {expression.operator} {bool_literal}"
             else:
                 operator = expression.operator
-                is_like_pattern, value = prepare_like_pattern_value(
-                    str(expression.value)
-                )
-                value = escape_param(value)
+                value_str = str(expression.value)
+                is_like_pattern, processed = prepare_like_pattern_value(value_str)
+                value = escape_param(processed)
                 if is_like_pattern:
                     if expression.operator == Operator.EQUALS.value:
                         operator = "LIKE"

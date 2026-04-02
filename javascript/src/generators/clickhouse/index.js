@@ -72,7 +72,7 @@ export function escapeParam(item) {
     }
 
     if (typeof item === 'boolean') {
-        return item ? 'True' : 'False'
+        return item ? 'true' : 'false'
     }
 
     if (typeof item === 'bigint') {
@@ -260,7 +260,8 @@ function inExpressionToSQL(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (column.normalizedType && !expr.key.isSegmented) {
+    const isHeterogeneous = expr.valuesTypes && new Set(expr.valuesTypes).size > 1
+    if (column.normalizedType && !expr.key.isSegmented && !isHeterogeneous) {
         validateInListTypes(expr.values, column.normalizedType)
     }
 

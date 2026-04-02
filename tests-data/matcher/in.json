@@ -140,6 +140,54 @@
       "query": "status in [200, 201]",
       "data": {"status": "200"},
       "expected": false
+    },
+    {
+      "name": "in_heterogeneous_bool_match",
+      "query": "field in [1, 'hello', true, null]",
+      "data": {"field": true},
+      "expected": true
+    },
+    {
+      "name": "in_heterogeneous_null_match",
+      "query": "field in [1, 'hello', true, null]",
+      "data": {"field": null},
+      "expected": true
+    },
+    {
+      "name": "in_heterogeneous_int_match",
+      "query": "field in [1, 'hello', true, null]",
+      "data": {"field": 1},
+      "expected": true
+    },
+    {
+      "name": "in_heterogeneous_string_match",
+      "query": "field in [1, 'hello', true, null]",
+      "data": {"field": "hello"},
+      "expected": true
+    },
+    {
+      "name": "in_heterogeneous_no_match",
+      "query": "field in [1, 'hello', true, null]",
+      "data": {"field": 42},
+      "expected": false
+    },
+    {
+      "name": "in_bool_does_not_match_int",
+      "query": "field in [true]",
+      "data": {"field": 1},
+      "expected": false
+    },
+    {
+      "name": "in_int_does_not_match_bool",
+      "query": "field in [1]",
+      "data": {"field": true},
+      "expected": false
+    },
+    {
+      "name": "in_int_and_string_match_int",
+      "query": "field in [1, '1']",
+      "data": {"field": 1},
+      "expected": true
     }
   ]
 }

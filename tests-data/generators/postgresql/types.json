@@ -44,6 +44,18 @@
       "input": "field=null and active=true",
       "expected_result": "success",
       "expected_sql": "(\"field\" IS NULL AND \"active\" = TRUE)"
+    },
+    {
+      "name": "in_heterogeneous",
+      "input": "field in [1, 'hello', true, null]",
+      "expected_result": "success",
+      "expected_sql": "\"field\" IN (1, 'hello', true, NULL)"
+    },
+    {
+      "name": "bigint_equals",
+      "input": "count=9999999999999999999",
+      "expected_result": "success",
+      "expected_sql": "\"count\" = '9999999999999999999'"
     }
   ]
 }

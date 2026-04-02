@@ -31,9 +31,10 @@ An `Expression` represents a single condition — a key, an operator, and a valu
 |-------|------|-------------|
 | `key` | `Key` | The field being tested (e.g. `status`, `user.metadata.role`). |
 | `operator` | `string` | One of: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has`. |
-| `value` | `any` | The comparison value. A string or number for scalar operators. Empty for `truthy`, `in`, and `not in`. |
-| `values` | `array` or `null` | List of values for `in` and `not in` operators. `null` for other operators. |
-| `valuesType` | `string` or `null` | Type of list values: `"string"` or `"number"`. `null` when `values` is not used. |
+| `value` | `any` | The comparison value. A string, number, boolean, or null for scalar operators. Empty for `in` and `not in`. |
+| `valueType` | `string` or `null` | The explicit type of `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, or `"null"`. `null` for `in`/`not in`. |
+| `values` | `array` or `null` | List of values for `in` and `not in` operators. Can be heterogeneous. `null` for other operators. |
+| `valuesTypes` | `string[]` or `null` | Per-element type array parallel to `values`. Each element is one of the type constants. `null` when `values` is not used. |
 
 ### Key
 

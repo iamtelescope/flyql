@@ -18,7 +18,15 @@ class Token {
     }
 }
 
-export const tokenTypes = [CharType.KEY, CharType.VALUE, CharType.OPERATOR, CharType.NUMBER, CharType.STRING]
+export const tokenTypes = [
+    CharType.KEY,
+    CharType.VALUE,
+    CharType.OPERATOR,
+    CharType.NUMBER,
+    CharType.STRING,
+    CharType.BOOLEAN,
+    CharType.NULL,
+]
 
 export function generateMonacoTokens(parser) {
     if (!parser.typedChars || parser.typedChars.length === 0) {
@@ -47,7 +55,11 @@ export function generateMonacoTokens(parser) {
 
     for (const token of tokens) {
         if (token.type === CharType.VALUE) {
-            if (isNumeric(token.value)) {
+            if (token.value === 'true' || token.value === 'false') {
+                token.type = CharType.BOOLEAN
+            } else if (token.value === 'null') {
+                token.type = CharType.NULL
+            } else if (isNumeric(token.value)) {
                 token.type = CharType.NUMBER
             } else {
                 token.type = CharType.STRING

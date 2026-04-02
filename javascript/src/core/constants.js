@@ -24,6 +24,8 @@ export const CharType = Object.freeze({
     OPERATOR: 'flyqlOperator',
     NUMBER: 'number',
     STRING: 'string',
+    BOOLEAN: 'flyqlBoolean',
+    NULL: 'flyqlNull',
     SPACE: 'space',
     PIPE: 'flyqlPipe',
     TRANSFORMER: 'flyqlTransformer',

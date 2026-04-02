@@ -20,6 +20,8 @@ const CHAR_TYPE_CLASS = {
     [CharType.VALUE]: 'flyql-value',
     [CharType.NUMBER]: 'flyql-number',
     [CharType.STRING]: 'flyql-string',
+    [CharType.BOOLEAN]: 'flyql-boolean',
+    [CharType.NULL]: 'flyql-null',
     [CharType.SPACE]: 'flyql-space',
     [CharType.PIPE]: 'flyql-transformer',
     [CharType.TRANSFORMER]: 'flyql-transformer',

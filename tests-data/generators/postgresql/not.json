@@ -55,7 +55,7 @@
       "name": "comparison_and_not_comparison",
       "input": "status=200 and not error=true",
       "expected_result": "success",
-      "expected_sql": "(\"status\" = '200' AND NOT (\"error\" = 'true'))"
+      "expected_sql": "(\"status\" = '200' AND NOT (\"error\" = TRUE))"
     },
     {
       "name": "not_grouped_truthy",

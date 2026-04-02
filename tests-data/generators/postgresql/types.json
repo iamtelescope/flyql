@@ -1,0 +1,49 @@
+{
+  "version": "1.0",
+  "description": "Null and boolean value type SQL generation tests for PostgreSQL",
+  "test_suite": "types",
+  "tests": [
+    {
+      "name": "null_equals",
+      "input": "field=null",
+      "expected_result": "success",
+      "expected_sql": "\"field\" IS NULL"
+    },
+    {
+      "name": "null_not_equals",
+      "input": "field!=null",
+      "expected_result": "success",
+      "expected_sql": "\"field\" IS NOT NULL"
+    },
+    {
+      "name": "boolean_true_equals",
+      "input": "active=true",
+      "expected_result": "success",
+      "expected_sql": "\"active\" = TRUE"
+    },
+    {
+      "name": "boolean_false_equals",
+      "input": "active=false",
+      "expected_result": "success",
+      "expected_sql": "\"active\" = FALSE"
+    },
+    {
+      "name": "boolean_true_not_equals",
+      "input": "active!=true",
+      "expected_result": "success",
+      "expected_sql": "\"active\" != TRUE"
+    },
+    {
+      "name": "boolean_false_not_equals",
+      "input": "active!=false",
+      "expected_result": "success",
+      "expected_sql": "\"active\" != FALSE"
+    },
+    {
+      "name": "null_and_boolean_combined",
+      "input": "field=null and active=true",
+      "expected_result": "success",
+      "expected_sql": "(\"field\" IS NULL AND \"active\" = TRUE)"
+    }
+  ]
+}

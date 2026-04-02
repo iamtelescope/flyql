@@ -166,6 +166,10 @@ func TestTransformers(t *testing.T) {
 	runTestCases(t, "transformers.json")
 }
 
+func TestTypes(t *testing.T) {
+	runTestCases(t, "types.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string

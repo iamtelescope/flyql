@@ -1,4 +1,5 @@
 import { Operator, BoolOperator, VALID_KEY_VALUE_OPERATORS, VALID_BOOL_OPERATORS } from '../../core/constants.js'
+import { ValueType } from '../../types.js'
 import { parseKey } from '../../core/key.js'
 import {
     Column,
@@ -238,6 +239,13 @@ function expressionToSQLSimple(expr, columns, registry = null) {
         }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
+            if (expr.valueType === ValueType.NULL) {
+                return expr.operator === Operator.EQUALS ? `${identifier} IS NULL` : `${identifier} IS NOT NULL`
+            }
+            if (expr.valueType === ValueType.BOOLEAN) {
+                const boolLiteral = expr.value ? 'TRUE' : 'FALSE'
+                return `${identifier} ${expr.operator} ${boolLiteral}`
+            }
             let operator = expr.operator
             const valueStr = String(expr.value)
             const { patternFound, value: processedValue } = prepareLikePatternValue(valueStr)

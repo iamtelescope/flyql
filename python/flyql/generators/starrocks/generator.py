@@ -4,6 +4,7 @@ from typing import List, Mapping, Optional, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
+from flyql.types import ValueType
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
     Operator,
@@ -588,20 +589,27 @@ def expression_to_sql(
             value = escape_param(str(expression.value))
             text = f"not regexp({col_ref}, {value})"
         elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:
-            operator = expression.operator
-            value_str = (
-                str(expression.value).lower()
-                if isinstance(expression.value, bool)
-                else str(expression.value)
-            )
-            is_like_pattern, value = prepare_like_pattern_value(value_str)
-            value = escape_param(value)
-            if is_like_pattern:
-                if expression.operator == Operator.EQUALS.value:
-                    operator = "LIKE"
-                else:
-                    operator = "NOT LIKE"
-            text = f"{col_ref} {operator} {value}"
+            if expression.value_type == ValueType.NULL:
+                text = (
+                    f"{col_ref} IS NULL"
+                    if expression.operator == Operator.EQUALS.value
+                    else f"{col_ref} IS NOT NULL"
+                )
+            elif expression.value_type == ValueType.BOOLEAN:
+                bool_literal = "true" if expression.value else "false"
+                text = f"{col_ref} {expression.operator} {bool_literal}"
+            else:
+                operator = expression.operator
+                is_like_pattern, value = prepare_like_pattern_value(
+                    str(expression.value)
+                )
+                value = escape_param(value)
+                if is_like_pattern:
+                    if expression.operator == Operator.EQUALS.value:
+                        operator = "LIKE"
+                    else:
+                        operator = "NOT LIKE"
+                text = f"{col_ref} {operator} {value}"
         else:
             if isinstance(expression.value, (int, float)):
                 value = str(expression.value)

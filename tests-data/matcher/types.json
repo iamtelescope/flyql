@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "description": "Null and boolean value type matcher test cases",
+  "test_suite": "types",
+  "tests": [
+    {
+      "name": "null_equals_null",
+      "query": "field=null",
+      "data": {"field": null},
+      "expected": true
+    },
+    {
+      "name": "null_equals_empty_string",
+      "query": "field=null",
+      "data": {"field": ""},
+      "expected": false
+    },
+    {
+      "name": "null_equals_zero",
+      "query": "field=null",
+      "data": {"field": 0},
+      "expected": false
+    },
+    {
+      "name": "null_equals_false",
+      "query": "field=null",
+      "data": {"field": false},
+      "expected": false
+    },
+    {
+      "name": "null_not_equals_value",
+      "query": "field!=null",
+      "data": {"field": "value"},
+      "expected": true
+    },
+    {
+      "name": "null_not_equals_null",
+      "query": "field!=null",
+      "data": {"field": null},
+      "expected": false
+    },
+    {
+      "name": "boolean_true_equals_true",
+      "query": "field=true",
+      "data": {"field": true},
+      "expected": true
+    },
+    {
+      "name": "boolean_true_equals_string_true",
+      "query": "field=true",
+      "data": {"field": "true"},
+      "expected": false
+    },
+    {
+      "name": "boolean_true_equals_one",
+      "query": "field=true",
+      "data": {"field": 1},
+      "expected": false
+    },
+    {
+      "name": "boolean_false_equals_false",
+      "query": "field=false",
+      "data": {"field": false},
+      "expected": true
+    },
+    {
+      "name": "boolean_false_equals_string_false",
+      "query": "field=false",
+      "data": {"field": "false"},
+      "expected": false
+    },
+    {
+      "name": "boolean_false_equals_zero",
+      "query": "field=false",
+      "data": {"field": 0},
+      "expected": false
+    },
+    {
+      "name": "boolean_true_not_equals_false",
+      "query": "field!=true",
+      "data": {"field": false},
+      "expected": true
+    },
+    {
+      "name": "boolean_false_not_equals_true",
+      "query": "field!=false",
+      "data": {"field": true},
+      "expected": true
+    }
+  ]
+}

@@ -795,6 +795,19 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 		return fmt.Sprintf("%s !~ %s", identifier, value), nil
 
 	case flyql.OpEquals, flyql.OpNotEquals:
+		if expr.ValueType == types.Null {
+			if expr.Operator == flyql.OpEquals {
+				return fmt.Sprintf("%s IS NULL", identifier), nil
+			}
+			return fmt.Sprintf("%s IS NOT NULL", identifier), nil
+		}
+		if expr.ValueType == types.Boolean {
+			boolLiteral := "FALSE"
+			if v, ok := expr.Value.(bool); ok && v {
+				boolLiteral = "TRUE"
+			}
+			return fmt.Sprintf("%s %s %s", identifier, expr.Operator, boolLiteral), nil
+		}
 		operator := expr.Operator
 		valueStr := fmt.Sprintf("%v", expr.Value)
 		isLikePattern, processedValue := PrepareLikePatternValue(valueStr)

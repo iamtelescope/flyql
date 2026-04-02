@@ -4,6 +4,7 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression
+from flyql.types import ValueType
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
     Operator,
@@ -203,19 +204,28 @@ def expression_to_sql_simple(
         value = escape_param(str(expression.value))
         return f"{identifier} !~ {value}"
     elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
-        operator = expression.operator
-        value_str = (
-            str(expression.value).lower()
-            if isinstance(expression.value, bool)
-            else str(expression.value)
-        )
-        is_like_pattern, processed = prepare_like_pattern_value(value_str)
-        escaped_value = escape_param(processed)
-        if is_like_pattern:
-            operator = (
-                "LIKE" if expression.operator == Operator.EQUALS.value else "NOT LIKE"
+        if expression.value_type == ValueType.NULL:
+            return (
+                f"{identifier} IS NULL"
+                if expression.operator == Operator.EQUALS.value
+                else f"{identifier} IS NOT NULL"
             )
-        return f"{identifier} {operator} {escaped_value}"
+        elif expression.value_type == ValueType.BOOLEAN:
+            bool_literal = "TRUE" if expression.value else "FALSE"
+            return f"{identifier} {expression.operator} {bool_literal}"
+        else:
+            operator = expression.operator
+            is_like_pattern, processed = prepare_like_pattern_value(
+                str(expression.value)
+            )
+            escaped_value = escape_param(processed)
+            if is_like_pattern:
+                operator = (
+                    "LIKE"
+                    if expression.operator == Operator.EQUALS.value
+                    else "NOT LIKE"
+                )
+            return f"{identifier} {operator} {escaped_value}"
     else:
         value = escape_param(expression.value)
         return f"{identifier} {expression.operator} {value}"

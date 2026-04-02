@@ -194,3 +194,8 @@ func TestTransformers(t *testing.T) {
 	columns := loadColumns(t)
 	runWhereTestSuite(t, columns, "transformers.json")
 }
+
+func TestTypes(t *testing.T) {
+	columns := loadColumns(t)
+	runWhereTestSuite(t, columns, "types.json")
+}

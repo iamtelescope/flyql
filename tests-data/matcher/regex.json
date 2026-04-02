@@ -1,0 +1,151 @@
+{
+  "version": "1.0",
+  "description": "Regex operator matcher test cases including inline flags",
+  "test_suite": "regex",
+  "tests": [
+    {
+      "name": "regex_basic_match",
+      "query": "msg~'hello'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_basic_no_match",
+      "query": "msg~'xyz'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_not_match",
+      "query": "msg!~'hello'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_not_no_match",
+      "query": "msg!~'xyz'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_anchored_start",
+      "query": "msg~'^hello'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_anchored_start_no_match",
+      "query": "msg~'^world'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_anchored_end",
+      "query": "msg~'world$'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_case_insensitive_match",
+      "query": "msg~'(?i)HELLO'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_case_insensitive_no_match",
+      "query": "msg~'(?i)XYZ'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_case_insensitive_not",
+      "query": "msg!~'(?i)HELLO'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_case_insensitive_uppercase_data",
+      "query": "msg~'(?i)hello'",
+      "data": {"msg": "HELLO WORLD"},
+      "expected": true
+    },
+    {
+      "name": "regex_case_insensitive_mixed",
+      "query": "msg~'(?i)hElLo'",
+      "data": {"msg": "Hello World"},
+      "expected": true
+    },
+    {
+      "name": "regex_case_sensitive_default",
+      "query": "msg~'HELLO'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "regex_multiline_caret_matches_line_start",
+      "query": "msg~'(?m)^world'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_multiline_caret_no_flag",
+      "query": "msg~'^world'",
+      "data": {"msg": "hello\nworld"},
+      "expected": false
+    },
+    {
+      "name": "regex_multiline_dollar_matches_line_end",
+      "query": "msg~'(?m)hello$'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_multiline_dollar_no_flag",
+      "query": "msg~'hello$'",
+      "data": {"msg": "hello\nworld"},
+      "expected": false
+    },
+    {
+      "name": "regex_dotall_dot_matches_newline",
+      "query": "msg~'(?s)hello.world'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_dotall_no_flag_dot_no_newline",
+      "query": "msg~'hello.world'",
+      "data": {"msg": "hello\nworld"},
+      "expected": false
+    },
+    {
+      "name": "regex_dotall_dot_matches_space",
+      "query": "msg~'hello.world'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "regex_combined_case_insensitive_multiline",
+      "query": "msg~'(?im)^WORLD'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_combined_case_insensitive_dotall",
+      "query": "msg~'(?is)HELLO.WORLD'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_combined_all_flags",
+      "query": "msg~'(?ims)^HELLO.WORLD$'",
+      "data": {"msg": "hello\nworld"},
+      "expected": true
+    },
+    {
+      "name": "regex_flag_on_null_value",
+      "query": "msg~'(?i)hello'",
+      "data": {"other": "value"},
+      "expected": false
+    }
+  ]
+}

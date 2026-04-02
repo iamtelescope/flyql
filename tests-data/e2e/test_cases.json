@@ -523,6 +523,42 @@
       "flyql": "nullable_field=null and active=true",
       "expected_ids": [5],
       "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_case_insensitive",
+      "flyql": "message~'(?i)HELLO'",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_case_insensitive_not_match",
+      "flyql": "message!~'(?i)HELLO'",
+      "expected_ids": [2, 4, 5],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_case_insensitive_name",
+      "flyql": "name~'(?i)ALICE'",
+      "expected_ids": [1, 4],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_dotall_flag",
+      "flyql": "message~'(?s)hello.*'",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_multiline_flag",
+      "flyql": "message~'(?m)^hello'",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
+    },
+    {
+      "name": "regex_combined_flags",
+      "flyql": "message~'(?im)^HELLO'",
+      "expected_ids": [1, 3, 6],
+      "databases": ["clickhouse", "postgresql", "starrocks"]
     }
   ]
 }

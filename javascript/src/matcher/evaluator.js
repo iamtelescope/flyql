@@ -109,7 +109,14 @@ export class Evaluator {
     getRegex(pattern) {
         if (this.regexCache.has(pattern)) return this.regexCache.get(pattern)
         try {
-            const regex = new RegExp(pattern)
+            const flagMatch = pattern.match(/^\(\?([imsu]+)\)/)
+            let flags = ''
+            let cleanPattern = pattern
+            if (flagMatch) {
+                flags = flagMatch[1]
+                cleanPattern = pattern.slice(flagMatch[0].length)
+            }
+            const regex = new RegExp(cleanPattern, flags)
             this.regexCache.set(pattern, regex)
             return regex
         } catch (err) {

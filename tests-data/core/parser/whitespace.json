@@ -77,7 +77,7 @@
           "key": "count",
           "operator": ">",
           "value": 10.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null
@@ -92,8 +92,8 @@
         "expression": {
           "key": "price",
           "operator": "<",
-          "value": 100.50,
-          "value_type": "number"
+          "value": 100.5,
+          "value_type": "float"
         },
         "left": null,
         "right": null
@@ -109,7 +109,7 @@
           "key": "age",
           "operator": ">=",
           "value": 18.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null
@@ -125,7 +125,7 @@
           "key": "score",
           "operator": "<=",
           "value": 90.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null
@@ -141,7 +141,7 @@
           "key": "status",
           "operator": "!=",
           "value": 404.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null
@@ -317,7 +317,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -395,7 +395,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -426,7 +426,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -437,7 +437,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null

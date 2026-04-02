@@ -171,8 +171,15 @@
         "expression": {
           "key": "name",
           "operator": "in",
-          "values": ["hello\"world", "normal"],
-          "values_type": "string"
+          "values": [
+            "hello\"world",
+            "normal"
+          ],
+          "values_type": "string",
+          "values_types": [
+            "string",
+            "string"
+          ]
         },
         "left": null,
         "right": null
@@ -187,8 +194,15 @@
         "expression": {
           "key": "name",
           "operator": "in",
-          "values": ["hello'world", "normal"],
-          "values_type": "string"
+          "values": [
+            "hello'world",
+            "normal"
+          ],
+          "values_type": "string",
+          "values_types": [
+            "string",
+            "string"
+          ]
         },
         "left": null,
         "right": null

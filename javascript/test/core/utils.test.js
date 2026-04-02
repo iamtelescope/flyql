@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { isNumeric, tryConvertToNumber } from '../../src/index.js'
+import { ValueType } from '../../src/types.js'
 
 describe('isNumeric', () => {
     it('should identify numeric strings', () => {
@@ -27,28 +28,34 @@ describe('isNumeric', () => {
 })
 
 describe('tryConvertToNumber', () => {
-    it('should convert numeric strings to numbers', () => {
-        expect(tryConvertToNumber('123')).toBe(123)
-        expect(tryConvertToNumber('12.34')).toBe(12.34)
-        expect(tryConvertToNumber('-5')).toBe(-5)
-        expect(tryConvertToNumber('0')).toBe(0)
+    it('should convert integer strings to integers with INTEGER type', () => {
+        expect(tryConvertToNumber('123')).toEqual([123, ValueType.INTEGER])
+        expect(tryConvertToNumber('-5')).toEqual([-5, ValueType.INTEGER])
+        expect(tryConvertToNumber('0')).toEqual([0, ValueType.INTEGER])
     })
 
-    it('should keep non-numeric strings as strings', () => {
-        expect(tryConvertToNumber('hello')).toBe('hello')
-        expect(tryConvertToNumber('abc123')).toBe('abc123')
+    it('should convert float strings to floats with FLOAT type', () => {
+        expect(tryConvertToNumber('12.34')).toEqual([12.34, ValueType.FLOAT])
     })
 
-    it('should handle empty string', () => {
-        expect(tryConvertToNumber('')).toBe('')
+    it('should keep non-numeric strings as strings with STRING type', () => {
+        expect(tryConvertToNumber('hello')).toEqual(['hello', ValueType.STRING])
+        expect(tryConvertToNumber('abc123')).toEqual(['abc123', ValueType.STRING])
     })
 
-    it('should return non-strings unchanged', () => {
-        expect(tryConvertToNumber(123)).toBe(123)
-        expect(tryConvertToNumber(null)).toBeNull()
-        expect(tryConvertToNumber(undefined)).toBeUndefined()
+    it('should handle empty string with STRING type', () => {
+        expect(tryConvertToNumber('')).toEqual(['', ValueType.STRING])
+    })
 
-        const obj = {}
-        expect(tryConvertToNumber(obj)).toBe(obj)
+    it('should return non-strings with null type', () => {
+        expect(tryConvertToNumber(123)).toEqual([123, null])
+        expect(tryConvertToNumber(null)).toEqual([null, null])
+        expect(tryConvertToNumber(undefined)).toEqual([undefined, null])
+    })
+
+    it('should detect BigInt for values exceeding MAX_SAFE_INTEGER', () => {
+        const [value, type] = tryConvertToNumber('9007199254740992')
+        expect(type).toBe(ValueType.BIGINT)
+        expect(typeof value).toBe('bigint')
     })
 })

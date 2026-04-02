@@ -8,6 +8,7 @@ import (
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/transformers"
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
@@ -678,10 +679,10 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			return fmt.Sprintf("%s ~ %s", pathExpr, value), nil
 		case expr.Operator == flyql.OpNotRegex:
 			return fmt.Sprintf("%s !~ %s", pathExpr, value), nil
-		case expr.ValueType == flyql.ValueTypeNumber:
+		case expr.ValueType == types.Integer || expr.ValueType == types.BigInt || expr.ValueType == types.Float:
 			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(jsonb_typeof(%s) = 'number' AND (%s)::numeric %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
-		case expr.ValueType == flyql.ValueTypeString:
+		case expr.ValueType == types.String:
 			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(jsonb_typeof(%s) = 'string' AND %s %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
 		default:

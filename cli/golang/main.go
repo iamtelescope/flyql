@@ -105,15 +105,11 @@ func nodeToMap(node *flyql.Node) map[string]any {
 		if expr.Operator == flyql.OpIn || expr.Operator == flyql.OpNotIn {
 			exprMap["values"] = expr.Values
 			if expr.ValuesType != nil {
-				if *expr.ValuesType == flyql.ValueTypeString {
-					exprMap["values_type"] = "string"
-				} else {
-					exprMap["values_type"] = "number"
-				}
+				exprMap["values_type"] = *expr.ValuesType
 			}
 		} else if expr.Operator != flyql.OpTruthy {
 			exprMap["value"] = expr.Value
-			exprMap["value_is_string"] = expr.ValueType == flyql.ValueTypeString
+			exprMap["value_type"] = string(expr.ValueType)
 		}
 		result["expression"] = exprMap
 	}

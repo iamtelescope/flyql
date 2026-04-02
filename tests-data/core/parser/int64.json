@@ -13,7 +13,8 @@
           "key": "id",
           "operator": "=",
           "value": "5145045934107196935",
-          "value_type": "number"
+          "value_type": "integer",
+          "value_type_js": "bigint"
         },
         "left": null,
         "right": null
@@ -29,7 +30,8 @@
           "key": "id",
           "operator": "=",
           "value": "-5145045934107196935",
-          "value_type": "number"
+          "value_type": "integer",
+          "value_type_js": "bigint"
         },
         "left": null,
         "right": null
@@ -45,7 +47,8 @@
           "key": "id",
           "operator": "=",
           "value": "9223372036854775807",
-          "value_type": "number"
+          "value_type": "integer",
+          "value_type_js": "bigint"
         },
         "left": null,
         "right": null
@@ -61,7 +64,8 @@
           "key": "id",
           "operator": "=",
           "value": "-9223372036854775808",
-          "value_type": "number"
+          "value_type": "integer",
+          "value_type_js": "bigint"
         },
         "left": null,
         "right": null
@@ -77,7 +81,7 @@
           "key": "id",
           "operator": "=",
           "value": "18446744073709551615",
-          "value_type": "number"
+          "value_type": "bigint"
         },
         "left": null,
         "right": null

@@ -56,12 +56,19 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
             "operator": node.expression.operator,
             "value": node.expression.value,
             "value_type": (
-                "string" if isinstance(node.expression.value, str) else "number"
+                node.expression.value_type.value
+                if node.expression.value_type is not None
+                else None
             ),
         }
         if node.expression.values is not None:
             expr["values"] = node.expression.values
             expr["values_type"] = node.expression.values_type
+            expr["values_types"] = (
+                [vt.value for vt in node.expression.values_types]
+                if node.expression.values_types is not None
+                else None
+            )
         result["expression"] = expr
 
     if node.left is not None:
@@ -134,7 +141,9 @@ def _expressions_equal(actual: Dict[str, Any], expected: Dict[str, Any]) -> bool
             return False
         # Large integer values are stored as strings in test data to avoid JSON
         # precision loss. Compare by converting both sides to string.
-        if actual["value_type"] == "number" and isinstance(expected["value"], str):
+        if actual["value_type"] in ("number", "integer", "bigint") and isinstance(
+            expected["value"], str
+        ):
             if str(actual["value"]) != expected["value"]:
                 return False
         elif actual["value"] != expected["value"]:
@@ -146,6 +155,9 @@ def _expressions_equal(actual: Dict[str, Any], expected: Dict[str, Any]) -> bool
             return False
         if actual.get("values_type") != expected.get("values_type"):
             return False
+        if "values_types" in expected and expected["values_types"] is not None:
+            if actual.get("values_types") != expected["values_types"]:
+                return False
     return True
 
 

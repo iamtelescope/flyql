@@ -29,7 +29,7 @@
           "key": "field|lower|len",
           "operator": ">",
           "value": 10.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null
@@ -59,7 +59,7 @@
             "key": "status",
             "operator": ">",
             "value": 400.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -92,7 +92,7 @@
           "key": "field|len|upper",
           "operator": ">",
           "value": 5.0,
-          "value_type": "number"
+          "value_type": "integer"
         },
         "left": null,
         "right": null

@@ -42,12 +42,13 @@ type expectedAST struct {
 }
 
 type expectedExpression struct {
-	Key        string `json:"key"`
-	Operator   string `json:"operator"`
-	Value      any    `json:"value"`
-	ValueType  string `json:"value_type"`
-	Values     []any  `json:"values,omitempty"`
-	ValuesType string `json:"values_type,omitempty"`
+	Key         string   `json:"key"`
+	Operator    string   `json:"operator"`
+	Value       any      `json:"value"`
+	ValueType   string   `json:"value_type"`
+	Values      []any    `json:"values,omitempty"`
+	ValuesType  string   `json:"values_type,omitempty"`
+	ValuesTypes []string `json:"values_types,omitempty"`
 }
 
 func nodeToExpectedAST(node *Node) *expectedAST {
@@ -61,23 +62,24 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 	}
 
 	if node.Expression != nil {
-		valueType := "string"
-		if node.Expression.ValueType == ValueTypeNumber {
-			valueType = "number"
-		}
 		expr := &expectedExpression{
 			Key:       node.Expression.Key.Raw,
 			Operator:  node.Expression.Operator,
 			Value:     node.Expression.Value,
-			ValueType: valueType,
+			ValueType: string(node.Expression.ValueType),
 		}
 		if node.Expression.Values != nil {
 			expr.Values = node.Expression.Values
-			valuesType := "string"
-			if node.Expression.ValuesType != nil && *node.Expression.ValuesType == ValueTypeNumber {
-				valuesType = "number"
+			if node.Expression.ValuesType != nil {
+				expr.ValuesType = *node.Expression.ValuesType
 			}
-			expr.ValuesType = valuesType
+			if node.Expression.ValuesTypes != nil {
+				vts := make([]string, len(node.Expression.ValuesTypes))
+				for i, vt := range node.Expression.ValuesTypes {
+					vts[i] = string(vt)
+				}
+				expr.ValuesTypes = vts
+			}
 		}
 		result.Expression = expr
 	}
@@ -190,9 +192,9 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 				t.Errorf("%s: Value type mismatch: got %T, want float64", path, got.Expression.Value)
 			}
 		case string:
-			// A string expected value with value_type=="number" means a large integer
+			// A string expected value with numeric value_type means a large integer
 			// stored as string to avoid JSON float64 precision loss.
-			if want.Expression.ValueType == "number" {
+			if want.Expression.ValueType == "integer" || want.Expression.ValueType == "bigint" {
 				var gotStr string
 				switch gv := got.Expression.Value.(type) {
 				case int64:
@@ -251,6 +253,19 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 								}
 							default:
 								t.Errorf("%s: Values[%d] type mismatch: got %T, want number", path, i, gv)
+							}
+						}
+					}
+				}
+				if want.Expression.ValuesTypes != nil {
+					if got.Expression.ValuesTypes == nil {
+						t.Errorf("%s: expected values_types but got nil", path)
+					} else if len(got.Expression.ValuesTypes) != len(want.Expression.ValuesTypes) {
+						t.Errorf("%s: ValuesTypes length mismatch: got %d, want %d", path, len(got.Expression.ValuesTypes), len(want.Expression.ValuesTypes))
+					} else {
+						for i, wvt := range want.Expression.ValuesTypes {
+							if got.Expression.ValuesTypes[i] != wvt {
+								t.Errorf("%s: ValuesTypes[%d] mismatch: got %q, want %q", path, i, got.Expression.ValuesTypes[i], wvt)
 							}
 						}
 					}

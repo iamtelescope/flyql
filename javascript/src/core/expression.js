@@ -2,9 +2,10 @@ import { tryConvertToNumber } from './utils.js'
 import { FlyqlError } from './exceptions.js'
 import { VALID_KEY_VALUE_OPERATORS, Operator } from './constants.js'
 import { Key } from './key.js'
+import { ValueType } from '../types.js'
 
 export class Expression {
-    constructor(key, operator, value, valueIsString = null, values = null, valuesType = null) {
+    constructor(key, operator, value, valueIsString = null, values = null, valuesType = null, valuesTypes = null) {
         if (operator !== Operator.TRUTHY && !VALID_KEY_VALUE_OPERATORS.includes(operator)) {
             throw new FlyqlError(`invalid operator: ${operator}`)
         }
@@ -17,15 +18,25 @@ export class Expression {
         this.operator = operator
         this.values = values
         this.valuesType = valuesType
+        this.valuesTypes = valuesTypes
 
-        if (operator === Operator.TRUTHY || operator === Operator.IN || operator === Operator.NOT_IN) {
+        if (operator === Operator.TRUTHY) {
             this.value = ''
+            this.valueType = ValueType.STRING
+        } else if (operator === Operator.IN || operator === Operator.NOT_IN) {
+            this.value = ''
+            this.valueType = null
         } else if (valueIsString === false) {
-            this.value = tryConvertToNumber(value)
+            const [convertedValue, detectedType] = tryConvertToNumber(value)
+            this.value = convertedValue
+            this.valueType = detectedType
         } else if (valueIsString === true) {
             this.value = value
+            this.valueType = ValueType.STRING
         } else {
-            this.value = tryConvertToNumber(value)
+            const [convertedValue, detectedType] = tryConvertToNumber(value)
+            this.value = convertedValue
+            this.valueType = detectedType
         }
     }
 

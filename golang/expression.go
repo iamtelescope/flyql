@@ -1,34 +1,32 @@
 package flyql
 
-import "strconv"
+import (
+	"strconv"
 
-type ValueType int
-
-const (
-	ValueTypeString ValueType = iota
-	ValueTypeNumber
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 type Expression struct {
-	Key        Key
-	Operator   string
-	Value      any
-	ValueType  ValueType
-	Values     []any
-	ValuesType *ValueType
+	Key         Key
+	Operator    string
+	Value       any
+	ValueType   types.ValueType
+	Values      []any
+	ValuesType  *string
+	ValuesTypes []types.ValueType
 }
 
-func tryConvertToNumber(value string) (any, ValueType) {
+func tryConvertToNumber(value string) (any, types.ValueType) {
 	if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-		return i, ValueTypeNumber
+		return i, types.Integer
 	}
 	if u, err := strconv.ParseUint(value, 10, 64); err == nil {
-		return u, ValueTypeNumber
+		return u, types.BigInt
 	}
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
-		return f, ValueTypeNumber
+		return f, types.Float
 	}
-	return value, ValueTypeString
+	return value, types.String
 }
 
 func NewExpression(key Key, operator string, value string, valueIsString bool) *Expression {
@@ -39,7 +37,7 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) *
 
 	if valueIsString {
 		expr.Value = value
-		expr.ValueType = ValueTypeString
+		expr.ValueType = types.String
 	} else {
 		expr.Value, expr.ValueType = tryConvertToNumber(value)
 	}
@@ -47,11 +45,12 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) *
 	return expr
 }
 
-func NewInExpression(key Key, operator string, values []any, valuesType *ValueType) *Expression {
+func NewInExpression(key Key, operator string, values []any, valuesType *string, valuesTypes []types.ValueType) *Expression {
 	return &Expression{
-		Key:        key,
-		Operator:   operator,
-		Values:     values,
-		ValuesType: valuesType,
+		Key:         key,
+		Operator:    operator,
+		Values:      values,
+		ValuesType:  valuesType,
+		ValuesTypes: valuesTypes,
 	}
 }

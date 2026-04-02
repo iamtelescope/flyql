@@ -15,7 +15,8 @@
           "value": null,
           "value_type": null,
           "values": [200.0, 300.0, 400.0],
-          "values_type": "number"
+          "values_type": "number",
+          "values_types": ["integer", "integer", "integer"]
         },
         "left": null,
         "right": null
@@ -33,7 +34,8 @@
           "value": null,
           "value_type": null,
           "values": ["alice", "bob", "charlie"],
-          "values_type": "string"
+          "values_type": "string",
+          "values_types": ["string", "string", "string"]
         },
         "left": null,
         "right": null
@@ -51,7 +53,8 @@
           "value": null,
           "value_type": null,
           "values": ["alice", "bob"],
-          "values_type": "string"
+          "values_type": "string",
+          "values_types": ["string", "string"]
         },
         "left": null,
         "right": null
@@ -69,7 +72,8 @@
           "value": null,
           "value_type": null,
           "values": [200.0],
-          "values_type": "number"
+          "values_type": "number",
+          "values_types": ["integer"]
         },
         "left": null,
         "right": null
@@ -87,7 +91,8 @@
           "value": null,
           "value_type": null,
           "values": [],
-          "values_type": null
+          "values_type": null,
+          "values_types": null
         },
         "left": null,
         "right": null
@@ -105,7 +110,8 @@
           "value": null,
           "value_type": null,
           "values": [400.0, 500.0],
-          "values_type": "number"
+          "values_type": "number",
+          "values_types": ["integer", "integer"]
         },
         "left": null,
         "right": null
@@ -123,7 +129,8 @@
           "value": null,
           "value_type": null,
           "values": ["prod", "staging"],
-          "values_type": "string"
+          "values_type": "string",
+          "values_types": ["string", "string"]
         },
         "left": null,
         "right": null
@@ -141,7 +148,8 @@
           "value": null,
           "value_type": null,
           "values": [200.0, 300.0],
-          "values_type": "number"
+          "values_type": "number",
+          "values_types": ["integer", "integer"]
         },
         "left": null,
         "right": null
@@ -162,7 +170,8 @@
             "value": null,
             "value_type": null,
             "values": [200.0, 201.0],
-            "values_type": "number"
+            "values_type": "number",
+            "values_types": ["integer", "integer"]
           },
           "left": null,
           "right": null
@@ -192,7 +201,8 @@
           "value": null,
           "value_type": null,
           "values": [9.99, 19.99, 29.99],
-          "values_type": "number"
+          "values_type": "number",
+          "values_types": ["float", "float", "float"]
         },
         "left": null,
         "right": null
@@ -210,7 +220,8 @@
           "value": null,
           "value_type": null,
           "values": ["admin", "moderator"],
-          "values_type": "string"
+          "values_type": "string",
+          "values_types": ["string", "string"]
         },
         "left": null,
         "right": null

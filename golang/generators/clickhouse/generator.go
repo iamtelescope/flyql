@@ -8,6 +8,7 @@ import (
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/transformers"
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 var operatorToClickHouseFunc = map[string]string{
@@ -669,7 +670,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				column.Name, jsonPathStr, funcName, column.Name, jsonPathStr, strValue),
 		}
 
-		if expr.ValueType == flyql.ValueTypeNumber && expr.Operator != flyql.OpRegex && expr.Operator != flyql.OpNotRegex {
+		if (expr.ValueType == types.Integer || expr.ValueType == types.BigInt || expr.ValueType == types.Float) && expr.Operator != flyql.OpRegex && expr.Operator != flyql.OpNotRegex {
 			numValue := fmt.Sprintf("%v", expr.Value)
 			multiIf = append(multiIf,
 				fmt.Sprintf("JSONType(%s, %s) = 'Int64', %s(JSONExtractInt(%s, %s), %s)",

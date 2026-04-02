@@ -3,6 +3,8 @@ package flyql
 import (
 	"fmt"
 	"strings"
+
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 var validKeyValueOperators = map[string]bool{
@@ -56,7 +58,8 @@ type Parser struct {
 	inListValues               []any
 	inListCurrentValue         string
 	inListCurrentValueIsString *bool
-	inListValuesType           *ValueType
+	inListValuesType           *string
+	inListValuesTypes          []types.ValueType
 	isNotIn                    bool
 	isNotHas                   bool
 	valueQuoteChar             rune
@@ -108,6 +111,7 @@ func (p *Parser) resetInListData() {
 	p.inListCurrentValue = ""
 	p.inListCurrentValueIsString = nil
 	p.inListValuesType = nil
+	p.inListValuesTypes = nil
 	p.isNotIn = false
 	p.isNotHas = false
 }
@@ -130,23 +134,31 @@ func (p *Parser) finalizeInListValue() bool {
 	}
 
 	var value any
-	var valueType ValueType
+	var explicitType types.ValueType
+	var coarseType string
 
 	if p.inListCurrentValueIsString != nil && *p.inListCurrentValueIsString {
 		value = unescapeQuotes(p.inListCurrentValue, p.inListQuoteChar)
-		valueType = ValueTypeString
+		coarseType = "string"
+		explicitType = types.String
 	} else {
-		value, valueType = tryConvertToNumber(p.inListCurrentValue)
+		value, explicitType = tryConvertToNumber(p.inListCurrentValue)
+		if explicitType == types.String {
+			coarseType = "string"
+		} else {
+			coarseType = "number"
+		}
 	}
 
 	if p.inListValuesType == nil {
-		p.inListValuesType = &valueType
-	} else if *p.inListValuesType != valueType {
+		p.inListValuesType = &coarseType
+	} else if *p.inListValuesType != coarseType {
 		p.setErrorState("mixed types in list", 40)
 		return false
 	}
 
 	p.inListValues = append(p.inListValues, value)
+	p.inListValuesTypes = append(p.inListValuesTypes, explicitType)
 	p.inListCurrentValue = ""
 	p.inListCurrentValueIsString = nil
 	return true
@@ -224,7 +236,7 @@ func (p *Parser) newInExpression() *Expression {
 	if p.isNotIn {
 		operator = OpNotIn
 	}
-	return NewInExpression(key, operator, p.inListValues, p.inListValuesType)
+	return NewInExpression(key, operator, p.inListValues, p.inListValuesType, p.inListValuesTypes)
 }
 
 func (p *Parser) togglePendingNegation() {

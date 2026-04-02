@@ -3,6 +3,7 @@ from typing import List, Optional, Union, Any
 from flyql.core.tree import Node
 from flyql.core.expression import Expression, try_convert_to_number
 from flyql.core.char import Char
+from flyql.types import ValueType
 from flyql.core.state import State
 from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_BOOL_OPERATORS
@@ -56,6 +57,7 @@ class Parser:
         self.in_list_current_value: str = ""
         self.in_list_current_value_is_string: Union[bool, None] = None
         self.in_list_values_type: Optional[str] = None
+        self.in_list_values_types: List[ValueType] = []
         self.is_not_in: bool = False
         self.is_not_has: bool = False
         self.value_quote_char: str = ""
@@ -116,6 +118,7 @@ class Parser:
         self.in_list_current_value = ""
         self.in_list_current_value_is_string = None
         self.in_list_values_type = None
+        self.in_list_values_types = []
         self.is_not_in = False
         self.is_not_has = False
 
@@ -135,9 +138,10 @@ class Parser:
                 self.in_list_current_value, self.in_list_quote_char
             )
             value_type = "string"
+            explicit_type = ValueType.STRING
         else:
-            value = try_convert_to_number(self.in_list_current_value)
-            value_type = "number" if isinstance(value, (int, float)) else "string"
+            value, explicit_type = try_convert_to_number(self.in_list_current_value)
+            value_type = "number" if explicit_type != ValueType.STRING else "string"
 
         if self.in_list_values_type is None:
             self.in_list_values_type = value_type
@@ -146,6 +150,7 @@ class Parser:
             return False
 
         self.in_list_values.append(value)
+        self.in_list_values_types.append(explicit_type)
         self.in_list_current_value = ""
         self.in_list_current_value_is_string = None
         return True
@@ -235,6 +240,9 @@ class Parser:
             value_is_string=None,
             values=self.in_list_values,
             values_type=self.in_list_values_type,
+            values_types=(
+                self.in_list_values_types if self.in_list_values_types else None
+            ),
         )
 
     def toggle_pending_negation(self) -> None:

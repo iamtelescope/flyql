@@ -32,7 +32,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -43,7 +43,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -63,7 +63,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -74,7 +74,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -94,7 +94,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -105,7 +105,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -125,7 +125,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -136,7 +136,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null

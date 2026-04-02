@@ -3,6 +3,8 @@ import { Expression } from './expression.js'
 import { Node } from './tree.js'
 import { ParserError } from './exceptions.js'
 import { parseKey } from './key.js'
+import { tryConvertToNumber } from './utils.js'
+import { ValueType } from '../types.js'
 import {
     State,
     CharType,
@@ -44,6 +46,7 @@ export class Parser {
         this.inListCurrentValue = ''
         this.inListCurrentValueIsString = null
         this.inListValuesType = null
+        this.inListValuesTypes = []
         this.isNotIn = false
         this.isNotHas = false
         this.valueQuoteChar = ''
@@ -115,6 +118,7 @@ export class Parser {
         this.inListCurrentValue = ''
         this.inListCurrentValueIsString = null
         this.inListValuesType = null
+        this.inListValuesTypes = []
         this.isNotIn = false
         this.isNotHas = false
     }
@@ -131,32 +135,31 @@ export class Parser {
         }
 
         let value
-        let valueType
+        let coarseType
+        let explicitType
         if (this.inListCurrentValueIsString) {
             value =
                 this.inListQuoteChar === "'"
                     ? this.inListCurrentValue.replace(/\\'/g, "'")
                     : this.inListCurrentValue.replace(/\\"/g, '"')
-            valueType = 'string'
+            coarseType = 'string'
+            explicitType = ValueType.STRING
         } else {
-            const numValue = Number(this.inListCurrentValue)
-            if (!isNaN(numValue)) {
-                value = numValue
-                valueType = 'number'
-            } else {
-                value = this.inListCurrentValue
-                valueType = 'string'
-            }
+            const [convertedValue, detectedType] = tryConvertToNumber(this.inListCurrentValue)
+            value = convertedValue
+            explicitType = detectedType
+            coarseType = detectedType === ValueType.STRING ? 'string' : 'number'
         }
 
         if (this.inListValuesType === null) {
-            this.inListValuesType = valueType
-        } else if (this.inListValuesType !== valueType) {
+            this.inListValuesType = coarseType
+        } else if (this.inListValuesType !== coarseType) {
             this.setErrorState('mixed types in list', 40)
             return false
         }
 
         this.inListValues.push(value)
+        this.inListValuesTypes.push(explicitType)
         this.inListCurrentValue = ''
         this.inListCurrentValueIsString = null
         return true
@@ -230,7 +233,15 @@ export class Parser {
 
     newInExpression() {
         const operator = this.isNotIn ? Operator.NOT_IN : Operator.IN
-        return new Expression(parseKey(this.key), operator, '', null, this.inListValues, this.inListValuesType)
+        return new Expression(
+            parseKey(this.key),
+            operator,
+            '',
+            null,
+            this.inListValues,
+            this.inListValuesType,
+            this.inListValuesTypes.length > 0 ? this.inListValuesTypes : null,
+        )
     }
 
     togglePendingNegation() {

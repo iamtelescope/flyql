@@ -29,12 +29,13 @@ export function astToDict(node) {
             key: node.expression.key.raw,
             operator: node.expression.operator,
             value: node.expression.value,
-            value_type: typeof node.expression.value === 'string' ? 'string' : 'number',
+            value_type: node.expression.valueType,
             value_bigint: typeof node.expression.value === 'bigint',
         }
         if (node.expression.values !== null) {
             result.expression.values = node.expression.values
             result.expression.values_type = node.expression.valuesType
+            result.expression.values_types = node.expression.valuesTypes
         }
     }
 
@@ -153,7 +154,9 @@ function compareExpressions(actual, expected) {
 
     // Skip value/value_type comparison for IN expressions (they use values/values_type)
     if (expected.values === undefined) {
-        if (actual.value_type !== expected.value_type) return false
+        // Use value_type_js override if present (for cross-language BigInt boundary differences)
+        const expectedValueType = expected.value_type_js !== undefined ? expected.value_type_js : expected.value_type
+        if (actual.value_type !== expectedValueType) return false
 
         // BigInt values from the parser must be compared to their string representation
         // in the test data (since JSON cannot encode large integers without precision loss)
@@ -168,6 +171,13 @@ function compareExpressions(actual, expected) {
         if (actual.values.length !== expected.values.length) return false
         for (let i = 0; i < expected.values.length; i++) {
             if (actual.values[i] !== expected.values[i]) return false
+        }
+        if (expected.values_types !== undefined && expected.values_types !== null) {
+            if (actual.values_types === undefined || actual.values_types === null) return false
+            if (actual.values_types.length !== expected.values_types.length) return false
+            for (let i = 0; i < expected.values_types.length; i++) {
+                if (actual.values_types[i] !== expected.values_types[i]) return false
+            }
         }
     }
 

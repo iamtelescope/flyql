@@ -19,7 +19,7 @@
               "key": "status",
               "operator": "=",
               "value": 200.0,
-              "value_type": "number"
+              "value_type": "integer"
             },
             "left": null,
             "right": null
@@ -141,7 +141,7 @@
               "key": "user:id",
               "operator": ">",
               "value": 1000.0,
-              "value_type": "number"
+              "value_type": "integer"
             },
             "left": null,
             "right": null
@@ -202,7 +202,7 @@
               "key": "cpu_usage",
               "operator": ">",
               "value": 80.5,
-              "value_type": "number"
+              "value_type": "float"
             },
             "left": null,
             "right": null
@@ -213,7 +213,7 @@
               "key": "memory_usage",
               "operator": "<",
               "value": 90.0,
-              "value_type": "number"
+              "value_type": "integer"
             },
             "left": null,
             "right": null
@@ -225,7 +225,7 @@
             "key": "disk_space",
             "operator": ">=",
             "value": 100.0,
-            "value_type": "number"
+            "value_type": "integer"
           },
           "left": null,
           "right": null
@@ -282,7 +282,7 @@
                 "key": "a",
                 "operator": "=",
                 "value": 1.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -293,7 +293,7 @@
                 "key": "b",
                 "operator": "=",
                 "value": 2.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -308,7 +308,7 @@
                 "key": "c",
                 "operator": "=",
                 "value": 3.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -319,7 +319,7 @@
                 "key": "d",
                 "operator": "=",
                 "value": 4.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -338,7 +338,7 @@
                 "key": "e",
                 "operator": "=",
                 "value": 5.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -349,7 +349,7 @@
                 "key": "f",
                 "operator": "=",
                 "value": 6.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -364,7 +364,7 @@
                 "key": "g",
                 "operator": "=",
                 "value": 7.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -375,7 +375,7 @@
                 "key": "h",
                 "operator": "=",
                 "value": 8.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -403,7 +403,7 @@
                 "key": "status",
                 "operator": "=",
                 "value": 200.0,
-                "value_type": "number"
+                "value_type": "integer"
               },
               "left": null,
               "right": null
@@ -426,7 +426,7 @@
               "key": "count",
               "operator": "=",
               "value": 42.0,
-              "value_type": "number"
+              "value_type": "integer"
             },
             "left": null,
             "right": null

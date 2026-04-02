@@ -167,6 +167,16 @@ describe('Parser Types Tests', () => {
     })
 })
 
+describe('Parser Null Errors Tests', () => {
+    const testData = loadTestData('null_errors.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Hyphen Keys Tests', () => {
     it('should parse unquoted keys with hyphens correctly', () => {
         // Test simple hyphenated key

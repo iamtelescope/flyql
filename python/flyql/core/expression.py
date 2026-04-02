@@ -29,7 +29,7 @@ class Expression:
         self,
         key: Key,
         operator: str,
-        value: str | int | float,
+        value: str | int | float | None,
         value_is_string: bool | None,
         values: Optional[List[Any]] = None,
         values_type: Optional[str] = None,
@@ -48,19 +48,20 @@ class Expression:
         self.values_type: Optional[str] = values_type
         self.values_types: Optional[List[ValueType]] = values_types
 
-        if operator in (Operator.IN.value, Operator.NOT_IN.value):
-            self.value: Any = None
-            self.value_type: Optional[ValueType] = None
-        elif not value_is_string:
+        if value_type is not None:
+            self.value: Any = value
+            self.value_type: Optional[ValueType] = value_type
+        elif operator in (Operator.IN.value, Operator.NOT_IN.value):
+            self.value = None
+            self.value_type = None
+        elif not value_is_string and value is not None:
             self.value, self.value_type = try_convert_to_number(value)
         else:
             self.value = value
             self.value_type = ValueType.STRING
 
-        if value_type is not None:
-            self.value_type = value_type
-
     def __str__(self) -> str:
         if self.operator in (Operator.IN.value, Operator.NOT_IN.value):
             return f"{self.key.raw} {self.operator} [{', '.join(str(v) for v in (self.values or []))}]"
-        return f"{self.key.raw}{self.operator}{self.value}"
+        display_value = "null" if self.value is None else self.value
+        return f"{self.key.raw}{self.operator}{display_value}"

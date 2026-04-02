@@ -213,6 +213,23 @@ export class Parser {
 
     newExpression() {
         let value = this.value
+
+        if (value === 'null' && !this.valueIsString) {
+            if (this.keyValueOperator !== Operator.EQUALS && this.keyValueOperator !== Operator.NOT_EQUALS) {
+                this.setErrorState(`null value cannot be used with operator '${this.keyValueOperator}'`, 51)
+            }
+            return new Expression(
+                parseKey(this.key),
+                this.keyValueOperator,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ValueType.NULL,
+            )
+        }
+
         if (
             this.valueIsString &&
             this.keyValueOperator !== Operator.REGEX &&

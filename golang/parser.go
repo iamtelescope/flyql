@@ -219,6 +219,19 @@ func (p *Parser) newExpression() *Expression {
 	key, _ := ParseKey(p.key)
 	valueIsString := p.valueIsString != nil && *p.valueIsString
 	value := p.value
+
+	if value == "null" && !valueIsString {
+		if p.keyValueOperator != OpEquals && p.keyValueOperator != OpNotEquals {
+			p.setErrorState(fmt.Sprintf("null value cannot be used with operator '%s'", p.keyValueOperator), 51)
+		}
+		return &Expression{
+			Key:       key,
+			Operator:  p.keyValueOperator,
+			Value:     nil,
+			ValueType: types.Null,
+		}
+	}
+
 	if valueIsString && p.keyValueOperator != OpRegex && p.keyValueOperator != OpNotRegex {
 		value = unescapeQuotes(value, p.valueQuoteChar)
 	}

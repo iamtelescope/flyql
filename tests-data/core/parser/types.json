@@ -467,6 +467,118 @@
         "left": null,
         "right": null
       }
+    },
+    {
+      "name": "null_equals",
+      "input": "field=null",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": null,
+          "value_type": "null"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_not_equals",
+      "input": "field!=null",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "!=",
+          "value": null,
+          "value_type": "null"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_quoted_single",
+      "input": "field='null'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "null",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_quoted_double",
+      "input": "field=\"null\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "null",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_prefixed_value",
+      "input": "field=nullable",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "nullable",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_case_sensitive_capitalized",
+      "input": "field=Null",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "Null",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "null_case_sensitive_uppercase",
+      "input": "field=NULL",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "NULL",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
     }
   ]
 }

@@ -5,7 +5,16 @@ import { Key } from './key.js'
 import { ValueType } from '../types.js'
 
 export class Expression {
-    constructor(key, operator, value, valueIsString = null, values = null, valuesType = null, valuesTypes = null) {
+    constructor(
+        key,
+        operator,
+        value,
+        valueIsString = null,
+        values = null,
+        valuesType = null,
+        valuesTypes = null,
+        valueType = undefined,
+    ) {
         if (operator !== Operator.TRUTHY && !VALID_KEY_VALUE_OPERATORS.includes(operator)) {
             throw new FlyqlError(`invalid operator: ${operator}`)
         }
@@ -20,7 +29,10 @@ export class Expression {
         this.valuesType = valuesType
         this.valuesTypes = valuesTypes
 
-        if (operator === Operator.TRUTHY) {
+        if (valueType !== undefined) {
+            this.value = value
+            this.valueType = valueType
+        } else if (operator === Operator.TRUTHY) {
             this.value = ''
             this.valueType = ValueType.STRING
         } else if (operator === Operator.IN || operator === Operator.NOT_IN) {

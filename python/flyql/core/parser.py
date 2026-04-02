@@ -214,6 +214,24 @@ class Parser:
             Operator.NOT_REGEX.value,
         ):
             value = self._unescape_quotes(value, self.value_quote_char)
+
+        if value == "null" and not self.value_is_string:
+            if self.key_value_operator not in (
+                Operator.EQUALS.value,
+                Operator.NOT_EQUALS.value,
+            ):
+                self.set_error_state(
+                    f"null value cannot be used with operator '{self.key_value_operator}'",
+                    51,
+                )
+            return Expression(
+                key=parse_key(self.key),
+                operator=self.key_value_operator,
+                value=None,
+                value_is_string=None,
+                value_type=ValueType.NULL,
+            )
+
         return Expression(
             key=parse_key(self.key),
             operator=self.key_value_operator,

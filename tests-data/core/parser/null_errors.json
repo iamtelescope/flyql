@@ -1,0 +1,79 @@
+{
+  "version": "1.0",
+  "description": "Null literal with invalid operators - parse error test cases",
+  "test_suite": "null_errors",
+  "tests": [
+    {
+      "name": "null_greater_than",
+      "input": "field>null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_less_than",
+      "input": "field<null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_greater_or_equals",
+      "input": "field>=null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_less_or_equals",
+      "input": "field<=null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_regex",
+      "input": "field~null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_not_regex",
+      "input": "field!~null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_has",
+      "input": "field has null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "null_not_has",
+      "input": "field not has null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    }
+  ]
+}

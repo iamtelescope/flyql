@@ -395,6 +395,19 @@ export class EditorEngine {
         let currentType = null
         let currentText = ''
 
+        const flushSpan = () => {
+            if (!currentText) return
+            let spanType = currentType
+            if (spanType === CharType.VALUE) {
+                if (currentText === 'true' || currentText === 'false') {
+                    spanType = CharType.BOOLEAN
+                } else if (currentText === 'null') {
+                    spanType = CharType.NULL
+                }
+            }
+            html += wrapSpan(spanType, currentText)
+        }
+
         for (let i = 0; i < typedChars.length; i++) {
             const charType = typedChars[i][1]
             // Use original character (preserves newlines) instead of normalized space
@@ -402,16 +415,12 @@ export class EditorEngine {
             if (charType === currentType && ch !== '\n') {
                 currentText += ch
             } else {
-                if (currentText) {
-                    html += wrapSpan(currentType, currentText)
-                }
+                flushSpan()
                 currentType = charType
                 currentText = ch
             }
         }
-        if (currentText) {
-            html += wrapSpan(currentType, currentText)
-        }
+        flushSpan()
 
         if (parser.state === State.ERROR && typedChars.length < value.length) {
             const remaining = value.substring(typedChars.length)

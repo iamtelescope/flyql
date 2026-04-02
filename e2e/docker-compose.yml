@@ -11,7 +11,8 @@ services:
       CLICKHOUSE_PASSWORD: flyql
       CLICKHOUSE_DB: default
     volumes:
-      - ../tests-data/e2e/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../tests-data/e2e/clickhouse/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ../tests-data/e2e/clickhouse/join_init.sql:/docker-entrypoint-initdb.d/02_join_init.sql
     tmpfs:
       - /var/lib/clickhouse
     healthcheck:
@@ -28,6 +29,7 @@ services:
       - "18040:8040"
     volumes:
       - ../tests-data/e2e/starrocks/init.sql:/opt/starrocks/init.sql
+      - ../tests-data/e2e/starrocks/join_init.sql:/opt/starrocks/join_init.sql
     tmpfs:
       - /opt/starrocks/fe/meta
       - /opt/starrocks/be/storage
@@ -47,7 +49,8 @@ services:
       POSTGRES_PASSWORD: flyql
       POSTGRES_DB: flyql_test
     volumes:
-      - ../tests-data/e2e/postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../tests-data/e2e/postgresql/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ../tests-data/e2e/postgresql/join_init.sql:/docker-entrypoint-initdb.d/02_join_init.sql
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:

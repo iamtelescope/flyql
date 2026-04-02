@@ -49,12 +49,27 @@ function buildColumns() {
     return columns
 }
 
+function buildJoinColumns() {
+    const colData = loadJSON(path.join(testDataDir, 'clickhouse', 'join_columns.json'))
+    const columns = {}
+    for (const [key, col] of Object.entries(colData.columns)) {
+        const column = newColumn(col.name, col.jsonstring || false, col.type, col.values)
+        if (col.raw_identifier) {
+            column.withRawIdentifier(col.raw_identifier)
+        }
+        columns[key] = column
+    }
+    return columns
+}
+
 describe('ClickHouse E2E', () => {
     let columns
+    let joinColumns
     let chAvailable = false
 
     beforeAll(async () => {
         columns = buildColumns()
+        joinColumns = buildJoinColumns()
         try {
             const rows = await chQuery('SELECT 1 AS ok')
             chAvailable = rows.length > 0 && rows[0].ok === 1
@@ -132,6 +147,58 @@ describe('ClickHouse E2E', () => {
         })
     })
 
+    describe('JOIN WHERE clause parity', () => {
+        it.each(
+            loadJSON(path.join(testDataDir, 'join_test_cases.json'))
+                .tests.filter((tc) => tc.databases.includes('clickhouse'))
+                .map((tc) => [tc.name, tc.flyql, tc.expected_ids]),
+        )('%s: %s', async (name, flyql, expectedIds) => {
+            const result = {
+                kind: 'where',
+                database: 'clickhouse',
+                name,
+                flyql,
+                sql: '',
+                expected_ids: expectedIds,
+                returned_ids: [],
+                passed: false,
+                error: '',
+            }
+
+            if (!chAvailable) {
+                result.error = 'ClickHouse not available'
+                reportResults.push(result)
+                return
+            }
+
+            try {
+                const parsed = parse(flyql)
+                if (parsed.error) {
+                    result.error = `parse: ${parsed.error}`
+                    reportResults.push(result)
+                    expect.fail(result.error)
+                    return
+                }
+
+                const sqlWhere = generateWhere(parsed.root, joinColumns)
+                result.sql = sqlWhere
+
+                const query = `SELECT t.id FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id WHERE ${sqlWhere} ORDER BY t.id`
+                const rows = await chQuery(query)
+                const returnedIds = rows.map((r) => r.id)
+                result.returned_ids = returnedIds
+                result.passed = JSON.stringify([...returnedIds].sort()) === JSON.stringify([...expectedIds].sort())
+
+                reportResults.push(result)
+                expect(returnedIds.sort()).toEqual([...expectedIds].sort())
+            } catch (e) {
+                result.error = e.message
+                reportResults.push(result)
+                throw e
+            }
+        })
+    })
+
     describe('SELECT clause parity', () => {
         const selectTests = loadJSON(path.join(testDataDir, 'clickhouse', 'select_test_cases.json')).tests
         it.each(selectTests.map((tc) => [tc.name, tc.select_columns, tc.expected_rows]))(
@@ -160,6 +227,50 @@ describe('ClickHouse E2E', () => {
                     result.sql = selectResult.sql
 
                     const query = `SELECT ${selectResult.sql} FROM flyql_e2e_test ORDER BY id`
+                    const rows = await chQuery(query)
+                    const returnedRows = rows.map((r) => Object.values(r).map(String))
+                    result.returned_rows = returnedRows
+                    result.passed = JSON.stringify(returnedRows) === JSON.stringify(expectedRows)
+
+                    reportResults.push(result)
+                    expect(returnedRows).toEqual(expectedRows)
+                } catch (e) {
+                    result.error = e.message
+                    reportResults.push(result)
+                    throw e
+                }
+            },
+        )
+    })
+
+    describe('JOIN SELECT clause', () => {
+        const joinSelectTests = loadJSON(path.join(testDataDir, 'clickhouse', 'join_select_test_cases.json')).tests
+        it.each(joinSelectTests.map((tc) => [tc.name, tc.select_columns, tc.expected_rows]))(
+            '%s',
+            async (name, selectColumns, expectedRows) => {
+                const result = {
+                    kind: 'select',
+                    database: 'clickhouse',
+                    name,
+                    select_columns: selectColumns,
+                    sql: '',
+                    expected_rows: expectedRows,
+                    returned_rows: [],
+                    passed: false,
+                    error: '',
+                }
+
+                if (!chAvailable) {
+                    result.error = 'ClickHouse not available'
+                    reportResults.push(result)
+                    return
+                }
+
+                try {
+                    const selectResult = generateSelect(selectColumns, joinColumns)
+                    result.sql = selectResult.sql
+
+                    const query = `SELECT ${selectResult.sql} FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id ORDER BY t.id`
                     const rows = await chQuery(query)
                     const returnedRows = rows.map((r) => Object.values(r).map(String))
                     result.returned_rows = returnedRows

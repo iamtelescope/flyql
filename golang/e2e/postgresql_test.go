@@ -126,6 +126,197 @@ func TestPostgreSQLE2E(t *testing.T) {
 	}
 }
 
+func TestPostgreSQLJoinE2E(t *testing.T) {
+	dsn := postgresqlDSN()
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		t.Skipf("PostgreSQL not available at %s: %v", dsn, err)
+	}
+	defer conn.Close(ctx)
+
+	if err := conn.Ping(ctx); err != nil {
+		t.Skipf("PostgreSQL ping failed: %v", err)
+	}
+
+	columns := loadPostgreSQLJoinColumns(t)
+	testCases := loadJoinTestCases(t)
+
+	for _, tc := range testCases {
+		tc := tc
+		if !containsDB(tc.Databases, "postgresql") {
+			continue
+		}
+		t.Run(tc.Name, func(t *testing.T) {
+			r := testResult{
+				Kind:        "where",
+				Database:    "postgresql",
+				Name:        tc.Name,
+				FlyQL:       tc.FlyQL,
+				ExpectedIDs: tc.ExpectedIDs,
+			}
+
+			parsed, err := flyql.Parse(tc.FlyQL)
+			if err != nil {
+				r.Error = fmt.Sprintf("parse: %v", err)
+				addResult(r)
+				t.Fatal(r.Error)
+			}
+
+			sqlWhere, err := postgresqlgen.ToSQLWhere(parsed.Root, columns)
+			if err != nil {
+				r.Error = fmt.Sprintf("generate SQL: %v", err)
+				addResult(r)
+				t.Fatal(r.Error)
+			}
+			r.SQL = sqlWhere
+
+			query := fmt.Sprintf("SELECT t.id FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id WHERE %s ORDER BY t.id", sqlWhere)
+			rows, err := conn.Query(ctx, query)
+			if err != nil {
+				r.Error = fmt.Sprintf("query: %v", err)
+				addResult(r)
+				t.Fatal(r.Error)
+			}
+			defer rows.Close()
+
+			var ids []int
+			for rows.Next() {
+				var id int32
+				if err := rows.Scan(&id); err != nil {
+					r.Error = fmt.Sprintf("scan: %v", err)
+					addResult(r)
+					t.Fatal(r.Error)
+				}
+				ids = append(ids, int(id))
+			}
+			if err := rows.Err(); err != nil {
+				r.Error = fmt.Sprintf("rows: %v", err)
+				addResult(r)
+				t.Fatal(r.Error)
+			}
+
+			r.ReturnedIDs = ids
+			r.Passed = idsMatch(tc.ExpectedIDs, ids)
+			addResult(r)
+
+			if !r.Passed {
+				t.Errorf("expected %v, got %v", tc.ExpectedIDs, ids)
+			}
+		})
+	}
+}
+
+func TestPostgreSQLJoinSelectE2E(t *testing.T) {
+	dsn := postgresqlDSN()
+	ctx := context.Background()
+
+	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		t.Skipf("PostgreSQL not available at %s: %v", dsn, err)
+	}
+	defer conn.Close(ctx)
+
+	if err := conn.Ping(ctx); err != nil {
+		t.Skipf("PostgreSQL ping failed: %v", err)
+	}
+
+	columns := loadPostgreSQLJoinColumns(t)
+	testCases := loadJoinSelectTestCases(t, "postgresql")
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			r := testResult{
+				Kind:         "select",
+				Database:     "postgresql",
+				Name:         tc.Name,
+				FlyQL:        tc.SelectColumns,
+				ExpectedRows: tc.ExpectedRows,
+			}
+			defer func() {
+				r.Passed = !t.Failed()
+				addResult(r)
+			}()
+
+			selectResult, err := postgresqlgen.ToSQLSelect(tc.SelectColumns, columns)
+			if err != nil {
+				r.Error = fmt.Sprintf("ToSQLSelect: %v", err)
+				t.Fatal(r.Error)
+			}
+			r.SQL = selectResult.SQL
+
+			query := fmt.Sprintf("SELECT %s FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id ORDER BY t.id", selectResult.SQL)
+			rows, err := conn.Query(ctx, query)
+			if err != nil {
+				r.Error = fmt.Sprintf("query: %v", err)
+				t.Fatal(r.Error)
+			}
+			defer rows.Close()
+
+			if len(tc.ExpectedColumnNames) > 0 {
+				fds := rows.FieldDescriptions()
+				if len(fds) != len(tc.ExpectedColumnNames) {
+					r.Error = fmt.Sprintf("column count: got %d, want %d", len(fds), len(tc.ExpectedColumnNames))
+					t.Error(r.Error)
+				} else {
+					for i, fd := range fds {
+						if fd.Name != tc.ExpectedColumnNames[i] {
+							r.Error = fmt.Sprintf("column[%d] name: got %q, want %q", i, fd.Name, tc.ExpectedColumnNames[i])
+							t.Error(r.Error)
+						}
+					}
+				}
+			}
+
+			var gotRows [][]string
+			for rows.Next() {
+				vals, err := rows.Values()
+				if err != nil {
+					r.Error = fmt.Sprintf("row values: %v", err)
+					t.Fatal(r.Error)
+				}
+				row := make([]string, len(vals))
+				for i, v := range vals {
+					if v == nil {
+						row[i] = ""
+					} else {
+						row[i] = fmt.Sprintf("%v", v)
+					}
+				}
+				gotRows = append(gotRows, row)
+			}
+			if err := rows.Err(); err != nil {
+				r.Error = fmt.Sprintf("rows: %v", err)
+				t.Fatal(r.Error)
+			}
+
+			r.ReturnedRows = gotRows
+
+			if len(gotRows) != len(tc.ExpectedRows) {
+				r.Error = fmt.Sprintf("row count: got %d, want %d", len(gotRows), len(tc.ExpectedRows))
+				t.Error(r.Error)
+				return
+			}
+			for i, expected := range tc.ExpectedRows {
+				got := gotRows[i]
+				if len(got) != len(expected) {
+					r.Error = fmt.Sprintf("row %d column count: got %d, want %d", i, len(got), len(expected))
+					t.Error(r.Error)
+					continue
+				}
+				for j, expVal := range expected {
+					if got[j] != expVal {
+						r.Error = fmt.Sprintf("row %d col %d: got %q, want %q", i, j, got[j], expVal)
+						t.Error(r.Error)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestPostgreSQLSelectE2E(t *testing.T) {
 	dsn := postgresqlDSN()
 	ctx := context.Background()
@@ -147,10 +338,11 @@ func TestPostgreSQLSelectE2E(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			r := testResult{
-				Kind:     "select",
-				Database: "postgresql",
-				Name:     tc.Name,
-				FlyQL:    tc.SelectColumns,
+				Kind:         "select",
+				Database:     "postgresql",
+				Name:         tc.Name,
+				FlyQL:        tc.SelectColumns,
+				ExpectedRows: tc.ExpectedRows,
 			}
 			defer func() {
 				r.Passed = !t.Failed()
@@ -208,6 +400,8 @@ func TestPostgreSQLSelectE2E(t *testing.T) {
 				r.Error = fmt.Sprintf("rows: %v", err)
 				t.Fatal(r.Error)
 			}
+
+			r.ReturnedRows = gotRows
 
 			if len(gotRows) != len(tc.ExpectedRows) {
 				r.Error = fmt.Sprintf("row count: got %d, want %d", len(gotRows), len(tc.ExpectedRows))

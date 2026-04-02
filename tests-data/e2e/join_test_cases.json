@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "description": "Test cases for JOIN e2e tests. Tests WHERE clause generation with table-qualified column references (raw_identifier). Uses INNER JOIN between flyql_e2e_test (alias t) and flyql_e2e_related (alias r) on t.id = r.test_id.",
+  "tests": [
+    {
+      "name": "join_filter_related_category_equals",
+      "flyql": "r_category=web",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_filter_related_category_not_equals",
+      "flyql": "r_category!=web",
+      "expected_ids": [2, 4, 5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_filter_related_priority_greater",
+      "flyql": "r_priority>1",
+      "expected_ids": [2, 3, 5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_filter_related_label_equals",
+      "flyql": "r_label=alpha",
+      "expected_ids": [1, 5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_message_and_category",
+      "flyql": "t_message=hello and r_category=web",
+      "expected_ids": [1],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_active_and_priority",
+      "flyql": "t_active and r_priority>=2",
+      "expected_ids": [3, 5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_env_and_category",
+      "flyql": "t_env=prod and r_category!=api",
+      "expected_ids": [1],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_or_condition",
+      "flyql": "r_category=web or r_label=beta",
+      "expected_ids": [1, 2, 3],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_name_and_label",
+      "flyql": "t_name=bob and r_label!=beta",
+      "expected_ids": [5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_filter_related_priority_in_list",
+      "flyql": "r_priority in [1, 3]",
+      "expected_ids": [1, 3, 4],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_count_and_category",
+      "flyql": "t_count>10 and r_category=web",
+      "expected_ids": [1, 3],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_status_and_priority",
+      "flyql": "t_status=200 and r_priority<=1",
+      "expected_ids": [1],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_filter_related_label_pattern",
+      "flyql": "r_label=al*",
+      "expected_ids": [1, 5],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_not_active_and_category",
+      "flyql": "not t_active and r_category=mobile",
+      "expected_ids": [2],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    },
+    {
+      "name": "join_cross_table_grouped_or",
+      "flyql": "(r_category=web or r_category=api) and t_env=prod",
+      "expected_ids": [1, 4],
+      "databases": ["postgresql", "clickhouse", "starrocks"]
+    }
+  ]
+}

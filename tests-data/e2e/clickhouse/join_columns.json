@@ -1,0 +1,76 @@
+{
+  "version": "1.0",
+  "description": "Column definitions for ClickHouse JOIN e2e tests. Uses raw_identifier for table-qualified column references.",
+  "columns": {
+    "t_id": {
+      "name": "id",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null,
+      "raw_identifier": "t.id"
+    },
+    "t_message": {
+      "name": "message",
+      "jsonstring": false,
+      "type": "String",
+      "values": null,
+      "raw_identifier": "t.message"
+    },
+    "t_count": {
+      "name": "count",
+      "jsonstring": false,
+      "type": "Int64",
+      "values": null,
+      "raw_identifier": "t.count"
+    },
+    "t_active": {
+      "name": "active",
+      "jsonstring": false,
+      "type": "Bool",
+      "values": null,
+      "raw_identifier": "t.active"
+    },
+    "t_name": {
+      "name": "name",
+      "jsonstring": false,
+      "type": "String",
+      "values": null,
+      "raw_identifier": "t.name"
+    },
+    "t_env": {
+      "name": "env",
+      "jsonstring": false,
+      "type": "String",
+      "values": null,
+      "raw_identifier": "t.env"
+    },
+    "t_status": {
+      "name": "status",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null,
+      "raw_identifier": "t.status"
+    },
+    "r_category": {
+      "name": "category",
+      "jsonstring": false,
+      "type": "String",
+      "values": null,
+      "raw_identifier": "r.category"
+    },
+    "r_priority": {
+      "name": "priority",
+      "jsonstring": false,
+      "type": "Int32",
+      "values": null,
+      "raw_identifier": "r.priority"
+    },
+    "r_label": {
+      "name": "label",
+      "jsonstring": false,
+      "type": "String",
+      "values": null,
+      "raw_identifier": "r.label"
+    }
+  }
+}

@@ -68,7 +68,7 @@ DB_CONFIGS = [
         "init_cmd": [
             "docker", "compose", "exec", "-T", "starrocks",
             "bash", "-c",
-            "mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/init.sql",
+            "mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/init.sql && mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/join_init.sql",
         ],
     },
     {
@@ -144,7 +144,16 @@ def _load_test_data() -> dict:
             for name, col in data.get("columns", {}).items():
                 column_types.setdefault(name, {})[dialect] = col.get("type", "")
 
-    return {"rows": rows, "column_types": column_types}
+    related_rows_path = SCRIPT_DIR.parent / "tests-data" / "e2e" / "related_rows.json"
+    related_rows = []
+    if related_rows_path.exists():
+        related_rows = json.loads(related_rows_path.read_text()).get("rows", [])
+
+    return {
+        "rows": rows,
+        "column_types": column_types,
+        "related_rows": related_rows,
+    }
 
 
 def _normalize_result(r: dict) -> dict:

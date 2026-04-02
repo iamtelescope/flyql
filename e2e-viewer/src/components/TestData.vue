@@ -2,7 +2,7 @@
     <div v-if="rows && rows.length" class="mb-6">
         <h3 class="text-base font-semibold mb-2 cursor-pointer select-none" @click="expanded = !expanded">
             <i :class="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" class="text-xs mr-1"></i>
-            Test Data ({{ rows.length }} rows)
+            {{ title }} ({{ rows.length }} rows)
         </h3>
         <DataTable v-show="expanded" :value="rows" size="small" class="text-sm" scrollable>
             <Column v-for="col in columns" :key="col" :field="col">
@@ -43,6 +43,7 @@ const expanded = ref(false)
 const JSON_COLUMNS = new Set(['meta_json', 'tags', 'metadata'])
 
 const props = defineProps({
+    title: { type: String, default: 'Test Data' },
     rows: Array,
     columnTypes: Object,
 })

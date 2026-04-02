@@ -24,12 +24,21 @@
                 <InfraTimeline :steps="report.infrastructure" />
                 <TestData
                     v-if="report.test_data"
+                    title="Test Data — flyql_e2e_test"
                     :rows="report.test_data.rows"
                     :column-types="report.test_data.column_types"
+                />
+                <TestData
+                    v-if="report.test_data && report.test_data.related_rows && report.test_data.related_rows.length"
+                    title="Test Data — flyql_e2e_related (JOIN)"
+                    :rows="report.test_data.related_rows"
                 />
                 <TestResultsTable
                     :results="indexedResults"
                     :test-data-rows="report.test_data ? report.test_data.rows : []"
+                    :related-data-rows="
+                        report.test_data && report.test_data.related_rows ? report.test_data.related_rows : []
+                    "
                 />
             </template>
         </main>

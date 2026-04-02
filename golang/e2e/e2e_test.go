@@ -55,15 +55,17 @@ type pgColumnsFile struct {
 // ---------- report result ----------
 
 type testResult struct {
-	Kind        string `json:"kind"` // "where" or "select"
-	Database    string `json:"database"`
-	Name        string `json:"name"`
-	FlyQL       string `json:"flyql"`
-	SQL         string `json:"sql"`
-	ExpectedIDs []int  `json:"expected_ids"`
-	ReturnedIDs []int  `json:"returned_ids"`
-	Passed      bool   `json:"passed"`
-	Error       string `json:"error"`
+	Kind         string     `json:"kind"` // "where" or "select"
+	Database     string     `json:"database"`
+	Name         string     `json:"name"`
+	FlyQL        string     `json:"flyql"`
+	SQL          string     `json:"sql"`
+	ExpectedIDs  []int      `json:"expected_ids,omitempty"`
+	ReturnedIDs  []int      `json:"returned_ids,omitempty"`
+	ExpectedRows [][]string `json:"expected_rows,omitempty"`
+	ReturnedRows [][]string `json:"returned_rows,omitempty"`
+	Passed       bool       `json:"passed"`
+	Error        string     `json:"error"`
 }
 
 type jsonReport struct {
@@ -280,6 +282,19 @@ func loadSelectTestCases(t *testing.T, database string) []selectTestCase {
 	return f.Tests
 }
 
+func loadJoinSelectTestCases(t *testing.T, database string) []selectTestCase {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath(database, "join_select_test_cases.json"))
+	if err != nil {
+		t.Fatalf("read %s/join_select_test_cases.json: %v", database, err)
+	}
+	var f selectTestCasesFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse %s/join_select_test_cases.json: %v", database, err)
+	}
+	return f.Tests
+}
+
 func containsDB(databases []string, db string) bool {
 	for _, d := range databases {
 		if d == db {
@@ -287,4 +302,109 @@ func containsDB(databases []string, db string) bool {
 		}
 	}
 	return false
+}
+
+// ---------- JOIN test support ----------
+
+type joinColumnDef struct {
+	Name          string   `json:"name"`
+	JSONString    bool     `json:"jsonstring"`
+	Type          string   `json:"type"`
+	Values        []string `json:"values"`
+	DisplayName   string   `json:"display_name"`
+	RawIdentifier string   `json:"raw_identifier"`
+}
+
+func loadJoinTestCases(t *testing.T) []testCase {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath("join_test_cases.json"))
+	if err != nil {
+		t.Fatalf("read join_test_cases.json: %v", err)
+	}
+	var f testCasesFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse join_test_cases.json: %v", err)
+	}
+	return f.Tests
+}
+
+func loadPostgreSQLJoinColumns(t *testing.T) map[string]*postgresqlgen.Column {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath("postgresql", "join_columns.json"))
+	if err != nil {
+		t.Fatalf("read postgresql join_columns.json: %v", err)
+	}
+	type joinColumnsFile struct {
+		Columns map[string]joinColumnDef `json:"columns"`
+	}
+	var f joinColumnsFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse postgresql join_columns.json: %v", err)
+	}
+	cols := make(map[string]*postgresqlgen.Column, len(f.Columns))
+	for name, def := range f.Columns {
+		cols[name] = postgresqlgen.NewColumn(postgresqlgen.ColumnDef{
+			Name:          def.Name,
+			JSONString:    def.JSONString,
+			Type:          def.Type,
+			Values:        def.Values,
+			DisplayName:   def.DisplayName,
+			RawIdentifier: def.RawIdentifier,
+		})
+	}
+	return cols
+}
+
+func loadClickHouseJoinColumns(t *testing.T) map[string]*clickhousegen.Column {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath("clickhouse", "join_columns.json"))
+	if err != nil {
+		t.Fatalf("read clickhouse join_columns.json: %v", err)
+	}
+	type joinColumnsFile struct {
+		Columns map[string]joinColumnDef `json:"columns"`
+	}
+	var f joinColumnsFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse clickhouse join_columns.json: %v", err)
+	}
+	cols := make(map[string]*clickhousegen.Column, len(f.Columns))
+	for name, def := range f.Columns {
+		cols[name] = clickhousegen.NewColumn(clickhousegen.ColumnDef{
+			Name:          def.Name,
+			JSONString:    def.JSONString,
+			Type:          def.Type,
+			Values:        def.Values,
+			DisplayName:   def.DisplayName,
+			RawIdentifier: def.RawIdentifier,
+		})
+	}
+	return cols
+}
+
+func loadStarRocksJoinColumns(t *testing.T) map[string]*starrocksgen.Column {
+	t.Helper()
+	data, err := os.ReadFile(testDataPath("starrocks", "join_columns.json"))
+	if err != nil {
+		t.Fatalf("read starrocks join_columns.json: %v", err)
+	}
+	type joinColumnsFile struct {
+		Columns map[string]joinColumnDef `json:"columns"`
+	}
+	var f joinColumnsFile
+	if err := json.Unmarshal(data, &f); err != nil {
+		t.Fatalf("parse starrocks join_columns.json: %v", err)
+	}
+	cols := make(map[string]*starrocksgen.Column, len(f.Columns))
+	for name, def := range f.Columns {
+		cols[name] = starrocksgen.NewColumn(starrocksgen.ColumnDef{
+			Name:          def.Name,
+			JSONString:    def.JSONString,
+			Type:          def.Type,
+			Values:        def.Values,
+			DisplayName:   def.DisplayName,
+			RawIdentifier: def.RawIdentifier,
+		})
+	}
+	return cols
 }

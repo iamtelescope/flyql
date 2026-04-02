@@ -1,0 +1,155 @@
+{
+  "tests": [
+    {
+      "name": "join_select_main_columns",
+      "select_columns": "t_id, t_message",
+      "expected_column_names": ["id", "message"],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"]
+      ]
+    },
+    {
+      "name": "join_select_related_columns",
+      "select_columns": "r_category, r_priority, r_label",
+      "expected_column_names": ["category", "priority", "label"],
+      "expected_rows": [
+        ["web", "1", "alpha"],
+        ["mobile", "2", "beta"],
+        ["web", "3", "gamma"],
+        ["api", "1", "delta"],
+        ["mobile", "2", "alpha"]
+      ]
+    },
+    {
+      "name": "join_select_cross_table",
+      "select_columns": "t_id, t_name, r_category, r_label",
+      "expected_column_names": ["id", "name", "category", "label"],
+      "expected_rows": [
+        ["1", "alice", "web", "alpha"],
+        ["2", "bob", "mobile", "beta"],
+        ["3", "charlie", "web", "gamma"],
+        ["4", "alice", "api", "delta"],
+        ["5", "bob", "mobile", "alpha"]
+      ]
+    },
+    {
+      "name": "join_select_all_related",
+      "select_columns": "t_id, r_category, r_priority, r_label",
+      "expected_column_names": ["id", "category", "priority", "label"],
+      "expected_rows": [
+        ["1", "web", "1", "alpha"],
+        ["2", "mobile", "2", "beta"],
+        ["3", "web", "3", "gamma"],
+        ["4", "api", "1", "delta"],
+        ["5", "mobile", "2", "alpha"]
+      ]
+    },
+    {
+      "name": "join_select_mixed",
+      "select_columns": "t_id, t_env, t_status, r_category",
+      "expected_column_names": ["id", "env", "status", "category"],
+      "expected_rows": [
+        ["1", "prod", "200", "web"],
+        ["2", "staging", "200", "mobile"],
+        ["3", "dev", "404", "web"],
+        ["4", "prod", "500", "api"],
+        ["5", "dev", "201", "mobile"]
+      ]
+    },
+    {
+      "name": "join_select_main_alias",
+      "select_columns": "t_id, t_message as msg",
+      "expected_column_names": ["id", "msg"],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"]
+      ]
+    },
+    {
+      "name": "join_select_related_alias",
+      "select_columns": "t_id, r_category as cat, r_label as lbl",
+      "expected_column_names": ["id", "cat", "lbl"],
+      "expected_rows": [
+        ["1", "web", "alpha"],
+        ["2", "mobile", "beta"],
+        ["3", "web", "gamma"],
+        ["4", "api", "delta"],
+        ["5", "mobile", "alpha"]
+      ]
+    },
+    {
+      "name": "join_select_cross_table_aliases",
+      "select_columns": "t_id, t_name as author, r_category as cat, r_label",
+      "expected_column_names": ["id", "author", "cat", "label"],
+      "expected_rows": [
+        ["1", "alice", "web", "alpha"],
+        ["2", "bob", "mobile", "beta"],
+        ["3", "charlie", "web", "gamma"],
+        ["4", "alice", "api", "delta"],
+        ["5", "bob", "mobile", "alpha"]
+      ]
+    },
+    {
+      "name": "join_select_transformer_upper",
+      "select_columns": "t_id, t_message|upper as upper_msg",
+      "expected_rows": [
+        ["1", "HELLO"],
+        ["2", "WORLD"],
+        ["3", "HELLO WORLD"],
+        ["4", ""],
+        ["5", "ERROR TEST"]
+      ]
+    },
+    {
+      "name": "join_select_transformer_lower_related",
+      "select_columns": "t_id, r_category|lower as cat_lower",
+      "expected_rows": [
+        ["1", "web"],
+        ["2", "mobile"],
+        ["3", "web"],
+        ["4", "api"],
+        ["5", "mobile"]
+      ]
+    },
+    {
+      "name": "join_select_transformer_len",
+      "select_columns": "t_id, t_message|len as msg_len",
+      "expected_rows": [
+        ["1", "5"],
+        ["2", "5"],
+        ["3", "11"],
+        ["4", "0"],
+        ["5", "10"]
+      ]
+    },
+    {
+      "name": "join_select_transformer_chained",
+      "select_columns": "t_id, t_message|lower|len as lower_len",
+      "expected_rows": [
+        ["1", "5"],
+        ["2", "5"],
+        ["3", "11"],
+        ["4", "0"],
+        ["5", "10"]
+      ]
+    },
+    {
+      "name": "join_select_transformer_mixed",
+      "select_columns": "t_id, t_message|upper as upper_msg, r_category, r_priority",
+      "expected_rows": [
+        ["1", "HELLO", "web", "1"],
+        ["2", "WORLD", "mobile", "2"],
+        ["3", "HELLO WORLD", "web", "3"],
+        ["4", "", "api", "1"],
+        ["5", "ERROR TEST", "mobile", "2"]
+      ]
+    }
+  ]
+}

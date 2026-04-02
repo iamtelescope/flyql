@@ -146,30 +146,102 @@
 
             <template #expansion="{ data }">
                 <div class="px-4 py-3">
-                    <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Test Data</h4>
-                    <table class="w-full text-xs border-collapse">
-                        <thead>
-                            <tr>
-                                <th
-                                    v-for="col in testDataColumns"
-                                    :key="col"
-                                    class="border border-gray-200 px-2 py-1 bg-gray-50 text-left font-semibold"
+                    <!-- SELECT tests: show expected vs actual rows -->
+                    <template v-if="data.kind === 'select'">
+                        <div class="flex gap-6">
+                            <div class="flex-1">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Expected Rows</h4>
+                                <table
+                                    v-if="data.expected && data.expected.length"
+                                    class="w-full text-xs border-collapse"
                                 >
-                                    {{ col }}
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="row in testDataRows" :key="row.id" :class="rowClass(row, data)">
-                                <td v-for="col in testDataColumns" :key="col" class="border border-gray-200 px-2 py-1">
-                                    <span v-if="row[col] === null" class="text-gray-400 italic">null</span>
-                                    <span v-else-if="row[col] === ''" class="text-gray-400 italic">empty</span>
-                                    <span v-else-if="typeof row[col] === 'boolean'">{{ row[col] }}</span>
-                                    <span v-else>{{ row[col] }}</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                    <tbody>
+                                        <tr
+                                            v-for="(row, ri) in data.expected"
+                                            :key="ri"
+                                            :class="selectRowClass(ri, data)"
+                                        >
+                                            <td
+                                                v-for="(cell, ci) in row"
+                                                :key="ci"
+                                                class="border border-gray-200 px-2 py-1"
+                                            >
+                                                <span
+                                                    v-if="cell === '' || cell === null"
+                                                    class="text-gray-400 italic"
+                                                    >{{ cell === null ? 'null' : 'empty' }}</span
+                                                >
+                                                <span v-else>{{ cell }}</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <span v-else class="text-gray-400 italic text-xs">No rows</span>
+                            </div>
+                            <div class="flex-1">
+                                <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Actual Rows</h4>
+                                <table v-if="data.actual && data.actual.length" class="w-full text-xs border-collapse">
+                                    <tbody>
+                                        <tr
+                                            v-for="(row, ri) in data.actual"
+                                            :key="ri"
+                                            :class="selectRowClass(ri, data)"
+                                        >
+                                            <td
+                                                v-for="(cell, ci) in row"
+                                                :key="ci"
+                                                class="border border-gray-200 px-2 py-1"
+                                            >
+                                                <span
+                                                    v-if="cell === '' || cell === null"
+                                                    class="text-gray-400 italic"
+                                                    >{{ cell === null ? 'null' : 'empty' }}</span
+                                                >
+                                                <span v-else>{{ cell }}</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <span v-else class="text-gray-400 italic text-xs">No rows</span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- WHERE tests: show test data rows with expected/actual highlighting -->
+                    <template v-else>
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">
+                            {{ isJoinTest(data) ? 'Joined Data (flyql_e2e_test + flyql_e2e_related)' : 'Test Data' }}
+                        </h4>
+                        <table class="w-full text-xs border-collapse">
+                            <thead>
+                                <tr>
+                                    <th
+                                        v-for="col in columnsForTest(data)"
+                                        :key="col"
+                                        class="border border-gray-200 px-2 py-1 bg-gray-50 text-left font-semibold"
+                                        :class="{ 'bg-blue-50': col.startsWith('r.') }"
+                                    >
+                                        {{ col }}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="row in rowsForTest(data)" :key="row.id" :class="rowClass(row, data)">
+                                    <td
+                                        v-for="col in columnsForTest(data)"
+                                        :key="col"
+                                        class="border border-gray-200 px-2 py-1"
+                                        :class="{ 'bg-blue-50/30': col.startsWith('r.') }"
+                                    >
+                                        <span v-if="row[col] === null" class="text-gray-400 italic">null</span>
+                                        <span v-else-if="row[col] === ''" class="text-gray-400 italic">empty</span>
+                                        <span v-else-if="typeof row[col] === 'boolean'">{{ row[col] }}</span>
+                                        <span v-else>{{ row[col] }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
                 </div>
             </template>
         </DataTable>
@@ -201,6 +273,7 @@ function highlightFlyql(text, kind) {
 const props = defineProps({
     results: Array,
     testDataRows: Array,
+    relatedDataRows: { type: Array, default: () => [] },
 })
 
 const expandedRows = ref([])
@@ -209,6 +282,58 @@ const testDataColumns = computed(() => {
     if (!props.testDataRows || !props.testDataRows.length) return []
     return Object.keys(props.testDataRows[0])
 })
+
+const relatedByTestId = computed(() => {
+    const map = {}
+    for (const row of props.relatedDataRows) {
+        map[row.test_id] = row
+    }
+    return map
+})
+
+const joinedRows = computed(() => {
+    if (!props.testDataRows || !props.relatedDataRows || !props.relatedDataRows.length) return []
+    const result = []
+    for (const row of props.testDataRows) {
+        const related = relatedByTestId.value[row.id]
+        if (related) {
+            result.push({
+                ...row,
+                'r.category': related.category,
+                'r.priority': related.priority,
+                'r.label': related.label,
+            })
+        }
+    }
+    return result
+})
+
+const joinedColumns = computed(() => {
+    if (!joinedRows.value.length) return []
+    return Object.keys(joinedRows.value[0])
+})
+
+function isJoinTest(testResult) {
+    return testResult.name && testResult.name.startsWith('join_')
+}
+
+function rowsForTest(testResult) {
+    return isJoinTest(testResult) ? joinedRows.value : props.testDataRows
+}
+
+function columnsForTest(testResult) {
+    return isJoinTest(testResult) ? joinedColumns.value : testDataColumns.value
+}
+
+function selectRowClass(rowIndex, testResult) {
+    const expected = testResult.expected || []
+    const actual = testResult.actual || []
+    const expRow = expected[rowIndex]
+    const actRow = actual[rowIndex]
+    if (!expRow || !actRow) return 'bg-red-100'
+    if (JSON.stringify(expRow) === JSON.stringify(actRow)) return 'bg-green-50'
+    return 'bg-red-100'
+}
 
 function rowClass(row, testResult) {
     const expectedIds = testResult.expected || []

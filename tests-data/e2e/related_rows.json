@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "description": "Shared related table rows for JOIN e2e tests. Same data as join_init.sql in each database.",
+  "rows": [
+    {"test_id": 1, "category": "web",    "priority": 1, "label": "alpha"},
+    {"test_id": 2, "category": "mobile", "priority": 2, "label": "beta"},
+    {"test_id": 3, "category": "web",    "priority": 3, "label": "gamma"},
+    {"test_id": 4, "category": "api",    "priority": 1, "label": "delta"},
+    {"test_id": 5, "category": "mobile", "priority": 2, "label": "alpha"}
+  ]
+}

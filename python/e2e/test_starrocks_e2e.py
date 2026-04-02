@@ -149,13 +149,39 @@ def build_columns() -> dict[str, Column]:
     return columns
 
 
+def build_join_columns() -> dict[str, Column]:
+    col_data = load_json(TEST_DATA_DIR / "starrocks" / "join_columns.json")
+    columns: dict[str, Column] = {}
+    for key, col in col_data["columns"].items():
+        c = Column(
+            name=col["name"],
+            jsonstring=col.get("jsonstring", False),
+            _type=col["type"],
+            values=col.get("values"),
+        )
+        if col.get("raw_identifier"):
+            c.with_raw_identifier(col["raw_identifier"])
+        columns[key] = c
+    return columns
+
+
 def load_test_cases() -> list[dict[str, Any]]:
     data = load_json(TEST_DATA_DIR / "test_cases.json")
     return [tc for tc in data["tests"] if "starrocks" in tc["databases"]]
 
 
+def load_join_test_cases() -> list[dict[str, Any]]:
+    data = load_json(TEST_DATA_DIR / "join_test_cases.json")
+    return [tc for tc in data["tests"] if "starrocks" in tc["databases"]]
+
+
 def load_select_test_cases() -> list[dict[str, Any]]:
     data = load_json(TEST_DATA_DIR / "starrocks" / "select_test_cases.json")
+    return data["tests"]
+
+
+def load_join_select_test_cases() -> list[dict[str, Any]]:
+    data = load_json(TEST_DATA_DIR / "starrocks" / "join_select_test_cases.json")
     return data["tests"]
 
 
@@ -265,6 +291,130 @@ def test_starrocks_select(
         result["sql"] = select_result.sql
 
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
+        rows = sr_query(query)
+        raw_rows = [
+            [str(v) if v is not None else "null" for v in row.values()] for row in rows
+        ]
+        # Strip JSON quotes from StarRocks JSON path values and normalize nulls
+        returned_rows = [
+            [
+                (
+                    cell[1:-1]
+                    if len(cell) >= 2 and cell.startswith('"') and cell.endswith('"')
+                    else ("null" if cell == "None" else cell)
+                )
+                for cell in row
+            ]
+            for row in raw_rows
+        ]
+        result["returned_rows"] = returned_rows
+        result["passed"] = returned_rows == expected_rows
+
+        _results.append(result)
+        assert result["passed"], f"expected {expected_rows}, got {returned_rows}"
+    except Exception as e:
+        result["error"] = str(e)
+        _results.append(result)
+        raise
+
+
+@pytest.fixture(scope="module")
+def join_columns() -> dict[str, Column]:
+    return build_join_columns()
+
+
+@pytest.mark.parametrize(
+    "name,flyql,expected_ids",
+    [(tc["name"], tc["flyql"], tc["expected_ids"]) for tc in load_join_test_cases()],
+    ids=[tc["name"] for tc in load_join_test_cases()],
+)
+def test_starrocks_join(
+    sr_available: bool,
+    join_columns: dict[str, Column],
+    name: str,
+    flyql: str,
+    expected_ids: list[int],
+) -> None:
+    result: dict[str, Any] = {
+        "kind": "where",
+        "database": "starrocks",
+        "name": name,
+        "flyql": flyql,
+        "sql": "",
+        "expected_ids": expected_ids,
+        "returned_ids": [],
+        "passed": False,
+        "error": "",
+    }
+
+    if not sr_available:
+        result["error"] = "StarRocks not available"
+        _results.append(result)
+        pytest.skip("StarRocks not available")
+        return
+
+    try:
+        parsed = parse(flyql)
+        sql_where = to_sql(parsed.current_node, join_columns)
+        result["sql"] = sql_where
+
+        query = f"SELECT t.id FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id WHERE {sql_where} ORDER BY t.id"
+        rows = sr_query(query)
+        returned_ids = [int(r["id"]) for r in rows]
+        result["returned_ids"] = returned_ids
+        result["passed"] = ids_match(expected_ids, returned_ids)
+
+        _results.append(result)
+        assert result["passed"], f"expected {expected_ids}, got {returned_ids}"
+    except Exception as e:
+        result["error"] = str(e)
+        _results.append(result)
+        raise
+
+
+@pytest.fixture(scope="module")
+def join_select_columns() -> dict[str, Column]:
+    return build_join_columns()
+
+
+@pytest.mark.parametrize(
+    "name,select_columns,expected_rows",
+    [
+        (tc["name"], tc["select_columns"], tc["expected_rows"])
+        for tc in load_join_select_test_cases()
+    ],
+    ids=[tc["name"] for tc in load_join_select_test_cases()],
+)
+def test_starrocks_join_select(
+    sr_available: bool,
+    join_select_columns: dict[str, Column],
+    name: str,
+    select_columns: str,
+    expected_rows: list[list[str]],
+) -> None:
+    result: dict[str, Any] = {
+        "kind": "select",
+        "database": "starrocks",
+        "name": name,
+        "select_columns": select_columns,
+        "sql": "",
+        "expected_rows": expected_rows,
+        "returned_rows": [],
+        "passed": False,
+        "error": "",
+    }
+
+    if not sr_available:
+        result["error"] = "StarRocks not available"
+        _results.append(result)
+        pytest.skip("StarRocks not available")
+        return
+
+    try:
+        select_result = generate_select(select_columns, join_select_columns)
+        result["sql"] = select_result.sql
+
+        query = f"SELECT {select_result.sql} FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id ORDER BY t.id"
         rows = sr_query(query)
         raw_rows = [
             [str(v) if v is not None else "null" for v in row.values()] for row in rows

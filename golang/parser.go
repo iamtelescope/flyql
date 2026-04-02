@@ -135,26 +135,18 @@ func (p *Parser) finalizeInListValue() bool {
 
 	var value any
 	var explicitType types.ValueType
-	var coarseType string
 
 	if p.inListCurrentValueIsString != nil && *p.inListCurrentValueIsString {
 		value = unescapeQuotes(p.inListCurrentValue, p.inListQuoteChar)
-		coarseType = "string"
 		explicitType = types.String
+	} else if p.inListCurrentValue == "null" {
+		value = nil
+		explicitType = types.Null
+	} else if p.inListCurrentValue == "true" || p.inListCurrentValue == "false" {
+		value = p.inListCurrentValue == "true"
+		explicitType = types.Boolean
 	} else {
 		value, explicitType = tryConvertToNumber(p.inListCurrentValue)
-		if explicitType == types.String {
-			coarseType = "string"
-		} else {
-			coarseType = "number"
-		}
-	}
-
-	if p.inListValuesType == nil {
-		p.inListValuesType = &coarseType
-	} else if *p.inListValuesType != coarseType {
-		p.setErrorState("mixed types in list", 40)
-		return false
 	}
 
 	p.inListValues = append(p.inListValues, value)

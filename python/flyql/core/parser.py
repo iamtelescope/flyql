@@ -137,17 +137,15 @@ class Parser:
             value: Any = self._unescape_quotes(
                 self.in_list_current_value, self.in_list_quote_char
             )
-            value_type = "string"
             explicit_type = ValueType.STRING
+        elif self.in_list_current_value == "null":
+            value = None
+            explicit_type = ValueType.NULL
+        elif self.in_list_current_value in ("true", "false"):
+            value = self.in_list_current_value == "true"
+            explicit_type = ValueType.BOOLEAN
         else:
             value, explicit_type = try_convert_to_number(self.in_list_current_value)
-            value_type = "number" if explicit_type != ValueType.STRING else "string"
-
-        if self.in_list_values_type is None:
-            self.in_list_values_type = value_type
-        elif self.in_list_values_type != value_type:
-            self.set_error_state("mixed types in list", 40)
-            return False
 
         self.in_list_values.append(value)
         self.in_list_values_types.append(explicit_type)

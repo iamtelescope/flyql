@@ -175,7 +175,7 @@
             "hello\"world",
             "normal"
           ],
-          "values_type": "string",
+          "values_type": null,
           "values_types": [
             "string",
             "string"
@@ -198,7 +198,7 @@
             "hello'world",
             "normal"
           ],
-          "values_type": "string",
+          "values_type": null,
           "values_types": [
             "string",
             "string"

@@ -135,27 +135,23 @@ export class Parser {
         }
 
         let value
-        let coarseType
         let explicitType
         if (this.inListCurrentValueIsString) {
             value =
                 this.inListQuoteChar === "'"
                     ? this.inListCurrentValue.replace(/\\'/g, "'")
                     : this.inListCurrentValue.replace(/\\"/g, '"')
-            coarseType = 'string'
             explicitType = ValueType.STRING
+        } else if (this.inListCurrentValue === 'null') {
+            value = null
+            explicitType = ValueType.NULL
+        } else if (this.inListCurrentValue === 'true' || this.inListCurrentValue === 'false') {
+            value = this.inListCurrentValue === 'true'
+            explicitType = ValueType.BOOLEAN
         } else {
             const [convertedValue, detectedType] = tryConvertToNumber(this.inListCurrentValue)
             value = convertedValue
             explicitType = detectedType
-            coarseType = detectedType === ValueType.STRING ? 'string' : 'number'
-        }
-
-        if (this.inListValuesType === null) {
-            this.inListValuesType = coarseType
-        } else if (this.inListValuesType !== coarseType) {
-            this.setErrorState('mixed types in list', 40)
-            return false
         }
 
         this.inListValues.push(value)

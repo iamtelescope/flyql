@@ -15,7 +15,7 @@
           "value": null,
           "value_type": null,
           "values": [200.0, 300.0, 400.0],
-          "values_type": "number",
+          "values_type": null,
           "values_types": ["integer", "integer", "integer"]
         },
         "left": null,
@@ -34,7 +34,7 @@
           "value": null,
           "value_type": null,
           "values": ["alice", "bob", "charlie"],
-          "values_type": "string",
+          "values_type": null,
           "values_types": ["string", "string", "string"]
         },
         "left": null,
@@ -53,7 +53,7 @@
           "value": null,
           "value_type": null,
           "values": ["alice", "bob"],
-          "values_type": "string",
+          "values_type": null,
           "values_types": ["string", "string"]
         },
         "left": null,
@@ -72,7 +72,7 @@
           "value": null,
           "value_type": null,
           "values": [200.0],
-          "values_type": "number",
+          "values_type": null,
           "values_types": ["integer"]
         },
         "left": null,
@@ -110,7 +110,7 @@
           "value": null,
           "value_type": null,
           "values": [400.0, 500.0],
-          "values_type": "number",
+          "values_type": null,
           "values_types": ["integer", "integer"]
         },
         "left": null,
@@ -129,7 +129,7 @@
           "value": null,
           "value_type": null,
           "values": ["prod", "staging"],
-          "values_type": "string",
+          "values_type": null,
           "values_types": ["string", "string"]
         },
         "left": null,
@@ -148,7 +148,7 @@
           "value": null,
           "value_type": null,
           "values": [200.0, 300.0],
-          "values_type": "number",
+          "values_type": null,
           "values_types": ["integer", "integer"]
         },
         "left": null,
@@ -170,7 +170,7 @@
             "value": null,
             "value_type": null,
             "values": [200.0, 201.0],
-            "values_type": "number",
+            "values_type": null,
             "values_types": ["integer", "integer"]
           },
           "left": null,
@@ -201,7 +201,7 @@
           "value": null,
           "value_type": null,
           "values": [9.99, 19.99, 29.99],
-          "values_type": "number",
+          "values_type": null,
           "values_types": ["float", "float", "float"]
         },
         "left": null,
@@ -220,7 +220,7 @@
           "value": null,
           "value_type": null,
           "values": ["admin", "moderator"],
-          "values_type": "string",
+          "values_type": null,
           "values_types": ["string", "string"]
         },
         "left": null,
@@ -228,10 +228,42 @@
       }
     },
     {
-      "name": "in_mixed_types_error",
+      "name": "in_mixed_types",
       "input": "status in [200, 'error']",
-      "expected_result": "error",
-      "expected_error": "mixed types in list"
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [200.0, "error"],
+          "values_type": null,
+          "values_types": ["integer", "string"]
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "in_heterogeneous_all_types",
+      "input": "field in [1, \"hello\", true, null]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "in",
+          "value": null,
+          "value_type": null,
+          "values": [1.0, "hello", true, null],
+          "values_type": null,
+          "values_types": ["integer", "string", "boolean", "null"]
+        },
+        "left": null,
+        "right": null
+      }
     },
     {
       "name": "in_unclosed_bracket",

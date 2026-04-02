@@ -33,33 +33,62 @@ message ~ "connection (refused|reset)"
 host ~ "^prod-[0-9]+"
 ```
 
-### Coincidencia sin distinguir mayúsculas y minúsculas
+### Flags de regex
 
-Para hacer coincidencias regex sin distinguir mayúsculas y minúsculas, usa la bandera `(?i)` al inicio del patrón:
+Puedes modificar el comportamiento de la regex usando flags inline al inicio del patrón con la sintaxis `(?...)`. FlyQL soporta tres flags que funcionan en todos los backends:
+
+#### `(?i)` — Sin distinción de mayúsculas
+
+Hace que el patrón coincida sin importar las mayúsculas o minúsculas:
 
 ```
 message ~ "(?i)error"
 level ~ "(?i)^(warn|error|fatal)$"
 ```
 
-La bandera inline `(?i)` es una característica de regex y su compatibilidad varía según el backend:
+`(?i)error` coincide con "Error", "ERROR", "error", etc.
 
-| Backend | Compatibilidad con `(?i)` | Notas |
-|---------|---------------------------|-------|
-| **ClickHouse** | Sí | Sintaxis RE2 |
-| **PostgreSQL** | Sí | Regex POSIX |
-| **StarRocks** | Sí | Sintaxis RE2 |
-| **Matcher en memoria de Go** | Sí | Go `regexp` (RE2) |
-| **Matcher en memoria de Python** | Sí | `google-re2` |
-| **Matcher en memoria de JavaScript** | No | `RegExp` de ECMAScript no admite banderas inline `(?i)` |
+#### `(?m)` — Multilínea
 
-Para el matcher en memoria de JavaScript, usa una clase de caracteres para lograr coincidencias sin distinguir mayúsculas y minúsculas:
+Cambia `^` y `$` para que coincidan con el inicio y el final de cada **línea** en lugar de toda la cadena:
 
 ```
-message ~ "[eE][rR][rR][oO][rR]"
+log ~ "(?m)^ERROR"
 ```
 
-O, si solo apuntas a backends SQL, `(?i)` funciona de forma fiable en los tres dialectos.
+Sin `(?m)`, `^ERROR` solo coincide si la cadena completa empieza con "ERROR". Con `(?m)`, también coincide con "INFO first\nERROR second" porque "ERROR" aparece al inicio de una línea.
+
+#### `(?s)` — Dotall
+
+Hace que `.` coincida con **cualquier** carácter, incluidos los saltos de línea. Por defecto, `.` no coincide con `\n`:
+
+```
+log ~ "(?s)start.*end"
+```
+
+Sin `(?s)`, `start.*end` no coincide con "start\nend" porque `.` no cruza el salto de línea. Con `(?s)`, sí coincide.
+
+#### Combinar flags
+
+Los flags se pueden combinar en un solo grupo:
+
+```
+log ~ "(?im)^ERROR"
+log ~ "(?ims)^START.*END$"
+```
+
+#### Compatibilidad con backends
+
+Los tres flags funcionan en todos los backends de FlyQL:
+
+| Backend | `(?i)` | `(?m)` | `(?s)` |
+|---------|--------|--------|--------|
+| **ClickHouse** | Yes | Yes | Yes |
+| **PostgreSQL** | Yes | Yes | Yes |
+| **StarRocks** | Yes | Yes | Yes |
+| **Go matcher** | Yes | Yes | Yes |
+| **Python matcher** | Yes | Yes | Yes |
+| **JavaScript matcher** | Yes | Yes | Yes |
 
 Combina la coincidencia sin distinción de mayúsculas con negación para excluir patrones sin importar el caso:
 

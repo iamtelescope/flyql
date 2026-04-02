@@ -3,13 +3,13 @@ title: 構文概要
 description: FlyQL の基本的なクエリ構造と構文ルール
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+
 FlyQL のクエリは、1 つ以上の条件をブール演算子 `and`、`or`、`not` でつないで構成します。各条件は比較式または truthy チェックです。
 
 ## 基本的なクエリ構造
 
-```
-status = 200 and active and not archived
-```
+<FlyqlCode code={`status = 200 and active and not archived`} />
 
 - `status = 200`: `status` フィールドが `200` と等しい
 - `active`: `active` フィールドが truthy な値を持つ
@@ -17,25 +17,15 @@ status = 200 and active and not archived
 
 ## 追加の例
 
-```
-service != api or user = "john doe"
-```
+<FlyqlCode code={`service != api or user = "john doe"`} />
 
-```
-message ~ "error.*" and not debug
-```
+<FlyqlCode code={`message ~ "error.*" and not debug`} />
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
-```
-status in [200, 201] and method not in ['DELETE', 'PUT']
-```
+<FlyqlCode code={`status in [200, 201] and method not in ['DELETE', 'PUT']`} />
 
-```
-message has 'error' and tags not has 'debug'
-```
+<FlyqlCode code={`message has 'error' and tags not has 'debug'`} />
 
 ## 一般ルール
 

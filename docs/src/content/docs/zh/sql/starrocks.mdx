@@ -39,8 +39,11 @@ StarRocks 生成的 SQL 使用反引号包裹标识符，正则使用 `regexp()`
 | 列类型 | FlyQL | 生成 SQL |
 |--------|-------|----------|
 | String | `message has 'error'` | `` INSTR(`message`, 'error') > 0 `` |
+| String（取反） | `message not has 'error'` | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
 | Array | `tags has 'web'` | `` array_contains(`tags`, 'web') `` |
+| Array（取反） | `tags not has 'web'` | `` NOT array_contains(`tags`, 'web') `` |
 | Map | `metadata has 'key'` | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map（取反） | `metadata not has 'key'` | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
 | Native JSON | `data has 'key'` | `` json_exists(`data`, concat('$.', 'key')) `` |
 
 ## JSON 列

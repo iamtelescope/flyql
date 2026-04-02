@@ -3,13 +3,13 @@ title: 구문 개요
 description: FlyQL의 기본 쿼리 구조와 구문 규칙
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+
 FlyQL 쿼리는 불리언 연산자(`and`, `or`, `not`)로 연결된 하나 이상의 조건으로 구성됩니다. 각 조건은 비교식이거나 truthy 검사입니다.
 
 ## 기본 쿼리 구조
 
-```
-status = 200 and active and not archived
-```
+<FlyqlCode code={`status = 200 and active and not archived`} />
 
 - `status = 200` — `status` 필드가 `200`과 같음
 - `active` — `active` 필드가 truthy 값을 가짐
@@ -17,25 +17,15 @@ status = 200 and active and not archived
 
 ## 추가 예제
 
-```
-service != api or user = "john doe"
-```
+<FlyqlCode code={`service != api or user = "john doe"`} />
 
-```
-message ~ "error.*" and not debug
-```
+<FlyqlCode code={`message ~ "error.*" and not debug`} />
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
-```
-status in [200, 201] and method not in ['DELETE', 'PUT']
-```
+<FlyqlCode code={`status in [200, 201] and method not in ['DELETE', 'PUT']`} />
 
-```
-message has 'error' and tags not has 'debug'
-```
+<FlyqlCode code={`message has 'error' and tags not has 'debug'`} />
 
 ## 일반 규칙
 

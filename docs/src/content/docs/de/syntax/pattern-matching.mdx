@@ -33,33 +33,62 @@ message ~ "connection (refused|reset)"
 host ~ "^prod-[0-9]+"
 ```
 
-### Groß-/Kleinschreibung ignorieren
+### Regex-Flags
 
-Für case-insensitive Regex-Matches verwende das `(?i)`-Flag am Anfang des Musters:
+Du kannst das Verhalten von Regex-Mustern mit Inline-Flags am Anfang des Musters ändern, indem du die `(?...)`-Syntax verwendest. FlyQL unterstützt drei Flags, die in allen Backends funktionieren:
+
+#### `(?i)` — Groß-/Kleinschreibung ignorieren
+
+Das Muster gleicht unabhängig von Groß- und Kleinschreibung ab:
 
 ```
 message ~ "(?i)error"
 level ~ "(?i)^(warn|error|fatal)$"
 ```
 
-Das Inline-Flag `(?i)` ist eine Regex-Funktion, deren Unterstützung je nach Backend variiert:
+`(?i)error` passt auf „Error", „ERROR", „error" usw.
 
-| Backend | Unterstützung für `(?i)` | Hinweise |
-|---------|--------------------------|----------|
-| **ClickHouse** | Yes | RE2-Syntax |
-| **PostgreSQL** | Yes | POSIX-Regex |
-| **StarRocks** | Yes | RE2-Syntax |
-| **Go In-Memory-Matcher** | Yes | Go `regexp` (RE2) |
-| **Python In-Memory-Matcher** | Yes | `google-re2` |
-| **JavaScript In-Memory-Matcher** | No | ECMAScript-`RegExp` unterstützt keine Inline-Flags wie `(?i)` |
+#### `(?m)` — Mehrzeilig
 
-Beim JavaScript-In-Memory-Matcher kannst du stattdessen Zeichenklassen verwenden, um case-insensitives Matching zu erreichen:
+Ändert das Verhalten von `^` und `$`, sodass sie den Anfang und das Ende jeder **Zeile** abgleichen statt den Anfang und das Ende der gesamten Zeichenkette:
 
 ```
-message ~ "[eE][rR][rR][oO][rR]"
+log ~ "(?m)^ERROR"
 ```
 
-Wenn du ausschließlich SQL-Backends targetierst, funktioniert `(?i)` zuverlässig in allen drei Dialekten.
+Ohne `(?m)` greift `^ERROR` nur, wenn die gesamte Zeichenkette mit „ERROR" beginnt. Mit `(?m)` wird auch „INFO first\nERROR second" gefunden, weil „ERROR" am Anfang einer Zeile steht.
+
+#### `(?s)` — Dotall
+
+Lässt `.` **jedes** Zeichen einschließlich Zeilenumbrüche abgleichen. Standardmäßig gleicht `.` kein `\n` ab:
+
+```
+log ~ "(?s)start.*end"
+```
+
+Ohne `(?s)` matcht `start.*end` nicht auf „start\nend", da `.` den Zeilenumbruch nicht überquert. Mit `(?s)` wird es gefunden.
+
+#### Flags kombinieren
+
+Flags können in einer Gruppe kombiniert werden:
+
+```
+log ~ "(?im)^ERROR"
+log ~ "(?ims)^START.*END$"
+```
+
+#### Backend-Unterstützung
+
+Alle drei Flags funktionieren in jedem FlyQL-Backend:
+
+| Backend | `(?i)` | `(?m)` | `(?s)` |
+|---------|--------|--------|--------|
+| **ClickHouse** | Yes | Yes | Yes |
+| **PostgreSQL** | Yes | Yes | Yes |
+| **StarRocks** | Yes | Yes | Yes |
+| **Go Matcher** | Yes | Yes | Yes |
+| **Python Matcher** | Yes | Yes | Yes |
+| **JavaScript Matcher** | Yes | Yes | Yes |
 
 Case-insensitives Matching kann mit Negation kombiniert werden, um Muster unabhängig von der Groß-/Kleinschreibung auszuschließen:
 
@@ -90,7 +119,7 @@ Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komp
 ## Beispiele
 
 ```
-# Regex: Meldungen mit „error“ oder „fail“
+# Regex: Meldungen mit „error" oder „fail"
 message ~ "error|fail"
 
 # Regex: Pfade, die mit /api/v2 beginnen
@@ -99,7 +128,7 @@ path ~ "^/api/v2"
 # Negiertes Regex: Health-Check-Pfade ausschließen
 path !~ "^/health"
 
-# Wildcard: Hosts, die mit „prod“ beginnen
+# Wildcard: Hosts, die mit „prod" beginnen
 host = prod*
 
 # Kombiniert

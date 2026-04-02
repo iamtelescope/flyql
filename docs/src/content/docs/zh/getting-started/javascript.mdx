@@ -117,6 +117,19 @@ console.log(sql)
 
 完整语法见[转换器](/zh/syntax/transformers/)。
 
+## 可用的子路径导入
+
+| 导入路径 | 内容 |
+|----------|------|
+| `flyql` | 核心解析器（`parse`、`ParserError`、操作符、常量） |
+| `flyql/core` | 核心解析器模块 |
+| `flyql/columns` | 列表达式解析器 |
+| `flyql/generators/clickhouse` | ClickHouse SQL 生成器 |
+| `flyql/generators/postgresql` | PostgreSQL SQL 生成器 |
+| `flyql/generators/starrocks` | StarRocks SQL 生成器 |
+| `flyql/matcher` | 内存记录匹配器 |
+| `flyql/editor` | Web 编辑器组件（需要 Vue 3） |
+
 ## 下一步
 
 - [语法参考](/zh/syntax/)：查看所有操作符、布尔逻辑、模式匹配等内容

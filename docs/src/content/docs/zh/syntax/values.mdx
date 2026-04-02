@@ -1,15 +1,15 @@
 ---
 title: 值与类型
-description: FlyQL 中的值类型、字面量与表达式
+description: FlyQL 中的值类型、类型字面量与表达式
 ---
 
-FlyQL 支持 7 种值类型：**整数**、**大整数**、**浮点数**、**字符串**、**布尔值**、**空值** 和 **数组**。AST 中的每个值都会带有明确的类型标记。
+FlyQL 支持 7 种值类型：**Integer**、**BigInt**、**Float**、**String**、**Boolean**、**Null** 和 **Array**。AST 中的每个值都携带一个明确的 `value_type` 字段。
 
 ## 值类型
 
-### 整数
+### Integer
 
-在 int64 范围内的整数：
+int64 范围内的整数：
 
 ```
 count = 42
@@ -17,7 +17,9 @@ status != 200
 age >= 18
 ```
 
-### 大整数
+AST：`value_type: "integer"`
+
+### BigInt
 
 超出 int64（Go/Python）或 `MAX_SAFE_INTEGER`（JavaScript）范围的整数：
 
@@ -25,7 +27,9 @@ age >= 18
 id = 18446744073709551615
 ```
 
-### 浮点数
+AST：`value_type: "bigint"`
+
+### Float
 
 带小数点的数字：
 
@@ -35,102 +39,31 @@ ratio = 3.14
 temperature<=-0.5
 ```
 
-### 字符串
+AST：`value_type: "float"`
 
-文本值可以加引号，也可以不加：
+### String
+
+文本值，可加引号也可不加：
 
 ```
-level = error
-user = "John Doe"
-message = 'hello world'
-count = '42'
+level = error              # unquoted string
+user = "John Doe"          # double-quoted (spaces)
+message = 'hello world'    # single-quoted (spaces)
+count = '42'               # quoted number is a string
 ```
 
-带引号的数字仍然会被视为字符串。
+AST：`value_type: "string"`
 
-可使用反斜杠转义引号：
+使用反斜杠转义引号：
 
 ```
 user = 'John
 message="said \"hello\""
 ```
 
-### 布尔值
+### Boolean
 
-布尔字面量为小写的 `true` 和 `false`：
-
-```
-active = true
-debug = false
-active != true
-```
-
-像 `True`、`FALSE` 这样的变体会被当作字符串。
-
-### 空值
-
-空值使用小写 `null`：
-
-```
-field = null
-field != null
-```
-
-对于 `null`，只允许使用 `=` 与 `!=`。使用 `>`, `<`, `>=`, `<=`, `~`, `!~` 都会触发解析错误。
-
-SQL 生成时：
-
-- `field = null` → `field IS NULL`
-- `field != null` → `field IS NOT NULL`
-
-### 数组
-
-数组通常与 `in` / `not in` 搭配使用：
-
-```
-status in [200, 201, 202]
-name in ['alice', 'bob']
-field in [1, "hello", true, null]
-```
-
-每个元素都有自己的类型信息。
-
-## 真值 / 假值表达式
-
-一个没有操作符的字段表示对该字段执行真值检查：
-
-```
-active
-message and status
-not archived
-```
-
-假值通常包括：
-
-- `null`
-- 空字符串
-- `0`
-- `false`
-- 空数组（取决于具体运行时实现）
-
-## 示例
-
-```
-active = true
-count >= 10
-price < 9.99
-user = "John Doe"
-field = null
-status in [200, 201, 204]
-```
-
-s account'
-message="said \"hello\""
-```
-
-### 布尔值
-
-布尔字面量为小写的 `true` 和 `false`：
+关键字 `true` 和 `false`（小写，区分大小写）：
 
 ```
 active = true
@@ -138,27 +71,37 @@ debug = false
 active != true
 ```
 
-像 `True`、`FALSE` 这样的变体会被当作字符串。
+AST：`value_type: "boolean"`，值为原生布尔类型。
 
-### 空值
+大写变体（`True`、`FALSE`）会被当作字符串处理。
 
-空值使用小写 `null`：
+**SQL 生成：**
+| 方言 | `field=true` | `field=false` |
+|---------|-------------|--------------|
+| ClickHouse | `field = true` | `field = false` |
+| PostgreSQL | `field = TRUE` | `field = FALSE` |
+| StarRocks | `field = true` | `field = false` |
+
+### Null
+
+关键字 `null`（小写，区分大小写）：
 
 ```
 field = null
 field != null
 ```
 
-对于 `null`，只允许使用 `=` 与 `!=`。使用 `>`, `<`, `>=`, `<=`, `~`, `!~` 都会触发解析错误。
+AST：`value_type: "null"`，值为原生空值。
 
-SQL 生成时：
+大写变体（`Null`、`NULL`）会被当作字符串处理。
 
-- `field = null` → `field IS NULL`
-- `field != null` → `field IS NOT NULL`
+**限制：** 空值仅允许使用 `=` 和 `!=` 运算符。对空值使用 `>`、`<`、`>=`、`<=`、`~` 或 `!~` 会产生解析错误。
 
-### 数组
+**SQL 生成：** `field = null` 生成 `field IS NULL`，`field != null` 生成 `field IS NOT NULL`（所有方言）。
 
-数组通常与 `in` / `not in` 搭配使用：
+### Array
+
+数组与 `in` 和 `not in` 运算符搭配使用。元素可以是混合类型（异构数组）：
 
 ```
 status in [200, 201, 202]
@@ -166,33 +109,78 @@ name in ['alice', 'bob']
 field in [1, "hello", true, null]
 ```
 
-每个元素都有自己的类型信息。
+每个元素在 `values_types` 数组中携带自己的类型信息。
 
-## 真值 / 假值表达式
+## 真值/假值表达式
 
-一个没有操作符的字段表示对该字段执行真值检查：
+一个不带运算符的独立键名表示检查该字段是否具有真值：
 
 ```
 active
 message and status
+```
+
+以下值被视为**假值**：
+- `null` / `None` / 缺失
+- 空字符串 `""`
+- 零 `0`
+- 布尔值 `false`
+
+其他所有值均为**真值**。
+
+使用 `not` 检查假值：
+
+```
 not archived
+active and not debug
 ```
 
-假值通常包括：
+真值/假值检查与空值比较不同：`not field` 在字段为空值、空字符串或零时匹配。`field = null` 仅在字段确实为空值时匹配。
 
-- `null`
-- 空字符串
-- `0`
-- `false`
-- 空数组（取决于具体运行时实现）
+## 空白字符
 
-## 示例
+FlyQL 对空白字符具有容错性。运算符周围的空格是可选的：
 
 ```
-active = true
-count >= 10
-price > 9.99
-user = "John Doe"
-field = null
-status in [200, 201, 204]
+status = 200
+status = 200
+status =200
 ```
+
+以上写法完全等价。
+
+## 类型常量模块
+
+所有类型常量均可从 `flyql.types` 模块获取：
+
+**Python：**
+```python
+from flyql.types import ValueType
+# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+**Go：**
+```go
+import "github.com/iamtelescope/flyql/golang/types"
+// types.Integer, types.BigInt, types.Float,
+// types.String, types.Boolean, types.Null, types.Array
+```
+
+**JavaScript：**
+```javascript
+import { ValueType } from 'flyql/types'
+// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+## 迁移说明
+
+如果从旧版本 FlyQL 升级：
+
+- **破坏性变更：** Go 的 `ValueTypeString`/`ValueTypeNumber` 已移除，替换为 7 值 `types.ValueType`
+- **破坏性变更：** AST `value_type` 字段从 `"string"`/`"number"` 变更为 `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
+- **破坏性变更：** 混合类型列表限制已移除——异构数组现在有效
+- **新增：** `true`、`false`、`null` 现在被解析为类型字面量（而非字符串）
+- **新增：** IN 列表表达式上的 `values_types` 数组提供逐元素类型信息
+- **新增：** `flyql.types` 模块导出标准类型常量

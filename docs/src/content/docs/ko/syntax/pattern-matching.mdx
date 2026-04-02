@@ -33,35 +33,64 @@ message ~ "connection (refused|reset)"
 host ~ "^prod-[0-9]+"
 ```
 
-### 대소문자 구분 없는 매칭
+### Regex 플래그
 
-대소문자를 구분하지 않는 regex 매칭을 하려면 패턴 시작 부분에 `(?i)` 플래그를 사용합니다.
+패턴 시작 부분에 `(?...)` 구문으로 인라인 플래그를 지정하여 regex 동작을 변경할 수 있습니다. FlyQL은 모든 백엔드에서 동작하는 세 가지 플래그를 지원합니다.
+
+#### `(?i)` — 대소문자 구분 없음
+
+대소문자에 관계없이 패턴을 매칭합니다:
 
 ```
 message ~ "(?i)error"
 level ~ "(?i)^(warn|error|fatal)$"
 ```
 
-인라인 플래그 `(?i)`는 regex 기능이며, 지원 여부는 백엔드마다 다릅니다.
+`(?i)error`는 "Error", "ERROR", "error" 등과 일치합니다.
 
-| 백엔드 | `(?i)` 지원 여부 | 비고 |
-|--------|------------------|------|
-| **ClickHouse** | Yes | RE2 문법 |
-| **PostgreSQL** | Yes | POSIX regex |
-| **StarRocks** | Yes | RE2 문법 |
-| **Go In-Memory Matcher** | Yes | Go `regexp` (RE2) |
-| **Python In-Memory Matcher** | Yes | `google-re2` |
-| **JavaScript In-Memory Matcher** | No | ECMAScript `RegExp`는 `(?i)` 인라인 플래그를 지원하지 않음 |
+#### `(?m)` — 멀티라인
 
-JavaScript In-Memory Matcher에서는 대신 문자 클래스 방식을 사용해 대소문자 구분 없는 매칭을 구현할 수 있습니다.
+`^`와 `$`가 전체 문자열이 아닌 각 **줄**의 시작과 끝에 일치하도록 변경합니다:
 
 ```
-message ~ "[eE][rR][rR][oO][rR]"
+log ~ "(?m)^ERROR"
 ```
 
-또는 SQL 백엔드만 대상으로 한다면 `(?i)`는 세 가지 방언 모두에서 안정적으로 동작합니다.
+`(?m)` 없이 `^ERROR`는 전체 문자열이 "ERROR"로 시작할 때만 일치합니다. `(?m)`을 사용하면 "INFO first\nERROR second"에서도 일치합니다. "ERROR"가 줄의 시작에 나타나기 때문입니다.
 
-대소문자 구분 없는 매칭과 부정을 결합하면 대소문자에 상관없이 특정 패턴을 제외할 수 있습니다.
+#### `(?s)` — Dotall
+
+`.`이 줄바꿈을 포함한 **모든** 문자와 일치하도록 합니다. 기본적으로 `.`은 `\n`과 일치하지 않습니다:
+
+```
+log ~ "(?s)start.*end"
+```
+
+`(?s)` 없이 `start.*end`는 "start\nend"와 일치하지 않습니다(`.`이 줄바꿈을 넘지 못하기 때문). `(?s)`를 사용하면 일치합니다.
+
+#### 플래그 조합
+
+플래그는 하나의 그룹에서 조합할 수 있습니다:
+
+```
+log ~ "(?im)^ERROR"
+log ~ "(?ims)^START.*END$"
+```
+
+#### 백엔드 지원 현황
+
+세 가지 플래그 모두 모든 FlyQL 백엔드에서 동작합니다:
+
+| 백엔드 | `(?i)` | `(?m)` | `(?s)` |
+|--------|--------|--------|--------|
+| **ClickHouse** | Yes | Yes | Yes |
+| **PostgreSQL** | Yes | Yes | Yes |
+| **StarRocks** | Yes | Yes | Yes |
+| **Go matcher** | Yes | Yes | Yes |
+| **Python matcher** | Yes | Yes | Yes |
+| **JavaScript matcher** | Yes | Yes | Yes |
+
+대소문자 구분 없는 매칭과 부정을 결합하면 대소문자에 상관없이 특정 패턴을 제외할 수 있습니다:
 
 ```
 message ~ "(?i)error" and message !~ "(?i)warning"

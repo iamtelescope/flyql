@@ -33,33 +33,62 @@ message ~ "connection (refused|reset)"
 host ~ "^prod-[0-9]+"
 ```
 
-### 大文字小文字を区別しないマッチ
+### Regex フラグ
 
-大文字小文字を区別しない regex マッチを行うには、パターン先頭に `(?i)` フラグを付けます。
+パターンの先頭に `(?...)` 構文でインラインフラグを指定すると、regex の動作を変更できます。FlyQL はすべてのバックエンドで動作する 3 つのフラグをサポートしています。
+
+#### `(?i)` — 大文字小文字を区別しない
+
+大文字小文字に関係なくパターンをマッチさせます。
 
 ```
 message ~ "(?i)error"
 level ~ "(?i)^(warn|error|fatal)$"
 ```
 
-インラインフラグ `(?i)` は regex の機能であり、サポート状況はバックエンドごとに異なります。
+`(?i)error` は「Error」「ERROR」「error」などにマッチします。
 
-| バックエンド | `(?i)` のサポート | 備考 |
-|--------------|-------------------|------|
-| **ClickHouse** | Yes | RE2 構文 |
-| **PostgreSQL** | Yes | POSIX regex |
-| **StarRocks** | Yes | RE2 構文 |
-| **Go メモリ matcher** | Yes | Go `regexp`（RE2） |
-| **Python メモリ matcher** | Yes | `google-re2` |
-| **JavaScript メモリ matcher** | No | ECMAScript `RegExp` は `(?i)` インラインフラグをサポートしません |
+#### `(?m)` — マルチライン
 
-JavaScript のメモリ matcher では、代わりに文字クラスを使って大文字小文字を区別しないマッチを実現してください。
+`^` と `$` が文字列全体ではなく、各**行**の先頭と末尾にマッチするよう変更します。
 
 ```
-message ~ "[eE][rR][rR][oO][rR]"
+log ~ "(?m)^ERROR"
 ```
 
-また、SQL バックエンドのみを対象にするなら、`(?i)` は 3 つの方言すべてで安定して使えます。
+`(?m)` なしの場合、`^ERROR` は文字列全体が「ERROR」で始まるときのみマッチします。`(?m)` ありの場合、「INFO first\nERROR second」にもマッチします。なぜなら「ERROR」が行頭に出現するためです。
+
+#### `(?s)` — Dotall
+
+`.` が改行を含む**すべての**文字にマッチするようにします。デフォルトでは `.` は `\n` にマッチしません。
+
+```
+log ~ "(?s)start.*end"
+```
+
+`(?s)` なしの場合、`start.*end` は「start\nend」にマッチしません（`.` が改行を越えないため）。`(?s)` ありならマッチします。
+
+#### フラグの組み合わせ
+
+フラグは 1 つのグループ内で組み合わせ可能です。
+
+```
+log ~ "(?im)^ERROR"
+log ~ "(?ims)^START.*END$"
+```
+
+#### バックエンドのサポート状況
+
+3 つのフラグはすべての FlyQL バックエンドで動作します。
+
+| バックエンド | `(?i)` | `(?m)` | `(?s)` |
+|--------------|--------|--------|--------|
+| **ClickHouse** | Yes | Yes | Yes |
+| **PostgreSQL** | Yes | Yes | Yes |
+| **StarRocks** | Yes | Yes | Yes |
+| **Go matcher** | Yes | Yes | Yes |
+| **Python matcher** | Yes | Yes | Yes |
+| **JavaScript matcher** | Yes | Yes | Yes |
 
 大文字小文字を区別しないマッチと否定を組み合わせることで、大小文字に関係なく特定パターンを除外できます。
 
@@ -90,18 +119,18 @@ service = api-*
 ## 例
 
 ```
-# Regex: Meldungen mit „error“ oder „fail“
+# Regex: 「error」または「fail」を含むメッセージ
 message ~ "error|fail"
 
-# Regex: Pfade, die mit /api/v2 beginnen
+# Regex: /api/v2 で始まるパス
 path ~ "^/api/v2"
 
-# Negiertes Regex: Health-Check-Pfade ausschließen
+# 否定 Regex: ヘルスチェックパスを除外
 path !~ "^/health"
 
-# Wildcard: Hosts, die mit „prod“ beginnen
+# ワイルドカード: 「prod」で始まるホスト
 host = prod*
 
-# Kombiniert
+# 組み合わせ
 host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```

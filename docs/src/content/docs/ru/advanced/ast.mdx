@@ -1,38 +1,527 @@
 ---
 title: AST и пользовательские генераторы
-description: Как устроено абстрактное синтаксическое дерево FlyQL и как строить собственные генераторы
+description: Как устроено абстрактное синтаксическое дерево FlyQL и как строить собственные генераторы кода для любого целевого языка или структуры данных
 ---
 
-Парсер FlyQL создаёт **абстрактное синтаксическое дерево (AST)** — структурированное представление запроса, которое можно обходить для генерации любого целевого вывода.
+Парсер FlyQL создаёт **абстрактное синтаксическое дерево (AST)** — структурированное представление запроса, которое можно обходить для генерации вывода в любой целевой формат. Встроенные SQL-генераторы (ClickHouse, PostgreSQL, StarRocks) реализованы обходом этого же AST. Вы можете создать собственный генератор для запросов Elasticsearch, фильтров MongoDB, селекторов Prometheus, команд grep по логам или любого другого формата.
 
 ## Типы узлов AST
 
-AST состоит из трёх основных сущностей: **Node**, **Expression** и **Key**.
+AST состоит из трёх типов: **Node** (древовидная структура), **Expression** (листовые условия) и **Key** (ссылки на поля).
 
 ### Node
 
-`Node` может быть либо ветвью, либо листовым узлом.
+`Node` — это либо **ветвь** (объединяющая два поддерева логическим оператором), либо **лист** (содержащий одно выражение). Это фундаментальный строительный блок AST.
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `boolOperator` | `string` | `"and"` или `"or"` |
-| `expression` | `Expression` или `null` | выражение, если это листовой узел |
-| `left` | `Node` или `null` | левый потомок |
-| `right` | `Node` или `null` | правый потомок |
-| `negated` | `boolean` | обёрнут ли узел в `not` |
+| `boolOperator` | `string` | `"and"` или `"or"` — способ объединения `left` и `right`. Пустая строка для листовых узлов. |
+| `expression` | `Expression` или `null` | Условие, если это листовой узел. `null` для узлов-ветвей. |
+| `left` | `Node` или `null` | Левое поддерево. `null` для листовых узлов. |
+| `right` | `Node` или `null` | Правое поддерево. `null` для листовых узлов. |
+| `negated` | `boolean` | `true`, если узел обёрнут в `not`. |
+
+Узел является **либо** листом (`expression` задано, `left`/`right` равны null), **либо** ветвью (`left`/`right` заданы, `expression` равно null). Никогда и тем, и другим одновременно.
 
 ### Expression
 
-Одиночное условие: ключ, оператор и значение.
+`Expression` представляет одиночное условие — ключ, оператор и значение.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `key` | `Key` | Поле, которое проверяется (например, `status`, `user.metadata.role`). |
+| `operator` | `string` | Один из: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has`. |
+| `value` | `any` | Значение для сравнения. Строка, число, Boolean или Null для скалярных операторов. Пустое для `in` и `not in`. |
+| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` или `"null"`. `null` для `in`/`not in`. |
+| `values` | `array` или `null` | Список значений для операторов `in` и `not in`. Может быть гетерогенным. `null` для остальных операторов. |
+| `valuesTypes` | `string[]` или `null` | Массив типов для каждого элемента, параллельный `values`. Каждый элемент — одна из констант типов. `null`, если `values` не используется. |
 
 ### Key
 
-Поле запроса, представленное как путь из сегментов.
+`Key` представляет путь к полю в запросе.
 
-## Зачем понимать AST
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `segments` | `string[]` | Сегменты пути. `["status"]` для простого ключа, `["user", "metadata", "role"]` для вложенного. |
+| `raw` | `string` | Исходная строка ключа в том виде, в котором она записана в запросе. |
+| `isSegmented` | `boolean` | `true`, если ключ содержит более одного сегмента (то есть использует точечную нотацию). |
 
-Это позволяет:
+### Операторы
 
-- писать собственные генераторы
-- делать анализ и переписывание запросов
-- строить собственные механизмы сопоставления
+Все операторы доступны как константы, которые можно импортировать:
+
+```javascript
+// JavaScript
+import { Operator, BoolOperator } from 'flyql'
+
+Operator.EQUALS       // "="
+Operator.NOT_EQUALS   // "!="
+Operator.REGEX        // "~"
+Operator.NOT_REGEX    // "!~"
+Operator.GREATER_THAN // ">"
+Operator.LOWER_THAN   // "<"
+Operator.GREATER_OR_EQUALS_THAN // ">="
+Operator.LOWER_OR_EQUALS_THAN   // "<="
+Operator.TRUTHY       // "truthy"
+Operator.IN           // "in"
+Operator.NOT_IN       // "not in"
+Operator.HAS          // "has"
+Operator.NOT_HAS      // "not has"
+
+BoolOperator.AND      // "and"
+BoolOperator.OR       // "or"
+```
+
+```go
+// Go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+flyql.OpEquals          // "="
+flyql.OpNotEquals       // "!="
+flyql.OpRegex           // "~"
+flyql.OpNotRegex        // "!~"
+flyql.OpGreater         // ">"
+flyql.OpLess            // "<"
+flyql.OpGreaterOrEquals // ">="
+flyql.OpLessOrEquals    // "<="
+flyql.OpTruthy          // "truthy"
+flyql.OpIn              // "in"
+flyql.OpNotIn           // "not in"
+flyql.OpHas             // "has"
+flyql.OpNotHas          // "not has"
+
+flyql.BoolOpAnd      // "and"
+flyql.BoolOpOr       // "or"
+```
+
+```python
+# Python
+from flyql.core.constants import Operator, BoolOperator
+
+Operator.EQUALS       # "="
+Operator.NOT_EQUALS   # "!="
+Operator.REGEX        # "~"
+Operator.NOT_REGEX    # "!~"
+Operator.GREATER_THAN # ">"
+Operator.LOWER_THAN   # "<"
+Operator.GREATER_OR_EQUALS_THAN # ">="
+Operator.LOWER_OR_EQUALS_THAN   # "<="
+Operator.TRUTHY       # "truthy"
+Operator.IN           # "in"
+Operator.NOT_IN       # "not in"
+Operator.HAS          # "has"
+Operator.NOT_HAS      # "not has"
+
+BoolOperator.AND      # "and"
+BoolOperator.OR       # "or"
+```
+
+## Примеры структуры AST
+
+### Простое условие
+
+Запрос: `status = 200`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+```
+
+### Логическое объединение
+
+Запрос: `status = 200 and method = "GET"`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["status"], raw: "status" }
+      operator: "="
+      value: 200
+  right: Node (leaf)
+    expression:
+      key: { segments: ["method"], raw: "method" }
+      operator: "="
+      value: "GET"
+```
+
+### Отрицание
+
+Запрос: `not status = 500`
+
+```
+Node (leaf, negated: true)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 500
+```
+
+### Вложенная логика со скобками
+
+Запрос: `env=prod and (status=500 or level = error)`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["env"], raw: "env" }
+      operator: "="
+      value: "prod"
+  right: Node (branch, boolOperator: "or")
+    left: Node (leaf)
+      expression:
+        key: { segments: ["status"], raw: "status" }
+        operator: "="
+        value: 500
+    right: Node (leaf)
+      expression:
+        key: { segments: ["level"], raw: "level" }
+        operator: "="
+        value: "error"
+```
+
+### Проверка принадлежности к списку
+
+Запрос: `status in [200, 201, 204]`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    value: ""
+    values: [200, 201, 204]
+    valuesType: "number"
+```
+
+### Проверка truthy
+
+Запрос: `active`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["active"], raw: "active" }
+    operator: "truthy"
+    value: ""
+```
+
+### Вложенный ключ
+
+Запрос: `user.metadata.role = "admin"`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["user", "metadata", "role"], raw: "user.metadata.role", isSegmented: true }
+    operator: "="
+    value: "admin"
+```
+
+## Обход AST
+
+AST — это бинарное дерево. Для его обработки используется рекурсивный обход:
+
+1. Если узел содержит `expression` (листовой узел) — обрабатываем условие.
+2. Если узел содержит `left`/`right` (узел-ветвь) — рекурсивно обходим потомков и объединяем с помощью `boolOperator`.
+3. Если `negated` равно true — оборачиваем результат в отрицание.
+
+## Создание пользовательского генератора
+
+Ниже приведён полный пример пользовательского генератора, который преобразует AST FlyQL в объект **Elasticsearch Query DSL**.
+
+### JavaScript
+
+```javascript
+import { parse } from 'flyql'
+import { Operator } from 'flyql'
+
+function generateElasticsearch(node) {
+  if (!node) return { match_all: {} }
+
+  let result
+
+  if (node.expression) {
+    // Leaf node — convert the expression
+    result = expressionToES(node.expression)
+  } else {
+    // Branch node — recurse and combine
+    const left = generateElasticsearch(node.left)
+    const right = generateElasticsearch(node.right)
+
+    if (node.boolOperator === 'and') {
+      result = { bool: { must: [left, right] } }
+    } else {
+      result = { bool: { should: [left, right], minimum_should_match: 1 } }
+    }
+  }
+
+  // Handle negation
+  if (node.negated) {
+    result = { bool: { must_not: [result] } }
+  }
+
+  return result
+}
+
+function expressionToES(expr) {
+  const field = expr.key.raw
+
+  switch (expr.operator) {
+    case Operator.EQUALS:
+      return { term: { [field]: expr.value } }
+
+    case Operator.NOT_EQUALS:
+      return { bool: { must_not: [{ term: { [field]: expr.value } }] } }
+
+    case Operator.REGEX:
+      return { regexp: { [field]: String(expr.value) } }
+
+    case Operator.NOT_REGEX:
+      return { bool: { must_not: [{ regexp: { [field]: String(expr.value) } }] } }
+
+    case Operator.GREATER_THAN:
+      return { range: { [field]: { gt: expr.value } } }
+
+    case Operator.GREATER_OR_EQUALS_THAN:
+      return { range: { [field]: { gte: expr.value } } }
+
+    case Operator.LOWER_THAN:
+      return { range: { [field]: { lt: expr.value } } }
+
+    case Operator.LOWER_OR_EQUALS_THAN:
+      return { range: { [field]: { lte: expr.value } } }
+
+    case Operator.IN:
+      return { terms: { [field]: expr.values || [] } }
+
+    case Operator.NOT_IN:
+      return { bool: { must_not: [{ terms: { [field]: expr.values || [] } }] } }
+
+    case Operator.TRUTHY:
+      return { exists: { field } }
+
+    case Operator.HAS:
+      return { wildcard: { [field]: `*${expr.value}*` } }
+
+    case Operator.NOT_HAS:
+      return { bool: { must_not: [{ wildcard: { [field]: `*${expr.value}*` } }] } }
+
+    default:
+      throw new Error(`unsupported operator: ${expr.operator}`)
+  }
+}
+
+// Usage
+const result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+const esQuery = generateElasticsearch(result.root)
+console.log(JSON.stringify(esQuery, null, 2))
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func generateElasticsearch(node *flyql.Node) map[string]any {
+	if node == nil {
+		return map[string]any{"match_all": map[string]any{}}
+	}
+
+	var result map[string]any
+
+	if node.Expression != nil {
+		// Leaf node — convert the expression
+		result = expressionToES(node.Expression)
+	} else {
+		// Branch node — recurse and combine
+		left := generateElasticsearch(node.Left)
+		right := generateElasticsearch(node.Right)
+
+		if node.BoolOperator == flyql.BoolOpAnd {
+			result = map[string]any{
+				"bool": map[string]any{"must": []any{left, right}},
+			}
+		} else {
+			result = map[string]any{
+				"bool": map[string]any{"should": []any{left, right}, "minimum_should_match": 1},
+			}
+		}
+	}
+
+	// Handle negation
+	if node.Negated {
+		result = map[string]any{
+			"bool": map[string]any{"must_not": []any{result}},
+		}
+	}
+
+	return result
+}
+
+func expressionToES(expr *flyql.Expression) map[string]any {
+	field := expr.Key.Raw
+
+	switch expr.Operator {
+	case flyql.OpEquals:
+		return map[string]any{"term": map[string]any{field: expr.Value}}
+	case flyql.OpNotEquals:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"term": map[string]any{field: expr.Value}}}}}
+	case flyql.OpGreater:
+		return map[string]any{"range": map[string]any{field: map[string]any{"gt": expr.Value}}}
+	case flyql.OpLess:
+		return map[string]any{"range": map[string]any{field: map[string]any{"lt": expr.Value}}}
+	case flyql.OpIn:
+		return map[string]any{"terms": map[string]any{field: expr.Values}}
+	case flyql.OpNotIn:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"terms": map[string]any{field: expr.Values}}}}}
+	case flyql.OpTruthy:
+		return map[string]any{"exists": map[string]any{"field": field}}
+	case flyql.OpRegex:
+		return map[string]any{"regexp": map[string]any{field: fmt.Sprintf("%v", expr.Value)}}
+	default:
+		panic(fmt.Sprintf("unsupported operator: %s", expr.Operator))
+	}
+}
+
+func main() {
+	result, err := flyql.Parse(`status = 200 and env in ["prod", "staging"]`)
+	if err != nil {
+		panic(err)
+	}
+
+	esQuery := generateElasticsearch(result.Root)
+	data, _ := json.MarshalIndent(esQuery, "", "  ")
+	fmt.Println(string(data))
+}
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse
+from flyql.core.constants import Operator, BoolOperator
+
+def generate_elasticsearch(node):
+    if node is None:
+        return {"match_all": {}}
+
+    if node.expression is not None:
+        # Leaf node — convert the expression
+        result = expression_to_es(node.expression)
+    else:
+        # Branch node — recurse and combine
+        left = generate_elasticsearch(node.left)
+        right = generate_elasticsearch(node.right)
+
+        if node.bool_operator == BoolOperator.AND.value:
+            result = {"bool": {"must": [left, right]}}
+        else:
+            result = {"bool": {"should": [left, right], "minimum_should_match": 1}}
+
+    # Handle negation
+    if node.negated:
+        result = {"bool": {"must_not": [result]}}
+
+    return result
+
+def expression_to_es(expr):
+    field = expr.key.raw
+    op = expr.operator  # operator is stored as a string value, e.g. "=", "!=", "~"
+
+    if op == Operator.EQUALS.value:
+        return {"term": {field: expr.value}}
+    elif op == Operator.NOT_EQUALS.value:
+        return {"bool": {"must_not": [{"term": {field: expr.value}}]}}
+    elif op == Operator.REGEX.value:
+        return {"regexp": {field: str(expr.value)}}
+    elif op == Operator.NOT_REGEX.value:
+        return {"bool": {"must_not": [{"regexp": {field: str(expr.value)}}]}}
+    elif op == Operator.GREATER_THAN.value:
+        return {"range": {field: {"gt": expr.value}}}
+    elif op == Operator.LOWER_THAN.value:
+        return {"range": {field: {"lt": expr.value}}}
+    elif op == Operator.IN.value:
+        return {"terms": {field: expr.values or []}}
+    elif op == Operator.NOT_IN.value:
+        return {"bool": {"must_not": [{"terms": {field: expr.values or []}}]}}
+    elif op == Operator.TRUTHY.value:
+        return {"exists": {"field": field}}
+    elif op == Operator.HAS.value:
+        return {"wildcard": {field: f"*{expr.value}*"}}
+    elif op == Operator.NOT_HAS.value:
+        return {"bool": {"must_not": [{"wildcard": {field: f"*{expr.value}*"}}]}}
+    else:
+        raise ValueError(f"unsupported operator: {op}")
+
+
+# Usage
+result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+es_query = generate_elasticsearch(result.root)
+print(es_query)
+```
+
+## Как работают встроенные генераторы
+
+Встроенные SQL-генераторы следуют тому же рекурсивному шаблону, что показан выше. Каждый генератор:
+
+1. **Получает корневой `Node`** и карту схемы столбцов.
+2. **Рекурсивно обходит дерево:** узлы-ветви превращаются в `(left AND right)` или `(left OR right)`, листовые узлы — в SQL-условия.
+3. **Обрабатывает каждый оператор**, переключаясь по `expression.operator` и генерируя SQL, специфичный для диалекта.
+4. **Оборачивает отрицённые узлы** в `NOT (...)`.
+
+Ключевое отличие от пользовательского генератора в том, что SQL-генераторы также валидируют выражения по схеме столбцов (проверяя типы, допустимые значения и существование столбца). Пользовательский генератор может пропустить этот шаг или реализовать собственную логику валидации.
+
+## Справочник экспортируемых типов
+
+### JavaScript
+
+```javascript
+import {
+  parse,               // Parse a query string into an AST
+  Parser,              // Parser class (advanced usage)
+  Node,                // AST branch/leaf node
+  Expression,          // Leaf condition
+  Key,                 // Field path
+  Operator,            // Comparison operator constants
+  BoolOperator,        // Boolean operator constants ("and", "or")
+  FlyqlError,          // Base error class
+  ParserError,         // Parse error (extends FlyqlError, includes errno)
+} from 'flyql'
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+// flyql.Parse(query string) (*ParseResult, error)
+// flyql.Node        — AST node struct
+// flyql.Expression  — leaf condition struct
+// flyql.Key         — field path struct
+// flyql.NewNode(), flyql.NewExpressionNode(), flyql.NewBranchNode()
+//
+// Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
+// Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse, Parser
+from flyql.core.tree import Node
+from flyql.core.expression import Expression
+from flyql.core.key import Key
+from flyql.core.constants import Operator, BoolOperator
+from flyql.core.exceptions import FlyqlError, ParserError
+```

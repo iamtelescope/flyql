@@ -1,9 +1,9 @@
 ---
-title: Схема колонок
-description: Описание колонок для редактора FlyQL
+title: Схема столбцов
+description: Структура схемы столбцов для редактора FlyQL
 ---
 
-Свойство `columns` задаёт описание колонок, по которому редактор строит подсказки. Ключи — имена колонок, значения — их описания.
+Свойство `columns` задаёт схему данных, на основе которой редактор строит подсказки. Ключи — имена столбцов, значения — определения столбцов.
 
 ## Базовая схема
 
@@ -16,13 +16,184 @@ const columns = {
 }
 ```
 
-## Поля описания колонки
+## Поля определения столбца
 
 | Поле | Тип | По умолчанию | Описание |
 |------|-----|--------------|----------|
-| `type` | `string` | — | тип колонки |
-| `suggest` | `boolean` | `true` | показывать колонку в подсказках |
-| `autocomplete` | `boolean` | `false` | подсказывать значения |
-| `values` | `string[]` или `number[]` | — | список значений для подсказок |
-| `children` | `object` | — | вложенные поля для object-колонок |
-| `display_name` | `string` | `''` | отображаемое имя |
+| `type` | `string` | — | Тип столбца: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | Показывать этот столбец в подсказках |
+| `autocomplete` | `boolean` | `false` | Включить автодополнение значений для этого столбца |
+| `values` | `string[]` или `number[]` | — | Статические значения для автодополнения (используются до вызова колбэка `onAutocomplete`) |
+| `children` | `object` | — | Вложенные определения столбцов для столбцов типа object |
+| `display_name` | `string` | `''` | Необязательное отображаемое имя столбца. Для парсированных столбцов алиас переопределяет это значение |
+
+## Типы столбцов
+
+### `string`
+
+Общий текстовый столбец. Доступны все операторы сравнения, включая регулярные выражения (`~`, `!~`).
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+Числовой столбец. Операторы регулярных выражений (`~`, `!~`) исключаются из подсказок операторов.
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+Перечислимый столбец с фиксированным набором значений. Как и для `number`, операторы регулярных выражений исключаются. Используйте `values` для задания набора значений:
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+Вложенный столбец с дочерними элементами. Когда пользователь вводит имя столбца с последующей `.`, предлагаются дочерние столбцы:
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## Автодополнение значений
+
+### Статические значения
+
+Укажите массив `values` для столбцов с известными вариантами:
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### Асинхронные значения
+
+Установите `autocomplete: true` без `values` и предоставьте колбэк `onAutocomplete` в компоненте редактора. Колбэк вызывается, когда пользователь достигает позиции значения для данного столбца.
+
+```javascript
+// Column definition — no static values
+{ type: 'string', suggest: true, autocomplete: true }
+
+// Editor callback fetches values from API
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## Вложенные столбцы (JSONSchema)
+
+Определяйте вложенные структуры, используя `children` для столбцов типа object:
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+Ввод `metadata.` предложит `labels` и `version`. Ввод `metadata.labels.` предложит `tier` и `env`. Ограничения по глубине вложенности нет.
+
+## Удалённое обнаружение ключей (без схемы)
+
+Для столбцов типа object, где вложенные ключи неизвестны на момент определения схемы, опустите `children` и предоставьте колбэк `onKeyDiscovery`:
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true }, // no children — triggers discovery
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
+}
+```
+
+Когда пользователь вводит `request.`, колбэк вызывается с аргументами `('request', ['request'])`. Обнаруженные ключи кэшируются на время сессии активации.
+
+Если у столбца заданы и `children`, и `onKeyDiscovery`, статические `children` имеют приоритет.
+
+## Полный пример
+
+```javascript
+const columns = {
+    // Enum with static values
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+
+    // String with async autocomplete
+    service: { type: 'string', suggest: true, autocomplete: true },
+
+    // Number — excludes regex operators
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+
+    // Simple string
+    host: { type: 'string', suggest: true },
+
+    // Nested with known children
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+
+    // Schemaless — nested keys discovered at runtime
+    request: { type: 'object', suggest: true },
+}
+```

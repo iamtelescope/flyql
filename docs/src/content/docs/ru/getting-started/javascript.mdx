@@ -111,6 +111,19 @@ console.log(sql)
 
 Полный синтаксис см. в разделе [Трансформеры](/ru/syntax/transformers/).
 
+## Доступные подпути импорта
+
+| Путь импорта | Содержимое |
+|--------------|------------|
+| `flyql` | Основной парсер (`parse`, `ParserError`, операторы, константы) |
+| `flyql/core` | Модуль парсера напрямую |
+| `flyql/columns` | Парсер выражений столбцов |
+| `flyql/generators/clickhouse` | Генератор SQL для ClickHouse |
+| `flyql/generators/postgresql` | Генератор SQL для PostgreSQL |
+| `flyql/generators/starrocks` | Генератор SQL для StarRocks |
+| `flyql/matcher` | Сопоставление записей в памяти |
+| `flyql/editor` | Компонент веб-редактора (требует Vue 3) |
+
 ## Что дальше
 
 - [Справочник по синтаксису](/ru/syntax/)

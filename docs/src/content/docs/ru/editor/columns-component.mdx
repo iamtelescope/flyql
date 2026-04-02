@@ -3,7 +3,7 @@ title: Выбор колонок
 description: Компонент FlyqlColumns для редактирования списка колонок
 ---
 
-`FlyqlColumns` — отдельное поле ввода для списка колонок, фильтрации и применения трансформеров.
+Компонент `FlyqlColumns` предоставляет отдельное поле ввода для выражений столбцов — выбор, фильтрация и применение трансформеров к столбцам.
 
 ## Быстрое подключение
 
@@ -40,11 +40,48 @@ function onParsed(parsed) {
 
 | Prop | Тип | По умолчанию | Описание |
 |------|-----|--------------|----------|
-| `modelValue` | `String` | `''` | текст выражения |
-| `columns` | `Object` | `{}` | [схема колонок](/ru/editor/schema/) |
-| `capabilities` | `Object` | `null` | доступные возможности |
-| `onKeyDiscovery` | `Function` | `null` | функция для удалённого обнаружения ключей |
-| `placeholder` | `String` | `''` | текст-подсказка |
-| `autofocus` | `Boolean` | `false` | автоматически ставить фокус |
-| `debug` | `Boolean` | `false` | отладка |
-| `dark` | `Boolean` | `false` | тёмная тема |
+| `modelValue` | `String` | `''` | Текст выражения (v-model) |
+| `columns` | `Object` | `{}` | [Схема столбцов](/ru/editor/schema/) |
+| `capabilities` | `Object` | `null` | Возможности парсера (например, `{ transformers: true }`) |
+| `onKeyDiscovery` | `Function` | `null` | Функция обратного вызова для удалённого обнаружения ключей |
+| `placeholder` | `String` | `''` | Текст-подсказка |
+| `autofocus` | `Boolean` | `false` | Автоматический фокус при монтировании |
+| `debug` | `Boolean` | `false` | Отладочное логирование |
+| `dark` | `Boolean` | `false` | Включить тёмную тему ([см. темы](/ru/editor/theming/)) |
+
+## События
+
+| Событие | Данные | Описание |
+|---------|--------|----------|
+| `update:modelValue` | `string` | Текст выражения изменился (v-model) |
+| `update:parsed` | `ParsedColumn[]` | Обновлён разобранный массив столбцов |
+| `submit` | — | Пользователь нажал Shift+Enter |
+| `parse-error` | `string` | Сообщение об ошибке разбора |
+| `focus` | — | Компонент получил фокус |
+| `blur` | — | Компонент потерял фокус |
+
+## Доступные методы
+
+| Метод | Возвращает | Описание |
+|-------|------------|----------|
+| `focus()` | — | Установить фокус на поле ввода |
+| `blur()` | — | Снять фокус с поля ввода |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Проверить выражение |
+| `getParsedColumns()` | `ParsedColumn[]` | Получить разобранный массив столбцов |
+
+## Синтаксис выражений столбцов
+
+Выражения столбцов используют формат через запятую с опциональными трансформерами и псевдонимами:
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| Часть | Синтаксис | Пример |
+|-------|-----------|--------|
+| Столбец | `name` | `message` |
+| Трансформер | `name\|transformer` | `status\|upper` |
+| Трансформер с аргументами | `name\|transformer(arg)` | `name\|truncate(50)` |
+| Псевдоним | `name as alias` | `host as h` |
+| Вложенный ключ | `parent.child` | `metadata.labels.env` |
+| Цепочка трансформеров | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

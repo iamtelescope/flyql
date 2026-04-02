@@ -3,30 +3,94 @@ title: Диалекты SQL
 description: Как FlyQL генерирует SQL для ClickHouse, PostgreSQL и StarRocks
 ---
 
-Генераторы FlyQL возвращают фрагмент `WHERE` как обычную SQL-строку со встроенными и экранированными значениями. Один и тот же запрос FlyQL будет преобразован по-разному в зависимости от целевого диалекта.
+Генераторы FlyQL создают фрагмент WHERE в виде обычной SQL-строки со встроенными (экранированными) значениями. Один и тот же запрос FlyQL генерирует различный SQL в зависимости от целевого диалекта.
 
 ## Поддерживаемые диалекты
 
-- [ClickHouse](/ru/sql/clickhouse/)
-- [PostgreSQL](/ru/sql/postgresql/)
-- [StarRocks](/ru/sql/starrocks/)
+- [ClickHouse](/ru/sql/clickhouse/) — без кавычек для столбцов, `match()` для регулярных выражений, функции `JSONExtract` для JSON-строк
+- [PostgreSQL](/ru/sql/postgresql/) — идентификаторы в двойных кавычках, `~` для регулярных выражений, операторы JSONB
+- [StarRocks](/ru/sql/starrocks/) — идентификаторы в обратных кавычках, `regexp()` для регулярных выражений, `parse_json()` для JSON-строк
 
 ## Основные различия
 
 | Возможность | ClickHouse | PostgreSQL | StarRocks |
 |-------------|-----------|-----------|-----------|
-| Кавычки для колонок | нет | `"name"` | `` `name` `` |
+| Кавычки для столбцов | Нет | `"name"` | `` `name` `` |
 | Регулярные выражения | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
-| Поиск по префиксу | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| Отрицание регулярных выражений | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| Поиск по шаблону | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| Логические операторы | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| Пустой `IN []` | `0` | `FALSE` | `0` |
+| Пустой `NOT IN []` | `1` | `TRUE` | `1` |
+| `has` для строк | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| `has` для Array | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| `has` для Map | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| `has` для JSON | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
 
-## Доступ к JSON
+## Доступ к JSON — главное различие
 
-Диалекты заметно различаются при работе с вложенным JSON.
+Каждый диалект обрабатывает вложенные JSON-столбцы по-разному:
+
+**Запрос FlyQL:** `data.user.name = 'john'`
+
+**ClickHouse** (нативный JSON-столбец):
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse** (JSON хранится как строка):
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL** (JSONB):
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks** (нативный JSON):
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+Подробные примеры см. на страницах отдельных диалектов.
+
+## Доступ к Map
+
+**Запрос FlyQL:** `metadata.key1 = 'value1'`
+
+| Диалект | Генерируемый SQL |
+|---------|------------------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+ClickHouse использует функции `equals()`/`notEquals()` для доступа к Map. PostgreSQL использует оператор hstore `->`. StarRocks использует скобочную нотацию напрямую.
+
+## Доступ к Array
+
+**Запрос FlyQL:** `tags.0 = 'first'` (индексация с 0 в FlyQL)
+
+| Диалект | Генерируемый SQL | Индексация |
+|---------|------------------|------------|
+| ClickHouse | `equals(tags[0], 'first')` | С 0 |
+| PostgreSQL | `"tags"[1] = 'first'` | С 1 (конвертируется) |
+| StarRocks | `` `tags`[0] = 'first' `` | С 0 |
+
+Массивы в PostgreSQL индексируются с 1, поэтому FlyQL автоматически добавляет 1 к индексу.
 
 ## Формат вывода
 
-Генераторы возвращают фрагмент `WHERE`, а не полный SQL-запрос:
+Генераторы возвращают фрагмент WHERE — без ключевого слова `WHERE`, без параметризованных подстановок. Все значения экранированы и встроены непосредственно:
 
 ```
 message = 'hello' and count > 10
+```
+
+А не:
+
+```
+WHERE message = ? AND count > ?
 ```

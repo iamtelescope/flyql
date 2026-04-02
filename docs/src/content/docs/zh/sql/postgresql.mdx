@@ -39,8 +39,11 @@ PostgreSQL 生成的 SQL 使用双引号包裹标识符，正则使用 `~`，布
 | 列类型 | FlyQL | 生成 SQL |
 |--------|-------|----------|
 | String | `message has 'error'` | `position('error' in "message") > 0` |
+| String（取反） | `message not has 'error'` | `("message" IS NULL OR position('error' in "message") = 0)` |
 | Array | `tags has 'web'` | `'web' = ANY("tags")` |
+| Array（取反） | `tags not has 'web'` | `NOT ('web' = ANY("tags"))` |
 | JSONB | `data has 'key'` | `"data" ? 'key'` |
+| JSONB（取反） | `data not has 'key'` | `NOT ("data" ? 'key')` |
 | Hstore | `metadata has 'key'` | `"metadata" ? 'key'` |
 
 ## JSONB 列

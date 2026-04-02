@@ -33,30 +33,67 @@ message ~ "connection (refused|reset)"
 host ~ "^prod-[0-9]+"
 ```
 
-### 忽略大小写
+### 正则标志
 
-如果要进行大小写不敏感匹配，可在模式开头加上 `(?i)`：
+你可以在模式开头使用 `(?...)` 语法添加内联标志来改变正则行为。FlyQL 支持三个在所有后端都通用的标志：
+
+#### `(?i)` — 忽略大小写
+
+让模式匹配时不区分大小写：
 
 ```
 message ~ "(?i)error"
 level ~ "(?i)^(warn|error|fatal)$"
 ```
 
-支持情况如下：
+`(?i)error` 会匹配 "Error"、"ERROR"、"error" 等。
 
-| 后端 | 是否支持 `(?i)` | 说明 |
-|------|-----------------|------|
-| ClickHouse | 支持 | RE2 |
-| PostgreSQL | 支持 | POSIX regex |
-| StarRocks | 支持 | RE2 |
-| Go 内存匹配器 | 支持 | Go `regexp` |
-| Python 内存匹配器 | 支持 | `google-re2` |
-| JavaScript 内存匹配器 | 不支持 | ECMAScript `RegExp` 不支持行内 `(?i)` |
+#### `(?m)` — 多行模式
 
-JavaScript 的内存匹配场景下，可以使用字符类替代：
+使 `^` 和 `$` 匹配每一**行**的开头和结尾，而不是整个字符串的开头和结尾：
 
 ```
-message ~ "[eE][rR][rR][oO][rR]"
+log ~ "(?m)^ERROR"
+```
+
+不使用 `(?m)` 时，`^ERROR` 仅在整个字符串以 "ERROR" 开头时匹配。使用 `(?m)` 后，"INFO first\nERROR second" 也会匹配，因为 "ERROR" 出现在某一行的开头。
+
+#### `(?s)` — Dotall
+
+使 `.` 匹配**任意**字符，包括换行符。默认情况下 `.` 不匹配 `\n`：
+
+```
+log ~ "(?s)start.*end"
+```
+
+不使用 `(?s)` 时，`start.*end` 不会匹配 "start\nend"（因为 `.` 无法跨越换行）。使用 `(?s)` 后则可以匹配。
+
+#### 组合标志
+
+标志可以在一个分组中组合使用：
+
+```
+log ~ "(?im)^ERROR"
+log ~ "(?ims)^START.*END$"
+```
+
+#### 后端支持情况
+
+所有三个标志在每个 FlyQL 后端中都受支持：
+
+| 后端 | `(?i)` | `(?m)` | `(?s)` |
+|------|--------|--------|--------|
+| **ClickHouse** | Yes | Yes | Yes |
+| **PostgreSQL** | Yes | Yes | Yes |
+| **StarRocks** | Yes | Yes | Yes |
+| **Go matcher** | Yes | Yes | Yes |
+| **Python matcher** | Yes | Yes | Yes |
+| **JavaScript matcher** | Yes | Yes | Yes |
+
+可以将忽略大小写与否定结合使用，以不区分大小写地排除特定模式：
+
+```
+message ~ "(?i)error" and message !~ "(?i)warning"
 ```
 
 ## 通配匹配
@@ -97,4 +134,3 @@ host = prod*
 # 组合示例
 host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```
-

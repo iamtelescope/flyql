@@ -87,18 +87,18 @@ active and not archived     # combined with other conditions
 ## 例
 
 ```
-# Einfache UND-Verknüpfung
+# 単純な AND
 status = 200 and service = api
 
-# Einfache ODER-Verknüpfung
+# 単純な OR
 level = error or level = critical
 
-# Gemischt mit Priorität
+# 優先順位を含む混合
 status >= 400 or level = error and service = api
 
-# Explizite Gruppierung
+# 明示的なグループ化
 (status >= 400 or level = error) and service = api
 
-# Komplexe Abfrage mit Negation und Gruppierung
+# 否定とグループ化を含む複雑なクエリ
 (status >= 500 and host = prod*) or (level = error and not service = healthcheck)
 ```

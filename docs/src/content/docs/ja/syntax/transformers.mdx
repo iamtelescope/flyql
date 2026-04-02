@@ -86,9 +86,9 @@ message|len|upper
 ## 例
 
 ```
-status|upper = "ERROR"           # Vergleich in Großbuchstaben
-message|lower|len > 100          # Verkettung: zuerst Kleinschreibung, dann Länge
-host|lower != "localhost"        # Ungleich ohne Beachtung der Groß-/Kleinschreibung
-path|len > 0                     # Prüfung auf nicht leer
-tags|split(",") has "urgent"     # Aufteilen und Zugehörigkeit prüfen
+status|upper = "ERROR"           # 大文字での比較
+message|lower|len > 100          # チェーン: 小文字変換後に文字列長を取得
+host|lower != "localhost"        # 大文字小文字を区別しない不等比較
+path|len > 0                     # 空でないことのチェック
+tags|split(",") has "urgent"     # 分割して所属をチェック
 ```

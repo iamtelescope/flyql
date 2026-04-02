@@ -79,12 +79,12 @@ level = error or status not in [200, 201, 204]
 ## 例
 
 ```
-# HTTP-Erfolgscodes
+# HTTP 成功コード
 status in [200, 201, 204]
 
-# Testumgebungen ausschließen
+# テスト環境を除外
 env not in ['dev', 'test', 'staging']
 
-# Mehrere Listenbedingungen
+# 複数のリスト条件
 method in ['GET', 'POST'] and status not in [401, 403, 404]
 ```

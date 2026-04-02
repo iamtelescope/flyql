@@ -41,7 +41,9 @@ ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，
 | String | `message has 'error'` | `position(message, 'error') > 0` |
 | String（取反） | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
 | Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array（取反） | `tags not has 'web'` | `NOT has(tags, 'web')` |
 | Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map（取反） | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
 | Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
 | JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
 

@@ -1,93 +1,527 @@
 ---
 title: AST 与自定义生成器
-description: 理解 FlyQL 抽象语法树，并为任意目标构建自定义生成器
+description: 理解 FlyQL 抽象语法树，并为任意目标语言或数据结构构建自定义代码生成器
 ---
 
-FlyQL 解析器会生成一棵 **抽象语法树（AST）**。你可以遍历这棵树，把同一条 FlyQL 查询转换成任意目标输出。内置的 SQL 生成器（ClickHouse、PostgreSQL、StarRocks）都是通过遍历这棵 AST 实现的。
+FlyQL 解析器会生成一棵 **抽象语法树（AST）** —— 查询的结构化表示，你可以遍历它来为任意目标生成输出。内置的 SQL 生成器（ClickHouse、PostgreSQL、StarRocks）都是通过遍历同一棵 AST 实现的。你可以构建自己的生成器，用于 Elasticsearch 查询、MongoDB 过滤器、Prometheus 选择器、日志 grep 命令或任何其他目标。
 
 ## AST 节点类型
 
-AST 由三种核心结构组成：**Node**、**Expression** 和 **Key**。
+AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条件）和 **Key**（字段引用）。
 
 ### Node
 
-`Node` 是 AST 的基础节点。它要么是一个叶子节点（保存单个表达式），要么是一个分支节点（通过布尔操作符连接左右子树）。
+`Node` 要么是一个 **分支节点**（通过布尔操作符连接两棵子树），要么是一个 **叶子节点**（保存单个表达式）。它是 AST 的基础构建块。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `boolOperator` | `string` | `"and"` 或 `"or"` |
-| `expression` | `Expression` or `null` | 当前叶子上的表达式 |
-| `left` | `Node` or `null` | 左子树 |
-| `right` | `Node` or `null` | 右子树 |
-| `negated` | `boolean` | 是否被 `not` 包裹 |
+| `boolOperator` | `string` | `"and"` 或 `"or"` —— `left` 和 `right` 的组合方式。叶子节点上为空。 |
+| `expression` | `Expression` or `null` | 条件表达式（叶子节点）。分支节点上为 `null`。 |
+| `left` | `Node` or `null` | 左子树。叶子节点上为 `null`。 |
+| `right` | `Node` or `null` | 右子树。叶子节点上为 `null`。 |
+| `negated` | `boolean` | 如果该节点被 `not` 包裹，则为 `true`。 |
+
+节点**要么**是叶子（`expression` 已设置，`left`/`right` 为 null），**要么**是分支（`left`/`right` 已设置，`expression` 为 null）。不会两者兼有。
 
 ### Expression
 
-`Expression` 表示单个条件，由键、操作符和值构成。
+`Expression` 表示单个条件 —— 一个键、一个操作符和一个值。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `key` | `Key` | 被比较的字段 |
-| `operator` | `string` | 如 `=`, `!=`, `~`, `in`, `has` 等 |
-| `value` | `any` | 标量比较值 |
-| `valueType` | `string` or `null` | 值类型 |
-| `values` | `array` or `null` | `in` / `not in` 的列表值 |
-| `valuesTypes` | `string[]` or `null` | 列表中每个元素的类型 |
+| `key` | `Key` | 被测试的字段（例如 `status`、`user.metadata.role`）。 |
+| `operator` | `string` | 以下之一：`=`、`!=`、`~`、`!~`、`>`、`<`、`>=`、`<=`、`truthy`、`in`、`not in`、`has`、`not has`。 |
+| `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean 或 Null。对于 `in` 和 `not in` 为空。 |
+| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"` 或 `"null"`。`in`/`not in` 时为 `null`。 |
+| `values` | `array` or `null` | `in` 和 `not in` 操作符的值列表。可以是异构的。其他操作符时为 `null`。 |
+| `valuesTypes` | `string[]` or `null` | 与 `values` 平行的逐元素类型数组。每个元素是类型常量之一。未使用 `values` 时为 `null`。 |
 
 ### Key
 
-`Key` 表示被访问的字段路径。
+`Key` 表示被查询的字段路径。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `segments` | `string[]` | 路径片段数组 |
-| `raw` | `string` | 原始键名字符串 |
-| `isSegmented` | `boolean` | 是否为多段路径 |
+| `segments` | `string[]` | 路径片段。简单键为 `["status"]`，嵌套键为 `["user", "metadata", "role"]`。 |
+| `raw` | `string` | 查询中原始书写的键字符串。 |
+| `isSegmented` | `boolean` | 如果键有多个片段（即使用了点号表示法），则为 `true`。 |
 
-## 操作符常量
+### 操作符
 
 所有操作符都可以作为常量导入：
 
 ```javascript
+// JavaScript
 import { Operator, BoolOperator } from 'flyql'
 
-Operator.EQUALS
-Operator.NOT_EQUALS
-Operator.REGEX
-Operator.NOT_REGEX
-Operator.GREATER_THAN
-Operator.LOWER_THAN
-Operator.GREATER_OR_EQUALS_THAN
-Operator.LOWER_OR_EQUALS_THAN
-Operator.TRUTHY
-Operator.IN
-Operator.NOT_IN
-Operator.HAS
-Operator.NOT_HAS
+Operator.EQUALS       // "="
+Operator.NOT_EQUALS   // "!="
+Operator.REGEX        // "~"
+Operator.NOT_REGEX    // "!~"
+Operator.GREATER_THAN // ">"
+Operator.LOWER_THAN   // "<"
+Operator.GREATER_OR_EQUALS_THAN // ">="
+Operator.LOWER_OR_EQUALS_THAN   // "<="
+Operator.TRUTHY       // "truthy"
+Operator.IN           // "in"
+Operator.NOT_IN       // "not in"
+Operator.HAS          // "has"
+Operator.NOT_HAS      // "not has"
 
-BoolOperator.AND
-BoolOperator.OR
+BoolOperator.AND      // "and"
+BoolOperator.OR       // "or"
 ```
+
+```go
+// Go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+flyql.OpEquals          // "="
+flyql.OpNotEquals       // "!="
+flyql.OpRegex           // "~"
+flyql.OpNotRegex        // "!~"
+flyql.OpGreater         // ">"
+flyql.OpLess            // "<"
+flyql.OpGreaterOrEquals // ">="
+flyql.OpLessOrEquals    // "<="
+flyql.OpTruthy          // "truthy"
+flyql.OpIn              // "in"
+flyql.OpNotIn           // "not in"
+flyql.OpHas             // "has"
+flyql.OpNotHas          // "not has"
+
+flyql.BoolOpAnd      // "and"
+flyql.BoolOpOr       // "or"
+```
+
+```python
+# Python
+from flyql.core.constants import Operator, BoolOperator
+
+Operator.EQUALS       # "="
+Operator.NOT_EQUALS   # "!="
+Operator.REGEX        # "~"
+Operator.NOT_REGEX    # "!~"
+Operator.GREATER_THAN # ">"
+Operator.LOWER_THAN   # "<"
+Operator.GREATER_OR_EQUALS_THAN # ">="
+Operator.LOWER_OR_EQUALS_THAN   # "<="
+Operator.TRUTHY       # "truthy"
+Operator.IN           # "in"
+Operator.NOT_IN       # "not in"
+Operator.HAS          # "has"
+Operator.NOT_HAS      # "not has"
+
+BoolOperator.AND      # "and"
+BoolOperator.OR       # "or"
+```
+
+## AST 结构示例
+
+### 简单条件
+
+查询：`status = 200`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+```
+
+### 布尔组合
+
+查询：`status = 200 and method = "GET"`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["status"], raw: "status" }
+      operator: "="
+      value: 200
+  right: Node (leaf)
+    expression:
+      key: { segments: ["method"], raw: "method" }
+      operator: "="
+      value: "GET"
+```
+
+### 否定
+
+查询：`not status = 500`
+
+```
+Node (leaf, negated: true)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 500
+```
+
+### 带括号的嵌套布尔
+
+查询：`env=prod and (status=500 or level = error)`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["env"], raw: "env" }
+      operator: "="
+      value: "prod"
+  right: Node (branch, boolOperator: "or")
+    left: Node (leaf)
+      expression:
+        key: { segments: ["status"], raw: "status" }
+        operator: "="
+        value: 500
+    right: Node (leaf)
+      expression:
+        key: { segments: ["level"], raw: "level" }
+        operator: "="
+        value: "error"
+```
+
+### 列表成员判断
+
+查询：`status in [200, 201, 204]`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    value: ""
+    values: [200, 201, 204]
+    valuesType: "number"
+```
+
+### Truthy 检查
+
+查询：`active`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["active"], raw: "active" }
+    operator: "truthy"
+    value: ""
+```
+
+### 嵌套键
+
+查询：`user.metadata.role = "admin"`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["user", "metadata", "role"], raw: "user.metadata.role", isSegmented: true }
+    operator: "="
+    value: "admin"
+```
+
+## 遍历 AST
+
+AST 是一棵二叉树。处理时使用递归遍历：
+
+1. 如果节点有 `expression`（叶子节点）—— 处理该条件。
+2. 如果节点有 `left`/`right`（分支节点）—— 递归进入子节点，并用 `boolOperator` 组合结果。
+3. 如果 `negated` 为 true —— 用否定包裹结果。
+
+## 构建自定义生成器
+
+以下是一个完整示例，展示如何将 FlyQL AST 转换为 **Elasticsearch Query DSL** 对象。
+
+### JavaScript
+
+```javascript
+import { parse } from 'flyql'
+import { Operator } from 'flyql'
+
+function generateElasticsearch(node) {
+  if (!node) return { match_all: {} }
+
+  let result
+
+  if (node.expression) {
+    // Leaf node — convert the expression
+    result = expressionToES(node.expression)
+  } else {
+    // Branch node — recurse and combine
+    const left = generateElasticsearch(node.left)
+    const right = generateElasticsearch(node.right)
+
+    if (node.boolOperator === 'and') {
+      result = { bool: { must: [left, right] } }
+    } else {
+      result = { bool: { should: [left, right], minimum_should_match: 1 } }
+    }
+  }
+
+  // Handle negation
+  if (node.negated) {
+    result = { bool: { must_not: [result] } }
+  }
+
+  return result
+}
+
+function expressionToES(expr) {
+  const field = expr.key.raw
+
+  switch (expr.operator) {
+    case Operator.EQUALS:
+      return { term: { [field]: expr.value } }
+
+    case Operator.NOT_EQUALS:
+      return { bool: { must_not: [{ term: { [field]: expr.value } }] } }
+
+    case Operator.REGEX:
+      return { regexp: { [field]: String(expr.value) } }
+
+    case Operator.NOT_REGEX:
+      return { bool: { must_not: [{ regexp: { [field]: String(expr.value) } }] } }
+
+    case Operator.GREATER_THAN:
+      return { range: { [field]: { gt: expr.value } } }
+
+    case Operator.GREATER_OR_EQUALS_THAN:
+      return { range: { [field]: { gte: expr.value } } }
+
+    case Operator.LOWER_THAN:
+      return { range: { [field]: { lt: expr.value } } }
+
+    case Operator.LOWER_OR_EQUALS_THAN:
+      return { range: { [field]: { lte: expr.value } } }
+
+    case Operator.IN:
+      return { terms: { [field]: expr.values || [] } }
+
+    case Operator.NOT_IN:
+      return { bool: { must_not: [{ terms: { [field]: expr.values || [] } }] } }
+
+    case Operator.TRUTHY:
+      return { exists: { field } }
+
+    case Operator.HAS:
+      return { wildcard: { [field]: `*${expr.value}*` } }
+
+    case Operator.NOT_HAS:
+      return { bool: { must_not: [{ wildcard: { [field]: `*${expr.value}*` } }] } }
+
+    default:
+      throw new Error(`unsupported operator: ${expr.operator}`)
+  }
+}
+
+// Usage
+const result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+const esQuery = generateElasticsearch(result.root)
+console.log(JSON.stringify(esQuery, null, 2))
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func generateElasticsearch(node *flyql.Node) map[string]any {
+	if node == nil {
+		return map[string]any{"match_all": map[string]any{}}
+	}
+
+	var result map[string]any
+
+	if node.Expression != nil {
+		// Leaf node — convert the expression
+		result = expressionToES(node.Expression)
+	} else {
+		// Branch node — recurse and combine
+		left := generateElasticsearch(node.Left)
+		right := generateElasticsearch(node.Right)
+
+		if node.BoolOperator == flyql.BoolOpAnd {
+			result = map[string]any{
+				"bool": map[string]any{"must": []any{left, right}},
+			}
+		} else {
+			result = map[string]any{
+				"bool": map[string]any{"should": []any{left, right}, "minimum_should_match": 1},
+			}
+		}
+	}
+
+	// Handle negation
+	if node.Negated {
+		result = map[string]any{
+			"bool": map[string]any{"must_not": []any{result}},
+		}
+	}
+
+	return result
+}
+
+func expressionToES(expr *flyql.Expression) map[string]any {
+	field := expr.Key.Raw
+
+	switch expr.Operator {
+	case flyql.OpEquals:
+		return map[string]any{"term": map[string]any{field: expr.Value}}
+	case flyql.OpNotEquals:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"term": map[string]any{field: expr.Value}}}}}
+	case flyql.OpGreater:
+		return map[string]any{"range": map[string]any{field: map[string]any{"gt": expr.Value}}}
+	case flyql.OpLess:
+		return map[string]any{"range": map[string]any{field: map[string]any{"lt": expr.Value}}}
+	case flyql.OpIn:
+		return map[string]any{"terms": map[string]any{field: expr.Values}}
+	case flyql.OpNotIn:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"terms": map[string]any{field: expr.Values}}}}}
+	case flyql.OpTruthy:
+		return map[string]any{"exists": map[string]any{"field": field}}
+	case flyql.OpRegex:
+		return map[string]any{"regexp": map[string]any{field: fmt.Sprintf("%v", expr.Value)}}
+	default:
+		panic(fmt.Sprintf("unsupported operator: %s", expr.Operator))
+	}
+}
+
+func main() {
+	result, err := flyql.Parse(`status = 200 and env in ["prod", "staging"]`)
+	if err != nil {
+		panic(err)
+	}
+
+	esQuery := generateElasticsearch(result.Root)
+	data, _ := json.MarshalIndent(esQuery, "", "  ")
+	fmt.Println(string(data))
+}
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse
+from flyql.core.constants import Operator, BoolOperator
+
+def generate_elasticsearch(node):
+    if node is None:
+        return {"match_all": {}}
+
+    if node.expression is not None:
+        # Leaf node — convert the expression
+        result = expression_to_es(node.expression)
+    else:
+        # Branch node — recurse and combine
+        left = generate_elasticsearch(node.left)
+        right = generate_elasticsearch(node.right)
+
+        if node.bool_operator == BoolOperator.AND.value:
+            result = {"bool": {"must": [left, right]}}
+        else:
+            result = {"bool": {"should": [left, right], "minimum_should_match": 1}}
+
+    # Handle negation
+    if node.negated:
+        result = {"bool": {"must_not": [result]}}
+
+    return result
+
+def expression_to_es(expr):
+    field = expr.key.raw
+    op = expr.operator  # operator is stored as a string value, e.g. "=", "!=", "~"
+
+    if op == Operator.EQUALS.value:
+        return {"term": {field: expr.value}}
+    elif op == Operator.NOT_EQUALS.value:
+        return {"bool": {"must_not": [{"term": {field: expr.value}}]}}
+    elif op == Operator.REGEX.value:
+        return {"regexp": {field: str(expr.value)}}
+    elif op == Operator.NOT_REGEX.value:
+        return {"bool": {"must_not": [{"regexp": {field: str(expr.value)}}]}}
+    elif op == Operator.GREATER_THAN.value:
+        return {"range": {field: {"gt": expr.value}}}
+    elif op == Operator.LOWER_THAN.value:
+        return {"range": {field: {"lt": expr.value}}}
+    elif op == Operator.IN.value:
+        return {"terms": {field: expr.values or []}}
+    elif op == Operator.NOT_IN.value:
+        return {"bool": {"must_not": [{"terms": {field: expr.values or []}}]}}
+    elif op == Operator.TRUTHY.value:
+        return {"exists": {"field": field}}
+    elif op == Operator.HAS.value:
+        return {"wildcard": {field: f"*{expr.value}*"}}
+    elif op == Operator.NOT_HAS.value:
+        return {"bool": {"must_not": [{"wildcard": {field: f"*{expr.value}*"}}]}}
+    else:
+        raise ValueError(f"unsupported operator: {op}")
+
+
+# Usage
+result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+es_query = generate_elasticsearch(result.root)
+print(es_query)
+```
+
+## 内置生成器的工作原理
+
+内置 SQL 生成器遵循与上文相同的递归模式。每个生成器：
+
+1. **接收根 `Node`** 和列模式映射。
+2. **递归遍历树：** 分支节点变为 `(left AND right)` 或 `(left OR right)`，叶子节点变为 SQL 条件。
+3. **处理每种操作符：** 通过 switch `expression.operator` 生成特定方言的 SQL。
+4. **包裹否定节点：** 用 `NOT (...)` 包裹。
+
+自定义生成器与 SQL 生成器的关键区别在于，SQL 生成器还会根据列模式验证表达式（检查类型、允许的值以及列是否存在）。自定义生成器可以跳过这一步或实现自己的验证逻辑。
+
+## 导出类型参考
+
+### JavaScript
+
+```javascript
+import {
+  parse,               // Parse a query string into an AST
+  Parser,              // Parser class (advanced usage)
+  Node,                // AST branch/leaf node
+  Expression,          // Leaf condition
+  Key,                 // Field path
+  Operator,            // Comparison operator constants
+  BoolOperator,        // Boolean operator constants ("and", "or")
+  FlyqlError,          // Base error class
+  ParserError,         // Parse error (extends FlyqlError, includes errno)
+} from 'flyql'
+```
+
+### Go
 
 ```go
 import flyql "github.com/iamtelescope/flyql/golang"
 
-flyql.OpEquals
-flyql.OpNotEquals
-flyql.OpRegex
-flyql.OpNotRegex
+// flyql.Parse(query string) (*ParseResult, error)
+// flyql.Node        — AST node struct
+// flyql.Expression  — leaf condition struct
+// flyql.Key         — field path struct
+// flyql.NewNode(), flyql.NewExpressionNode(), flyql.NewBranchNode()
+//
+// Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
+// Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
 ```
 
-## 为什么 AST 重要
+### Python
 
-理解 AST 后，你可以：
-
-- 构建新的 SQL 或 DSL 生成器
-- 针对特定后端自定义优化
-- 在服务端或内存中实现自定义匹配逻辑
-- 做静态分析、lint 或查询重写
-
-## 下一步
-
-如果你想扩展列值转换能力，请继续阅读[自定义转换器](/zh/advanced/custom-transformers/)。
-
+```python
+from flyql.core.parser import parse, Parser
+from flyql.core.tree import Node
+from flyql.core.expression import Expression
+from flyql.core.key import Key
+from flyql.core.constants import Operator, BoolOperator
+from flyql.core.exceptions import FlyqlError, ParserError
+```

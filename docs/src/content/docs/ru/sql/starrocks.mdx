@@ -16,3 +16,110 @@ StarRocks использует идентификаторы в обратных 
 | `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
 | `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
 | `host = prod*` | `` `host` LIKE 'prod%' `` |
+
+## Логические операторы
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
+| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a = '1'` | `` not (`a` = '1') `` |
+
+## Принадлежность к списку
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `status in [200, 201]` | `` `status` IN (200, 201) `` |
+| `env not in ['dev', 'test']` | `` `env` NOT IN ('dev', 'test') `` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## Вхождение (`has` / `not has`)
+
+Оператор `has` генерирует разный SQL в зависимости от типа столбца:
+
+| Тип столбца | FlyQL | Генерируемый SQL |
+|-------------|-------|------------------|
+| Строка | `message has 'error'` | `` INSTR(`message`, 'error') > 0 `` |
+| Строка (отрицание) | `message not has 'error'` | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| Array | `tags has 'web'` | `` array_contains(`tags`, 'web') `` |
+| Array (отрицание) | `tags not has 'web'` | `` NOT array_contains(`tags`, 'web') `` |
+| Map | `metadata has 'key'` | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map (отрицание) | `metadata not has 'key'` | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| Нативный JSON | `data has 'key'` | `` json_exists(`data`, concat('$.', 'key')) `` |
+
+## JSON-столбцы
+
+StarRocks поддерживает два типа JSON-столбцов с разным генерируемым SQL.
+
+### Нативный тип JSON
+
+Нативные JSON-столбцы используют оператор `->` с JSON-ключами в строковом виде:
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### JSON в виде строки
+
+Столбцы, хранящие JSON как строку, требуют `parse_json()` перед обходом:
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Map-столбцы
+
+Map-столбцы используют скобочную нотацию с прямым сравнением:
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## Array-столбцы
+
+Array-столбцы используют скобочную индексацию с нуля:
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
+| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
+
+### Настройка столбцов
+
+Параметр `jsonString` определяет используемый режим (аналогично ClickHouse):
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```
+
+## Трансформеры
+
+Трансформеры генерируют стандартные вызовы функций StarRocks с именами столбцов в обратных кавычках:
+
+| FlyQL | Генерируемый SQL |
+|-------|------------------|
+| `status\|upper = "ERROR"` | `` UPPER(`status`) = 'ERROR' `` |
+| `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
+| `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
+| `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |
+| `tags\|split(",") has "urgent"` | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

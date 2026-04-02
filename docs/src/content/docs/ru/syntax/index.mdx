@@ -3,13 +3,13 @@ title: Обзор синтаксиса
 description: Базовая структура запросов и синтаксические правила FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+
 Запросы FlyQL состоят из одного или нескольких условий, объединённых булевыми операторами `and`, `or` и `not`. Каждое условие — это либо сравнение, либо проверка на истинность.
 
 ## Базовая структура запроса
 
-```
-status = 200 and active and not archived
-```
+<FlyqlCode code={`status = 200 and active and not archived`} />
 
 - `status = 200` — поле `status` равно `200`
 - `active` — поле `active` имеет истинное значение
@@ -17,25 +17,15 @@ status = 200 and active and not archived
 
 ## Дополнительные примеры
 
-```
-service != api or user = "john doe"
-```
+<FlyqlCode code={`service != api or user = "john doe"`} />
 
-```
-message ~ "error.*" and not debug
-```
+<FlyqlCode code={`message ~ "error.*" and not debug`} />
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
-```
-status in [200, 201] and method not in ['DELETE', 'PUT']
-```
+<FlyqlCode code={`status in [200, 201] and method not in ['DELETE', 'PUT']`} />
 
-```
-message has 'error' and tags not has 'debug'
-```
+<FlyqlCode code={`message has 'error' and tags not has 'debug'`} />
 
 ## Общие правила
 

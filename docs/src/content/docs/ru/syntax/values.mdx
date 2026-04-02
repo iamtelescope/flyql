@@ -3,11 +3,13 @@ title: Значения и типы
 description: Типы значений, литералы и выражения в FlyQL
 ---
 
-FlyQL поддерживает 7 типов значений: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** и **Array**.
+FlyQL поддерживает 7 типов значений: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** и **Array**. Каждое значение в AST содержит явное поле `value_type`.
 
 ## Типы значений
 
 ### Integer
+
+Целые числа в диапазоне int64:
 
 ```
 count = 42
@@ -15,13 +17,21 @@ status != 200
 age >= 18
 ```
 
+AST: `value_type: "integer"`
+
 ### BigInt
+
+Целые числа, превышающие диапазон int64 (Go/Python) или `MAX_SAFE_INTEGER` (JavaScript):
 
 ```
 id = 18446744073709551615
 ```
 
+AST: `value_type: "bigint"`
+
 ### Float
+
+Числа с десятичной точкой:
 
 ```
 price > 9.99
@@ -29,16 +39,31 @@ ratio = 3.14
 temperature<=-0.5
 ```
 
+AST: `value_type: "float"`
+
 ### String
 
+Текстовые значения, в кавычках или без:
+
 ```
-level = error
-user = "John Doe"
-message = 'hello world'
-count = '42'
+level = error              # строка без кавычек
+user = "John Doe"          # двойные кавычки (пробелы)
+message = 'hello world'    # одинарные кавычки (пробелы)
+count = '42'               # число в кавычках — это строка
+```
+
+AST: `value_type: "string"`
+
+Экранирование кавычек обратным слешем:
+
+```
+user = 'John's account'
+message="said \"hello\""
 ```
 
 ### Boolean
+
+Ключевые слова `true` и `false` (в нижнем регистре, с учётом регистра):
 
 ```
 active = true
@@ -46,22 +71,45 @@ debug = false
 active != true
 ```
 
+AST: `value_type: "boolean"`, значение — нативный boolean.
+
+Варианты с заглавной буквы (`True`, `FALSE`) интерпретируются как строки.
+
+**Генерация SQL:**
+| Диалект | `field=true` | `field=false` |
+|---------|-------------|--------------|
+| ClickHouse | `field = true` | `field = false` |
+| PostgreSQL | `field = TRUE` | `field = FALSE` |
+| StarRocks | `field = true` | `field = false` |
+
 ### Null
+
+Ключевое слово `null` (в нижнем регистре, с учётом регистра):
 
 ```
 field = null
 field != null
 ```
 
-С `null` допустимы только `=` и `!=`.
+AST: `value_type: "null"`, значение — нативный null.
+
+Варианты с заглавной буквы (`Null`, `NULL`) интерпретируются как строки.
+
+**Ограничения:** С `null` допустимы только операторы `=` и `!=`. Использование `>`, `<`, `>=`, `<=`, `~` или `!~` с null вызывает ошибку парсинга.
+
+**Генерация SQL:** `field = null` генерирует `field IS NULL`, `field != null` генерирует `field IS NOT NULL` (во всех диалектах).
 
 ### Array
+
+Array используется с операторами `in` и `not in`. Элементы могут быть разных типов (гетерогенные):
 
 ```
 status in [200, 201, 202]
 name in ['alice', 'bob']
 field in [1, "hello", true, null]
 ```
+
+Каждый элемент имеет свой тип в массиве `values_types`.
 
 ## Проверки на истинность и ложность
 
@@ -70,5 +118,69 @@ field in [1, "hello", true, null]
 ```
 active
 message and status
-not archived
 ```
+
+Значение считается **ложным** (falsy), если оно:
+- `null` / `None` / отсутствует
+- Пустая строка `""`
+- Ноль `0`
+- Boolean `false`
+
+Всё остальное считается **истинным** (truthy).
+
+Используйте `not` для проверки на ложность:
+
+```
+not archived
+active and not debug
+```
+
+Проверки на истинность/ложность отличаются от сравнения с null: `not field` срабатывает, когда поле равно null, пусто или равно нулю. `field = null` срабатывает только когда поле конкретно равно null.
+
+## Пробелы
+
+FlyQL допускает свободное использование пробелов. Пробелы вокруг операторов необязательны:
+
+```
+status = 200
+status = 200
+status =200
+```
+
+Все варианты выше эквивалентны.
+
+## Модуль констант типов
+
+Все константы типов доступны из модуля `flyql.types`:
+
+**Python:**
+```python
+from flyql.types import ValueType
+# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+**Go:**
+```go
+import "github.com/iamtelescope/flyql/golang/types"
+// types.Integer, types.BigInt, types.Float,
+// types.String, types.Boolean, types.Null, types.Array
+```
+
+**JavaScript:**
+```javascript
+import { ValueType } from 'flyql/types'
+// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+## Замечания по миграции
+
+При обновлении с предыдущей версии FlyQL:
+
+- **Breaking:** В Go удалены `ValueTypeString`/`ValueTypeNumber`, заменены на 7-значный `types.ValueType`
+- **Breaking:** Поле AST `value_type` изменено с `"string"`/`"number"` на `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
+- **Breaking:** Принудительная проверка однородности типов в списках удалена — гетерогенные массивы теперь допустимы
+- **New:** `true`, `false`, `null` парсятся как типизированные литералы (не строки)
+- **New:** Массив `values_types` в выражениях IN-списков предоставляет тип каждого элемента
+- **New:** Модуль `flyql.types` экспортирует канонические константы типов

@@ -208,7 +208,11 @@ func unescapeQuotes(s string, quoteChar rune) string {
 }
 
 func (p *Parser) newExpression() *Expression {
-	key, _ := ParseKey(p.key)
+	key, err := ParseKey(p.key)
+	if err != nil {
+		p.setErrorState(err.Error(), 1)
+		return nil
+	}
 	valueIsString := p.valueIsString != nil && *p.valueIsString
 	value := p.value
 
@@ -236,16 +240,34 @@ func (p *Parser) newExpression() *Expression {
 	if valueIsString && p.keyValueOperator != OpRegex && p.keyValueOperator != OpNotRegex {
 		value = unescapeQuotes(value, p.valueQuoteChar)
 	}
-	return NewExpression(key, p.keyValueOperator, value, valueIsString)
+	expr, exprErr := NewExpression(key, p.keyValueOperator, value, valueIsString)
+	if exprErr != nil {
+		p.setErrorState(exprErr.Error(), 1)
+		return nil
+	}
+	return expr
 }
 
 func (p *Parser) newTruthyExpression() *Expression {
-	key, _ := ParseKey(p.key)
-	return NewExpression(key, OpTruthy, "", true)
+	key, err := ParseKey(p.key)
+	if err != nil {
+		p.setErrorState(err.Error(), 1)
+		return nil
+	}
+	expr, exprErr := NewExpression(key, OpTruthy, "", true)
+	if exprErr != nil {
+		p.setErrorState(exprErr.Error(), 1)
+		return nil
+	}
+	return expr
 }
 
 func (p *Parser) newInExpression() *Expression {
-	key, _ := ParseKey(p.key)
+	key, err := ParseKey(p.key)
+	if err != nil {
+		p.setErrorState(err.Error(), 1)
+		return nil
+	}
 	operator := OpIn
 	if p.isNotIn {
 		operator = OpNotIn

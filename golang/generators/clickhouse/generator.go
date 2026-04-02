@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -112,8 +113,14 @@ func EscapeParam(item any) (string, error) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v), nil
 	case float32:
+		if math.IsInf(float64(v), 0) || math.IsNaN(float64(v)) {
+			return "", fmt.Errorf("unsupported numeric value for EscapeParam: %v", v)
+		}
 		return strconv.FormatFloat(float64(v), 'f', -1, 32), nil
 	case float64:
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			return "", fmt.Errorf("unsupported numeric value for EscapeParam: %v", v)
+		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
 	default:
 		return "", fmt.Errorf("unsupported type for EscapeParam: %T", v)
@@ -405,11 +412,6 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			return fmt.Sprintf("NOT has(%s, %s)", colRef, value), nil
 		}
 		return fmt.Sprintf("has(%s, %s)", colRef, value), nil
-	} else if column.JSONString {
-		if isNotHas {
-			return fmt.Sprintf("NOT JSONHas(%s, %s)", colRef, value), nil
-		}
-		return fmt.Sprintf("JSONHas(%s, %s)", colRef, value), nil
 	} else if column.IsMap {
 		if isNotHas {
 			return fmt.Sprintf("NOT mapContains(%s, %s)", colRef, value), nil
@@ -420,6 +422,11 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			return fmt.Sprintf("NOT JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
 		}
 		return fmt.Sprintf("JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
+	} else if column.JSONString {
+		if isNotHas {
+			return fmt.Sprintf("NOT JSONHas(%s, %s)", colRef, value), nil
+		}
+		return fmt.Sprintf("JSONHas(%s, %s)", colRef, value), nil
 	} else if column.NormalizedType == NormalizedTypeString {
 		if isNotHas {
 			return fmt.Sprintf("(%s IS NULL OR position(%s, %s) = 0)", colRef, colRef, value), nil
@@ -841,6 +848,25 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 	}
 }
 
+func findSingleLeafExpression(node *flyql.Node) *flyql.Expression {
+	if node == nil {
+		return nil
+	}
+	if node.Negated {
+		return nil
+	}
+	if node.Expression != nil {
+		return node.Expression
+	}
+	if node.Left != nil && node.Right == nil {
+		return findSingleLeafExpression(node.Left)
+	}
+	if node.Right != nil && node.Left == nil {
+		return findSingleLeafExpression(node.Right)
+	}
+	return nil
+}
+
 func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	if root == nil {
 		return "", nil
@@ -864,6 +890,14 @@ func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transforme
 				return "", err
 			}
 			text = sql
+		}
+	} else if isNegated && root.Expression == nil && !(root.Left != nil && root.Right != nil) {
+		child := root.Left
+		if child == nil {
+			child = root.Right
+		}
+		if leafExpr := findSingleLeafExpression(child); leafExpr != nil && leafExpr.Operator == flyql.OpTruthy {
+			return falsyExpressionToSQL(leafExpr, columns)
 		}
 	}
 

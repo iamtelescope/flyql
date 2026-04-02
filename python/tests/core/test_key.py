@@ -25,7 +25,7 @@ class TestKey:
         key = Key(["key", "some", "path"])
         assert key.segments == ["key", "some", "path"]
         assert key.is_segmented == True
-        assert key.raw == "key:some:path"
+        assert key.raw == "key.some.path"
 
     def test_init_with_raw(self):
         key = Key(["key", "some:path"], "key:'some:path'")

@@ -1,3 +1,4 @@
+import math
 import re
 from dataclasses import dataclass, field
 from typing import List, Mapping, Optional, Tuple, Any
@@ -47,7 +48,8 @@ OPERATOR_TO_STARROCKS_OPERATOR = {
 def get_identifier(column: Column) -> str:
     if column.raw_identifier:
         return column.raw_identifier
-    return f"`{column.name}`"
+    escaped = column.name.replace("`", "``")
+    return f"`{escaped}`"
 
 
 LIKE_PATTERN_CHAR = "*"
@@ -93,6 +95,8 @@ def escape_param(item: Any) -> str:
     elif isinstance(item, bool):
         return str(item).lower()
     elif isinstance(item, float):
+        if not math.isfinite(item):
+            raise FlyqlError(f"unsupported numeric value for escape_param: {item}")
         return str(int(item)) if item == int(item) else str(item)
     elif isinstance(item, int):
         return str(item)
@@ -191,8 +195,8 @@ def truthy_expression_to_sql(
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             return (
-                f"{col_id}.`{struct_column}` IS NOT NULL AND "
-                f"{col_id}.`{struct_column}` != ''"
+                f"({col_id}.`{struct_column}` IS NOT NULL AND "
+                f"{col_id}.`{struct_column}` != '')"
             )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
@@ -261,8 +265,8 @@ def falsy_expression_to_sql(
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
-                f"(element_at({col_id}, '{escaped_map_key}') IS NULL OR "
-                f"{col_id}['{escaped_map_key}'] = '')"
+                f"(element_at({col_id}, {escaped_map_key}) IS NULL OR "
+                f"{col_id}[{escaped_map_key}] = '')"
             )
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -280,8 +284,8 @@ def falsy_expression_to_sql(
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             return (
-                f"{col_id}.`{struct_column}` IS NULL OR "
-                f"{col_id}.`{struct_column}` = ''"
+                f"({col_id}.`{struct_column}` IS NULL OR "
+                f"{col_id}.`{struct_column}` = '')"
             )
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
@@ -352,9 +356,9 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             return f"{col_id}->{json_path_str} {sql_op} ({values_sql})"
         elif column.is_map:
-            map_path = expression.key.segments[1:]
-            map_key = "']['".join(map_path)
-            return f"{col_id}['{map_key}'] {sql_op} ({values_sql})"
+            map_path = [escape_param(part) for part in expression.key.segments[1:]]
+            map_key = "][".join(map_path)
+            return f"{col_id}[{map_key}] {sql_op} ({values_sql})"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -633,6 +637,20 @@ def expression_to_sql(
     return text
 
 
+def _find_single_leaf_expression(node: Optional[Node]) -> Optional[Expression]:
+    if node is None:
+        return None
+    if getattr(node, "negated", False):
+        return None
+    if node.expression is not None:
+        return node.expression
+    if node.left is not None and node.right is None:
+        return _find_single_leaf_expression(node.left)
+    if node.right is not None and node.left is None:
+        return _find_single_leaf_expression(node.right)
+    return None
+
+
 def to_sql(
     root: Node,
     columns: Mapping[str, Column],
@@ -655,6 +673,15 @@ def to_sql(
             text = expression_to_sql(
                 expression=root.expression, columns=columns, registry=registry
             )
+    elif (
+        is_negated
+        and root.expression is None
+        and not (root.left is not None and root.right is not None)
+    ):
+        child = root.left if root.left is not None else root.right
+        leaf_expr = _find_single_leaf_expression(child)
+        if leaf_expr is not None and leaf_expr.operator == Operator.TRUTHY.value:
+            return falsy_expression_to_sql(expression=leaf_expr, columns=columns)
 
     if root.left is not None:
         left = to_sql(root=root.left, columns=columns, registry=registry)

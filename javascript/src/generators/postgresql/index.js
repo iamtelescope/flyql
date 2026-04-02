@@ -500,13 +500,13 @@ function falsyExpressionToSQL(expr, columns) {
         }
     }
 
-    if (column.jsonString) {
-        return `(${identifier} IS NULL OR ${identifier} = '' OR CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) = 0 WHEN 'object' THEN ${identifier}::jsonb = '{}'::jsonb ELSE true END)`
-    }
-
     if (expr.key.transformers && expr.key.transformers.length) {
         const colRef = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
         return `(${colRef} IS NULL OR ${colRef} = '')`
+    }
+
+    if (column.jsonString) {
+        return `(${identifier} IS NULL OR ${identifier} = '' OR CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) = 0 WHEN 'object' THEN ${identifier}::jsonb = '{}'::jsonb ELSE true END)`
     }
 
     switch (column.normalizedType) {

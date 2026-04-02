@@ -71,25 +71,35 @@ func isTruthy(value any) bool {
 	return !isFalsy(value)
 }
 
-func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
+func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) (bool, error) {
 	if node == nil {
-		return false
+		return false, nil
 	}
 
 	var result bool
 
 	if node.Expression != nil {
-		result = e.evalExpression(node.Expression, record)
+		r, err := e.evalExpression(node.Expression, record)
+		if err != nil {
+			return false, err
+		}
+		result = r
 	} else {
 		var left, right *bool
 
 		if node.Left != nil {
-			r := e.Evaluate(node.Left, record)
+			r, err := e.Evaluate(node.Left, record)
+			if err != nil {
+				return false, err
+			}
 			left = &r
 		}
 
 		if node.Right != nil {
-			r := e.Evaluate(node.Right, record)
+			r, err := e.Evaluate(node.Right, record)
+			if err != nil {
+				return false, err
+			}
 			right = &r
 		}
 
@@ -100,7 +110,7 @@ func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
 			case flyql.BoolOpOr:
 				result = *left || *right
 			default:
-				result = false
+				return false, fmt.Errorf("unknown boolean operator: %s", node.BoolOperator)
 			}
 		} else if left != nil {
 			result = *left
@@ -115,10 +125,10 @@ func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) bool {
 		result = !result
 	}
 
-	return result
+	return result, nil
 }
 
-func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool {
+func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool, error) {
 	key := NewKey(expr.Key.Raw)
 	value := record.GetValue(key)
 
@@ -126,7 +136,7 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 		for _, t := range expr.Key.Transformers {
 			transformer := e.registry.Get(t.Name)
 			if transformer == nil {
-				return false
+				return false, fmt.Errorf("unknown transformer: %s", t.Name)
 			}
 			value = transformer.Apply(value, t.Arguments)
 		}
@@ -134,50 +144,50 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) bool 
 
 	switch expr.Operator {
 	case flyql.OpTruthy:
-		return isTruthy(value)
+		return isTruthy(value), nil
 	case flyql.OpEquals:
-		return compareEqual(value, expr.Value)
+		return compareEqual(value, expr.Value), nil
 	case flyql.OpNotEquals:
-		return !compareEqual(value, expr.Value)
+		return !compareEqual(value, expr.Value), nil
 	case flyql.OpRegex:
 		regex, err := e.getRegex(toString(expr.Value))
 		if err != nil {
-			return false
+			return false, err
 		}
-		return regex.MatchString(toString(value))
+		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotRegex:
 		regex, err := e.getRegex(toString(expr.Value))
 		if err != nil {
-			return true
+			return false, err
 		}
-		return !regex.MatchString(toString(value))
+		return !regex.MatchString(toString(value)), nil
 	case flyql.OpGreater:
-		return compareGreater(value, expr.Value)
+		return compareGreater(value, expr.Value), nil
 	case flyql.OpLess:
-		return compareLess(value, expr.Value)
+		return compareLess(value, expr.Value), nil
 	case flyql.OpGreaterOrEquals:
-		return compareGreaterOrEqual(value, expr.Value)
+		return compareGreaterOrEqual(value, expr.Value), nil
 	case flyql.OpLessOrEquals:
-		return compareLessOrEqual(value, expr.Value)
+		return compareLessOrEqual(value, expr.Value), nil
 	case flyql.OpIn:
 		if len(expr.Values) == 0 {
-			return false
+			return false, nil
 		}
-		return valueInList(value, expr.Values)
+		return valueInList(value, expr.Values), nil
 	case flyql.OpNotIn:
 		if len(expr.Values) == 0 {
-			return true
+			return true, nil
 		}
-		return !valueInList(value, expr.Values)
+		return !valueInList(value, expr.Values), nil
 	case flyql.OpHas:
-		return evalHas(value, expr.Value)
+		return evalHas(value, expr.Value), nil
 	case flyql.OpNotHas:
 		if value == nil {
-			return true
+			return true, nil
 		}
-		return !evalHas(value, expr.Value)
+		return !evalHas(value, expr.Value), nil
 	default:
-		return false
+		return false, fmt.Errorf("unknown expression operator: %s", expr.Operator)
 	}
 }
 
@@ -313,6 +323,11 @@ func compareGreater(a, b any) bool {
 	if aOk && bOk {
 		return aFloat > bFloat
 	}
+	if aStr, ok := a.(string); ok {
+		if bStr, ok := b.(string); ok {
+			return aStr > bStr
+		}
+	}
 	return false
 }
 
@@ -324,6 +339,11 @@ func compareLess(a, b any) bool {
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
 		return aFloat < bFloat
+	}
+	if aStr, ok := a.(string); ok {
+		if bStr, ok := b.(string); ok {
+			return aStr < bStr
+		}
 	}
 	return false
 }
@@ -337,6 +357,11 @@ func compareGreaterOrEqual(a, b any) bool {
 	if aOk && bOk {
 		return aFloat >= bFloat
 	}
+	if aStr, ok := a.(string); ok {
+		if bStr, ok := b.(string); ok {
+			return aStr >= bStr
+		}
+	}
 	return false
 }
 
@@ -348,6 +373,11 @@ func compareLessOrEqual(a, b any) bool {
 	bFloat, bOk := toFloat(b)
 	if aOk && bOk {
 		return aFloat <= bFloat
+	}
+	if aStr, ok := a.(string); ok {
+		if bStr, ok := b.(string); ok {
+			return aStr <= bStr
+		}
 	}
 	return false
 }

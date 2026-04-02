@@ -15,6 +15,13 @@ export function applyTransformerSQL(columnRef, transformers, dialect, registry =
     return result
 }
 
+export function getTransformerOutputType(transformers, registry = null) {
+    if (!transformers || transformers.length === 0) return null
+    if (!registry) registry = defaultRegistry()
+    const last = registry.get(transformers[transformers.length - 1].name)
+    return last ? last.outputType : null
+}
+
 export function validateTransformerChain(transformers, registry = null, baseType = 'string') {
     if (!transformers || transformers.length === 0) return
     if (!registry) registry = defaultRegistry()

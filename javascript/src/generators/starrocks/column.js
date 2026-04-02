@@ -74,7 +74,7 @@ export function normalizeStarRocksType(srType) {
 }
 
 export class Column {
-    constructor(name, jsonString, type, values) {
+    constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
         this.name = name
         this.jsonString = jsonString
         this.type = type
@@ -84,7 +84,8 @@ export class Column {
         this.isArray = this.normalizedType === NormalizedTypeArray
         this.isStruct = this.normalizedType === NormalizedTypeStruct
         this.isJSON = this.normalizedType === NormalizedTypeJSON
-        this.rawIdentifier = ''
+        this.displayName = displayName
+        this.rawIdentifier = rawIdentifier
     }
 
     withRawIdentifier(identifier) {

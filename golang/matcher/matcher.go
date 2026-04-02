@@ -18,5 +18,5 @@ func Match(query string, data map[string]any, registry ...*transformers.Transfor
 	evaluator := NewEvaluatorWithRegistry(reg)
 	record := NewRecord(data)
 
-	return evaluator.Evaluate(result.Root, record), nil
+	return evaluator.Evaluate(result.Root, record)
 }

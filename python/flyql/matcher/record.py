@@ -19,17 +19,25 @@ class Record:
             return False
         if value.startswith("{") and value.endswith("}"):
             return True
-        if value.startswith("[") and value.endswith("["):
+        if value.startswith("[") and value.endswith("]"):
             return True
         return False
 
     def extract_path(
         self,
-        value: Dict[str, Any],
+        value: Any,
         path: Tuple[str, ...],
     ) -> Any:
         for key in path:
-            if isinstance(value, dict) and key in value:
+            if isinstance(value, list):
+                try:
+                    idx = int(key)
+                except (ValueError, TypeError):
+                    return None
+                if idx < 0 or idx >= len(value):
+                    return None
+                value = value[idx]
+            elif isinstance(value, dict) and key in value:
                 value = value[key]
             else:
                 return None
@@ -39,7 +47,9 @@ class Record:
         self,
         key: Key,
     ) -> Any:
-        value = self.data[key.value]
+        value = self.data.get(key.value)
+        if value is None:
+            return None
         if not key.path:
             return value
         else:
@@ -48,6 +58,6 @@ class Record:
                     value = json.loads(value)
                 except Exception:  # pylint: disable=broad-exception-caught
                     return None
-            elif not isinstance(value, dict):
+            elif not isinstance(value, (dict, list)):
                 return None
             return self.extract_path(value, tuple(key.path))

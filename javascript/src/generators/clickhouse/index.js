@@ -470,12 +470,12 @@ function hasExpressionToSQL(expr, columns) {
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
             }
-            const pathParts = jsonPath.map((part) => '`' + part + '`')
-            const jsonPathStr = pathParts.join('.')
+            const jsonPathStr = jsonPath.map((p) => p).join('.')
+            const leafExpr = `JSON_VALUE(${colId}, '$.${jsonPathStr}')`
             if (isNotHas) {
-                return `position(${colId}.${jsonPathStr}, ${value}) = 0`
+                return `position(${leafExpr}, ${value}) = 0`
             }
-            return `position(${colId}.${jsonPathStr}, ${value}) > 0`
+            return `position(${leafExpr}, ${value}) > 0`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)

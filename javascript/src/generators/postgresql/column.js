@@ -6,7 +6,6 @@ const NormalizedTypeDate = 'date'
 const NormalizedTypeArray = 'array'
 const NormalizedTypeJSON = 'json'
 const NormalizedTypeHstore = 'hstore'
-const NormalizedTypeSpecial = 'special'
 
 export {
     NormalizedTypeString,
@@ -17,7 +16,6 @@ export {
     NormalizedTypeArray,
     NormalizedTypeJSON,
     NormalizedTypeHstore,
-    NormalizedTypeSpecial,
 }
 
 const typeRegexes = {
@@ -120,7 +118,7 @@ export function normalizePostgreSQLType(pgType) {
 }
 
 export class Column {
-    constructor(name, jsonString, type, values) {
+    constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
         this.name = name
         this.jsonString = !!jsonString
         this.type = type
@@ -129,7 +127,8 @@ export class Column {
         this.isArray = this.normalizedType === NormalizedTypeArray
         this.isJSONB = this.normalizedType === NormalizedTypeJSON
         this.isHstore = this.normalizedType === NormalizedTypeHstore
-        this.rawIdentifier = ''
+        this.displayName = displayName
+        this.rawIdentifier = rawIdentifier
     }
 
     withRawIdentifier(identifier) {

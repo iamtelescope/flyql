@@ -59,7 +59,10 @@ func TestMatcherEvaluatesCorrectly(t *testing.T) {
 
 			evaluator := NewEvaluator()
 			record := NewRecord(tc.data)
-			got := evaluator.Evaluate(result.Root, record)
+			got, err := evaluator.Evaluate(result.Root, record)
+			if err != nil {
+				t.Fatalf("evaluate error: %v", err)
+			}
 
 			if got != tc.expected {
 				t.Errorf("query %q with data %v: got %v, want %v", tc.query, tc.data, got, tc.expected)
@@ -79,7 +82,10 @@ func TestMatcherWithComplexQuery(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -97,7 +103,10 @@ func TestMatcherWithOrOperator(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -115,7 +124,10 @@ func TestMatcherWithNestedJSON(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -133,7 +145,10 @@ func TestMatcherWithJSONString(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -151,7 +166,10 @@ func TestMatcherWithRegex(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -169,7 +187,10 @@ func TestMatcherWithComparisonOperators(t *testing.T) {
 
 	evaluator := NewEvaluator()
 	record := NewRecord(data)
-	got := evaluator.Evaluate(result.Root, record)
+	got, evalErr := evaluator.Evaluate(result.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
 
 	if !got {
 		t.Errorf("expected true, got false")
@@ -227,7 +248,10 @@ func TestMatcherFromDataFiles(t *testing.T) {
 
 					evaluator := NewEvaluator()
 					record := NewRecord(tc.Data)
-					got := evaluator.Evaluate(result.Root, record)
+					got, evalErr := evaluator.Evaluate(result.Root, record)
+					if evalErr != nil {
+						t.Fatalf("evaluate error: %v", evalErr)
+					}
 
 					if got != tc.Expected {
 						t.Errorf("query %q with data %v: got %v, want %v", tc.Query, tc.Data, got, tc.Expected)

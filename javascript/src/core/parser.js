@@ -254,7 +254,7 @@ export class Parser {
     }
 
     newTruthyExpression() {
-        return new Expression(parseKey(this.key), Operator.TRUTHY, null, null)
+        return new Expression(parseKey(this.key), Operator.TRUTHY, '', true)
     }
 
     newInExpression() {
@@ -415,7 +415,7 @@ export class Parser {
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isGroupClose()) {
             if (!this.nodesStack.length) {
-                this.setErrorState('unmatched parenthesis', 3)
+                this.setErrorState('unmatched parenthesis', 9)
                 return
             }
             this.extendTreeWithExpression(this.newTruthyExpression())
@@ -464,7 +464,7 @@ export class Parser {
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isGroupClose()) {
             if (!this.nodesStack.length) {
-                this.setErrorState('unmatched parenthesis', 32)
+                this.setErrorState('unmatched parenthesis', 9)
                 return
             }
             this.extendTreeWithExpression(this.newTruthyExpression())

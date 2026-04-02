@@ -2,6 +2,7 @@ package starrocks
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,7 +16,8 @@ func getIdentifier(column *Column) string {
 	if column.RawIdentifier != "" {
 		return column.RawIdentifier
 	}
-	return fmt.Sprintf("`%s`", column.Name)
+	escaped := strings.ReplaceAll(column.Name, "`", "``")
+	return fmt.Sprintf("`%s`", escaped)
 }
 
 func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
@@ -147,8 +149,14 @@ func EscapeParam(item any) (string, error) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", v), nil
 	case float32:
+		if math.IsInf(float64(v), 0) || math.IsNaN(float64(v)) {
+			return "", fmt.Errorf("unsupported numeric value for EscapeParam: %v", v)
+		}
 		return strconv.FormatFloat(float64(v), 'f', -1, 32), nil
 	case float64:
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			return "", fmt.Errorf("unsupported numeric value for EscapeParam: %v", v)
+		}
 		return strconv.FormatFloat(v, 'f', -1, 64), nil
 	default:
 		return "", fmt.Errorf("unsupported type for EscapeParam: %T", v)
@@ -502,8 +510,16 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 			return fmt.Sprintf("%s->%s %s (%s)", getIdentifier(column), jsonPathStr, sqlOp, valuesSQL), nil
 		} else if column.IsMap {
 			mapPath := expr.Key.Segments[1:]
-			mapKey := strings.Join(mapPath, "']['")
-			return fmt.Sprintf("%s['%s'] %s (%s)", getIdentifier(column), mapKey, sqlOp, valuesSQL), nil
+			escapedParts := make([]string, len(mapPath))
+			for i, part := range mapPath {
+				escaped, err := EscapeParam(part)
+				if err != nil {
+					return "", err
+				}
+				escapedParts[i] = escaped
+			}
+			mapKey := strings.Join(escapedParts, "][")
+			return fmt.Sprintf("%s[%s] %s (%s)", getIdentifier(column), mapKey, sqlOp, valuesSQL), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -706,7 +722,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 		} else if column.IsStruct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
-			return fmt.Sprintf("%s.`%s` IS NOT NULL AND %s.`%s` != ''",
+			return fmt.Sprintf("(%s.`%s` IS NOT NULL AND %s.`%s` != '')",
 				getIdentifier(column), structColumn, getIdentifier(column), structColumn), nil
 		} else if column.JSONString {
 			jsonPath := expr.Key.Segments[1:]
@@ -784,7 +800,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("(element_at(%s, '%s') IS NULL OR %s['%s'] = '')",
+			return fmt.Sprintf("(element_at(%s, %s) IS NULL OR %s[%s] = '')",
 				getIdentifier(column), escapedMapKey, getIdentifier(column), escapedMapKey), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
@@ -797,7 +813,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 		} else if column.IsStruct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
-			return fmt.Sprintf("%s.`%s` IS NULL OR %s.`%s` = ''",
+			return fmt.Sprintf("(%s.`%s` IS NULL OR %s.`%s` = '')",
 				getIdentifier(column), structColumn, getIdentifier(column), structColumn), nil
 		} else if column.JSONString {
 			jsonPath := expr.Key.Segments[1:]
@@ -873,6 +889,25 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 	return expressionToSQLSimple(expr, columns, reg)
 }
 
+func findSingleLeafExpression(node *flyql.Node) *flyql.Expression {
+	if node == nil {
+		return nil
+	}
+	if node.Negated {
+		return nil
+	}
+	if node.Expression != nil {
+		return node.Expression
+	}
+	if node.Left != nil && node.Right == nil {
+		return findSingleLeafExpression(node.Left)
+	}
+	if node.Right != nil && node.Left == nil {
+		return findSingleLeafExpression(node.Right)
+	}
+	return nil
+}
+
 func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	if root == nil {
 		return "", nil
@@ -895,6 +930,14 @@ func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*trans
 				return "", err
 			}
 			text = sql
+		}
+	} else if isNegated && root.Expression == nil && !(root.Left != nil && root.Right != nil) {
+		child := root.Left
+		if child == nil {
+			child = root.Right
+		}
+		if leafExpr := findSingleLeafExpression(child); leafExpr != nil && leafExpr.Operator == flyql.OpTruthy {
+			return falsyExpressionToSQL(leafExpr, columns)
 		}
 	}
 

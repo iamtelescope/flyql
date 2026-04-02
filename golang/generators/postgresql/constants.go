@@ -1,15 +1,14 @@
 package postgresql
 
 const (
-	NormalizedTypeString  = "string"
-	NormalizedTypeInt     = "int"
-	NormalizedTypeFloat   = "float"
-	NormalizedTypeBool    = "bool"
-	NormalizedTypeDate    = "date"
-	NormalizedTypeArray   = "array"
-	NormalizedTypeJSON    = "json"
-	NormalizedTypeHstore  = "hstore"
-	NormalizedTypeSpecial = "special"
+	NormalizedTypeString = "string"
+	NormalizedTypeInt    = "int"
+	NormalizedTypeFloat  = "float"
+	NormalizedTypeBool   = "bool"
+	NormalizedTypeDate   = "date"
+	NormalizedTypeArray  = "array"
+	NormalizedTypeJSON   = "json"
+	NormalizedTypeHstore = "hstore"
 )
 
 var normalizedTypeToPostgreSQLTypes = map[string]map[string]bool{

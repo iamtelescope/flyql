@@ -139,10 +139,14 @@ class Evaluator:
         if expression.operator == Operator.EQUALS.value:
             if isinstance(expression.value, bool) or expression.value is None:
                 return value is expression.value
+            if isinstance(value, bool) != isinstance(expression.value, bool):
+                return False
             return bool(value == expression.value)
         elif expression.operator == Operator.NOT_EQUALS.value:
             if isinstance(expression.value, bool) or expression.value is None:
                 return value is not expression.value
+            if isinstance(value, bool) != isinstance(expression.value, bool):
+                return True
             return bool(value != expression.value)
         elif expression.operator == Operator.REGEX.value:
             if regex is None:
@@ -153,13 +157,25 @@ class Evaluator:
                 return True
             return not bool(regex.search(str(value)))
         elif expression.operator == Operator.GREATER_THAN.value:
-            return bool(value > expression.value)
+            try:
+                return bool(value > expression.value)
+            except TypeError:
+                return False
         elif expression.operator == Operator.LOWER_THAN.value:
-            return bool(value < expression.value)
+            try:
+                return bool(value < expression.value)
+            except TypeError:
+                return False
         elif expression.operator == Operator.GREATER_OR_EQUALS_THAN.value:
-            return bool(value >= expression.value)
+            try:
+                return bool(value >= expression.value)
+            except TypeError:
+                return False
         elif expression.operator == Operator.LOWER_OR_EQUALS_THAN.value:
-            return bool(value <= expression.value)
+            try:
+                return bool(value <= expression.value)
+            except TypeError:
+                return False
         elif expression.operator == Operator.IN.value:
             if not expression.values:
                 return False
@@ -199,5 +215,5 @@ class Evaluator:
         if isinstance(value, dict):
             return str(expr_value) in value
         if isinstance(value, (list, tuple)):
-            return expr_value in value
+            return any(self._strict_equal(item, expr_value) for item in value)
         return False

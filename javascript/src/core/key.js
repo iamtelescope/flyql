@@ -1,11 +1,12 @@
 import { FlyqlError } from './exceptions.js'
 
 export class Key {
-    constructor(segments, raw = null, transformers = []) {
+    constructor(segments, raw = null, transformers = [], quotedSegments = null) {
         this.segments = segments
         this.isSegmented = segments.length > 1
         this.raw = raw !== null ? raw : segments.join('.')
         this.transformers = transformers
+        this.quotedSegments = quotedSegments !== null ? quotedSegments : segments.map(() => false)
     }
 }
 
@@ -14,7 +15,9 @@ export class KeyParser {
         this.input = ''
         this.pos = 0
         this.segments = []
+        this.quotedSegments = []
         this.currentSegment = ''
+        this.currentSegmentQuoted = false
     }
 
     peek(offset = 0) {
@@ -58,6 +61,7 @@ export class KeyParser {
 
     parseQuotedSegment(quoteChar) {
         this.advance() // Skip opening quote
+        this.currentSegmentQuoted = true
 
         while (this.peek() !== null) {
             const char = this.peek()
@@ -103,7 +107,9 @@ export class KeyParser {
         this.input = keyString
         this.pos = 0
         this.segments = []
+        this.quotedSegments = []
         this.currentSegment = ''
+        this.currentSegmentQuoted = false
 
         if (!this.input) {
             return new Key([], this.input)
@@ -113,18 +119,21 @@ export class KeyParser {
             this.parseNormalSegment()
 
             this.segments.push(this.currentSegment)
+            this.quotedSegments.push(this.currentSegmentQuoted)
             this.currentSegment = ''
+            this.currentSegmentQuoted = false
 
             if (this.peek() === '.') {
                 this.advance() // Skip dot
                 // If we're at the end after a dot, add empty segment
                 if (this.pos >= this.input.length) {
                     this.segments.push('')
+                    this.quotedSegments.push(false)
                 }
             }
         }
 
-        return new Key(this.segments, this.input)
+        return new Key(this.segments, this.input, [], this.quotedSegments)
     }
 }
 

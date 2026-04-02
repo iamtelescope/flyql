@@ -1,3 +1,4 @@
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Any, List, Mapping, Optional, Tuple
@@ -88,6 +89,8 @@ def escape_param(item: Any) -> str:
     elif isinstance(item, bool):
         return "true" if item else "false"
     elif isinstance(item, float):
+        if not math.isfinite(item):
+            raise FlyqlError(f"unsupported numeric value for escape_param: {item}")
         return str(int(item)) if item == int(item) else str(item)
     elif isinstance(item, int):
         return str(item)
@@ -632,6 +635,20 @@ def expression_to_sql(
     return expression_to_sql_simple(expression, columns, registry=registry)
 
 
+def _find_single_leaf_expression(node: Optional[Node]) -> Optional[Expression]:
+    if node is None:
+        return None
+    if getattr(node, "negated", False):
+        return None
+    if node.expression is not None:
+        return node.expression
+    if node.left is not None and node.right is None:
+        return _find_single_leaf_expression(node.left)
+    if node.right is not None and node.left is None:
+        return _find_single_leaf_expression(node.right)
+    return None
+
+
 def to_sql(
     root: Node,
     columns: Mapping[str, Column],
@@ -651,6 +668,15 @@ def to_sql(
             text = expression_to_sql(
                 expression=root.expression, columns=columns, registry=registry
             )
+    elif (
+        is_negated
+        and root.expression is None
+        and not (root.left is not None and root.right is not None)
+    ):
+        child = root.left if root.left is not None else root.right
+        leaf_expr = _find_single_leaf_expression(child)
+        if leaf_expr is not None and leaf_expr.operator == Operator.TRUTHY.value:
+            return falsy_expression_to_sql(expression=leaf_expr, columns=columns)
 
     if root.left is not None:
         left = to_sql(root=root.left, columns=columns, registry=registry)

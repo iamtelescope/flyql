@@ -12,7 +12,7 @@ class Key:
     ):
         self.segments = segments
         self.is_segmented = len(segments) > 1
-        self.raw = raw if raw is not None else ":".join(segments)
+        self.raw = raw if raw is not None else ".".join(segments)
         self.quoted_segments = (
             quoted_segments if quoted_segments is not None else [False] * len(segments)
         )
@@ -178,12 +178,12 @@ def _parse_transformer_arguments(args_str: str) -> List[Any]:
                 val += args_str[i]
                 i += 1
             try:
-                if "." in val:
-                    args.append(float(val))
-                else:
-                    args.append(int(val))
+                args.append(int(val))
             except ValueError:
-                args.append(val)
+                try:
+                    args.append(float(val))
+                except ValueError:
+                    args.append(val)
         while i < len(args_str) and args_str[i] in (" ", ","):
             i += 1
     return args

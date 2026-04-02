@@ -65,7 +65,11 @@ func TestEvaluatorWithCustomRegistry(t *testing.T) {
 	}
 
 	record := NewRecord(map[string]any{"src_ip": "193.0.0.1"})
-	if !evaluator.Evaluate(parsed.Root, record) {
+	result, evalErr := evaluator.Evaluate(parsed.Root, record)
+	if evalErr != nil {
+		t.Fatalf("evaluate error: %v", evalErr)
+	}
+	if !result {
 		t.Error("expected match for 193.0.0.1 > 192")
 	}
 }
@@ -78,9 +82,9 @@ func TestDefaultRegistryRejectsUnknownTransformer(t *testing.T) {
 	}
 
 	record := NewRecord(map[string]any{"src_ip": "10.0.0.1"})
-	// With default registry, firstoctet is unknown — evalExpression returns false
-	result := evaluator.Evaluate(parsed.Root, record)
-	if result {
-		t.Error("expected false for unknown transformer with default registry")
+	// With default registry, firstoctet is unknown — evalExpression returns error
+	_, evalErr := evaluator.Evaluate(parsed.Root, record)
+	if evalErr == nil {
+		t.Error("expected error for unknown transformer with default registry")
 	}
 }

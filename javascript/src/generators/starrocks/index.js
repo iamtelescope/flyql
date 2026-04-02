@@ -32,7 +32,8 @@ function getIdentifier(column) {
     if (column.rawIdentifier) {
         return column.rawIdentifier
     }
-    return `\`${column.name}\``
+    const escaped = column.name.replace(/`/g, '``')
+    return `\`${escaped}\``
 }
 
 const jsonKeyPattern = /^[a-zA-Z_][.a-zA-Z0-9_-]*$/
@@ -251,8 +252,9 @@ function inExpressionToSQL(expr, columns) {
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
             return `${colId}->${jsonPathStr} ${sqlOp} (${valuesSQL})`
         } else if (column.isMap) {
-            const mapKey = expr.key.segments.slice(1).join("']['")
-            return `${colId}['${mapKey}'] ${sqlOp} (${valuesSQL})`
+            const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
+            const mapKey = mapPath.join('][')
+            return `${colId}[${mapKey}] ${sqlOp} (${valuesSQL})`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -301,7 +303,7 @@ function truthyExpressionToSQL(expr, columns) {
             return `(array_length(${colId}) >= ${arrayIndex} AND ${colId}[${arrayIndex}] != '')`
         } else if (column.isStruct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
-            return `${colId}.\`${structColumn}\` IS NOT NULL AND ${colId}.\`${structColumn}\` != ''`
+            return `(${colId}.\`${structColumn}\` IS NOT NULL AND ${colId}.\`${structColumn}\` != '')`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
@@ -311,16 +313,16 @@ function truthyExpressionToSQL(expr, columns) {
         }
     }
 
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
+        return `(${colRef} IS NOT NULL AND ${colRef} != '')`
+    }
+
     if (column.jsonString) {
         if (column.isMap || column.isStruct) {
             return `(${colId} IS NOT NULL AND json_length(to_json(${colId})) > 0)`
         }
         return `(${colId} IS NOT NULL AND ${colId} != '' AND json_length(${colId}) > 0)`
-    }
-
-    if (expr.key.transformers && expr.key.transformers.length) {
-        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
-        return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
     switch (column.normalizedType) {
@@ -353,14 +355,14 @@ function falsyExpressionToSQL(expr, columns) {
             return `(${colId}->${jsonPathStr} IS NULL)`
         } else if (column.isMap) {
             const mapKey = escapeParam(expr.key.segments.slice(1).join('.'))
-            return `(element_at(${colId}, '${mapKey}') IS NULL OR ${colId}['${mapKey}'] = '')`
+            return `(element_at(${colId}, ${mapKey}) IS NULL OR ${colId}[${mapKey}] = '')`
         } else if (column.isArray) {
             const arrayIndex = parseInt(expr.key.segments.slice(1).join('.'), 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index`)
             return `(array_length(${colId}) < ${arrayIndex} OR ${colId}[${arrayIndex}] = '')`
         } else if (column.isStruct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
-            return `${colId}.\`${structColumn}\` IS NULL OR ${colId}.\`${structColumn}\` = ''`
+            return `(${colId}.\`${structColumn}\` IS NULL OR ${colId}.\`${structColumn}\` = '')`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
@@ -370,16 +372,16 @@ function falsyExpressionToSQL(expr, columns) {
         }
     }
 
+    if (expr.key.transformers && expr.key.transformers.length) {
+        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
+        return `(${colRef} IS NULL OR ${colRef} = '')`
+    }
+
     if (column.jsonString) {
         if (column.isMap || column.isStruct) {
             return `(${colId} IS NULL OR json_length(to_json(${colId})) = 0)`
         }
         return `(${colId} IS NULL OR ${colId} = '' OR json_length(${colId}) = 0)`
-    }
-
-    if (expr.key.transformers && expr.key.transformers.length) {
-        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
-        return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
     switch (column.normalizedType) {
@@ -431,6 +433,14 @@ function hasExpressionToSQL(expr, columns) {
                 return `INSTR(${colId}[${arrayIndex}], ${value}) = 0`
             }
             return `INSTR(${colId}[${arrayIndex}], ${value}) > 0`
+        } else if (column.isStruct) {
+            const structPath = expr.key.segments.slice(1)
+            const structColumn = structPath.join('`.`')
+            const leafExpr = `${colId}.\`${structColumn}\``
+            if (isNotHas) {
+                return `INSTR(${leafExpr}, ${value}) = 0`
+            }
+            return `INSTR(${leafExpr}, ${value}) > 0`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)

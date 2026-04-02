@@ -2,6 +2,7 @@ package matcher
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 )
 
@@ -30,15 +31,22 @@ func isProbablyJSONString(value any) bool {
 func extractPath(value any, path []string) any {
 	current := value
 	for _, key := range path {
-		m, ok := current.(map[string]any)
-		if !ok {
+		switch c := current.(type) {
+		case []any:
+			idx, err := strconv.Atoi(key)
+			if err != nil || idx < 0 || idx >= len(c) {
+				return nil
+			}
+			current = c[idx]
+		case map[string]any:
+			v, exists := c[key]
+			if !exists {
+				return nil
+			}
+			current = v
+		default:
 			return nil
 		}
-		v, exists := m[key]
-		if !exists {
-			return nil
-		}
-		current = v
 	}
 	return current
 }

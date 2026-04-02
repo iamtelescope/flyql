@@ -1,4 +1,5 @@
 import { Operator, BoolOperator } from '../core/constants.js'
+import { FlyqlError } from '../core/exceptions.js'
 import { defaultRegistry } from '../transformers/index.js'
 
 function isFalsy(value) {
@@ -19,10 +20,6 @@ function isTruthy(value) {
 function toFloat(v) {
     if (typeof v === 'number') return v
     if (typeof v === 'bigint') return Number(v)
-    if (typeof v === 'string') {
-        const n = Number(v)
-        if (!isNaN(n)) return n
-    }
     return null
 }
 
@@ -115,8 +112,8 @@ export class Evaluator {
             const regex = new RegExp(pattern)
             this.regexCache.set(pattern, regex)
             return regex
-        } catch {
-            return null
+        } catch (err) {
+            throw new FlyqlError(`invalid regex given: ${pattern} -> ${err.message}`)
         }
     }
 
@@ -140,7 +137,7 @@ export class Evaluator {
                 } else if (node.boolOperator === BoolOperator.OR) {
                     result = left || right
                 } else {
-                    result = false
+                    throw new FlyqlError(`Unknown boolean operator: ${node.boolOperator}`)
                 }
             } else if (left !== null) {
                 result = left
@@ -175,12 +172,10 @@ export class Evaluator {
                 return !compareEqual(value, expr.value)
             case Operator.REGEX: {
                 const regex = this.getRegex(toString(expr.value))
-                if (!regex) return false
                 return regex.test(toString(value))
             }
             case Operator.NOT_REGEX: {
                 const regex = this.getRegex(toString(expr.value))
-                if (!regex) return true
                 return !regex.test(toString(value))
             }
             case Operator.GREATER_THAN:
@@ -203,7 +198,7 @@ export class Evaluator {
                 if (value === null || value === undefined) return true
                 return !evalHas(value, expr.value)
             default:
-                return false
+                throw new FlyqlError(`Unknown expression operator: ${expr.operator}`)
         }
     }
 }

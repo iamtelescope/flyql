@@ -40,7 +40,7 @@ class Expression:
             raise FlyqlError(f"invalid operator: {operator}")
 
         if not key.segments:
-            raise FlyqlError("emtpy key")
+            raise FlyqlError("empty key")
 
         self.key = key
         self.operator = operator

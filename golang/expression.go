@@ -1,6 +1,7 @@
 package flyql
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/iamtelescope/flyql/golang/types"
@@ -29,7 +30,14 @@ func tryConvertToNumber(value string) (any, types.ValueType) {
 	return value, types.String
 }
 
-func NewExpression(key Key, operator string, value string, valueIsString bool) *Expression {
+func NewExpression(key Key, operator string, value string, valueIsString bool) (*Expression, error) {
+	if operator != OpTruthy && !validKeyValueOperators[operator] {
+		return nil, fmt.Errorf("invalid operator: %s", operator)
+	}
+	if len(key.Segments) == 0 {
+		return nil, fmt.Errorf("empty key")
+	}
+
 	expr := &Expression{
 		Key:      key,
 		Operator: operator,
@@ -42,7 +50,7 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) *
 		expr.Value, expr.ValueType = tryConvertToNumber(value)
 	}
 
-	return expr
+	return expr, nil
 }
 
 func NewInExpression(key Key, operator string, values []any, valuesType *string, valuesTypes []types.ValueType) *Expression {

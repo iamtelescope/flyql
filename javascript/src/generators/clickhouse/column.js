@@ -244,7 +244,7 @@ function escapeIdentifier(name) {
 }
 
 export class Column {
-    constructor(name, jsonString, type, values) {
+    constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
         this.name = escapeIdentifier(name)
         this.jsonString = jsonString
         this.type = type
@@ -253,7 +253,8 @@ export class Column {
         this.isMap = this.normalizedType === NormalizedTypeMap
         this.isArray = this.normalizedType === NormalizedTypeArray
         this.isJSON = this.normalizedType === NormalizedTypeJSON
-        this.rawIdentifier = ''
+        this.displayName = displayName
+        this.rawIdentifier = rawIdentifier
     }
 
     withRawIdentifier(identifier) {

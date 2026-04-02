@@ -16,7 +16,7 @@ npm install flyql
 ```javascript
 import { parse } from 'flyql'
 
-const result = parse("status=200 and active")
+const result = parse("status = 200 and active")
 console.log(result.root)
 ```
 
@@ -26,7 +26,7 @@ console.log(result.root)
 import { parse, ParserError } from 'flyql'
 
 try {
-    const result = parse("status=200 and active")
+    const result = parse("status = 200 and active")
     console.log(result.root)
 } catch (err) {
     if (err instanceof ParserError) {
@@ -45,7 +45,7 @@ generator を使うと、AST をパラメータ化 WHERE 句へ変換できま�
 import { parse } from 'flyql'
 import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 
-const result = parse("status>=400 and host=prod*")
+const result = parse("status >= 400 and host = prod*")
 
 const columns = {
     status: newColumn("status", false, "UInt32", null),
@@ -80,7 +80,7 @@ const data = {
     host: "prod-api-01",
 }
 
-const matches = match("status=200 and active", data)
+const matches = match("status = 200 and active", data)
 console.log(`Matches: ${matches}`) // true
 ```
 

@@ -3,15 +3,18 @@ title: FlyQL
 description: Un lenguaje de consultas ligero y resistente a inyecciones para generar SQL en varios dialectos
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
+import TechLabel from '../../../components/TechLabel.astro'
+import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
+
 FlyQL es un lenguaje de consultas ligero que transpila a SQL resistente a inyecciones para ClickHouse, PostgreSQL y StarRocks, con implementaciones en Go, Python y JavaScript.
 
 ## ¿Qué es FlyQL?
 
-FlyQL es un lenguaje de consultas simple y legible pensado para filtrar datos. Escribe una consulta como `status>=400 and host=prod*` y FlyQL la transpila a SQL parametrizado para tu base de datos, o la evalúa en memoria contra registros de datos.
+FlyQL es un lenguaje de consultas simple y legible pensado para filtrar datos. Escribe una consulta como `status >= 400 and host = prod*` y FlyQL la transpila a SQL parametrizado para tu base de datos, o la evalúa en memoria contra registros de datos.
 
-```
-status>=400 and host=prod* and not debug
-```
+<FlyqlCode code={landingIntroQuery} />
 
 Esta consulta funciona igual tanto si tu backend usa ClickHouse, PostgreSQL, StarRocks o un conjunto de datos en memoria.
 
@@ -24,23 +27,33 @@ Esta consulta funciona igual tanto si tu backend usa ClickHouse, PostgreSQL, Sta
 
 ## Ejemplo rápido
 
-```
-service!=api and (status>=400 or level=error) and message~"timeout.*"
-```
+<FlyqlCode code={landingQuickExampleQuery} />
 
-| Componente | Significado |
-|-----------|-------------|
-| `service!=api` | el campo `service` no es `"api"` |
-| `status>=400` | `status` es 400 o mayor |
-| `level=error` | el campo `level` es igual a `"error"` |
-| `message~"timeout.*"` | `message` coincide con el patrón regex |
-| `and`, `or` | lógica booleana con precedencia |
-| `( )` | agrupación explícita |
+<FlyqlQuickExampleTable
+  componentHeader="Componente"
+  meaningHeader="Significado"
+  meanings={{
+    service: 'el campo `service` no es `"api"`',
+    status: '`status` es 400 o mayor',
+    level: 'el campo `level` es igual a `"error"`',
+    message: '`message` coincide con el patrón regex',
+    boolean: 'lógica booleana con precedencia',
+    grouping: 'agrupación explícita',
+  }}
+/>
 
 ## Lenguajes compatibles
 
-| Lenguaje | Parser | Generadores SQL | Evaluación en memoria |
-|----------|--------|-----------------|-----------------------|
-| Go | Sí | ClickHouse, PostgreSQL, StarRocks | Sí |
-| Python | Sí | ClickHouse, PostgreSQL, StarRocks | Sí |
-| JavaScript | Sí | ClickHouse, PostgreSQL, StarRocks | Sí |
+| Lenguaje | Parser | Evaluación en memoria |
+|----------|--------|-----------------------|
+| <TechLabel icon="/icons/go.svg" label="Go" variant="go" /> | Sí | Sí |
+| <TechLabel icon="/icons/python.svg" label="Python" /> | Sí | Sí |
+| <TechLabel icon="/icons/javascript.svg" label="JavaScript" /> | Sí | Sí |
+
+## Generadores SQL
+
+| Base de datos | Go | Python | JavaScript |
+|---------------|----|--------|------------|
+| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Sí | Sí | Sí |
+| <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Sí | Sí | Sí |
+| <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Sí | Sí | Sí |

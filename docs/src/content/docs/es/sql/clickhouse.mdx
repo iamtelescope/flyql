@@ -9,21 +9,21 @@ El SQL de ClickHouse usa nombres de columna sin comillas, `match()` para regex y
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `message='hello'` | `message = 'hello'` |
-| `message!='hello'` | `message != 'hello'` |
-| `count>10` | `count > 10` |
-| `count<=100` | `count <= 100` |
-| `message~'error.*'` | `match(message, 'error.*')` |
-| `message!~'test.*'` | `not match(message, 'test.*')` |
-| `host=prod*` | `host LIKE 'prod%'` |
+| `message = 'hello'` | `message = 'hello'` |
+| `message != 'hello'` | `message != 'hello'` |
+| `count > 10` | `count > 10` |
+| `count <= 100` | `count <= 100` |
+| `message ~ 'error.*'` | `match(message, 'error.*')` |
+| `message !~ 'test.*'` | `not match(message, 'test.*')` |
+| `host = prod*` | `host LIKE 'prod%'` |
 
 ## Operadores booleanos
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `a='1' and b>10` | `(a = '1' and b > 10)` |
-| `a='1' or b='2'` | `(a = '1' or b = '2')` |
-| `not a='1'` | `not (a = '1')` |
+| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
+| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
+| `not a = '1'` | `not (a = '1')` |
 
 ## Pertenencia a listas
 
@@ -59,9 +59,9 @@ Las columnas declaradas como `JSON` usan notación por puntos con segmentos entr
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `data.name='test'` | `` data.`name` = 'test' `` |
-| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
-| `data.age=25` | `` data.`age` = 25 `` |
+| `data.name = 'test'` | `` data.`name` = 'test' `` |
+| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age = 25` | `` data.`age` = 25 `` |
 
 ### Tipo JSON string
 
@@ -69,8 +69,8 @@ Las columnas que almacenan JSON como string, por ejemplo un `String` con conteni
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
 
 ## Columnas Map
 
@@ -78,9 +78,9 @@ Las columnas Map usan notación de corchetes con las funciones `equals()` y `not
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
-| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
-| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
 
 ## Columnas Array
 
@@ -88,9 +88,9 @@ Las columnas Array usan indexación base 0 con corchetes y `equals()`:
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `tags.0='first'` | `equals(tags[0], 'first')` |
-| `tags.1='second'` | `equals(tags[1], 'second')` |
-| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
+| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
+| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
 
 ### Configuración de columnas
 

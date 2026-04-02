@@ -1,0 +1,36 @@
+---
+interface Props {
+  icon: string
+  label: string
+  variant?: 'default' | 'go' | 'db'
+}
+
+const { icon, label, variant = 'default' } = Astro.props
+---
+
+<span class={`tech-label tech-label--${variant}`}>
+  <img src={icon} alt="" aria-hidden="true" loading="lazy" />
+  <span>{label}</span>
+</span>
+
+<style>
+  .tech-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    white-space: nowrap;
+  }
+
+  .tech-label img {
+    width: 1rem;
+    height: 1rem;
+    object-fit: contain;
+    flex: none;
+  }
+
+  .tech-label--go img {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+</style>

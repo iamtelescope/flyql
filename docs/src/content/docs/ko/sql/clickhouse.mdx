@@ -1,0 +1,127 @@
+---
+title: ClickHouse
+description: ClickHouse용 생성 SQL 예제
+---
+
+ClickHouse SQL은 column 이름을 quote하지 않으며, regex에는 `match()`, wildcard에는 `LIKE`를 사용합니다.
+
+## 기본 예제
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `message = 'hello'` | `message = 'hello'` |
+| `message != 'hello'` | `message != 'hello'` |
+| `count > 10` | `count > 10` |
+| `count <= 100` | `count <= 100` |
+| `message ~ 'error.*'` | `match(message, 'error.*')` |
+| `message !~ 'test.*'` | `not match(message, 'test.*')` |
+| `host = prod*` | `host LIKE 'prod%'` |
+
+## 불리언 연산자
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
+| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
+| `not a = '1'` | `not (a = '1')` |
+
+## 리스트 멤버십
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `status in [200, 201]` | `status IN (200, 201)` |
+| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## 포함 검사 (`has` / `not has`)
+
+`has` operator는 column 타입에 따라 서로 다른 SQL을 생성합니다.
+
+| Column Type | FlyQL | 생성된 SQL |
+|-------------|-------|--------------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String (negated) | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array (negated) | `tags not has 'web'` | `NOT has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map (negated) | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
+| Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+
+## JSON Columns
+
+ClickHouse는 두 가지 JSON column 타입을 지원하며, 생성되는 SQL도 서로 다릅니다.
+
+### Native JSON Type
+
+`JSON`으로 선언된 column은 세그먼트를 backtick으로 감싼 dot 표기를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `data.name = 'test'` | `` data.`name` = 'test' `` |
+| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age = 25` | `` data.`age` = 25 `` |
+
+### JSON String Type
+
+문자열로 JSON을 저장하는 column(예: JSON 내용을 담는 `String` 타입)은 타입 검사를 위해 `multiIf`로 감싼 `JSONExtract` 함수를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+
+## Map Columns
+
+Map column은 bracket 표기와 `equals()`/`notEquals()` 함수를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
+
+## Array Columns
+
+Array column은 0-based bracket indexing과 `equals()`를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
+| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
+| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
+
+### Column Setup
+
+`jsonString` 파라미터가 어떤 모드를 사용할지 결정합니다.
+
+```go
+// Go
+columns := map[string]*clickhouse.Column{
+    "message": clickhouse.NewColumn("message", false, "String", nil),
+    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "String", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "String", null),       // JSON string
+}
+```
+
+## Transformers
+
+Transformer는 ClickHouse 전용 함수 호출을 생성합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
+| `status\|lower = "info"` | `equals(lower(status), 'info')` |
+| `message\|len > 100` | `length(message) > 100` |
+| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |

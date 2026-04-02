@@ -1,0 +1,21 @@
+---
+import { highlight } from '../../../javascript/src/highlight.js'
+import '../styles/flyql-code.css'
+
+interface Props {
+  code: string
+  mode?: 'query' | 'columns'
+  inline?: boolean
+}
+
+const { code, mode = 'query', inline = false } = Astro.props
+const html = highlight(code, { mode })
+---
+
+{
+  inline ? (
+    <code class="flyql-inline" set:html={html} />
+  ) : (
+    <pre class="flyql-block"><code set:html={html} /></pre>
+  )
+}

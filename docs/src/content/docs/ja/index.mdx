@@ -3,15 +3,18 @@ title: FlyQL
 description: 複数の SQL 方言を生成できる、軽量でインジェクション耐性のあるクエリ言語
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
+import TechLabel from '../../../components/TechLabel.astro'
+import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
+
 FlyQL は、ClickHouse、PostgreSQL、StarRocks 向けにインジェクション耐性のある SQL へ変換できる軽量なクエリ言語です。Go、Python、JavaScript 向けの実装を提供しています。
 
 ## FlyQL とは
 
-FlyQL は、データを絞り込むために設計された、シンプルで読みやすいクエリ言語です。`status>=400 and host=prod*` のようなクエリを書くと、FlyQL はそのクエリをデータベース向けのパラメータ化 SQL に変換するか、データレコードに対してメモリ上で評価します。
+FlyQL は、データを絞り込むために設計された、シンプルで読みやすいクエリ言語です。`status >= 400 and host = prod*` のようなクエリを書くと、FlyQL はそのクエリをデータベース向けのパラメータ化 SQL に変換するか、データレコードに対してメモリ上で評価します。
 
-```
-status>=400 and host=prod* and not debug
-```
+<FlyqlCode code={landingIntroQuery} />
 
 このクエリは、バックエンドが ClickHouse、PostgreSQL、StarRocks、またはメモリ上のデータセットのどれであっても同じように動作します。
 
@@ -24,23 +27,33 @@ status>=400 and host=prod* and not debug
 
 ## クイック例
 
-```
-service!=api and (status>=400 or level=error) and message~"timeout.*"
-```
+<FlyqlCode code={landingQuickExampleQuery} />
 
-| 要素 | 意味 |
-|------|------|
-| `service!=api` | `service` フィールドが `"api"` ではない |
-| `status>=400` | `status` が 400 以上 |
-| `level=error` | `level` フィールドが `"error"` と等しい |
-| `message~"timeout.*"` | `message` が regex パターンに一致する |
-| `and`, `or` | 優先順位付きのブールロジック |
-| `( )` | 明示的なグループ化 |
+<FlyqlQuickExampleTable
+  componentHeader="要素"
+  meaningHeader="意味"
+  meanings={{
+    service: '`service` フィールドが `"api"` ではない',
+    status: '`status` が 400 以上',
+    level: '`level` フィールドが `"error"` と等しい',
+    message: '`message` が regex パターンに一致する',
+    boolean: '優先順位付きのブールロジック',
+    grouping: '明示的なグループ化',
+  }}
+/>
 
 ## 対応言語
 
-| 言語 | Parser | SQL Generator | メモリ上の Matcher |
-|------|--------|---------------|--------------------|
-| Go | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
-| Python | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
-| JavaScript | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| 言語 | Parser | メモリ上の Matcher |
+|------|--------|--------------------|
+| <TechLabel icon="/icons/go.svg" label="Go" variant="go" /> | Yes | Yes |
+| <TechLabel icon="/icons/python.svg" label="Python" /> | Yes | Yes |
+| <TechLabel icon="/icons/javascript.svg" label="JavaScript" /> | Yes | Yes |
+
+## SQL Generator
+
+| データベース | Go | Python | JavaScript |
+|--------------|----|--------|------------|
+| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Yes | Yes | Yes |

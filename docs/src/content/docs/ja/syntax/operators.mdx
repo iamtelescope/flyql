@@ -9,12 +9,12 @@ FlyQL は次の比較演算子をサポートしています。
 
 | 演算子 | 名称 | 例 |
 |--------|------|----|
-| `=` | 等しい | `status=200` |
-| `!=` | 等しくない | `env!=prod` |
+| `=` | 等しい | `status = 200` |
+| `!=` | 等しくない | `env != prod` |
 
 ```
-status=200
-service!="api-gateway"
+status = 200
+service != "api-gateway"
 ```
 
 演算子の両側には必ずキーと値が必要です。
@@ -23,14 +23,14 @@ service!="api-gateway"
 
 | 演算子 | 名称 | 例 |
 |--------|------|----|
-| `>` | より大きい | `status>399` |
-| `>=` | 以上 | `status>=400` |
-| `<` | より小さい | `duration<1000` |
-| `<=` | 以下 | `duration<=500` |
+| `>` | より大きい | `status > 399` |
+| `>=` | 以上 | `status >= 400` |
+| `<` | より小さい | `duration < 1000` |
+| `<=` | 以下 | `duration <= 500` |
 
 ```
-status>=400 and duration<5000
-response_time>100 and response_time<=2000
+status >= 400 and duration < 5000
+response_time > 100 and response_time <= 2000
 ```
 
 数値比較演算子は数値に対して機能します。文字列に対して使う場合は辞書順比較になります。
@@ -39,12 +39,12 @@ response_time>100 and response_time<=2000
 
 | 演算子 | 名称 | 例 |
 |--------|------|----|
-| `~` | regex に一致 | `message~"error.*"` |
-| `!~` | regex に一致しない | `path!~"^/health"` |
+| `~` | regex に一致 | `message ~ "error.*"` |
+| `!~` | regex に一致しない | `path !~ "^/health"` |
 
 ```
-message~"timeout|connection refused"
-host!~"^test-.*"
+message ~ "timeout|connection refused"
+host !~ "^test-.*"
 ```
 
 regex パターンは、対象のデータベースまたは runtime の構文に従います。
@@ -84,14 +84,14 @@ tags not has 'deprecated'
 
 | 演算子 | 名称 | 例 |
 |--------|------|----|
-| `=` | 等しい | `status=200` |
-| `!=` | 等しくない | `env!=prod` |
-| `>` | より大きい | `count>10` |
-| `>=` | 以上 | `count>=10` |
-| `<` | より小さい | `count<100` |
-| `<=` | 以下 | `count<=100` |
-| `~` | regex に一致 | `msg~"err.*"` |
-| `!~` | regex に一致しない | `msg!~"^ok"` |
+| `=` | 等しい | `status = 200` |
+| `!=` | 等しくない | `env != prod` |
+| `>` | より大きい | `count > 10` |
+| `>=` | 以上 | `count >= 10` |
+| `<` | より小さい | `count < 100` |
+| `<=` | 以下 | `count <= 100` |
+| `~` | regex に一致 | `msg ~ "err.*"` |
+| `!~` | regex に一致しない | `msg !~ "^ok"` |
 | `in` | リストに含まれる | `s in [1, 2]` |
 | `not in` | リストに含まれない | `s not in [3]` |
 | `has` | 含む | `msg has 'err'` |

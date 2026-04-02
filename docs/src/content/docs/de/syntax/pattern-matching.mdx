@@ -8,8 +8,8 @@ description: Regex- und Wildcard-Matching in FlyQL
 Verwende `~`, um einen Wert gegen einen regulären Ausdruck zu prüfen, und `!~`, um das Matching zu negieren:
 
 ```
-message~"error.*timeout"
-path!~"^/health"
+message ~ "error.*timeout"
+path !~ "^/health"
 ```
 
 | Operator | Bedeutung |
@@ -29,8 +29,8 @@ Die Regex-Syntax hängt vom Ziel-Backend ab:
 Setze das Muster in Anführungszeichen, wenn es Leerzeichen oder Sonderzeichen enthält:
 
 ```
-message~"connection (refused|reset)"
-host~"^prod-[0-9]+"
+message ~ "connection (refused|reset)"
+host ~ "^prod-[0-9]+"
 ```
 
 ### Groß-/Kleinschreibung ignorieren
@@ -38,8 +38,8 @@ host~"^prod-[0-9]+"
 Für case-insensitive Regex-Matches verwende das `(?i)`-Flag am Anfang des Musters:
 
 ```
-message~"(?i)error"
-level~"(?i)^(warn|error|fatal)$"
+message ~ "(?i)error"
+level ~ "(?i)^(warn|error|fatal)$"
 ```
 
 Das Inline-Flag `(?i)` ist eine Regex-Funktion, deren Unterstützung je nach Backend variiert:
@@ -56,7 +56,7 @@ Das Inline-Flag `(?i)` ist eine Regex-Funktion, deren Unterstützung je nach Bac
 Beim JavaScript-In-Memory-Matcher kannst du stattdessen Zeichenklassen verwenden, um case-insensitives Matching zu erreichen:
 
 ```
-message~"[eE][rR][rR][oO][rR]"
+message ~ "[eE][rR][rR][oO][rR]"
 ```
 
 Wenn du ausschließlich SQL-Backends targetierst, funktioniert `(?i)` zuverlässig in allen drei Dialekten.
@@ -64,7 +64,7 @@ Wenn du ausschließlich SQL-Backends targetierst, funktioniert `(?i)` zuverläss
 Case-insensitives Matching kann mit Negation kombiniert werden, um Muster unabhängig von der Groß-/Kleinschreibung auszuschließen:
 
 ```
-message~"(?i)error" and message!~"(?i)warning"
+message ~ "(?i)error" and message !~ "(?i)warning"
 ```
 
 ## Wildcard-Matching
@@ -72,8 +72,8 @@ message~"(?i)error" and message!~"(?i)warning"
 Verwende `*` am Ende eines nicht in Anführungszeichen gesetzten Werts für glob-artiges Prefix-Matching:
 
 ```
-host=prod*
-service=api-*
+host = prod*
+service = api-*
 ```
 
 Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden nur am Ende eines Werts unterstützt – `*prod` oder `pr*od` sind nicht zulässig.
@@ -82,8 +82,8 @@ Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden
 
 | Muster | Syntax | Beispiel |
 |--------|--------|----------|
-| Wildcard (Präfix) | `key=value*` | `host=prod*` |
-| Regex (vollständig) | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+| Wildcard (Präfix) | `key = value*` | `host = prod*` |
+| Regex (vollständig) | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
 
 Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komplexere Muster brauchst.
 
@@ -91,17 +91,17 @@ Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komp
 
 ```
 # Regex: Meldungen mit „error“ oder „fail“
-message~"error|fail"
+message ~ "error|fail"
 
 # Regex: Pfade, die mit /api/v2 beginnen
-path~"^/api/v2"
+path ~ "^/api/v2"
 
 # Negiertes Regex: Health-Check-Pfade ausschließen
-path!~"^/health"
+path !~ "^/health"
 
 # Wildcard: Hosts, die mit „prod“ beginnen
-host=prod*
+host = prod*
 
 # Kombiniert
-host=prod* and message~"timeout.*" and path!~"^/health"
+host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```

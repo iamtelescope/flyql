@@ -1,0 +1,94 @@
+---
+title: Transformers
+description: 비교 전에 파이프로 연결된 함수로 컬럼 값을 변환합니다
+---
+
+Transformers는 쿼리에서 비교되거나 SQL로 출력되기 전에 컬럼 값을 변경합니다. 파이프(`|`) 문법을 사용하며, 왼쪽에서 오른쪽 순서로 적용됩니다.
+
+## 파이프 문법
+
+컬럼에 transformer를 적용하려면 `|`를 사용합니다.
+
+```
+message|upper = "ERROR"
+```
+
+이렇게 하면 `message` 값에 먼저 `upper`를 적용한 뒤 `"ERROR"`와 비교합니다.
+
+## 체이닝
+
+추가 파이프를 사용해 여러 transformer를 연결할 수 있습니다.
+
+```
+message|lower|len > 100
+```
+
+Transformer는 왼쪽에서 오른쪽으로 적용됩니다. 먼저 `lower`(string → string), 다음으로 `len`(string → int)이 실행됩니다. 그 결과를 `> 100`과 비교합니다.
+
+## 타입 시스템
+
+각 transformer는 입력 타입과 출력 타입을 선언합니다. 체인으로 연결된 transformer는 타입 호환이 되어야 합니다. 이전 transformer의 출력 타입은 다음 transformer의 입력 타입과 일치해야 합니다.
+
+| 타입 | 설명 |
+|------|------|
+| `string` | 텍스트 값 |
+| `int` | 정수 |
+| `float` | 부동소수점 수 |
+| `array` | 값 배열 (포함 여부는 `has` 연산자로 확인) |
+
+## 내장 Transformers
+
+| Transformer | 입력 | 출력 | 설명 |
+|-------------|------|------|------|
+| `upper` | string | string | 대문자로 변환 |
+| `lower` | string | string | 소문자로 변환 |
+| `len` | string | int | 문자열 길이 반환 |
+| `split` | string | array | 구분자로 분할: `split(".")` |
+
+## 방언별 SQL 출력
+
+Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transformer는 중첩 함수 호출로 생성되며, 가장 안쪽부터 평가됩니다.
+
+**단일 transformer:** `status|upper = "ERROR"`
+
+| 방언 | 생성되는 SQL |
+|------|---------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**체인된 transformer:** `message|lower|len > 100`
+
+| 방언 | 생성되는 SQL |
+|------|---------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split와 has 조합:** `message|split(" ") has "hello"`
+
+| 방언 | 생성되는 SQL |
+|------|---------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## 타입 오류
+
+체인에 타입이 맞지 않는 transformer가 있으면 editor가 오류를 표시합니다.
+
+```
+message|len|upper
+```
+
+이는 `len`이 `int`를 출력하지만, `upper`는 `string` 입력을 요구하므로 실패합니다. Editor에는 "len outputs int, upper requires string input" 이 표시됩니다.
+
+## 예제
+
+```
+status|upper = "ERROR"           # 대문자 기준 비교
+message|lower|len > 100          # 체인: 소문자 변환 후 길이 계산
+host|lower != "localhost"        # 대소문자 구분 없는 불일치 비교
+path|len > 0                     # 비어 있지 않은지 확인
+tags|split(",") has "urgent"     # 분할 후 포함 여부 확인
+```

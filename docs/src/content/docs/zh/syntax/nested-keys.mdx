@@ -8,9 +8,9 @@ description: FlyQL 中的点分路径访问与带引号键片段
 使用点分路径访问 JSON、Map 或结构化数据中的嵌套字段：
 
 ```
-request.url="/api/users"
-response.headers.content_type="application/json"
-metadata.labels.env=prod
+request.url = "/api/users"
+response.headers.content_type = "application/json"
+metadata.labels.env = prod
 ```
 
 每一个 `.` 都表示向下进入一层嵌套结构。SQL 生成器会根据目标数据库，把这些路径转换为对应的访问语法。
@@ -20,7 +20,7 @@ metadata.labels.env=prod
 如果某个键片段本身就包含点号，需要用引号包裹它，避免被当作路径分隔符：
 
 ```
-"foo.bar".baz=value
+"foo.bar".baz = value
 ```
 
 这里：
@@ -35,14 +35,14 @@ metadata.labels.env=prod
 单引号和双引号都可以用于带点号的键片段：
 
 ```
-"foo.bar".baz=value
-'foo.bar'.baz=value
+"foo.bar".baz = value
+'foo.bar'.baz = value
 ```
 
 只有真正包含点号的片段需要加引号：
 
 ```
-metadata."dotted.key".value=123
+metadata."dotted.key".value = 123
 ```
 
 ## 路径深度
@@ -50,7 +50,7 @@ metadata."dotted.key".value=123
 嵌套层级没有限制：
 
 ```
-a.b.c.d.e=value
+a.b.c.d.e = value
 ```
 
 生成 SQL 或执行内存匹配时，所有片段都会按顺序逐层访问。
@@ -60,10 +60,10 @@ a.b.c.d.e=value
 嵌套键可以和所有操作符一起使用：
 
 ```
-request.status>=400
-response.body~"error.*"
+request.status >= 400
+response.body ~ "error.*"
 metadata.tags in ['prod', 'staging']
-request.headers.content_type!="text/html"
+request.headers.content_type != "text/html"
 not request.authenticated
 ```
 
@@ -71,15 +71,15 @@ not request.authenticated
 
 ```
 # 简单嵌套访问
-request.method=GET
+request.method = GET
 
 # 深层嵌套
-response.headers.content_type="application/json"
+response.headers.content_type = "application/json"
 
 # 含字面点号的键片段
-"app.config".debug=true
+"app.config".debug = true
 
 # 与布尔逻辑组合
-request.status>=400 and response.body~"error" and not request.internal
+request.status >= 400 and response.body ~ "error" and not request.internal
 ```
 

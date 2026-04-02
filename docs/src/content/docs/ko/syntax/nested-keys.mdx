@@ -1,0 +1,83 @@
+---
+title: 중첩 키
+description: FlyQL의 점으로 구분된 경로 순회와 따옴표로 감싼 키 세그먼트
+---
+
+## 점 표기법
+
+JSON, Map, 또는 구조화된 데이터의 중첩 필드에 접근하려면 점으로 구분된 경로를 사용합니다.
+
+```
+request.url = "/api/users"
+response.headers.content_type = "application/json"
+metadata.labels.env = prod
+```
+
+점으로 구분된 각 세그먼트는 중첩 구조를 한 단계씩 내려갑니다. SQL generator는 이러한 경로를 각 데이터베이스 방언에 맞는 문법(JSON 경로 접근, Map 조회 등)으로 변환합니다.
+
+## 따옴표로 감싼 키 세그먼트
+
+키 세그먼트 자체에 점이 포함되어 있다면, 그 점이 구분자로 처리되지 않도록 세그먼트를 따옴표로 감싸세요.
+
+```
+"foo.bar".baz = value
+```
+
+여기서:
+- `"foo.bar"` 는 하나의 키 세그먼트이며 점은 리터럴입니다
+- `baz` 는 `"foo.bar"` 의 하위 키입니다
+
+따옴표가 없으면 `foo.bar.baz`는 `foo` → `bar` → `baz`의 세 세그먼트로 해석됩니다.
+
+### 따옴표 규칙
+
+키 세그먼트에는 작은따옴표와 큰따옴표를 모두 사용할 수 있습니다.
+
+```
+"foo.bar".baz = value
+'foo.bar'.baz = value
+```
+
+점이 포함된 세그먼트에만 따옴표가 필요합니다.
+
+```
+metadata."dotted.key".value = 123
+```
+
+## 경로 깊이
+
+중첩 깊이에 제한은 없습니다.
+
+```
+a.b.c.d.e = value
+```
+
+SQL을 생성하거나 메모리에서 평가할 때 각 세그먼트가 순서대로 순회됩니다.
+
+## 연산자와 함께 사용
+
+중첩 키는 모든 연산자와 함께 사용할 수 있습니다.
+
+```
+request.status >= 400
+response.body ~ "error.*"
+metadata.tags in ['prod', 'staging']
+request.headers.content_type != "text/html"
+not request.authenticated
+```
+
+## 예제
+
+```
+# 단순 중첩 접근
+request.method = GET
+
+# 깊은 중첩
+response.headers.content_type = "application/json"
+
+# 점이 포함된 세그먼트를 따옴표로 표시
+"app.config".debug = true
+
+# 불리언 로직과 함께 사용
+request.status >= 400 and response.body ~ "error" and not request.internal
+```

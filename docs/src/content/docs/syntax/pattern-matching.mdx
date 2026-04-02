@@ -8,8 +8,8 @@ description: Regex and wildcard matching in FlyQL
 Use `~` to match a value against a regular expression, and `!~` to negate the match:
 
 ```
-message~"error.*timeout"
-path!~"^/health"
+message ~ "error.*timeout"
+path !~ "^/health"
 ```
 
 | Operator | Meaning |
@@ -29,8 +29,8 @@ The regex syntax depends on the target backend:
 Quote the pattern when it contains spaces or special characters:
 
 ```
-message~"connection (refused|reset)"
-host~"^prod-[0-9]+"
+message ~ "connection (refused|reset)"
+host ~ "^prod-[0-9]+"
 ```
 
 ### Case-Insensitive Matching
@@ -38,8 +38,8 @@ host~"^prod-[0-9]+"
 To perform case-insensitive regex matching, use the `(?i)` flag at the start of your pattern:
 
 ```
-message~"(?i)error"
-level~"(?i)^(warn|error|fatal)$"
+message ~ "(?i)error"
+level ~ "(?i)^(warn|error|fatal)$"
 ```
 
 The `(?i)` inline flag is a regex feature — support varies by backend:
@@ -56,7 +56,7 @@ The `(?i)` inline flag is a regex feature — support varies by backend:
 For the JavaScript in-memory matcher, use a character-class approach instead to achieve case-insensitive matching:
 
 ```
-message~"[eE][rR][rR][oO][rR]"
+message ~ "[eE][rR][rR][oO][rR]"
 ```
 
 Or, when targeting SQL backends only, `(?i)` works reliably across all three dialects.
@@ -64,7 +64,7 @@ Or, when targeting SQL backends only, `(?i)` works reliably across all three dia
 Combine case-insensitive matching with negation to exclude patterns regardless of case:
 
 ```
-message~"(?i)error" and message!~"(?i)warning"
+message ~ "(?i)error" and message !~ "(?i)warning"
 ```
 
 ## Wildcard Matching
@@ -72,8 +72,8 @@ message~"(?i)error" and message!~"(?i)warning"
 Use `*` at the end of an unquoted value for glob-style prefix matching:
 
 ```
-host=prod*
-service=api-*
+host = prod*
+service = api-*
 ```
 
 This matches any value that starts with the given prefix. Wildcards are only supported at the end of a value — `*prod` or `pr*od` are not supported.
@@ -82,8 +82,8 @@ This matches any value that starts with the given prefix. Wildcards are only sup
 
 | Pattern | Syntax | Example |
 |---------|--------|---------|
-| Wildcard (prefix) | `key=value*` | `host=prod*` |
-| Regex (full) | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+| Wildcard (prefix) | `key = value*` | `host = prod*` |
+| Regex (full) | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
 
 Use wildcards for simple prefix matching. Use regex when you need more complex patterns.
 
@@ -91,17 +91,17 @@ Use wildcards for simple prefix matching. Use regex when you need more complex p
 
 ```
 # Regex: messages containing "error" or "fail"
-message~"error|fail"
+message ~ "error|fail"
 
 # Regex: paths starting with /api/v2
-path~"^/api/v2"
+path ~ "^/api/v2"
 
 # Negated regex: exclude health check paths
-path!~"^/health"
+path !~ "^/health"
 
 # Wildcard: hosts starting with "prod"
-host=prod*
+host = prod*
 
 # Combined
-host=prod* and message~"timeout.*" and path!~"^/health"
+host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```

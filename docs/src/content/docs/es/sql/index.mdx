@@ -31,7 +31,7 @@ Los generadores de FlyQL producen un fragmento de cláusula WHERE como una caden
 
 Cada dialecto maneja las columnas JSON anidadas de forma muy distinta.
 
-**Entrada FlyQL:** `data.user.name='john'`
+**Entrada FlyQL:** `data.user.name = 'john'`
 
 **ClickHouse** con columna JSON nativa:
 ```sql
@@ -59,7 +59,7 @@ Consulta la página de cada dialecto para ver ejemplos completos.
 
 ## Acceso a Map
 
-**Entrada FlyQL:** `metadata.key1='value1'`
+**Entrada FlyQL:** `metadata.key1 = 'value1'`
 
 | Dialecto | SQL generado |
 |----------|--------------|
@@ -71,7 +71,7 @@ ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. Postg
 
 ## Acceso a Array
 
-**Entrada FlyQL:** `tags.0='first'` con índice base 0 en FlyQL
+**Entrada FlyQL:** `tags.0 = 'first'` con índice base 0 en FlyQL
 
 | Dialecto | SQL generado | Indexación |
 |----------|--------------|------------|

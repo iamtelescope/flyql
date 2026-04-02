@@ -1,0 +1,125 @@
+---
+title: StarRocks
+description: StarRocks용 생성 SQL 예제
+---
+
+StarRocks SQL은 identifier를 backtick으로 감싸며, regex에는 `regexp()`, JSON 접근에는 JSON 문자열화된 key와 함께 `->`를 사용합니다.
+
+## 기본 예제
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `message = 'hello'` | `` `message` = 'hello' `` |
+| `message != 'hello'` | `` `message` != 'hello' `` |
+| `count > 10` | `` `count` > 10 `` |
+| `count <= 100` | `` `count` <= 100 `` |
+| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host = prod*` | `` `host` LIKE 'prod%' `` |
+
+## 불리언 연산자
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
+| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a = '1'` | `` not (`a` = '1') `` |
+
+## 리스트 멤버십
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `status in [200, 201]` | `` `status` IN (200, 201) `` |
+| `env not in ['dev', 'test']` | `` `env` NOT IN ('dev', 'test') `` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## 포함 검사 (`has` / `not has`)
+
+`has` operator는 column 타입에 따라 서로 다른 SQL을 생성합니다.
+
+| Column Type | FlyQL | 생성된 SQL |
+|-------------|-------|--------------|
+| String | `message has 'error'` | `` INSTR(`message`, 'error') > 0 `` |
+| String (negated) | `message not has 'error'` | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| Array | `tags has 'web'` | `` array_contains(`tags`, 'web') `` |
+| Array (negated) | `tags not has 'web'` | `` NOT array_contains(`tags`, 'web') `` |
+| Map | `metadata has 'key'` | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map (negated) | `metadata not has 'key'` | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| Native JSON | `data has 'key'` | `` json_exists(`data`, concat('$.', 'key')) `` |
+
+## JSON Columns
+
+StarRocks는 두 가지 JSON column 타입을 지원하며, 생성되는 SQL도 서로 다릅니다.
+
+### Native JSON Type
+
+native JSON column은 JSON 문자열화된 key와 함께 `->` operator를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### JSON String Type
+
+문자열로 JSON을 저장하는 column은 순회 전에 `parse_json()`이 필요합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Map Columns
+
+Map column은 bracket 표기와 직접 비교를 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## Array Columns
+
+Array column은 0-based bracket indexing을 사용합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
+| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
+
+### Column Setup
+
+`jsonString` 파라미터가 어떤 모드를 사용할지 결정합니다. ClickHouse와 동일합니다.
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```
+
+## Transformers
+
+Transformer는 backtick으로 감싼 column 이름과 함께 StarRocks 표준 함수 호출을 생성합니다.
+
+| FlyQL | 생성된 SQL |
+|-------|--------------|
+| `status\|upper = "ERROR"` | `` UPPER(`status`) = 'ERROR' `` |
+| `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
+| `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
+| `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |
+| `tags\|split(",") has "urgent"` | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

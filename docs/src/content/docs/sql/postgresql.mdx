@@ -9,13 +9,13 @@ PostgreSQL SQL uses double-quoted identifiers, `~` for regex, uppercase `AND`/`O
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `message='hello'` | `"message" = 'hello'` |
-| `message!='hello'` | `"message" != 'hello'` |
-| `count>10` | `"count" > 10` |
-| `count<=100` | `"count" <= 100` |
-| `message~'error.*'` | `"message" ~ 'error.*'` |
-| `message!~'test.*'` | `"message" !~ 'test.*'` |
-| `host=prod*` | `"host" LIKE 'prod%'` |
+| `message = 'hello'` | `"message" = 'hello'` |
+| `message != 'hello'` | `"message" != 'hello'` |
+| `count > 10` | `"count" > 10` |
+| `count <= 100` | `"count" <= 100` |
+| `message ~ 'error.*'` | `"message" ~ 'error.*'` |
+| `message !~ 'test.*'` | `"message" !~ 'test.*'` |
+| `host = prod*` | `"host" LIKE 'prod%'` |
 
 ## Boolean Operators
 
@@ -23,9 +23,9 @@ PostgreSQL uses uppercase `AND`/`OR` (unlike ClickHouse and StarRocks):
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `a='1' and b>10` | `("a" = '1' AND "b" > 10)` |
-| `a='1' or b='2'` | `("a" = '1' OR "b" = '2')` |
-| `not a='1'` | `NOT ("a" = '1')` |
+| `a = '1' and b > 10` | `("a" = '1' AND "b" > 10)` |
+| `a = '1' or b = '2'` | `("a" = '1' OR "b" = '2')` |
+| `not a = '1'` | `NOT ("a" = '1')` |
 
 ## List Membership
 
@@ -58,8 +58,8 @@ PostgreSQL uses JSONB operators with type checking via `jsonb_typeof()`:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name='test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
-| `data.user.name='john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+| `data.name = 'test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| `data.user.name = 'john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
 
 ### Numeric Comparison
 
@@ -67,7 +67,7 @@ Numeric comparisons cast the extracted value:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.age>25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+| `data.age > 25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
 
 ### JSONB Operators
 
@@ -81,9 +81,9 @@ PostgreSQL uses hstore type with the `->` operator for key access:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `metadata.key1='value1'` | `"metadata"->'key1' = 'value1'` |
-| `metadata.key1!='value1'` | `"metadata"->'key1' != 'value1'` |
-| `metadata.pattern~'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
+| `metadata.key1 = 'value1'` | `"metadata"->'key1' = 'value1'` |
+| `metadata.key1 != 'value1'` | `"metadata"->'key1' != 'value1'` |
+| `metadata.pattern ~ 'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
 
 ## Array Columns
 
@@ -91,9 +91,9 @@ PostgreSQL arrays are 1-based — FlyQL automatically converts the 0-based index
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `tags.0='first'` | `"tags"[1] = 'first'` |
-| `tags.1='second'` | `"tags"[2] = 'second'` |
-| `tags.0~'tag.*'` | `"tags"[1] ~ 'tag.*'` |
+| `tags.0 = 'first'` | `"tags"[1] = 'first'` |
+| `tags.1 = 'second'` | `"tags"[2] = 'second'` |
+| `tags.0 ~ 'tag.*'` | `"tags"[1] ~ 'tag.*'` |
 
 ### Column Setup
 

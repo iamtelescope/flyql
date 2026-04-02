@@ -1,0 +1,527 @@
+---
+title: AST와 사용자 정의 Generator
+description: FlyQL Abstract Syntax Tree를 이해하고 원하는 대상 언어나 데이터 구조를 위한 사용자 정의 코드 generator를 만듭니다
+---
+
+FlyQL parser는 **Abstract Syntax Tree (AST)** 를 생성합니다. AST는 쿼리를 구조화해 표현한 것으로, 어떤 대상이든 출력 생성을 위해 순회할 수 있습니다. 내장 SQL generator(ClickHouse, PostgreSQL, StarRocks)는 모두 이 동일한 AST를 순회하며 구현됩니다. Elasticsearch 쿼리, MongoDB filter, Prometheus selector, 로그 grep 명령, 또는 다른 어떤 대상이든 직접 generator를 만들 수 있습니다.
+
+## AST 노드 타입
+
+AST는 세 가지 타입으로 구성됩니다: **Node**(트리 구조), **Expression**(리프 조건), **Key**(필드 참조).
+
+### Node
+
+`Node`는 **branch**(두 개의 서브트리를 불리언 연산자로 결합) 또는 **leaf**(단일 expression 보유) 중 하나입니다. AST의 기본 구성 요소입니다.
+
+| 필드 | 타입 | 설명 |
+|-------|------|-------------|
+| `boolOperator` | `string` | `"and"` 또는 `"or"`입니다. `left`와 `right`를 어떻게 결합할지 나타냅니다. leaf 노드에서는 비어 있습니다. |
+| `expression` | `Expression` 또는 `null` | leaf 노드인 경우 조건입니다. branch 노드에서는 `null`입니다. |
+| `left` | `Node` 또는 `null` | 왼쪽 자식 서브트리입니다. leaf 노드에서는 `null`입니다. |
+| `right` | `Node` 또는 `null` | 오른쪽 자식 서브트리입니다. leaf 노드에서는 `null`입니다. |
+| `negated` | `boolean` | 이 노드가 `not`으로 감싸져 있으면 `true`입니다. |
+
+노드는 **leaf**(`expression`이 설정되고 `left`/`right`는 `null`)이거나 **branch**(`left`/`right`가 설정되고 `expression`은 `null`) 중 **하나만** 될 수 있습니다. 둘 다인 경우는 없습니다.
+
+### Expression
+
+`Expression`은 단일 조건을 나타냅니다. key, operator, value로 구성됩니다.
+
+| 필드 | 타입 | 설명 |
+|-------|------|-------------|
+| `key` | `Key` | 검사할 필드입니다. 예: `status`, `user.metadata.role` |
+| `operator` | `string` | 다음 중 하나입니다: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has`. |
+| `value` | `any` | 비교 값입니다. 스칼라 연산자에서는 문자열, 숫자, boolean 또는 null입니다. `in`, `not in`에서는 비어 있습니다. |
+| `valueType` | `string` 또는 `null` | `value`의 명시적 타입입니다: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`. `in`/`not in`에서는 `null`입니다. |
+| `values` | `array` 또는 `null` | `in`, `not in` 연산자용 값 목록입니다. 서로 다른 타입이 섞일 수 있습니다. 다른 연산자에서는 `null`입니다. |
+| `valuesTypes` | `string[]` 또는 `null` | `values`와 병렬인 요소별 타입 배열입니다. 각 요소는 타입 상수 중 하나입니다. `values`를 사용하지 않을 때는 `null`입니다. |
+
+### Key
+
+`Key`는 조회 중인 필드 경로를 나타냅니다.
+
+| 필드 | 타입 | 설명 |
+|-------|------|-------------|
+| `segments` | `string[]` | 경로 세그먼트입니다. 단순 키는 `["status"]`, 중첩 키는 `["user", "metadata", "role"]` 입니다. |
+| `raw` | `string` | 쿼리에 작성된 원래 key 문자열입니다. |
+| `isSegmented` | `boolean` | key가 둘 이상의 세그먼트를 가지면(`.` 표기 사용) `true`입니다. |
+
+### Operators
+
+모든 operator는 import 가능한 상수로 제공됩니다.
+
+```javascript
+// JavaScript
+import { Operator, BoolOperator } from 'flyql'
+
+Operator.EQUALS       // "="
+Operator.NOT_EQUALS   // "!="
+Operator.REGEX        // "~"
+Operator.NOT_REGEX    // "!~"
+Operator.GREATER_THAN // ">"
+Operator.LOWER_THAN   // "<"
+Operator.GREATER_OR_EQUALS_THAN // ">="
+Operator.LOWER_OR_EQUALS_THAN   // "<="
+Operator.TRUTHY       // "truthy"
+Operator.IN           // "in"
+Operator.NOT_IN       // "not in"
+Operator.HAS          // "has"
+Operator.NOT_HAS      // "not has"
+
+BoolOperator.AND      // "and"
+BoolOperator.OR       // "or"
+```
+
+```go
+// Go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+flyql.OpEquals          // "="
+flyql.OpNotEquals       // "!="
+flyql.OpRegex           // "~"
+flyql.OpNotRegex        // "!~"
+flyql.OpGreater         // ">"
+flyql.OpLess            // "<"
+flyql.OpGreaterOrEquals // ">="
+flyql.OpLessOrEquals    // "<="
+flyql.OpTruthy          // "truthy"
+flyql.OpIn              // "in"
+flyql.OpNotIn           // "not in"
+flyql.OpHas             // "has"
+flyql.OpNotHas          // "not has"
+
+flyql.BoolOpAnd      // "and"
+flyql.BoolOpOr       // "or"
+```
+
+```python
+# Python
+from flyql.core.constants import Operator, BoolOperator
+
+Operator.EQUALS       # "="
+Operator.NOT_EQUALS   # "!="
+Operator.REGEX        # "~"
+Operator.NOT_REGEX    # "!~"
+Operator.GREATER_THAN # ">"
+Operator.LOWER_THAN   # "<"
+Operator.GREATER_OR_EQUALS_THAN # ">="
+Operator.LOWER_OR_EQUALS_THAN   # "<="
+Operator.TRUTHY       # "truthy"
+Operator.IN           # "in"
+Operator.NOT_IN       # "not in"
+Operator.HAS          # "has"
+Operator.NOT_HAS      # "not has"
+
+BoolOperator.AND      # "and"
+BoolOperator.OR       # "or"
+```
+
+## AST 구조 예제
+
+### 단순 조건
+
+Query: `status = 200`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+```
+
+### 불리언 조합
+
+Query: `status = 200 and method = "GET"`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["status"], raw: "status" }
+      operator: "="
+      value: 200
+  right: Node (leaf)
+    expression:
+      key: { segments: ["method"], raw: "method" }
+      operator: "="
+      value: "GET"
+```
+
+### 부정
+
+Query: `not status = 500`
+
+```
+Node (leaf, negated: true)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 500
+```
+
+### 괄호가 있는 중첩 불리언
+
+Query: `env=prod and (status=500 or level = error)`
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["env"], raw: "env" }
+      operator: "="
+      value: "prod"
+  right: Node (branch, boolOperator: "or")
+    left: Node (leaf)
+      expression:
+        key: { segments: ["status"], raw: "status" }
+        operator: "="
+        value: 500
+    right: Node (leaf)
+      expression:
+        key: { segments: ["level"], raw: "level" }
+        operator: "="
+        value: "error"
+```
+
+### 리스트 멤버십
+
+Query: `status in [200, 201, 204]`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    value: ""
+    values: [200, 201, 204]
+    valuesType: "number"
+```
+
+### Truthy 검사
+
+Query: `active`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["active"], raw: "active" }
+    operator: "truthy"
+    value: ""
+```
+
+### 중첩 키
+
+Query: `user.metadata.role = "admin"`
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["user", "metadata", "role"], raw: "user.metadata.role", isSegmented: true }
+    operator: "="
+    value: "admin"
+```
+
+## AST 순회하기
+
+AST는 이진 트리입니다. 처리할 때는 재귀 순회를 사용합니다.
+
+1. 노드에 `expression`이 있으면(leaf 노드) 조건을 처리합니다.
+2. 노드에 `left`/`right`가 있으면(branch 노드) 자식으로 재귀 호출하고 `boolOperator`로 결합합니다.
+3. `negated`가 true이면 결과를 부정으로 감쌉니다.
+
+## 사용자 정의 Generator 만들기
+
+다음은 FlyQL AST를 **Elasticsearch Query DSL** 객체로 변환하는 사용자 정의 generator의 완전한 예제입니다.
+
+### JavaScript
+
+```javascript
+import { parse } from 'flyql'
+import { Operator } from 'flyql'
+
+function generateElasticsearch(node) {
+  if (!node) return { match_all: {} }
+
+  let result
+
+  if (node.expression) {
+    // leaf node를 expression으로 변환
+    result = expressionToES(node.expression)
+  } else {
+    // branch node를 재귀적으로 결합
+    const left = generateElasticsearch(node.left)
+    const right = generateElasticsearch(node.right)
+
+    if (node.boolOperator === 'and') {
+      result = { bool: { must: [left, right] } }
+    } else {
+      result = { bool: { should: [left, right], minimum_should_match: 1 } }
+    }
+  }
+
+  // 부정 처리
+  if (node.negated) {
+    result = { bool: { must_not: [result] } }
+  }
+
+  return result
+}
+
+function expressionToES(expr) {
+  const field = expr.key.raw
+
+  switch (expr.operator) {
+    case Operator.EQUALS:
+      return { term: { [field]: expr.value } }
+
+    case Operator.NOT_EQUALS:
+      return { bool: { must_not: [{ term: { [field]: expr.value } }] } }
+
+    case Operator.REGEX:
+      return { regexp: { [field]: String(expr.value) } }
+
+    case Operator.NOT_REGEX:
+      return { bool: { must_not: [{ regexp: { [field]: String(expr.value) } }] } }
+
+    case Operator.GREATER_THAN:
+      return { range: { [field]: { gt: expr.value } } }
+
+    case Operator.GREATER_OR_EQUALS_THAN:
+      return { range: { [field]: { gte: expr.value } } }
+
+    case Operator.LOWER_THAN:
+      return { range: { [field]: { lt: expr.value } } }
+
+    case Operator.LOWER_OR_EQUALS_THAN:
+      return { range: { [field]: { lte: expr.value } } }
+
+    case Operator.IN:
+      return { terms: { [field]: expr.values || [] } }
+
+    case Operator.NOT_IN:
+      return { bool: { must_not: [{ terms: { [field]: expr.values || [] } }] } }
+
+    case Operator.TRUTHY:
+      return { exists: { field } }
+
+    case Operator.HAS:
+      return { wildcard: { [field]: `*${expr.value}*` } }
+
+    case Operator.NOT_HAS:
+      return { bool: { must_not: [{ wildcard: { [field]: `*${expr.value}*` } }] } }
+
+    default:
+      throw new Error(`unsupported operator: ${expr.operator}`)
+  }
+}
+
+// 사용 예제
+const result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+const esQuery = generateElasticsearch(result.root)
+console.log(JSON.stringify(esQuery, null, 2))
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func generateElasticsearch(node *flyql.Node) map[string]any {
+	if node == nil {
+		return map[string]any{"match_all": map[string]any{}}
+	}
+
+	var result map[string]any
+
+	if node.Expression != nil {
+		// leaf node를 expression으로 변환
+		result = expressionToES(node.Expression)
+	} else {
+		// branch node를 재귀적으로 결합
+		left := generateElasticsearch(node.Left)
+		right := generateElasticsearch(node.Right)
+
+		if node.BoolOperator == flyql.BoolOpAnd {
+			result = map[string]any{
+				"bool": map[string]any{"must": []any{left, right}},
+			}
+		} else {
+			result = map[string]any{
+				"bool": map[string]any{"should": []any{left, right}, "minimum_should_match": 1},
+			}
+		}
+	}
+
+	// 부정 처리
+	if node.Negated {
+		result = map[string]any{
+			"bool": map[string]any{"must_not": []any{result}},
+		}
+	}
+
+	return result
+}
+
+func expressionToES(expr *flyql.Expression) map[string]any {
+	field := expr.Key.Raw
+
+	switch expr.Operator {
+	case flyql.OpEquals:
+		return map[string]any{"term": map[string]any{field: expr.Value}}
+	case flyql.OpNotEquals:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"term": map[string]any{field: expr.Value}}}}}
+	case flyql.OpGreater:
+		return map[string]any{"range": map[string]any{field: map[string]any{"gt": expr.Value}}}
+	case flyql.OpLess:
+		return map[string]any{"range": map[string]any{field: map[string]any{"lt": expr.Value}}}
+	case flyql.OpIn:
+		return map[string]any{"terms": map[string]any{field: expr.Values}}
+	case flyql.OpNotIn:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"terms": map[string]any{field: expr.Values}}}}}
+	case flyql.OpTruthy:
+		return map[string]any{"exists": map[string]any{"field": field}}
+	case flyql.OpRegex:
+		return map[string]any{"regexp": map[string]any{field: fmt.Sprintf("%v", expr.Value)}}
+	default:
+		panic(fmt.Sprintf("unsupported operator: %s", expr.Operator))
+	}
+}
+
+func main() {
+	result, err := flyql.Parse(`status = 200 and env in ["prod", "staging"]`)
+	if err != nil {
+		panic(err)
+	}
+
+	esQuery := generateElasticsearch(result.Root)
+	data, _ := json.MarshalIndent(esQuery, "", "  ")
+	fmt.Println(string(data))
+}
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse
+from flyql.core.constants import Operator, BoolOperator
+
+def generate_elasticsearch(node):
+    if node is None:
+        return {"match_all": {}}
+
+    if node.expression is not None:
+        # leaf node를 expression으로 변환
+        result = expression_to_es(node.expression)
+    else:
+        # branch node를 재귀적으로 결합
+        left = generate_elasticsearch(node.left)
+        right = generate_elasticsearch(node.right)
+
+        if node.bool_operator == BoolOperator.AND.value:
+            result = {"bool": {"must": [left, right]}}
+        else:
+            result = {"bool": {"should": [left, right], "minimum_should_match": 1}}
+
+    # 부정 처리
+    if node.negated:
+        result = {"bool": {"must_not": [result]}}
+
+    return result
+
+def expression_to_es(expr):
+    field = expr.key.raw
+    op = expr.operator  # operator는 문자열 값으로 저장됩니다. 예: "=", "!=", "~"
+
+    if op == Operator.EQUALS.value:
+        return {"term": {field: expr.value}}
+    elif op == Operator.NOT_EQUALS.value:
+        return {"bool": {"must_not": [{"term": {field: expr.value}}]}}
+    elif op == Operator.REGEX.value:
+        return {"regexp": {field: str(expr.value)}}
+    elif op == Operator.NOT_REGEX.value:
+        return {"bool": {"must_not": [{"regexp": {field: str(expr.value)}}]}}
+    elif op == Operator.GREATER_THAN.value:
+        return {"range": {field: {"gt": expr.value}}}
+    elif op == Operator.LOWER_THAN.value:
+        return {"range": {field: {"lt": expr.value}}}
+    elif op == Operator.IN.value:
+        return {"terms": {field: expr.values or []}}
+    elif op == Operator.NOT_IN.value:
+        return {"bool": {"must_not": [{"terms": {field: expr.values or []}}]}}
+    elif op == Operator.TRUTHY.value:
+        return {"exists": {"field": field}}
+    elif op == Operator.HAS.value:
+        return {"wildcard": {field: f"*{expr.value}*"}}
+    elif op == Operator.NOT_HAS.value:
+        return {"bool": {"must_not": [{"wildcard": {field: f"*{expr.value}*"}}]}}
+    else:
+        raise ValueError(f"unsupported operator: {op}")
+
+
+# 사용 예제
+result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+es_query = generate_elasticsearch(result.root)
+print(es_query)
+```
+
+## 내장 Generator가 동작하는 방식
+
+내장 SQL generator는 위에서 본 것과 같은 재귀 패턴을 따릅니다. 각 generator는 다음과 같이 동작합니다.
+
+1. 루트 `Node`와 column schema map을 받습니다.
+2. 트리를 재귀적으로 순회합니다. branch 노드는 `(left AND right)` 또는 `(left OR right)`가 되고, leaf 노드는 SQL 조건이 됩니다.
+3. `expression.operator`를 기준으로 각 operator를 처리하고, 방언별 SQL을 생성합니다.
+4. 부정된 노드를 `NOT (...)`로 감쌉니다.
+
+사용자 정의 generator와의 핵심 차이는 SQL generator가 column schema를 기준으로 expression도 검증한다는 점입니다. 타입, 허용 값, column 존재 여부를 확인합니다. 사용자 정의 generator는 이 단계를 생략하거나 자체 검증 로직을 구현할 수 있습니다.
+
+## export된 타입 참조
+
+### JavaScript
+
+```javascript
+import {
+  parse,               // 쿼리 문자열을 AST로 parse
+  Parser,              // Parser 클래스 (고급 사용)
+  Node,                // AST branch/leaf 노드
+  Expression,          // leaf 조건
+  Key,                 // 필드 경로
+  Operator,            // 비교 operator 상수
+  BoolOperator,        // 불리언 operator 상수 ("and", "or")
+  FlyqlError,          // 기본 에러 클래스
+  ParserError,         // parse 에러 (FlyqlError를 확장하며 errno 포함)
+} from 'flyql'
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+// flyql.Parse(query string) (*ParseResult, error)
+// flyql.Node        — AST 노드 struct
+// flyql.Expression  — leaf 조건 struct
+// flyql.Key         — 필드 경로 struct
+// flyql.NewNode(), flyql.NewExpressionNode(), flyql.NewBranchNode()
+//
+// Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy 등
+// Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse, Parser
+from flyql.core.tree import Node
+from flyql.core.expression import Expression
+from flyql.core.key import Key
+from flyql.core.constants import Operator, BoolOperator
+from flyql.core.exceptions import FlyqlError, ParserError
+```

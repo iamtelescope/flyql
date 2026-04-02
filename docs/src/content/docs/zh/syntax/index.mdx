@@ -8,25 +8,25 @@ FlyQL 查询由一个或多个条件组成，条件之间通过布尔操作符 `
 ## 基础查询结构
 
 ```
-status=200 and active and not archived
+status = 200 and active and not archived
 ```
 
-- `status=200`：`status` 字段等于 `200`
+- `status = 200`：`status` 字段等于 `200`
 - `active`：`active` 字段为真值
 - `not archived`：`archived` 字段为假值（`null`、空、`0` 或 `false`）
 
 ## 更多示例
 
 ```
-service!=api or user="john doe"
+service != api or user = "john doe"
 ```
 
 ```
-message~"error.*" and not debug
+message ~ "error.*" and not debug
 ```
 
 ```
-(a=1 or b=2) and not (c=3 and d=4)
+(a = 1 or b = 2) and not (c = 3 and d = 4)
 ```
 
 ```
@@ -41,8 +41,8 @@ message has 'error' and tags not has 'debug'
 
 - **独立键名**：没有操作符的字段会被当作真值检查
 - **比较表达式**：带操作符的字段必须提供对应的值
-- **空白字符**：操作符两侧可以有空格，`status=200` 与 `status = 200` 等价
-- **操作符优先级**：`and` 的优先级高于 `or`，因此 `a=1 or b=2 and c=3` 会被解析为 `a=1 or (b=2 and c=3)`
+- **空白字符**：操作符两侧可以有空格，`status = 200` 与 `status = 200` 等价
+- **操作符优先级**：`and` 的优先级高于 `or`，因此 `a = 1 or b = 2 and c = 3` 会被解析为 `a = 1 or (b = 2 and c = 3)`
 - **括号**：可用 `(` 和 `)` 显式覆盖默认优先级并分组
 
 ## 语法章节

@@ -9,21 +9,21 @@ ClickHouse SQL uses unquoted column names, `match()` for regex, and `LIKE` for w
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `message='hello'` | `message = 'hello'` |
-| `message!='hello'` | `message != 'hello'` |
-| `count>10` | `count > 10` |
-| `count<=100` | `count <= 100` |
-| `message~'error.*'` | `match(message, 'error.*')` |
-| `message!~'test.*'` | `not match(message, 'test.*')` |
-| `host=prod*` | `host LIKE 'prod%'` |
+| `message = 'hello'` | `message = 'hello'` |
+| `message != 'hello'` | `message != 'hello'` |
+| `count > 10` | `count > 10` |
+| `count <= 100` | `count <= 100` |
+| `message ~ 'error.*'` | `match(message, 'error.*')` |
+| `message !~ 'test.*'` | `not match(message, 'test.*')` |
+| `host = prod*` | `host LIKE 'prod%'` |
 
 ## Boolean Operators
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `a='1' and b>10` | `(a = '1' and b > 10)` |
-| `a='1' or b='2'` | `(a = '1' or b = '2')` |
-| `not a='1'` | `not (a = '1')` |
+| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
+| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
+| `not a = '1'` | `not (a = '1')` |
 
 ## List Membership
 
@@ -59,9 +59,9 @@ Columns declared as `JSON` use dot notation with backtick-quoted segments:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name='test'` | `` data.`name` = 'test' `` |
-| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
-| `data.age=25` | `` data.`age` = 25 `` |
+| `data.name = 'test'` | `` data.`name` = 'test' `` |
+| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age = 25` | `` data.`age` = 25 `` |
 
 ### JSON String Type
 
@@ -69,8 +69,8 @@ Columns storing JSON as a string (e.g., `String` type with JSON content) use `JS
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
 
 ## Map Columns
 
@@ -78,9 +78,9 @@ Map columns use bracket notation with `equals()`/`notEquals()` functions:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
-| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
-| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
 
 ## Array Columns
 
@@ -88,9 +88,9 @@ Array columns use 0-based bracket indexing with `equals()`:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `tags.0='first'` | `equals(tags[0], 'first')` |
-| `tags.1='second'` | `equals(tags[1], 'second')` |
-| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
+| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
+| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
 
 ### Column Setup
 

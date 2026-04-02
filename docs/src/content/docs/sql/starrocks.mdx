@@ -9,21 +9,21 @@ StarRocks SQL uses backtick-quoted identifiers, `regexp()` for regex, and `->` w
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `message='hello'` | `` `message` = 'hello' `` |
-| `message!='hello'` | `` `message` != 'hello' `` |
-| `count>10` | `` `count` > 10 `` |
-| `count<=100` | `` `count` <= 100 `` |
-| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
-| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
-| `host=prod*` | `` `host` LIKE 'prod%' `` |
+| `message = 'hello'` | `` `message` = 'hello' `` |
+| `message != 'hello'` | `` `message` != 'hello' `` |
+| `count > 10` | `` `count` > 10 `` |
+| `count <= 100` | `` `count` <= 100 `` |
+| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host = prod*` | `` `host` LIKE 'prod%' `` |
 
 ## Boolean Operators
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `a='1' and b>10` | `` (`a` = '1' and `b` > 10) `` |
-| `a='1' or b='2'` | `` (`a` = '1' or `b` = '2') `` |
-| `not a='1'` | `` not (`a` = '1') `` |
+| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
+| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a = '1'` | `` not (`a` = '1') `` |
 
 ## List Membership
 
@@ -58,8 +58,8 @@ Native JSON columns use the `->` operator with JSON-stringified keys:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name='test'` | `` `data`->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
 
 ### JSON String Type
 
@@ -67,8 +67,8 @@ Columns storing JSON as a string require `parse_json()` before traversal:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name='test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
 ## Map Columns
 
@@ -76,10 +76,10 @@ Map columns use bracket notation with direct comparison:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `metadata.key1='value1'` | `` `metadata`['key1'] = 'value1' `` |
-| `metadata.key1!='value1'` | `` `metadata`['key1'] != 'value1' `` |
-| `metadata.nested.key='value'` | `` `metadata`['nested']['key'] = 'value' `` |
-| `metadata.pattern~'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
 
 ## Array Columns
 
@@ -87,8 +87,8 @@ Array columns use 0-based bracket indexing:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `tags.0='first'` | `` `tags`[0] = 'first' `` |
-| `tags.1='second'` | `` `tags`[1] = 'second' `` |
+| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
+| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
 
 ### Column Setup
 

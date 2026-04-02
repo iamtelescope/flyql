@@ -9,12 +9,12 @@ FlyQL unterstützt die folgenden Vergleichsoperatoren:
 
 | Operator | Name | Beispiel |
 |----------|------|----------|
-| `=` | Gleich | `status=200` |
-| `!=` | Ungleich | `env!=prod` |
+| `=` | Gleich | `status = 200` |
+| `!=` | Ungleich | `env != prod` |
 
 ```
-status=200
-service!="api-gateway"
+status = 200
+service != "api-gateway"
 ```
 
 Beide Seiten des Operators sind erforderlich: ein Schlüssel und ein Wert.
@@ -23,14 +23,14 @@ Beide Seiten des Operators sind erforderlich: ein Schlüssel und ein Wert.
 
 | Operator | Name | Beispiel |
 |----------|------|----------|
-| `>` | Größer als | `status>399` |
-| `>=` | Größer oder gleich | `status>=400` |
-| `<` | Kleiner als | `duration<1000` |
-| `<=` | Kleiner oder gleich | `duration<=500` |
+| `>` | Größer als | `status > 399` |
+| `>=` | Größer oder gleich | `status >= 400` |
+| `<` | Kleiner als | `duration < 1000` |
+| `<=` | Kleiner oder gleich | `duration <= 500` |
 
 ```
-status>=400 and duration<5000
-response_time>100 and response_time<=2000
+status >= 400 and duration < 5000
+response_time > 100 and response_time <= 2000
 ```
 
 Numerische Vergleichsoperatoren arbeiten mit numerischen Werten. Bei Strings wird lexikografisch verglichen.
@@ -39,12 +39,12 @@ Numerische Vergleichsoperatoren arbeiten mit numerischen Werten. Bei Strings wir
 
 | Operator | Name | Beispiel |
 |----------|------|----------|
-| `~` | Regex-Match | `message~"error.*"` |
-| `!~` | Kein Regex-Match | `path!~"^/health"` |
+| `~` | Regex-Match | `message ~ "error.*"` |
+| `!~` | Kein Regex-Match | `path !~ "^/health"` |
 
 ```
-message~"timeout|connection refused"
-host!~"^test-.*"
+message ~ "timeout|connection refused"
+host !~ "^test-.*"
 ```
 
 Regex-Muster folgen der Syntax der Zieldatenbank oder der Laufzeitumgebung.
@@ -84,14 +84,14 @@ Der Operator `has` führt eine typabhängige Enthalten-Prüfung aus:
 
 | Operator | Name | Beispiel |
 |----------|------|----------|
-| `=` | Gleich | `status=200` |
-| `!=` | Ungleich | `env!=prod` |
-| `>` | Größer als | `count>10` |
-| `>=` | Größer oder gleich | `count>=10` |
-| `<` | Kleiner als | `count<100` |
-| `<=` | Kleiner oder gleich | `count<=100` |
-| `~` | Regex-Match | `msg~"err.*"` |
-| `!~` | Kein Regex-Match | `msg!~"^ok"` |
+| `=` | Gleich | `status = 200` |
+| `!=` | Ungleich | `env != prod` |
+| `>` | Größer als | `count > 10` |
+| `>=` | Größer oder gleich | `count >= 10` |
+| `<` | Kleiner als | `count < 100` |
+| `<=` | Kleiner oder gleich | `count <= 100` |
+| `~` | Regex-Match | `msg ~ "err.*"` |
+| `!~` | Kein Regex-Match | `msg !~ "^ok"` |
 | `in` | In Liste | `s in [1, 2]` |
 | `not in` | Nicht in Liste | `s not in [3]` |
 | `has` | Enthält | `msg has 'err'` |

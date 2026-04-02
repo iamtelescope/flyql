@@ -20,7 +20,7 @@ pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=
 ```python
 from flyql.core.parser import parse
 
-result = parse("status=200 and active")
+result = parse("status = 200 and active")
 print(result.root)
 ```
 
@@ -37,7 +37,7 @@ from flyql.core.parser import parse
 from flyql.generators.clickhouse.generator import to_sql
 from flyql.generators.clickhouse.column import Column
 
-result = parse("status>=400 and host=prod*")
+result = parse("status >= 400 and host = prod*")
 
 columns = {
     "status": Column("status", False, "UInt32"),
@@ -57,7 +57,7 @@ from flyql.core.parser import parse
 from flyql.matcher.evaluator import Evaluator
 from flyql.matcher.record import Record
 
-result = parse("status=200 and active")
+result = parse("status = 200 and active")
 
 data = {
     "status": 200,

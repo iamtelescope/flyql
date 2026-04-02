@@ -8,8 +8,8 @@ description: Регулярные выражения и сопоставлени
 Используйте `~` для проверки соответствия регулярному выражению и `!~` для отрицания:
 
 ```
-message~"error.*timeout"
-path!~"^/health"
+message ~ "error.*timeout"
+path !~ "^/health"
 ```
 
 | Оператор | Значение |
@@ -31,8 +31,8 @@ path!~"^/health"
 Используйте `(?i)` в начале шаблона:
 
 ```
-message~"(?i)error"
-level~"(?i)^(warn|error|fatal)$"
+message ~ "(?i)error"
+level ~ "(?i)^(warn|error|fatal)$"
 ```
 
 ## Подстановочный шаблон
@@ -40,16 +40,16 @@ level~"(?i)^(warn|error|fatal)$"
 Используйте `*` в конце некавыченного значения для сопоставления по префиксу:
 
 ```
-host=prod*
-service=api-*
+host = prod*
+service = api-*
 ```
 
 ## Примеры
 
 ```
-message~"error|fail"
-path~"^/api/v2"
-path!~"^/health"
-host=prod*
-host=prod* and message~"timeout.*" and path!~"^/health"
+message ~ "error|fail"
+path ~ "^/api/v2"
+path !~ "^/health"
+host = prod*
+host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```

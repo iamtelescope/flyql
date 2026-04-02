@@ -8,8 +8,8 @@ description: FlyQL 中的正则与通配匹配
 使用 `~` 将值与正则表达式匹配，使用 `!~` 表示不匹配：
 
 ```
-message~"error.*timeout"
-path!~"^/health"
+message ~ "error.*timeout"
+path !~ "^/health"
 ```
 
 | 操作符 | 含义 |
@@ -29,8 +29,8 @@ path!~"^/health"
 当正则中包含空格或特殊字符时，应使用引号：
 
 ```
-message~"connection (refused|reset)"
-host~"^prod-[0-9]+"
+message ~ "connection (refused|reset)"
+host ~ "^prod-[0-9]+"
 ```
 
 ### 忽略大小写
@@ -38,8 +38,8 @@ host~"^prod-[0-9]+"
 如果要进行大小写不敏感匹配，可在模式开头加上 `(?i)`：
 
 ```
-message~"(?i)error"
-level~"(?i)^(warn|error|fatal)$"
+message ~ "(?i)error"
+level ~ "(?i)^(warn|error|fatal)$"
 ```
 
 支持情况如下：
@@ -56,7 +56,7 @@ level~"(?i)^(warn|error|fatal)$"
 JavaScript 的内存匹配场景下，可以使用字符类替代：
 
 ```
-message~"[eE][rR][rR][oO][rR]"
+message ~ "[eE][rR][rR][oO][rR]"
 ```
 
 ## 通配匹配
@@ -64,8 +64,8 @@ message~"[eE][rR][rR][oO][rR]"
 对于简单的前缀匹配，可以在未加引号的值末尾使用 `*`：
 
 ```
-host=prod*
-service=api-*
+host = prod*
+service = api-*
 ```
 
 这表示匹配所有以指定前缀开头的值。通配符只支持出现在末尾，像 `*prod` 或 `pr*od` 这样的写法不受支持。
@@ -74,8 +74,8 @@ service=api-*
 
 | 模式 | 语法 | 示例 |
 |------|------|------|
-| 通配前缀 | `key=value*` | `host=prod*` |
-| 完整正则 | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+| 通配前缀 | `key = value*` | `host = prod*` |
+| 完整正则 | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
 
 简单前缀匹配用通配符，更复杂的模式请使用正则。
 
@@ -83,18 +83,18 @@ service=api-*
 
 ```
 # 匹配包含 "error" 或 "fail" 的消息
-message~"error|fail"
+message ~ "error|fail"
 
 # 匹配以 /api/v2 开头的路径
-path~"^/api/v2"
+path ~ "^/api/v2"
 
 # 排除健康检查路径
-path!~"^/health"
+path !~ "^/health"
 
 # 主机名前缀匹配
-host=prod*
+host = prod*
 
 # 组合示例
-host=prod* and message~"timeout.*" and path!~"^/health"
+host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```
 

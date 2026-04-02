@@ -9,10 +9,10 @@ StarRocks использует идентификаторы в обратных 
 
 | FlyQL | Генерируемый SQL |
 |-------|------------------|
-| `message='hello'` | `` `message` = 'hello' `` |
-| `message!='hello'` | `` `message` != 'hello' `` |
-| `count>10` | `` `count` > 10 `` |
-| `count<=100` | `` `count` <= 100 `` |
-| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
-| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
-| `host=prod*` | `` `host` LIKE 'prod%' `` |
+| `message = 'hello'` | `` `message` = 'hello' `` |
+| `message != 'hello'` | `` `message` != 'hello' `` |
+| `count > 10` | `` `count` > 10 `` |
+| `count <= 100` | `` `count` <= 100 `` |
+| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host = prod*` | `` `host` LIKE 'prod%' `` |

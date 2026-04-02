@@ -1,0 +1,96 @@
+---
+title: SQL 방언
+description: FlyQL이 ClickHouse, PostgreSQL, StarRocks용 SQL을 생성하는 방식
+---
+
+FlyQL generator는 모든 값을 포함한(escape된) 일반 SQL 문자열 형태의 WHERE 절 fragment를 생성합니다. 동일한 FlyQL 쿼리라도 대상 dialect에 따라 서로 다른 SQL이 생성됩니다.
+
+## 지원하는 방언
+
+- [ClickHouse](/ko/sql/clickhouse/) — column quoting 없음, regex에는 `match()`, JSON 문자열에는 `JSONExtract` 함수 사용
+- [PostgreSQL](/ko/sql/postgresql/) — 큰따옴표 identifier, regex에는 `~`, JSONB operator 사용
+- [StarRocks](/ko/sql/starrocks/) — 백틱 identifier, regex에는 `regexp()`, JSON 문자열에는 `parse_json()` 사용
+
+## 주요 차이점
+
+| 기능 | ClickHouse | PostgreSQL | StarRocks |
+|---------|-----------|-----------|-----------|
+| Column quoting | 없음 | `"name"` | `` `name` `` |
+| Regex | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| Negated regex | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| Wildcard | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| Boolean ops | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| Empty `IN []` | `0` | `FALSE` | `0` |
+| Empty `NOT IN []` | `1` | `TRUE` | `1` |
+| String `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| Array `has` | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| Map `has` | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON `has` | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+
+## JSON 접근: 가장 큰 차이점
+
+각 dialect는 중첩 JSON column을 매우 다르게 처리합니다.
+
+**FlyQL 입력:** `data.user.name = 'john'`
+
+**ClickHouse** (native JSON column):
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse** (문자열로 저장된 JSON):
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL** (JSONB):
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks** (native JSON):
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+전체 예제는 각 dialect 페이지를 참고하세요.
+
+## Map 접근
+
+**FlyQL 입력:** `metadata.key1 = 'value1'`
+
+| Dialect | 생성된 SQL |
+|---------|--------------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+ClickHouse는 Map 접근에 `equals()`/`notEquals()` 함수를 사용합니다. PostgreSQL은 hstore `->` operator를 사용합니다. StarRocks는 bracket 표기를 직접 사용합니다.
+
+## Array 접근
+
+**FlyQL 입력:** `tags.0 = 'first'` (FlyQL에서는 0-based index)
+
+| Dialect | 생성된 SQL | 인덱싱 |
+|---------|--------------|----------|
+| ClickHouse | `equals(tags[0], 'first')` | 0-based |
+| PostgreSQL | `"tags"[1] = 'first'` | 1-based (자동 변환) |
+| StarRocks | `` `tags`[0] = 'first' `` | 0-based |
+
+PostgreSQL array는 1-based이므로 FlyQL은 index에 자동으로 1을 더합니다.
+
+## 출력 형식
+
+Generator는 WHERE 절 fragment를 반환합니다. `WHERE` 키워드도 없고, parameterized placeholder도 없습니다. 모든 값은 escape되어 직접 포함됩니다.
+
+```
+message = 'hello' and count > 10
+```
+
+다음과 같은 형태가 아닙니다:
+
+```
+WHERE message = ? AND count > ?
+```

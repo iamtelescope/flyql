@@ -1,0 +1,113 @@
+---
+title: 테마 설정
+description: CSS 커스텀 프로퍼티로 FlyQL editor의 모양을 커스터마이즈합니다
+---
+
+FlyQL editor는 모든 시각적 스타일링에 CSS 커스텀 프로퍼티(변수)를 사용합니다. `--flyql-*` 변수를 재정의하여 애플리케이션 디자인에 맞게 조정할 수 있습니다.
+
+## CSS 커스텀 프로퍼티
+
+### 색상
+
+| 변수 | Light 기본값 | Dark 기본값 | 설명 |
+|------|--------------|-------------|------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | editor 배경 |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | 텍스트 색상 |
+| `--flyql-border` | `#d4d4d4` | `#525252` | 테두리 색상 |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | 포커스 시 테두리 색상 |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | placeholder 텍스트 색상 |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | 오류 강조 색상 |
+
+### 구문 하이라이팅
+
+| 변수 | Light 기본값 | Dark 기본값 | 설명 |
+|------|--------------|-------------|------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | 컬럼/키 이름 |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | 연산자 (`=`, `!=`, `and` 등) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | 문자열 값 |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | 숫자 값 |
+
+### 제안 패널
+
+| 변수 | Light 기본값 | Dark 기본값 | 설명 |
+|------|--------------|-------------|------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | 패널 배경 |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | 패널 테두리 |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | hover된 항목 |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | 선택된 항목 |
+
+### 타이포그래피
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI 폰트 |
+| `--flyql-code-font-family` | `monospace` | 코드/쿼리용 폰트 |
+| `--flyql-font-size` | `13px` | 기본 폰트 크기 |
+
+## Light 테마
+
+Light 테마가 기본값입니다. 추가 클래스는 필요하지 않습니다.
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Dark 테마
+
+내장 Dark 테마를 활성화하려면 `dark` prop을 사용합니다.
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+`dark` prop은 `<body>`로 teleport되는 제안 패널에 `flyql-dark` 클래스를 적용합니다. 이 패널은 상위 wrapper로부터 상속받을 수 없습니다. 반면 editor 입력 자체는 일반적으로 상위 요소의 CSS 변수를 계속 상속하므로, wrapper 수준의 override는 그대로 동작합니다.
+
+또는 `flyql-dark` 클래스를 `<html>` 또는 `<body>`에 적용할 수도 있습니다. 그러면 CSS 변수 상속을 통해 editor와 teleport된 패널 모두에 적용됩니다.
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## 사용자 지정 테마
+
+필요한 변수만 CSS에서 재정의할 수 있습니다.
+
+```css
+/* 사용자 지정 브랜드 테마 */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* 사용자 지정 다크 모드 오버라이드 */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## 범위 한정 테마
+
+특정 editor 인스턴스에만 테마를 적용하려면, override가 지정된 컨테이너로 감싸면 됩니다.
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS 커스텀 프로퍼티는 상속되므로, 어떤 상위 요소에서든 지정한 override는 그 안의 모든 FlyQL 컴포넌트에 적용됩니다.

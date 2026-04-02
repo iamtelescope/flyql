@@ -1,0 +1,161 @@
+---
+title: Go 빠른 시작
+description: Go 프로젝트에서 FlyQL 설치 및 사용
+---
+
+## 설치
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## 쿼리 parse하기
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status = 200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse`는 AST를 나타내는 `Root` 노드를 가진 `*ParseResult`를 반환합니다.
+
+## SQL 생성
+
+Generator를 사용하면 AST를 파라미터화된 WHERE 절로 바꿀 수 있습니다. 각 데이터베이스 방언에는 방언별 컬럼 타입을 처리하는 전용 generator가 있습니다.
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status >= 400 and host = prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+PostgreSQL과 StarRocks generator도 같은 패턴을 따릅니다. 대신 `generators/postgresql` 또는 `generators/starrocks`를 import하세요.
+
+## 메모리에서 매칭하기
+
+SQL을 생성하지 않고 데이터 레코드에 대해 쿼리를 평가할 수 있습니다.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status = 200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## 컬럼 표현식 parse하기
+
+컬럼 표현식을 segments, transformers, aliases를 포함하는 구조화된 데이터로 parse할 수 있습니다.
+두 번째 인수는 어떤 기능을 활성화할지 제어하는 `Capabilities` 구조체입니다.
+Transformers는 기본적으로 비활성화되어 있습니다.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	// 기본 컬럼 parse (transformers는 기본적으로 비활성화)
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	// capabilities로 transformers 활성화
+	caps := columns.Capabilities{Transformers: true}
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms[0].Transformers)
+
+	// 또는 API 응답용으로 직접 JSON으로 직렬화
+	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
+	fmt.Println(string(jsonBytes))
+}
+```
+
+## 쿼리에서 Transformers 사용하기
+
+transformer가 포함된 쿼리를 parse하고 SQL을 생성할 수 있습니다.
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, _ := flyql.Parse("message|upper = 'ERROR'")
+	columns := map[string]*clickhousegen.Column{
+		"message": clickhousegen.NewColumn("message", false, "String", nil),
+	}
+	sql, _ := clickhousegen.ToSQL(result.Root, columns)
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+전체 문법은 [Transformers](/ko/syntax/transformers/)를 참고하세요.
+
+## 다음 단계
+
+- [구문 참조](/ko/syntax/) — 모든 연산자, 불리언 로직, 패턴 등

@@ -31,7 +31,7 @@ FlyQL の generator は、すべての値を埋め込み済みかつエスケー
 
 ネストした JSON カラムの扱いは、方言ごとに大きく異なります。
 
-**FlyQL 入力:** `data.user.name='john'`
+**FlyQL 入力:** `data.user.name = 'john'`
 
 **ClickHouse**（ネイティブ JSON カラム）:
 ```sql
@@ -59,7 +59,7 @@ multiIf(JSONType(data, 'user', 'name') = 'String',
 
 ## Map アクセス
 
-**FlyQL 入力:** `metadata.key1='value1'`
+**FlyQL 入力:** `metadata.key1 = 'value1'`
 
 | 方言 | 生成される SQL |
 |------|-----------------|
@@ -71,7 +71,7 @@ ClickHouse は Map アクセスに `equals()` / `notEquals()` を使います。
 
 ## Array アクセス
 
-**FlyQL 入力:** `tags.0='first'`（FlyQL では 0 始まり）
+**FlyQL 入力:** `tags.0 = 'first'`（FlyQL では 0 始まり）
 
 | 方言 | 生成される SQL | 添字 |
 |------|-----------------|------|

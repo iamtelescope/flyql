@@ -9,21 +9,21 @@ PostgreSQL 生成的 SQL 使用双引号包裹标识符，正则使用 `~`，布
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `message='hello'` | `"message" = 'hello'` |
-| `message!='hello'` | `"message" != 'hello'` |
-| `count>10` | `"count" > 10` |
-| `count<=100` | `"count" <= 100` |
-| `message~'error.*'` | `"message" ~ 'error.*'` |
-| `message!~'test.*'` | `"message" !~ 'test.*'` |
-| `host=prod*` | `"host" LIKE 'prod%'` |
+| `message = 'hello'` | `"message" = 'hello'` |
+| `message != 'hello'` | `"message" != 'hello'` |
+| `count > 10` | `"count" > 10` |
+| `count <= 100` | `"count" <= 100` |
+| `message ~ 'error.*'` | `"message" ~ 'error.*'` |
+| `message !~ 'test.*'` | `"message" !~ 'test.*'` |
+| `host = prod*` | `"host" LIKE 'prod%'` |
 
 ## 布尔操作符
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `a='1' and b>10` | `("a" = '1' AND "b" > 10)` |
-| `a='1' or b='2'` | `("a" = '1' OR "b" = '2')` |
-| `not a='1'` | `NOT ("a" = '1')` |
+| `a = '1' and b > 10` | `("a" = '1' AND "b" > 10)` |
+| `a = '1' or b = '2'` | `("a" = '1' OR "b" = '2')` |
+| `not a = '1'` | `NOT ("a" = '1')` |
 
 ## 列表成员
 
@@ -51,14 +51,14 @@ PostgreSQL 通过 `jsonb_typeof()` 配合 JSONB 操作符访问嵌套 JSON。
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name='test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
-| `data.user.name='john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+| `data.name = 'test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| `data.user.name = 'john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
 
 ### 数值比较
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.age>25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+| `data.age > 25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
 
 ### JSONB 操作符说明
 
@@ -70,9 +70,9 @@ PostgreSQL 通过 `jsonb_typeof()` 配合 JSONB 操作符访问嵌套 JSON。
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `metadata.key1='value1'` | `"metadata"->'key1' = 'value1'` |
-| `metadata.key1!='value1'` | `"metadata"->'key1' != 'value1'` |
-| `metadata.pattern~'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
+| `metadata.key1 = 'value1'` | `"metadata"->'key1' = 'value1'` |
+| `metadata.key1 != 'value1'` | `"metadata"->'key1' != 'value1'` |
+| `metadata.pattern ~ 'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
 
 ## 数组列
 
@@ -80,9 +80,9 @@ PostgreSQL 数组是 1-based，FlyQL 会自动把 0-based 下标转换过去：
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `tags.0='first'` | `"tags"[1] = 'first'` |
-| `tags.1='second'` | `"tags"[2] = 'second'` |
-| `tags.0~'tag.*'` | `"tags"[1] ~ 'tag.*'` |
+| `tags.0 = 'first'` | `"tags"[1] = 'first'` |
+| `tags.1 = 'second'` | `"tags"[2] = 'second'` |
+| `tags.0 ~ 'tag.*'` | `"tags"[1] ~ 'tag.*'` |
 
 ## 列定义示例
 

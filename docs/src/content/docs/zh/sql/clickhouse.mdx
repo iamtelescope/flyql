@@ -9,21 +9,21 @@ ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `message='hello'` | `message = 'hello'` |
-| `message!='hello'` | `message != 'hello'` |
-| `count>10` | `count > 10` |
-| `count<=100` | `count <= 100` |
-| `message~'error.*'` | `match(message, 'error.*')` |
-| `message!~'test.*'` | `not match(message, 'test.*')` |
-| `host=prod*` | `host LIKE 'prod%'` |
+| `message = 'hello'` | `message = 'hello'` |
+| `message != 'hello'` | `message != 'hello'` |
+| `count > 10` | `count > 10` |
+| `count <= 100` | `count <= 100` |
+| `message ~ 'error.*'` | `match(message, 'error.*')` |
+| `message !~ 'test.*'` | `not match(message, 'test.*')` |
+| `host = prod*` | `host LIKE 'prod%'` |
 
 ## 布尔操作符
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `a='1' and b>10` | `(a = '1' and b > 10)` |
-| `a='1' or b='2'` | `(a = '1' or b = '2')` |
-| `not a='1'` | `not (a = '1')` |
+| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
+| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
+| `not a = '1'` | `not (a = '1')` |
 
 ## 列表成员
 
@@ -53,32 +53,32 @@ ClickHouse 支持两种 JSON 形式。
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name='test'` | `` data.`name` = 'test' `` |
-| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
-| `data.age=25` | `` data.`age` = 25 `` |
+| `data.name = 'test'` | `` data.`name` = 'test' `` |
+| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age = 25` | `` data.`age` = 25 `` |
 
 ### 字符串形式 JSON
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
 
 ## Map 列
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
-| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
-| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
 
 ## 数组列
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `tags.0='first'` | `equals(tags[0], 'first')` |
-| `tags.1='second'` | `equals(tags[1], 'second')` |
-| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
+| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
+| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
 
 ## 列定义示例
 

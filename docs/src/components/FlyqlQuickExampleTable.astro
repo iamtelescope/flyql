@@ -1,0 +1,65 @@
+---
+import FlyqlCode from './FlyqlCode.astro'
+import { landingQuickExampleParts } from '../data/flyql-examples'
+
+interface Props {
+  componentHeader: string
+  meaningHeader: string
+  meanings: {
+    service: string
+    status: string
+    level: string
+    message: string
+    boolean: string
+    grouping: string
+  }
+}
+
+const { componentHeader, meaningHeader, meanings } = Astro.props
+---
+
+<table>
+  <thead>
+    <tr>
+      <th>{componentHeader}</th>
+      <th>{meaningHeader}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.service} /></td>
+      <td>{meanings.service}</td>
+    </tr>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.status} /></td>
+      <td>{meanings.status}</td>
+    </tr>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.level} /></td>
+      <td>{meanings.level}</td>
+    </tr>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.message} /></td>
+      <td>{meanings.message}</td>
+    </tr>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.andToken} />, <FlyqlCode inline code={landingQuickExampleParts.orToken} /></td>
+      <td>{meanings.boolean}</td>
+    </tr>
+    <tr>
+      <td class="flyql-example-cell"><FlyqlCode inline code={landingQuickExampleParts.grouping} /></td>
+      <td>{meanings.grouping}</td>
+    </tr>
+  </tbody>
+</table>
+
+<style>
+  .flyql-example-cell,
+  .flyql-example-cell * {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  }
+
+  .flyql-example-cell {
+    font-size: 0.84em;
+  }
+</style>

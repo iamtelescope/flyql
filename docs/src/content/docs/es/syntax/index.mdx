@@ -8,25 +8,25 @@ Las consultas de FlyQL constan de una o más condiciones conectadas por operador
 ## Estructura básica de una consulta
 
 ```
-status=200 and active and not archived
+status = 200 and active and not archived
 ```
 
-- `status=200`: el campo `status` es igual a `200`
+- `status = 200`: el campo `status` es igual a `200`
 - `active`: el campo `active` tiene un valor truthy
 - `not archived`: el campo `archived` es falsy (`null`, vacío, cero o `false`)
 
 ## Más ejemplos
 
 ```
-service!=api or user="john doe"
+service != api or user = "john doe"
 ```
 
 ```
-message~"error.*" and not debug
+message ~ "error.*" and not debug
 ```
 
 ```
-(a=1 or b=2) and not (c=3 and d=4)
+(a = 1 or b = 2) and not (c = 3 and d = 4)
 ```
 
 ```
@@ -41,8 +41,8 @@ message has 'error' and tags not has 'debug'
 
 - **Claves independientes**: una clave sin operador se interpreta como una comprobación truthy
 - **Comparaciones**: una clave con operador debe tener un valor correspondiente
-- **Espacios en blanco**: se permiten espacios alrededor de los operadores; `status=200` y `status = 200` son equivalentes
-- **Precedencia de operadores**: `and` tiene mayor precedencia que `or`, así que `a=1 or b=2 and c=3` se parsea como `a=1 or (b=2 and c=3)`
+- **Espacios en blanco**: se permiten espacios alrededor de los operadores; `status = 200` y `status = 200` son equivalentes
+- **Precedencia de operadores**: `and` tiene mayor precedencia que `or`, así que `a = 1 or b = 2 and c = 3` se parsea como `a = 1 or (b = 2 and c = 3)`
 - **Paréntesis**: usa `(` y `)` para cambiar la precedencia y agrupar condiciones de forma explícita
 
 ## Secciones de sintaxis

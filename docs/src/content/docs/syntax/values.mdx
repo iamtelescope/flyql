@@ -12,9 +12,9 @@ FlyQL supports 7 value types: **Integer**, **BigInt**, **Float**, **String**, **
 Whole numbers within the int64 range:
 
 ```
-count=42
-status!=200
-age>=18
+count = 42
+status != 200
+age >= 18
 ```
 
 AST: `value_type: "integer"`
@@ -24,7 +24,7 @@ AST: `value_type: "integer"`
 Integers exceeding the int64 range (Go/Python) or `MAX_SAFE_INTEGER` (JavaScript):
 
 ```
-id=18446744073709551615
+id = 18446744073709551615
 ```
 
 AST: `value_type: "bigint"`
@@ -34,8 +34,8 @@ AST: `value_type: "bigint"`
 Numbers with a decimal point:
 
 ```
-price>9.99
-ratio=3.14
+price > 9.99
+ratio = 3.14
 temperature<=-0.5
 ```
 
@@ -46,10 +46,10 @@ AST: `value_type: "float"`
 Text values, quoted or unquoted:
 
 ```
-level=error              # unquoted string
-user="John Doe"          # double-quoted (spaces)
-message='hello world'    # single-quoted (spaces)
-count='42'               # quoted number is a string
+level = error              # unquoted string
+user = "John Doe"          # double-quoted (spaces)
+message = 'hello world'    # single-quoted (spaces)
+count = '42'               # quoted number is a string
 ```
 
 AST: `value_type: "string"`
@@ -57,7 +57,7 @@ AST: `value_type: "string"`
 Escape quotes with backslash:
 
 ```
-user='John\'s account'
+user = 'John
 message="said \"hello\""
 ```
 
@@ -66,9 +66,9 @@ message="said \"hello\""
 The keywords `true` and `false` (lowercase, case-sensitive):
 
 ```
-active=true
-debug=false
-active!=true
+active = true
+debug = false
+active != true
 ```
 
 AST: `value_type: "boolean"`, value is native boolean.
@@ -87,8 +87,8 @@ Capitalized variants (`True`, `FALSE`) are treated as strings.
 The keyword `null` (lowercase, case-sensitive):
 
 ```
-field=null
-field!=null
+field = null
+field != null
 ```
 
 AST: `value_type: "null"`, value is native null.
@@ -97,7 +97,7 @@ Capitalized variants (`Null`, `NULL`) are treated as strings.
 
 **Restrictions:** Only `=` and `!=` operators are valid with null. Using `>`, `<`, `>=`, `<=`, `~`, or `!~` with null produces a parse error.
 
-**SQL generation:** `field=null` emits `field IS NULL`, `field!=null` emits `field IS NOT NULL` (all dialects).
+**SQL generation:** `field = null` emits `field IS NULL`, `field != null` emits `field IS NOT NULL` (all dialects).
 
 ### Array
 
@@ -135,14 +135,141 @@ not archived
 active and not debug
 ```
 
-Truthy/falsy checks are distinct from null comparisons: `not field` matches when the field is null, empty, or zero. `field=null` matches only when the field is specifically null.
+Truthy/falsy checks are distinct from null comparisons: `not field` matches when the field is null, empty, or zero. `field = null` matches only when the field is specifically null.
 
 ## Whitespace
 
 FlyQL is whitespace-tolerant. Spaces around operators are optional:
 
 ```
-status=200
+status = 200
+status = 200
+status =200
+```
+
+All of the above are equivalent.
+
+## Type Constants Module
+
+All type constants are available from the `flyql.types` module:
+
+**Python:**
+```python
+from flyql.types import ValueType
+# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+**Go:**
+```go
+import "github.com/iamtelescope/flyql/golang/types"
+// types.Integer, types.BigInt, types.Float,
+// types.String, types.Boolean, types.Null, types.Array
+```
+
+**JavaScript:**
+```javascript
+import { ValueType } from 'flyql/types'
+// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+## Migration Notes
+
+If upgrading from a previous FlyQL version:
+
+- **Breaking:** Go's `ValueTypeString`/`ValueTypeNumber` removed, replaced by 7-value `types.ValueType`
+- **Breaking:** AST `value_type` field changed from `"string"`/`"number"` to `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
+- **Breaking:** Mixed-type list enforcement removed — heterogeneous arrays are now valid
+- **New:** `true`, `false`, `null` are parsed as typed literals (not strings)
+- **New:** `values_types` array on IN-list expressions provides per-element types
+- **New:** `flyql.types` module exports canonical type constants
+s account'
+message="said \"hello\""
+```
+
+### Boolean
+
+The keywords `true` and `false` (lowercase, case-sensitive):
+
+```
+active = true
+debug = false
+active != true
+```
+
+AST: `value_type: "boolean"`, value is native boolean.
+
+Capitalized variants (`True`, `FALSE`) are treated as strings.
+
+**SQL generation:**
+| Dialect | `field=true` | `field=false` |
+|---------|-------------|--------------|
+| ClickHouse | `field = true` | `field = false` |
+| PostgreSQL | `field = TRUE` | `field = FALSE` |
+| StarRocks | `field = true` | `field = false` |
+
+### Null
+
+The keyword `null` (lowercase, case-sensitive):
+
+```
+field = null
+field != null
+```
+
+AST: `value_type: "null"`, value is native null.
+
+Capitalized variants (`Null`, `NULL`) are treated as strings.
+
+**Restrictions:** Only `=` and `!=` operators are valid with null. Using `>`, `<`, `>=`, `<=`, `~`, or `!~` with null produces a parse error.
+
+**SQL generation:** `field = null` emits `field IS NULL`, `field != null` emits `field IS NOT NULL` (all dialects).
+
+### Array
+
+Arrays are used with `in` and `not in` operators. Elements can be mixed types (heterogeneous):
+
+```
+status in [200, 201, 202]
+name in ['alice', 'bob']
+field in [1, "hello", true, null]
+```
+
+Each element carries its own type in the `values_types` array.
+
+## Truthy/Falsy Expressions
+
+A standalone key without an operator checks if the field has a truthy value:
+
+```
+active
+message and status
+```
+
+A value is considered **falsy** if it is:
+- `null` / `None` / missing
+- Empty string `""`
+- Zero `0`
+- Boolean `false`
+
+Everything else is **truthy**.
+
+Use `not` to check for falsy values:
+
+```
+not archived
+active and not debug
+```
+
+Truthy/falsy checks are distinct from null comparisons: `not field` matches when the field is null, empty, or zero. `field = null` matches only when the field is specifically null.
+
+## Whitespace
+
+FlyQL is whitespace-tolerant. Spaces around operators are optional:
+
+```
+status = 200
 status = 200
 status =200
 ```

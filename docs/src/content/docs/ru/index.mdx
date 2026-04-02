@@ -3,15 +3,18 @@ title: FlyQL
 description: Лёгкий язык запросов с защитой от инъекций и поддержкой нескольких диалектов SQL
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
+import TechLabel from '../../../components/TechLabel.astro'
+import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
+
 FlyQL — лёгкий язык запросов, который преобразуется в SQL с защитой от инъекций для ClickHouse, PostgreSQL и StarRocks, с реализациями на Go, Python и JavaScript.
 
 ## Что такое FlyQL?
 
-FlyQL — это простой и удобочитаемый язык запросов, предназначенный для фильтрации данных. Вы можете написать запрос вроде `status>=400 and host=prod*`, а FlyQL преобразует его в SQL для вашей базы данных или выполнит сопоставление прямо в памяти.
+FlyQL — это простой и удобочитаемый язык запросов, предназначенный для фильтрации данных. Вы можете написать запрос вроде `status >= 400 and host = prod*`, а FlyQL преобразует его в SQL для вашей базы данных или выполнит сопоставление прямо в памяти.
 
-```
-status>=400 and host=prod* and not debug
-```
+<FlyqlCode code={landingIntroQuery} />
 
 Этот запрос работает одинаково независимо от того, используете ли вы ClickHouse, PostgreSQL, StarRocks или набор данных в памяти.
 
@@ -24,26 +27,36 @@ status>=400 and host=prod* and not debug
 
 ## Быстрый пример
 
-```
-service!=api and (status>=400 or level=error) and message~"timeout.*"
-```
+<FlyqlCode code={landingQuickExampleQuery} />
 
-| Компонент | Значение |
-|-----------|----------|
-| `service!=api` | поле `service` не равно `"api"` |
-| `status>=400` | `status` больше или равен `400` |
-| `level=error` | поле `level` равно `"error"` |
-| `message~"timeout.*"` | `message` соответствует регулярному выражению |
-| `and`, `or` | булева логика с приоритетом |
-| `( )` | явная группировка |
+<FlyqlQuickExampleTable
+  componentHeader="Компонент"
+  meaningHeader="Значение"
+  meanings={{
+    service: 'поле `service` не равно `"api"`',
+    status: '`status` больше или равен `400`',
+    level: 'поле `level` равно `"error"`',
+    message: '`message` соответствует регулярному выражению',
+    boolean: 'булева логика с приоритетом',
+    grouping: 'явная группировка',
+  }}
+/>
 
 ## Поддерживаемые языки
 
-| Язык | Парсер | SQL-генераторы | Сопоставление в памяти |
-|------|--------|----------------|------------------------|
-| Go | Да | ClickHouse, PostgreSQL, StarRocks | Да |
-| Python | Да | ClickHouse, PostgreSQL, StarRocks | Да |
-| JavaScript | Да | ClickHouse, PostgreSQL, StarRocks | Да |
+| Язык | Парсер | Сопоставление в памяти |
+|------|--------|------------------------|
+| <TechLabel icon="/icons/go.svg" label="Go" variant="go" /> | Да | Да |
+| <TechLabel icon="/icons/python.svg" label="Python" /> | Да | Да |
+| <TechLabel icon="/icons/javascript.svg" label="JavaScript" /> | Да | Да |
+
+## SQL-генераторы
+
+| База данных | Go | Python | JavaScript |
+|-------------|----|--------|------------|
+| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Да | Да | Да |
+| <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Да | Да | Да |
+| <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Да | Да | Да |
 
 ## Что дальше
 

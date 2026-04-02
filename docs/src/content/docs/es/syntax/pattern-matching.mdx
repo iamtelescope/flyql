@@ -8,8 +8,8 @@ description: Coincidencia regex y con comodines en FlyQL
 Usa `~` para comparar un valor con una expresión regular y `!~` para negar la coincidencia:
 
 ```
-message~"error.*timeout"
-path!~"^/health"
+message ~ "error.*timeout"
+path !~ "^/health"
 ```
 
 | Operador | Significado |
@@ -29,8 +29,8 @@ La sintaxis regex depende del backend de destino:
 Pon el patrón entre comillas cuando contenga espacios o caracteres especiales:
 
 ```
-message~"connection (refused|reset)"
-host~"^prod-[0-9]+"
+message ~ "connection (refused|reset)"
+host ~ "^prod-[0-9]+"
 ```
 
 ### Coincidencia sin distinguir mayúsculas y minúsculas
@@ -38,8 +38,8 @@ host~"^prod-[0-9]+"
 Para hacer coincidencias regex sin distinguir mayúsculas y minúsculas, usa la bandera `(?i)` al inicio del patrón:
 
 ```
-message~"(?i)error"
-level~"(?i)^(warn|error|fatal)$"
+message ~ "(?i)error"
+level ~ "(?i)^(warn|error|fatal)$"
 ```
 
 La bandera inline `(?i)` es una característica de regex y su compatibilidad varía según el backend:
@@ -56,7 +56,7 @@ La bandera inline `(?i)` es una característica de regex y su compatibilidad var
 Para el matcher en memoria de JavaScript, usa una clase de caracteres para lograr coincidencias sin distinguir mayúsculas y minúsculas:
 
 ```
-message~"[eE][rR][rR][oO][rR]"
+message ~ "[eE][rR][rR][oO][rR]"
 ```
 
 O, si solo apuntas a backends SQL, `(?i)` funciona de forma fiable en los tres dialectos.
@@ -64,7 +64,7 @@ O, si solo apuntas a backends SQL, `(?i)` funciona de forma fiable en los tres d
 Combina la coincidencia sin distinción de mayúsculas con negación para excluir patrones sin importar el caso:
 
 ```
-message~"(?i)error" and message!~"(?i)warning"
+message ~ "(?i)error" and message !~ "(?i)warning"
 ```
 
 ## Coincidencia con comodines
@@ -72,8 +72,8 @@ message~"(?i)error" and message!~"(?i)warning"
 Usa `*` al final de un valor sin comillas para hacer coincidencia por prefijo:
 
 ```
-host=prod*
-service=api-*
+host = prod*
+service = api-*
 ```
 
 Esto coincide con cualquier valor que empiece por el prefijo dado. Los comodines solo se admiten al final del valor; `*prod` y `pr*od` no están soportados.
@@ -82,8 +82,8 @@ Esto coincide con cualquier valor que empiece por el prefijo dado. Los comodines
 
 | Patrón | Sintaxis | Ejemplo |
 |--------|----------|---------|
-| Comodín por prefijo | `key=value*` | `host=prod*` |
-| Regex completa | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+| Comodín por prefijo | `key = value*` | `host = prod*` |
+| Regex completa | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
 
 Usa comodines para coincidencias simples por prefijo. Usa regex cuando necesites patrones más complejos.
 
@@ -91,17 +91,17 @@ Usa comodines para coincidencias simples por prefijo. Usa regex cuando necesites
 
 ```
 # Regex: mensajes que contienen "error" o "fail"
-message~"error|fail"
+message ~ "error|fail"
 
 # Regex: rutas que empiezan por /api/v2
-path~"^/api/v2"
+path ~ "^/api/v2"
 
 # Regex negada: excluir rutas de health check
-path!~"^/health"
+path !~ "^/health"
 
 # Comodín: hosts que empiezan por "prod"
-host=prod*
+host = prod*
 
 # Combinado
-host=prod* and message~"timeout.*" and path!~"^/health"
+host = prod* and message ~ "timeout.*" and path !~ "^/health"
 ```

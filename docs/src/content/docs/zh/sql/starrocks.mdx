@@ -9,21 +9,21 @@ StarRocks 生成的 SQL 使用反引号包裹标识符，正则使用 `regexp()`
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `message='hello'` | `` `message` = 'hello' `` |
-| `message!='hello'` | `` `message` != 'hello' `` |
-| `count>10` | `` `count` > 10 `` |
-| `count<=100` | `` `count` <= 100 `` |
-| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
-| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
-| `host=prod*` | `` `host` LIKE 'prod%' `` |
+| `message = 'hello'` | `` `message` = 'hello' `` |
+| `message != 'hello'` | `` `message` != 'hello' `` |
+| `count > 10` | `` `count` > 10 `` |
+| `count <= 100` | `` `count` <= 100 `` |
+| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host = prod*` | `` `host` LIKE 'prod%' `` |
 
 ## 布尔操作符
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `a='1' and b>10` | `` (`a` = '1' and `b` > 10) `` |
-| `a='1' or b='2'` | `` (`a` = '1' or `b` = '2') `` |
-| `not a='1'` | `` not (`a` = '1') `` |
+| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
+| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a = '1'` | `` not (`a` = '1') `` |
 
 ## 列表成员
 
@@ -51,24 +51,24 @@ StarRocks 支持原生 JSON 与字符串形式 JSON 两种模式。
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name='test'` | `` `data`->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
 
 ### 字符串形式 JSON
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name='test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
 ## Map 列
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `metadata.key1='value1'` | `` `metadata`['key1'] = 'value1' `` |
-| `metadata.key1!='value1'` | `` `metadata`['key1'] != 'value1' `` |
-| `metadata.nested.key='value'` | `` `metadata`['nested']['key'] = 'value' `` |
-| `metadata.pattern~'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
 
 ## 数组列
 
@@ -76,8 +76,8 @@ StarRocks 数组下标是 0-based：
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `tags.0='first'` | `` `tags`[0] = 'first' `` |
-| `tags.1='second'` | `` `tags`[1] = 'second' `` |
+| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
+| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
 
 ## 列定义示例
 

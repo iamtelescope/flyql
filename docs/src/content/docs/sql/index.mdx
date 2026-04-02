@@ -31,7 +31,7 @@ FlyQL generators produce a WHERE clause fragment as a plain SQL string with all 
 
 Each dialect handles nested JSON columns very differently:
 
-**FlyQL input:** `data.user.name='john'`
+**FlyQL input:** `data.user.name = 'john'`
 
 **ClickHouse** (native JSON column):
 ```sql
@@ -59,7 +59,7 @@ See each dialect page for complete examples.
 
 ## Map Access
 
-**FlyQL input:** `metadata.key1='value1'`
+**FlyQL input:** `metadata.key1 = 'value1'`
 
 | Dialect | Generated SQL |
 |---------|--------------|
@@ -71,7 +71,7 @@ ClickHouse uses `equals()`/`notEquals()` functions for Map access. PostgreSQL us
 
 ## Array Access
 
-**FlyQL input:** `tags.0='first'` (0-based index in FlyQL)
+**FlyQL input:** `tags.0 = 'first'` (0-based index in FlyQL)
 
 | Dialect | Generated SQL | Indexing |
 |---------|--------------|----------|

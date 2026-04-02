@@ -31,7 +31,7 @@ FlyQL-Generatoren erzeugen ein WHERE-Klausel-Fragment als einfachen SQL-String m
 
 Jeder Dialekt behandelt verschachtelte JSON-Spalten sehr unterschiedlich:
 
-**FlyQL-Eingabe:** `data.user.name='john'`
+**FlyQL-Eingabe:** `data.user.name = 'john'`
 
 **ClickHouse** (native JSON-Spalte):
 ```sql
@@ -59,7 +59,7 @@ Vollständige Beispiele findest du auf den jeweiligen Dialektseiten.
 
 ## Map-Zugriff
 
-**FlyQL-Eingabe:** `metadata.key1='value1'`
+**FlyQL-Eingabe:** `metadata.key1 = 'value1'`
 
 | Dialekt | Generiertes SQL |
 |---------|-----------------|
@@ -71,7 +71,7 @@ ClickHouse verwendet `equals()` / `notEquals()` für Map-Zugriffe. PostgreSQL ve
 
 ## Array-Zugriff
 
-**FlyQL-Eingabe:** `tags.0='first'` (0-basiert in FlyQL)
+**FlyQL-Eingabe:** `tags.0 = 'first'` (0-basiert in FlyQL)
 
 | Dialekt | Generiertes SQL | Indizierung |
 |---------|------------------|-------------|

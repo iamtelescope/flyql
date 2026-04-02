@@ -1,0 +1,98 @@
+---
+title: 비교 연산자
+description: 데이터를 필터링하기 위한 FlyQL 비교 연산자
+---
+
+FlyQL은 다음 비교 연산자를 지원합니다.
+
+## 동등 비교
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `=` | 같음 | `status = 200` |
+| `!=` | 같지 않음 | `env != prod` |
+
+```
+status = 200
+service != "api-gateway"
+```
+
+연산자의 양쪽에는 키와 값이 모두 필요합니다.
+
+## 숫자 비교
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `>` | 초과 | `status > 399` |
+| `>=` | 이상 | `status >= 400` |
+| `<` | 미만 | `duration < 1000` |
+| `<=` | 이하 | `duration <= 500` |
+
+```
+status >= 400 and duration < 5000
+response_time > 100 and response_time <= 2000
+```
+
+숫자 비교 연산자는 숫자 값에 대해 동작합니다. 문자열 값과 함께 사용하면 사전식 비교가 적용됩니다.
+
+## Regex 매칭
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `~` | regex 일치 | `message ~ "error.*"` |
+| `!~` | regex 불일치 | `path !~ "^/health"` |
+
+```
+message ~ "timeout|connection refused"
+host !~ "^test-.*"
+```
+
+Regex 패턴은 대상 데이터베이스 또는 런타임의 문법을 따릅니다.
+
+## 리스트 포함 여부
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `in` | 리스트에 포함됨 | `status in [200, 201]` |
+| `not in` | 리스트에 포함되지 않음 | `env not in ['dev', 'test']` |
+
+리스트 구문 규칙은 [리스트](/ko/syntax/lists/) 페이지를 참고하세요.
+
+## 포함 검사
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `has` | 포함함 | `message has 'error'` |
+| `not has` | 포함하지 않음 | `message not has 'test'` |
+
+```
+message has 'timeout'
+tags not has 'deprecated'
+```
+
+`has` 연산자는 타입에 따라 다른 포함 검사를 수행합니다.
+
+- **String** — 부분 문자열 매칭: `message has 'error'`는 `message`에 `"error"`가 포함되면 true
+- **Map** — 키 존재 검사: `metadata has 'region'`은 map에 `"region"` 키가 있으면 true
+- **Array/List** — 항목 포함 검사: `tags has 'web'`은 array에 `"web"`가 포함되면 true
+- **JSON** — 키 존재 검사: `data has 'name'`은 JSON 객체에 `"name"` 키가 있으면 true
+- **Null/빈 값** — `has`에서는 항상 false, `not has`에서는 항상 true
+
+`has`는 단일 값만 받으며 리스트는 받지 않습니다. 값 집합에 대한 포함 여부를 확인하려면 `in`을 사용하세요.
+
+## 연산자 요약
+
+| 연산자 | 이름 | 예제 |
+|--------|------|------|
+| `=` | 같음 | `status = 200` |
+| `!=` | 같지 않음 | `env != prod` |
+| `>` | 초과 | `count > 10` |
+| `>=` | 이상 | `count >= 10` |
+| `<` | 미만 | `count < 100` |
+| `<=` | 이하 | `count <= 100` |
+| `~` | regex 일치 | `msg ~ "err.*"` |
+| `!~` | regex 불일치 | `msg !~ "^ok"` |
+| `in` | 리스트에 포함됨 | `s in [1, 2]` |
+| `not in` | 리스트에 포함되지 않음 | `s not in [3]` |
+| `has` | 포함함 | `msg has 'err'` |
+| `not has` | 포함하지 않음 | `msg not has 'ok'` |

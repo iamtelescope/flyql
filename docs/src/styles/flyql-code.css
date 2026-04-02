@@ -1,0 +1,74 @@
+:root {
+  --flyql-key-color: #0451a5;
+  --flyql-operator-color: #0089ab;
+  --flyql-value-color: #8b0000;
+  --flyql-number-color: #098658;
+  --flyql-error-color: #ff0000;
+  --flyql-transformer-color: #a21caf;
+}
+
+:root[data-theme='dark'] {
+  --flyql-key-color: #6e9fff;
+  --flyql-operator-color: #5fd7f5;
+  --flyql-value-color: #ce9178;
+  --flyql-number-color: #b5cea8;
+  --flyql-error-color: #f48771;
+  --flyql-transformer-color: #d946ef;
+}
+
+.flyql-block,
+.flyql-inline {
+  font-family: var(--sl-font-mono);
+}
+
+.flyql-inline {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+  font-family: var(--sl-font-mono) !important;
+  font-size: inherit;
+}
+
+.flyql-inline,
+.flyql-inline * {
+  font-family: var(--sl-font-mono) !important;
+}
+
+.flyql-block .flyql-key,
+.flyql-inline .flyql-key {
+  color: var(--flyql-key-color);
+}
+
+.flyql-block .flyql-operator,
+.flyql-inline .flyql-operator {
+  color: var(--flyql-operator-color);
+}
+
+.flyql-block .flyql-value,
+.flyql-block .flyql-string,
+.flyql-inline .flyql-value,
+.flyql-inline .flyql-string {
+  color: var(--flyql-value-color);
+}
+
+.flyql-block .flyql-number,
+.flyql-block .flyql-boolean,
+.flyql-block .flyql-null,
+.flyql-inline .flyql-number,
+.flyql-inline .flyql-boolean,
+.flyql-inline .flyql-null {
+  color: var(--flyql-number-color);
+}
+
+.flyql-block .flyql-transformer,
+.flyql-block .flyql-argument,
+.flyql-inline .flyql-transformer,
+.flyql-inline .flyql-argument {
+  color: var(--flyql-transformer-color);
+}
+
+.flyql-block .flyql-error,
+.flyql-inline .flyql-error {
+  color: var(--flyql-error-color);
+}

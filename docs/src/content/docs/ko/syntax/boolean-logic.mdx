@@ -1,0 +1,104 @@
+---
+title: 불리언 로직
+description: FlyQL의 불리언 연산자, 우선순위, 괄호 그룹화
+---
+
+## 불리언 연산자
+
+FlyQL은 조건을 결합하기 위해 세 가지 불리언 연산자를 사용합니다.
+
+| 연산자 | 의미 | 예제 |
+|--------|------|------|
+| `and` | 두 조건이 모두 true여야 함 | `status = 200 and active` |
+| `or` | 두 조건 중 하나만 true여도 됨 | `level = error or level = critical` |
+| `not` | 표현식을 부정함 | `not archived` |
+
+### 결합된 부정
+
+`not`은 `and`, `or`와 함께 사용할 수 있습니다.
+
+```
+active and not archived
+level = error or not healthy
+```
+
+## 연산자 우선순위
+
+`and`는 `or`보다 더 강하게 결합합니다. 즉,
+
+```
+a = 1 or b = 2 and c = 3
+```
+
+은 다음과 같이 parse됩니다.
+
+```
+a = 1 or (b = 2 and c = 3)
+```
+
+우선순위를 바꾸려면 괄호를 명시적으로 사용하세요.
+
+## 괄호를 이용한 그룹화
+
+괄호를 사용해 평가 순서를 제어할 수 있습니다.
+
+```
+(status >= 400 or level = error) and service = api
+```
+
+괄호가 없으면 `and`가 더 강하게 결합합니다.
+
+```
+status >= 400 or level = error and service = api
+→ status >= 400 or (level = error and service = api)
+```
+
+### 중첩 그룹화
+
+괄호는 중첩해서 사용할 수 있습니다.
+
+```
+(a = 1 or b = 2) and not (c = 3 and d = 4)
+```
+
+### 그룹 부정
+
+`not`은 그룹 전체에 적용됩니다.
+
+```
+not (status = 200 and healthy)
+```
+
+이는 결합된 조건 전체를 부정합니다. `status`가 200이 아니거나 `healthy`가 false일 때만 true가 됩니다.
+
+## 부정
+
+`not`은 truthy 검사, 비교식, 그룹 등 모든 표현식을 부정할 수 있습니다.
+
+```
+not active                  # field is falsy
+not status = 200              # status is not 200
+not (a = 1 and b = 2)           # negates the group
+active and not archived     # combined with other conditions
+```
+
+이중 부정은 상쇄됩니다. `not not active`는 `active`와 같습니다.
+
+## 예제
+
+```
+# 단순 AND
+status = 200 and service = api
+
+# 단순 OR
+level = error or level = critical
+
+# 우선순위가 섞인 경우
+status >= 400 or level = error and service = api
+
+# 명시적 그룹화
+(status >= 400 or level = error) and service = api
+
+# 부정과 그룹화를 포함한 복잡한 쿼리
+(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
+```

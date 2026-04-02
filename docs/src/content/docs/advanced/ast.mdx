@@ -120,7 +120,7 @@ BoolOperator.OR       # "or"
 
 ### Simple condition
 
-Query: `status=200`
+Query: `status = 200`
 
 ```
 Node (leaf)
@@ -132,7 +132,7 @@ Node (leaf)
 
 ### Boolean combination
 
-Query: `status=200 and method="GET"`
+Query: `status = 200 and method = "GET"`
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +150,7 @@ Node (branch, boolOperator: "and")
 
 ### Negation
 
-Query: `not status=500`
+Query: `not status = 500`
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +162,7 @@ Node (leaf, negated: true)
 
 ### Nested boolean with parentheses
 
-Query: `env=prod and (status=500 or level=error)`
+Query: `env=prod and (status=500 or level = error)`
 
 ```
 Node (branch, boolOperator: "and")
@@ -212,7 +212,7 @@ Node (leaf)
 
 ### Nested key
 
-Query: `user.metadata.role="admin"`
+Query: `user.metadata.role = "admin"`
 
 ```
 Node (leaf)
@@ -317,7 +317,7 @@ function expressionToES(expr) {
 }
 
 // Usage
-const result = parse('status=200 and message~"error.*" and env in ["prod", "staging"]')
+const result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
 const esQuery = generateElasticsearch(result.root)
 console.log(JSON.stringify(esQuery, null, 2))
 ```
@@ -395,7 +395,7 @@ func expressionToES(expr *flyql.Expression) map[string]any {
 }
 
 func main() {
-	result, err := flyql.Parse(`status=200 and env in ["prod", "staging"]`)
+	result, err := flyql.Parse(`status = 200 and env in ["prod", "staging"]`)
 	if err != nil {
 		panic(err)
 	}
@@ -466,7 +466,7 @@ def expression_to_es(expr):
 
 
 # Usage
-result = parse('status=200 and message~"error.*" and env in ["prod", "staging"]')
+result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
 es_query = generate_elasticsearch(result.root)
 print(es_query)
 ```

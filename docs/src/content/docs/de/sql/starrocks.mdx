@@ -9,21 +9,21 @@ StarRocks-SQL verwendet mit Backticks quotierte Bezeichner, `regexp()` für Rege
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `message='hello'` | `` `message` = 'hello' `` |
-| `message!='hello'` | `` `message` != 'hello' `` |
-| `count>10` | `` `count` > 10 `` |
-| `count<=100` | `` `count` <= 100 `` |
-| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
-| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
-| `host=prod*` | `` `host` LIKE 'prod%' `` |
+| `message = 'hello'` | `` `message` = 'hello' `` |
+| `message != 'hello'` | `` `message` != 'hello' `` |
+| `count > 10` | `` `count` > 10 `` |
+| `count <= 100` | `` `count` <= 100 `` |
+| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host = prod*` | `` `host` LIKE 'prod%' `` |
 
 ## Boolesche Operatoren
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `a='1' and b>10` | `` (`a` = '1' and `b` > 10) `` |
-| `a='1' or b='2'` | `` (`a` = '1' or `b` = '2') `` |
-| `not a='1'` | `` not (`a` = '1') `` |
+| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
+| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a = '1'` | `` not (`a` = '1') `` |
 
 ## Listenzugehörigkeit
 
@@ -58,8 +58,8 @@ Native JSON-Spalten verwenden den `->`-Operator mit JSON-stringifizierten Schlü
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `data.name='test'` | `` `data`->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
 
 ### JSON-String-Typ
 
@@ -67,8 +67,8 @@ Spalten, die JSON als String speichern, benötigen vor der Traversierung `parse_
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `data.name='test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| `data.user.name='john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
 ## Map-Spalten
 
@@ -76,10 +76,10 @@ Map-Spalten verwenden Klammernotation mit direktem Vergleich:
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `metadata.key1='value1'` | `` `metadata`['key1'] = 'value1' `` |
-| `metadata.key1!='value1'` | `` `metadata`['key1'] != 'value1' `` |
-| `metadata.nested.key='value'` | `` `metadata`['nested']['key'] = 'value' `` |
-| `metadata.pattern~'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
 
 ## Array-Spalten
 
@@ -87,8 +87,8 @@ Array-Spalten verwenden 0-basierte Klammerindizierung:
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| `tags.0='first'` | `` `tags`[0] = 'first' `` |
-| `tags.1='second'` | `` `tags`[1] = 'second' `` |
+| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
+| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
 
 ### Spaltenkonfiguration
 

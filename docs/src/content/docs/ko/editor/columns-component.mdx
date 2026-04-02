@@ -1,0 +1,87 @@
+---
+title: Columns 컴포넌트
+description: 컬럼 표현식 편집용 FlyqlColumns 컴포넌트
+---
+
+`FlyqlColumns` 컴포넌트는 컬럼 표현식 전용 입력 UI를 제공합니다. 컬럼 선택, 필터링, transformer 적용을 지원합니다.
+
+## 빠른 설정
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | 타입 | 기본값 | 설명 |
+|------|------|--------|------|
+| `modelValue` | `String` | `''` | 표현식 텍스트 (`v-model`) |
+| `columns` | `Object` | `{}` | 컬럼 [schema](/ko/editor/schema/) |
+| `capabilities` | `Object` | `null` | parser capabilities (예: `{ transformers: true }`) |
+| `onKeyDiscovery` | `Function` | `null` | 원격 키 탐색 callback |
+| `placeholder` | `String` | `''` | placeholder 텍스트 |
+| `autofocus` | `Boolean` | `false` | mount 시 자동 포커스 |
+| `debug` | `Boolean` | `false` | 디버그 로깅 |
+| `dark` | `Boolean` | `false` | 다크 테마 활성화 ([theming](/ko/editor/theming/) 참고) |
+
+## Events
+
+| Event | Payload | 설명 |
+|-------|---------|------|
+| `update:modelValue` | `string` | 표현식 텍스트 변경 (`v-model`) |
+| `update:parsed` | `ParsedColumn[]` | parse된 컬럼 배열 업데이트 |
+| `submit` | — | 사용자가 Shift+Enter를 누름 |
+| `parse-error` | `string` | parse 오류 메시지 |
+| `focus` | — | 컴포넌트가 포커스를 얻음 |
+| `blur` | — | 컴포넌트가 포커스를 잃음 |
+
+## 노출 메서드
+
+| 메서드 | 반환값 | 설명 |
+|--------|--------|------|
+| `focus()` | — | 입력에 포커스 |
+| `blur()` | — | 입력에서 포커스 제거 |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | 표현식 검증 |
+| `getParsedColumns()` | `ParsedColumn[]` | parse된 컬럼 배열 반환 |
+
+## 컬럼 표현식 문법
+
+컬럼 표현식은 쉼표로 구분되며, 선택적으로 transformer와 alias를 가질 수 있습니다.
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| 부분 | 문법 | 예제 |
+|------|------|------|
+| 컬럼 | `name` | `message` |
+| Transformer | `name\|transformer` | `status\|upper` |
+| 인자 포함 Transformer | `name\|transformer(arg)` | `name\|truncate(50)` |
+| Alias | `name as alias` | `host as h` |
+| 중첩 | `parent.child` | `metadata.labels.env` |
+| Transformer 체인 | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

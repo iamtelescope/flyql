@@ -9,8 +9,8 @@ FlyQL использует три булевых оператора:
 
 | Оператор | Значение | Пример |
 |----------|----------|--------|
-| `and` | оба условия должны быть истинны | `status=200 and active` |
-| `or` | достаточно истинности одного условия | `level=error or level=critical` |
+| `and` | оба условия должны быть истинны | `status = 200 and active` |
+| `or` | достаточно истинности одного условия | `level = error or level = critical` |
 | `not` | отрицает выражение | `not archived` |
 
 ### Отрицание в комбинации
@@ -19,7 +19,7 @@ FlyQL использует три булевых оператора:
 
 ```
 active and not archived
-level=error or not healthy
+level = error or not healthy
 ```
 
 ## Приоритет операторов
@@ -27,13 +27,13 @@ level=error or not healthy
 `and` имеет более высокий приоритет, чем `or`:
 
 ```
-a=1 or b=2 and c=3
+a = 1 or b = 2 and c = 3
 ```
 
 будет разобрано как:
 
 ```
-a=1 or (b=2 and c=3)
+a = 1 or (b = 2 and c = 3)
 ```
 
 Чтобы переопределить приоритет, используйте скобки.
@@ -41,35 +41,35 @@ a=1 or (b=2 and c=3)
 ## Группировка скобками
 
 ```
-(status>=400 or level=error) and service=api
+(status >= 400 or level = error) and service = api
 ```
 
 Без скобок `and` связывается сильнее:
 
 ```
-status>=400 or level=error and service=api
-→ status>=400 or (level=error and service=api)
+status >= 400 or level = error and service = api
+→ status >= 400 or (level = error and service = api)
 ```
 
 ### Вложенные группы
 
 ```
-(a=1 or b=2) and not (c=3 and d=4)
+(a = 1 or b = 2) and not (c = 3 and d = 4)
 ```
 
 ### Отрицание групп
 
 ```
-not (status=200 and healthy)
+not (status = 200 and healthy)
 ```
 
 ## Примеры
 
 ```
-status=200 and service=api
-level=error or level=critical
-status>=400 or level=error and service=api
-(status>=400 or level=error) and service=api
-(status>=500 and host=prod*) or (level=error and not service=healthcheck)
+status = 200 and service = api
+level = error or level = critical
+status >= 400 or level = error and service = api
+(status >= 400 or level = error) and service = api
+(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
 ```
 

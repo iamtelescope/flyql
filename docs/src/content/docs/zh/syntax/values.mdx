@@ -12,9 +12,9 @@ FlyQL 支持 7 种值类型：**整数**、**大整数**、**浮点数**、**字
 在 int64 范围内的整数：
 
 ```
-count=42
-status!=200
-age>=18
+count = 42
+status != 200
+age >= 18
 ```
 
 ### 大整数
@@ -22,7 +22,7 @@ age>=18
 超出 int64（Go/Python）或 `MAX_SAFE_INTEGER`（JavaScript）范围的整数：
 
 ```
-id=18446744073709551615
+id = 18446744073709551615
 ```
 
 ### 浮点数
@@ -30,8 +30,8 @@ id=18446744073709551615
 带小数点的数字：
 
 ```
-price>9.99
-ratio=3.14
+price > 9.99
+ratio = 3.14
 temperature<=-0.5
 ```
 
@@ -40,10 +40,10 @@ temperature<=-0.5
 文本值可以加引号，也可以不加：
 
 ```
-level=error
-user="John Doe"
-message='hello world'
-count='42'
+level = error
+user = "John Doe"
+message = 'hello world'
+count = '42'
 ```
 
 带引号的数字仍然会被视为字符串。
@@ -51,7 +51,7 @@ count='42'
 可使用反斜杠转义引号：
 
 ```
-user='John\'s account'
+user = 'John
 message="said \"hello\""
 ```
 
@@ -60,9 +60,9 @@ message="said \"hello\""
 布尔字面量为小写的 `true` 和 `false`：
 
 ```
-active=true
-debug=false
-active!=true
+active = true
+debug = false
+active != true
 ```
 
 像 `True`、`FALSE` 这样的变体会被当作字符串。
@@ -72,16 +72,16 @@ active!=true
 空值使用小写 `null`：
 
 ```
-field=null
-field!=null
+field = null
+field != null
 ```
 
 对于 `null`，只允许使用 `=` 与 `!=`。使用 `>`, `<`, `>=`, `<=`, `~`, `!~` 都会触发解析错误。
 
 SQL 生成时：
 
-- `field=null` → `field IS NULL`
-- `field!=null` → `field IS NOT NULL`
+- `field = null` → `field IS NULL`
+- `field != null` → `field IS NOT NULL`
 
 ### 数组
 
@@ -116,11 +116,83 @@ not archived
 ## 示例
 
 ```
-active=true
-count>=10
-price<9.99
-user="John Doe"
-field=null
+active = true
+count >= 10
+price < 9.99
+user = "John Doe"
+field = null
 status in [200, 201, 204]
 ```
 
+s account'
+message="said \"hello\""
+```
+
+### 布尔值
+
+布尔字面量为小写的 `true` 和 `false`：
+
+```
+active = true
+debug = false
+active != true
+```
+
+像 `True`、`FALSE` 这样的变体会被当作字符串。
+
+### 空值
+
+空值使用小写 `null`：
+
+```
+field = null
+field != null
+```
+
+对于 `null`，只允许使用 `=` 与 `!=`。使用 `>`, `<`, `>=`, `<=`, `~`, `!~` 都会触发解析错误。
+
+SQL 生成时：
+
+- `field = null` → `field IS NULL`
+- `field != null` → `field IS NOT NULL`
+
+### 数组
+
+数组通常与 `in` / `not in` 搭配使用：
+
+```
+status in [200, 201, 202]
+name in ['alice', 'bob']
+field in [1, "hello", true, null]
+```
+
+每个元素都有自己的类型信息。
+
+## 真值 / 假值表达式
+
+一个没有操作符的字段表示对该字段执行真值检查：
+
+```
+active
+message and status
+not archived
+```
+
+假值通常包括：
+
+- `null`
+- 空字符串
+- `0`
+- `false`
+- 空数组（取决于具体运行时实现）
+
+## 示例
+
+```
+active = true
+count >= 10
+price > 9.99
+user = "John Doe"
+field = null
+status in [200, 201, 204]
+```

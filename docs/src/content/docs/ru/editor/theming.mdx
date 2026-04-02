@@ -1,0 +1,32 @@
+---
+title: Темы
+description: Настройка внешнего вида редактора FlyQL через CSS-переменные
+---
+
+Редактор FlyQL использует CSS-переменные для всех визуальных стилей. Переопределяйте переменные `--flyql-*`, чтобы подстроить внешний вид под дизайн приложения.
+
+## Основные CSS-переменные
+
+| Переменная | Светлая тема | Тёмная тема | Описание |
+|------------|--------------|-------------|----------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | фон редактора |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | цвет текста |
+| `--flyql-border` | `#d4d4d4` | `#525252` | цвет рамки |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | рамка при фокусе |
+
+## Тёмная тема
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+## Пример своей темы
+
+```css
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+}
+```

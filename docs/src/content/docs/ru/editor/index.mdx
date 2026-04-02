@@ -1,0 +1,83 @@
+---
+title: Редактор
+description: Как встроить редактор запросов FlyQL в приложение Vue 3
+---
+
+Редактор FlyQL — это компонент для Vue 3, который предоставляет ввод запросов по схеме, автодополнение, подсветку синтаксиса и клавиатурную навигацию.
+
+## Быстрое подключение
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onSubmit() {
+    console.log('Query submitted:', query.value)
+}
+
+function onParseError(error) {
+    console.log('Parse error:', error)
+}
+</script>
+
+<template>
+    <FlyqlEditor
+        v-model="query"
+        :columns="columns"
+        placeholder="Введите запрос FlyQL..."
+        @submit="onSubmit"
+        @parse-error="onParseError"
+    />
+</template>
+```
+
+## Установка
+
+```bash
+npm install flyql
+```
+
+Для редактора нужен `Vue 3`:
+
+```bash
+npm install vue
+```
+
+Импорт:
+
+```javascript
+import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+```
+
+## Props
+
+| Prop | Тип | По умолчанию | Описание |
+|------|-----|--------------|----------|
+| `modelValue` | `String` | `''` | текст запроса |
+| `columns` | `Object` | `{}` | [схема колонок](/ru/editor/schema/) |
+| `onAutocomplete` | `Function` | `null` | асинхронная функция для подсказок значений |
+| `onKeyDiscovery` | `Function` | `null` | функция для удалённого обнаружения ключей |
+| `placeholder` | `String` | `''` | текст-подсказка |
+| `autofocus` | `Boolean` | `false` | автоматически ставить фокус |
+| `debug` | `Boolean` | `false` | отладочные логи |
+| `debounceMs` | `Number` | `300` | задержка перед загрузкой подсказок |
+| `dark` | `Boolean` | `false` | тёмная тема |
+
+## События
+
+| Событие | Данные | Описание |
+|---------|---------|----------|
+| `update:modelValue` | `string` | изменение текста запроса |
+| `submit` | — | пользователь нажал `Shift+Enter` |
+| `parse-error` | `string` | сообщение об ошибке разбора |
+| `focus` | — | редактор получил фокус |
+| `blur` | — | редактор потерял фокус |

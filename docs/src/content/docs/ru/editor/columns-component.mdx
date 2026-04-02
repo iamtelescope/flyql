@@ -1,0 +1,50 @@
+---
+title: Выбор колонок
+description: Компонент FlyqlColumns для редактирования списка колонок
+---
+
+`FlyqlColumns` — отдельное поле ввода для списка колонок, фильтрации и применения трансформеров.
+
+## Быстрое подключение
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | Тип | По умолчанию | Описание |
+|------|-----|--------------|----------|
+| `modelValue` | `String` | `''` | текст выражения |
+| `columns` | `Object` | `{}` | [схема колонок](/ru/editor/schema/) |
+| `capabilities` | `Object` | `null` | доступные возможности |
+| `onKeyDiscovery` | `Function` | `null` | функция для удалённого обнаружения ключей |
+| `placeholder` | `String` | `''` | текст-подсказка |
+| `autofocus` | `Boolean` | `false` | автоматически ставить фокус |
+| `debug` | `Boolean` | `false` | отладка |
+| `dark` | `Boolean` | `false` | тёмная тема |

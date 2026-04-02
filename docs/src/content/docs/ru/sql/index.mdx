@@ -1,0 +1,32 @@
+---
+title: Диалекты SQL
+description: Как FlyQL генерирует SQL для ClickHouse, PostgreSQL и StarRocks
+---
+
+Генераторы FlyQL возвращают фрагмент `WHERE` как обычную SQL-строку со встроенными и экранированными значениями. Один и тот же запрос FlyQL будет преобразован по-разному в зависимости от целевого диалекта.
+
+## Поддерживаемые диалекты
+
+- [ClickHouse](/ru/sql/clickhouse/)
+- [PostgreSQL](/ru/sql/postgresql/)
+- [StarRocks](/ru/sql/starrocks/)
+
+## Основные различия
+
+| Возможность | ClickHouse | PostgreSQL | StarRocks |
+|-------------|-----------|-----------|-----------|
+| Кавычки для колонок | нет | `"name"` | `` `name` `` |
+| Регулярные выражения | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| Поиск по префиксу | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+
+## Доступ к JSON
+
+Диалекты заметно различаются при работе с вложенным JSON.
+
+## Формат вывода
+
+Генераторы возвращают фрагмент `WHERE`, а не полный SQL-запрос:
+
+```
+message = 'hello' and count > 10
+```

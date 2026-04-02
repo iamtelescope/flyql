@@ -1,0 +1,117 @@
+---
+title: Быстрый старт с JavaScript
+description: Установка и использование FlyQL в проекте на JavaScript
+---
+
+## Установка
+
+```bash
+npm install flyql
+```
+
+**Требования:** Node.js 16+. Все импорты используют ES Modules.
+
+## Разбор запроса
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status=200 and active")
+console.log(result.root)
+```
+
+`parse()` возвращает объект результата с корневым узлом. При ошибке разбора выбрасывается `ParserError`:
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status=200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
+
+## Генерация SQL
+
+AST можно превратить во фрагмент `WHERE` с помощью генератора. Для каждого диалекта используется отдельный путь импорта.
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status>=400 and host=prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### Другие диалекты
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+Обратите внимание: у PostgreSQL `newColumn` имеет другую сигнатуру — `newColumn(name, type, values)`, без параметра `jsonString`.
+
+## Сопоставление в памяти
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status=200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## Разбор выражений списка колонок
+
+```javascript
+import { parse, parseToJson } from 'flyql/columns'
+
+const parsed = parse("message, status")
+for (const col of parsed) {
+    console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
+}
+
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
+
+const json = parseToJson("message, status|upper", { transformers: true })
+console.log(json)
+```
+
+## Запросы с трансформерами
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("message|upper = 'ERROR'")
+
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+Полный синтаксис см. в разделе [Трансформеры](/ru/syntax/transformers/).
+
+## Что дальше
+
+- [Справочник по синтаксису](/ru/syntax/)
+- [Диалекты SQL](/ru/sql/)

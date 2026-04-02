@@ -1,0 +1,34 @@
+---
+title: Вложенные ключи
+description: Доступ по путям через точку и сегменты ключей в кавычках в FlyQL
+---
+
+## Точечная нотация
+
+Используйте пути через точку для доступа к вложенным полям в JSON, Map или структурированных данных:
+
+```
+request.url="/api/users"
+response.headers.content_type="application/json"
+metadata.labels.env=prod
+```
+
+Каждый сегмент после точки означает переход на один уровень глубже.
+
+## Сегменты ключа в кавычках
+
+Если сам сегмент содержит точку, оберните его в кавычки:
+
+```
+"foo.bar".baz=value
+```
+
+## Примеры
+
+```
+request.method=GET
+response.headers.content_type="application/json"
+"app.config".debug=true
+request.status>=400 and response.body~"error" and not request.internal
+```
+

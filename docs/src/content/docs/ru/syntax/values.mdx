@@ -1,0 +1,74 @@
+---
+title: Значения и типы
+description: Типы значений, литералы и выражения в FlyQL
+---
+
+FlyQL поддерживает 7 типов значений: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** и **Array**.
+
+## Типы значений
+
+### Integer
+
+```
+count=42
+status!=200
+age>=18
+```
+
+### BigInt
+
+```
+id=18446744073709551615
+```
+
+### Float
+
+```
+price>9.99
+ratio=3.14
+temperature<=-0.5
+```
+
+### String
+
+```
+level=error
+user="John Doe"
+message='hello world'
+count='42'
+```
+
+### Boolean
+
+```
+active=true
+debug=false
+active!=true
+```
+
+### Null
+
+```
+field=null
+field!=null
+```
+
+С `null` допустимы только `=` и `!=`.
+
+### Array
+
+```
+status in [200, 201, 202]
+name in ['alice', 'bob']
+field in [1, "hello", true, null]
+```
+
+## Проверки на истинность и ложность
+
+Ключ без оператора интерпретируется как проверка на истинность:
+
+```
+active
+message and status
+not archived
+```

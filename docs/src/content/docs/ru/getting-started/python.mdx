@@ -1,0 +1,106 @@
+---
+title: Быстрый старт с Python
+description: Установка и использование FlyQL в проекте на Python
+---
+
+## Установка
+
+Версия FlyQL для Python устанавливается из git и пока не опубликована в PyPI:
+
+```bash
+pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+```
+
+Будет установлен пакет `flyql` и его зависимость `google-re2`.
+
+**Требования:** Python 3.10+
+
+## Разбор запроса
+
+```python
+from flyql.core.parser import parse
+
+result = parse("status=200 and active")
+print(result.root)
+```
+
+`parse()` возвращает объект результата с корневым узлом. При неверном вводе возбуждается `ParserError`.
+
+## Генерация SQL
+
+С помощью генератора AST превращается в SQL-фрагмент `WHERE`. У каждого диалекта свой генератор.
+
+### ClickHouse
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status>=400 and host=prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql(result.root, columns)
+print(sql)
+```
+
+Для PostgreSQL и StarRocks паттерн тот же, меняется только путь импорта.
+
+## Сопоставление в памяти
+
+```python
+from flyql.core.parser import parse
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+result = parse("status=200 and active")
+
+data = {
+    "status": 200,
+    "active": True,
+    "host": "prod-api-01",
+}
+
+evaluator = Evaluator()
+matches = evaluator.evaluate(result.root, Record(data))
+print(f"Matches: {matches}")  # True
+```
+
+## Разбор выражений списка колонок
+
+```python
+from flyql.columns import parse, parse_to_json
+
+parsed = parse("message, status")
+for col in parsed:
+    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
+
+with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
+
+json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
+print(json_str)
+```
+
+## Запросы с трансформерами
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql, Column
+
+result = parse("message|upper = 'ERROR'")
+
+columns = {"message": Column("message", False, "String")}
+sql = to_sql(result.root, columns)
+print(sql)  # equals(upper(message), 'ERROR')
+```
+
+Полный синтаксис см. в разделе [Трансформеры](/ru/syntax/transformers/).
+
+## Что дальше
+
+- [Справочник по синтаксису](/ru/syntax/)
+- [Диалекты SQL](/ru/sql/)

@@ -7,7 +7,7 @@ description: 一种轻量级、天然防注入的查询语言，可生成多种 
 
 ## 什么是 FlyQL？
 
-FlyQL 是一种简单、易读的人类友好型查询语言，专门用于数据过滤。你可以写出像 `status>=400 and host=prod*` 这样的查询，然后让 FlyQL 将其转换为数据库可用的 SQL，或者在内存中直接对数据记录进行匹配。
+FlyQL 是一种简单、易读的查询语言，专门用于数据过滤。你可以写出像 `status>=400 and host=prod*` 这样的查询，然后让 FlyQL 将其转换为数据库可用的 SQL，或者直接在内存中匹配数据记录。
 
 ```
 status>=400 and host=prod* and not debug
@@ -39,7 +39,7 @@ service!=api and (status>=400 or level=error) and message~"timeout.*"
 
 ## 支持的语言
 
-| 语言 | 解析器 | SQL 生成器 | 内存匹配器 |
+| 语言 | 解析器 | SQL 生成器 | 内存匹配 |
 |------|--------|------------|------------|
 | Go | 支持 | ClickHouse、PostgreSQL、StarRocks | 支持 |
 | Python | 支持 | ClickHouse、PostgreSQL、StarRocks | 支持 |

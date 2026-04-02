@@ -1,11 +1,11 @@
 ---
-title: Schema 配置
-description: FlyQL 编辑器中的列 schema 结构
+title: 列定义
+description: FlyQL 编辑器使用的列结构说明
 ---
 
-`columns` prop 用来定义驱动编辑器建议与校验的数据 schema。键名是列名，值是对应的列定义。
+`columns` prop 用来定义驱动编辑器提示与校验的列结构。键名是列名，值是对应的列定义。
 
-## 基础 Schema
+## 基础结构
 
 ```javascript
 const columns = {
@@ -23,7 +23,7 @@ const columns = {
 | `type` | `string` | — | 列类型：`'string'`、`'number'`、`'enum'`、`'object'` |
 | `suggest` | `boolean` | `true` | 是否在建议列表中显示该列 |
 | `autocomplete` | `boolean` | `false` | 是否为该列启用值补全 |
-| `values` | `string[]` 或 `number[]` | — | 静态补全值 |
+| `values` | `string[]` 或 `number[]` | — | 静态候选值 |
 | `children` | `object` | — | 对象类型列的子字段定义 |
 | `display_name` | `string` | `''` | 可选的展示名称 |
 
@@ -31,7 +31,7 @@ const columns = {
 
 ### `string`
 
-普通文本列，支持包括正则在内的全部比较操作符。
+普通文本列，支持包括正则在内的全部比较运算符。
 
 ```javascript
 { type: 'string', suggest: true }
@@ -39,7 +39,7 @@ const columns = {
 
 ### `number`
 
-数值列。正则操作符不会出现在建议列表中。
+数值列。正则运算符不会出现在提示列表中。
 
 ```javascript
 { type: 'number', suggest: true }
@@ -47,7 +47,7 @@ const columns = {
 
 ### `enum`
 
-固定值集合列。和 `number` 一样，不支持正则建议。通常通过 `values` 提供候选项：
+固定值集合列。和 `number` 一样，不支持正则提示。通常通过 `values` 提供候选项：
 
 ```javascript
 { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
@@ -100,7 +100,7 @@ const columns = {
 
 ### 异步值
 
-如果设置 `autocomplete: true` 但不提供 `values`，则需要在编辑器组件上传入 `onAutocomplete`：
+如果设置 `autocomplete: true` 但不提供 `values`，则需要在编辑器中传入 `onAutocomplete`：
 
 ```javascript
 { type: 'string', suggest: true, autocomplete: true }
@@ -140,7 +140,7 @@ const columns = {
 
 ## 远程键发现
 
-如果对象列的嵌套字段无法在 schema 中提前定义，可以省略 `children`，并通过 `onKeyDiscovery` 动态发现：
+如果对象列的嵌套字段无法提前定义，可以省略 `children`，并通过 `onKeyDiscovery` 动态发现：
 
 ```javascript
 const columns = {
@@ -184,4 +184,3 @@ const columns = {
     request: { type: 'object', suggest: true },
 }
 ```
-

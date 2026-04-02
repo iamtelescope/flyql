@@ -1,0 +1,28 @@
+---
+title: Схема колонок
+description: Описание колонок для редактора FlyQL
+---
+
+Свойство `columns` задаёт описание колонок, по которому редактор строит подсказки. Ключи — имена колонок, значения — их описания.
+
+## Базовая схема
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## Поля описания колонки
+
+| Поле | Тип | По умолчанию | Описание |
+|------|-----|--------------|----------|
+| `type` | `string` | — | тип колонки |
+| `suggest` | `boolean` | `true` | показывать колонку в подсказках |
+| `autocomplete` | `boolean` | `false` | подсказывать значения |
+| `values` | `string[]` или `number[]` | — | список значений для подсказок |
+| `children` | `object` | — | вложенные поля для object-колонок |
+| `display_name` | `string` | `''` | отображаемое имя |

@@ -1,0 +1,161 @@
+---
+title: Быстрый старт с Go
+description: Установка и использование FlyQL в проекте на Go
+---
+
+## Установка
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## Разбор запроса
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status=200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` возвращает `*ParseResult`, а узел `Root` представляет AST запроса.
+
+## Генерация SQL
+
+С помощью генератора можно превратить AST в фрагмент `WHERE`. Для каждого диалекта SQL есть свой генератор и свои типы колонок.
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status>=400 and host=prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+Генераторы для PostgreSQL и StarRocks используются аналогично, только импортируются из `generators/postgresql` или `generators/starrocks`.
+
+## Сопоставление в памяти
+
+Запрос можно выполнить и без генерации SQL, прямо по структуре данных:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status=200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## Разбор выражений списка колонок
+
+Выражение колонок можно разобрать в структурированный вид с сегментами, трансформерами и алиасами. Второй аргумент — структура `Capabilities`, управляющая включёнными возможностями. По умолчанию трансформеры отключены.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", columns.Capabilities{
+		Transformers: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms)
+}
+```
+
+## Запросы с трансформерами
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("message|upper = 'ERROR'")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+Полный синтаксис см. в разделе [Трансформеры](/ru/syntax/transformers/).
+
+## Что дальше
+
+- [Справочник по синтаксису](/ru/syntax/)
+- [Диалекты SQL](/ru/sql/)

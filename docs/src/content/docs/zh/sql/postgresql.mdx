@@ -1,0 +1,114 @@
+---
+title: PostgreSQL
+description: PostgreSQL 的 SQL 生成示例
+---
+
+PostgreSQL 生成的 SQL 使用双引号包裹标识符，正则使用 `~`，布尔操作符通常输出为大写 `AND` / `OR`。
+
+## 基础示例
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `message='hello'` | `"message" = 'hello'` |
+| `message!='hello'` | `"message" != 'hello'` |
+| `count>10` | `"count" > 10` |
+| `count<=100` | `"count" <= 100` |
+| `message~'error.*'` | `"message" ~ 'error.*'` |
+| `message!~'test.*'` | `"message" !~ 'test.*'` |
+| `host=prod*` | `"host" LIKE 'prod%'` |
+
+## 布尔操作符
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `a='1' and b>10` | `("a" = '1' AND "b" > 10)` |
+| `a='1' or b='2'` | `("a" = '1' OR "b" = '2')` |
+| `not a='1'` | `NOT ("a" = '1')` |
+
+## 列表成员
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `status in [200, 201]` | `"status" IN (200, 201)` |
+| `env not in ['dev', 'test']` | `"env" NOT IN ('dev', 'test')` |
+| `status in []` | `FALSE` |
+| `status not in []` | `TRUE` |
+
+## 包含检查
+
+| 列类型 | FlyQL | 生成 SQL |
+|--------|-------|----------|
+| String | `message has 'error'` | `position('error' in "message") > 0` |
+| Array | `tags has 'web'` | `'web' = ANY("tags")` |
+| JSONB | `data has 'key'` | `"data" ? 'key'` |
+| Hstore | `metadata has 'key'` | `"metadata" ? 'key'` |
+
+## JSONB 列
+
+PostgreSQL 通过 `jsonb_typeof()` 配合 JSONB 操作符访问嵌套 JSON。
+
+### 字符串比较
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `data.name='test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| `data.user.name='john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+
+### 数值比较
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `data.age>25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+
+### JSONB 操作符说明
+
+- `->`：返回 JSONB，常用于中间路径访问
+- `->>`：返回文本，常用于最终值提取
+- `jsonb_typeof()`：在比较前验证 JSON 值类型
+
+## Hstore / Map 列
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `metadata.key1='value1'` | `"metadata"->'key1' = 'value1'` |
+| `metadata.key1!='value1'` | `"metadata"->'key1' != 'value1'` |
+| `metadata.pattern~'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
+
+## 数组列
+
+PostgreSQL 数组是 1-based，FlyQL 会自动把 0-based 下标转换过去：
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `tags.0='first'` | `"tags"[1] = 'first'` |
+| `tags.1='second'` | `"tags"[2] = 'second'` |
+| `tags.0~'tag.*'` | `"tags"[1] ~ 'tag.*'` |
+
+## 列定义示例
+
+PostgreSQL 不需要 `jsonString` 参数，JSONB 类型通过列类型识别：
+
+```go
+columns := map[string]*postgresql.Column{
+    "message": postgresql.NewColumn("message", "varchar", nil),
+    "data":    postgresql.NewColumn("data", "jsonb", nil),
+}
+```
+
+```javascript
+const columns = {
+    message: newColumn("message", "varchar", null),
+    data:    newColumn("data", "jsonb", null),
+}
+```
+
+## 转换器
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `status\|upper = "ERROR"` | `UPPER(status) = 'ERROR'` |
+| `status\|lower = "info"` | `LOWER(status) = 'info'` |
+| `message\|len > 100` | `LENGTH(message) > 100` |
+| `message\|lower\|len > 100` | `LENGTH(LOWER(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |
+

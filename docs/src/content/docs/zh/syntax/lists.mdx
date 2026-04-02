@@ -1,0 +1,89 @@
+---
+title: 列表
+description: FlyQL 中的列表成员操作符（in、not in）
+---
+
+## 列表成员检查
+
+使用 `in` 判断某个值是否在列表中，使用 `not in` 判断它是否不在列表中：
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+## 语法规则
+
+- 值必须写在方括号 `[ ]` 中，并使用逗号分隔
+- 同一个列表中的值必须类型一致
+- 字符串值必须带引号：`['a', 'b', 'c']`
+- 数字值不带引号：`[1, 2, 3]`
+- 逗号和括号两侧允许空格
+
+### 字符串列表
+
+```
+method in ['GET', 'POST', 'PUT']
+env not in ['dev', 'test', 'local']
+```
+
+字符串可以使用单引号或双引号。
+
+### 数字列表
+
+```
+status in [200, 201, 204]
+port not in [80, 443]
+```
+
+### 空列表
+
+允许空列表：
+
+```
+status in []        # 恒为 false
+status not in []    # 恒为 true
+```
+
+## 类型一致性
+
+列表中的值必须保持统一类型。混用字符串和数字会触发解析错误：
+
+```
+# 有效：全是数字
+status in [200, 201, 204]
+
+# 有效：全是字符串
+env in ['prod', 'staging']
+
+# 无效：混合类型
+values in [200, 'ok']
+```
+
+解析器会记录列表第一个值的类型，并拒绝后续不一致的值。这个约束在解析阶段就会生效。
+
+SQL 生成器还会进一步校验列表值是否与目标列类型兼容。例如，把字符串列表传给数值列时，会在 SQL 生成阶段抛出验证错误。
+
+## 与其他操作符组合
+
+列表操作符可以像普通条件一样与布尔逻辑组合：
+
+```
+status in [200, 201] and method in ['GET', 'POST']
+level=error or status not in [200, 201, 204]
+(status in [500, 502, 503] or level=critical) and env=prod
+```
+
+## 示例
+
+```
+# HTTP 成功状态码
+status in [200, 201, 204]
+
+# 排除测试环境
+env not in ['dev', 'test', 'staging']
+
+# 多个列表条件
+method in ['GET', 'POST'] and status not in [401, 403, 404]
+```
+

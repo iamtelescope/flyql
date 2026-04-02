@@ -1,0 +1,187 @@
+---
+title: Schema 配置
+description: FlyQL 编辑器中的列 schema 结构
+---
+
+`columns` prop 用来定义驱动编辑器建议与校验的数据 schema。键名是列名，值是对应的列定义。
+
+## 基础 Schema
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## 列定义字段
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `type` | `string` | — | 列类型：`'string'`、`'number'`、`'enum'`、`'object'` |
+| `suggest` | `boolean` | `true` | 是否在建议列表中显示该列 |
+| `autocomplete` | `boolean` | `false` | 是否为该列启用值补全 |
+| `values` | `string[]` 或 `number[]` | — | 静态补全值 |
+| `children` | `object` | — | 对象类型列的子字段定义 |
+| `display_name` | `string` | `''` | 可选的展示名称 |
+
+## 列类型
+
+### `string`
+
+普通文本列，支持包括正则在内的全部比较操作符。
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+数值列。正则操作符不会出现在建议列表中。
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+固定值集合列。和 `number` 一样，不支持正则建议。通常通过 `values` 提供候选项：
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+嵌套对象列。用户输入列名后加 `.` 时，会提示其子字段：
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## 值补全
+
+### 静态值
+
+如果某些列有固定候选项，可以直接提供 `values`：
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### 异步值
+
+如果设置 `autocomplete: true` 但不提供 `values`，则需要在编辑器组件上传入 `onAutocomplete`：
+
+```javascript
+{ type: 'string', suggest: true, autocomplete: true }
+
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## 嵌套列
+
+对对象类型列，可以使用 `children` 定义嵌套结构：
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+输入 `metadata.` 时会提示 `labels` 与 `version`；继续输入 `metadata.labels.` 时则会提示 `tier` 与 `env`。
+
+## 远程键发现
+
+如果对象列的嵌套字段无法在 schema 中提前定义，可以省略 `children`，并通过 `onKeyDiscovery` 动态发现：
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true },
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys
+}
+```
+
+当用户输入 `request.` 时，回调会收到 `('request', ['request'])`。在同一次激活会话中，发现结果会被缓存。
+
+如果某个列同时配置了 `children` 和 `onKeyDiscovery`，则静态 `children` 优先生效。
+
+## 完整示例
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+    host: { type: 'string', suggest: true },
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+    request: { type: 'object', suggest: true },
+}
+```
+

@@ -1,0 +1,148 @@
+---
+title: 自定义转换器
+description: 注册领域专用转换器，用自定义值变换扩展 FlyQL
+---
+
+FlyQL 的转换器系统是可扩展的。你可以注册自定义转换器，并让它们像内置转换器 `upper`、`lower`、`len` 一样，在解析器、SQL 生成器、内存匹配器和编辑器自动补全中统一工作。
+
+## 转换器接口
+
+每个转换器都需要实现 5 个成员：
+
+| 成员 | 类型 | 说明 |
+|------|------|------|
+| `name` | string | 唯一的小写名称 |
+| `inputType` | TransformerType | 输入类型 |
+| `outputType` | TransformerType | 输出类型 |
+| `sql(dialect, columnRef)` | string | 生成对应方言的 SQL 包裹表达式 |
+| `apply(value)` | any | 在内存中转换运行时值 |
+
+`sql()` 接收数据库方言名（如 `"clickhouse"`、`"postgresql"`、`"starrocks"`）和列引用字符串。`apply()` 接收运行时值，并返回转换后的值。
+
+## Registry API
+
+| 方法 | 说明 |
+|------|------|
+| `defaultRegistry()` | 返回一个预加载内置转换器的新 registry |
+| `registry.register(transformer)` | 注册自定义转换器 |
+| `registry.get(name)` | 按名称查找转换器 |
+| `registry.names()` | 列出已注册的转换器名称 |
+
+典型流程是：获取默认 registry，注册自己的转换器，然后把 registry 传给生成器和匹配器。
+
+## Python
+
+```python
+from flyql.transformers import Transformer, TransformerType, default_registry
+
+class FirstOctetTransformer(Transformer):
+    @property
+    def name(self): return "firstoctet"
+    @property
+    def input_type(self): return TransformerType.STRING
+    @property
+    def output_type(self): return TransformerType.INT
+    def sql(self, dialect, column_ref):
+        if dialect == "clickhouse":
+            return f"toUInt8(splitByChar('.', {column_ref})[1])"
+        return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
+    def apply(self, value):
+        return int(str(value).split('.')[0])
+```
+
+注册并使用：
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.postgresql.generator import to_sql, Column
+
+registry = default_registry()
+registry.register(FirstOctetTransformer())
+
+result = parse("src_ip|firstoctet > 192")
+columns = {"src_ip": Column("src_ip", "text")}
+sql = to_sql(result.root, columns, registry=registry)
+```
+
+内存匹配：
+
+```python
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+evaluator = Evaluator(registry=registry)
+record = Record({"src_ip": "193.0.0.1"})
+evaluator.evaluate(result.root, record)
+```
+
+## JavaScript
+
+```javascript
+import { Transformer, TransformerType, defaultRegistry } from 'flyql/transformers'
+
+class FirstOctetTransformer extends Transformer {
+    get name() { return 'firstoctet' }
+    get inputType() { return TransformerType.STRING }
+    get outputType() { return TransformerType.INT }
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
+        return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
+    }
+    apply(value) { return parseInt(String(value).split('.')[0], 10) }
+}
+```
+
+注册并使用：
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+
+const registry = defaultRegistry()
+registry.register(new FirstOctetTransformer())
+
+const result = parse("src_ip|firstoctet > 192")
+const columns = { src_ip: newColumn('src_ip', false, 'text') }
+const sql = generateWhere(result.root, columns, registry)
+```
+
+## Go
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+    "strings"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type FirstOctet struct{}
+
+func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
+func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f FirstOctet) SQL(dialect, colRef string) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
+    }
+    return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
+}
+func (f FirstOctet) Apply(value interface{}) interface{} {
+    parts := strings.SplitN(fmt.Sprint(value), ".", 2)
+    n, _ := strconv.Atoi(parts[0])
+    return n
+}
+```
+
+## 类型兼容性
+
+自定义转换器会参与同样的类型链校验。例如 `field|firstoctet|upper` 会报错，因为 `firstoctet` 输出 `int`，而 `upper` 需要 `string`。
+
+可用类型包括：`STRING`、`INT`、`FLOAT`、`BOOL`、`ARRAY`。
+
+## 安全性
+
+自定义转换器的 `sql()` 方法只会接收到列引用，不会拿到用户原始输入值。用户值仍由生成器负责安全转义或参数化，因此 FlyQL 的防注入特性仍然成立。
+

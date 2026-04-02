@@ -1,0 +1,112 @@
+---
+title: ClickHouse
+description: ClickHouse 的 SQL 生成示例
+---
+
+ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，通配匹配使用 `LIKE`。
+
+## 基础示例
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `message='hello'` | `message = 'hello'` |
+| `message!='hello'` | `message != 'hello'` |
+| `count>10` | `count > 10` |
+| `count<=100` | `count <= 100` |
+| `message~'error.*'` | `match(message, 'error.*')` |
+| `message!~'test.*'` | `not match(message, 'test.*')` |
+| `host=prod*` | `host LIKE 'prod%'` |
+
+## 布尔操作符
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `a='1' and b>10` | `(a = '1' and b > 10)` |
+| `a='1' or b='2'` | `(a = '1' or b = '2')` |
+| `not a='1'` | `not (a = '1')` |
+
+## 列表成员
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `status in [200, 201]` | `status IN (200, 201)` |
+| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## 包含检查
+
+| 列类型 | FlyQL | 生成 SQL |
+|--------|-------|----------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String（取反） | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+
+## JSON 列
+
+ClickHouse 支持两种 JSON 形式。
+
+### 原生 JSON 类型
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `data.name='test'` | `` data.`name` = 'test' `` |
+| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age=25` | `` data.`age` = 25 `` |
+
+### 字符串形式 JSON
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+
+## Map 列
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+
+## 数组列
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `tags.0='first'` | `equals(tags[0], 'first')` |
+| `tags.1='second'` | `equals(tags[1], 'second')` |
+| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+
+## 列定义示例
+
+`jsonString` 参数决定 JSON 走哪种模式：
+
+```go
+columns := map[string]*clickhouse.Column{
+    "message": clickhouse.NewColumn("message", false, "String", nil),
+    "data":    clickhouse.NewColumn("data", false, "JSON", nil),
+    "log":     clickhouse.NewColumn("log", true, "String", nil),
+}
+```
+
+```javascript
+const columns = {
+    message: newColumn("message", false, "String", null),
+    data:    newColumn("data", false, "JSON", null),
+    log:     newColumn("log", true, "String", null),
+}
+```
+
+## 转换器
+
+| FlyQL | 生成 SQL |
+|-------|----------|
+| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
+| `status\|lower = "info"` | `equals(lower(status), 'info')` |
+| `message\|len > 100` | `length(message) > 100` |
+| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |
+

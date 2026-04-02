@@ -1,0 +1,93 @@
+---
+title: AST 与自定义生成器
+description: 理解 FlyQL 抽象语法树，并为任意目标构建自定义生成器
+---
+
+FlyQL 解析器会生成一棵 **抽象语法树（AST）**。你可以遍历这棵树，把同一条 FlyQL 查询转换成任意目标输出。内置的 SQL 生成器（ClickHouse、PostgreSQL、StarRocks）都是通过遍历这棵 AST 实现的。
+
+## AST 节点类型
+
+AST 由三种核心结构组成：**Node**、**Expression** 和 **Key**。
+
+### Node
+
+`Node` 是 AST 的基础节点。它要么是一个叶子节点（保存单个表达式），要么是一个分支节点（通过布尔操作符连接左右子树）。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `boolOperator` | `string` | `"and"` 或 `"or"` |
+| `expression` | `Expression` or `null` | 当前叶子上的表达式 |
+| `left` | `Node` or `null` | 左子树 |
+| `right` | `Node` or `null` | 右子树 |
+| `negated` | `boolean` | 是否被 `not` 包裹 |
+
+### Expression
+
+`Expression` 表示单个条件，由键、操作符和值构成。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `key` | `Key` | 被比较的字段 |
+| `operator` | `string` | 如 `=`, `!=`, `~`, `in`, `has` 等 |
+| `value` | `any` | 标量比较值 |
+| `valueType` | `string` or `null` | 值类型 |
+| `values` | `array` or `null` | `in` / `not in` 的列表值 |
+| `valuesTypes` | `string[]` or `null` | 列表中每个元素的类型 |
+
+### Key
+
+`Key` 表示被访问的字段路径。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `segments` | `string[]` | 路径片段数组 |
+| `raw` | `string` | 原始键名字符串 |
+| `isSegmented` | `boolean` | 是否为多段路径 |
+
+## 操作符常量
+
+所有操作符都可以作为常量导入：
+
+```javascript
+import { Operator, BoolOperator } from 'flyql'
+
+Operator.EQUALS
+Operator.NOT_EQUALS
+Operator.REGEX
+Operator.NOT_REGEX
+Operator.GREATER_THAN
+Operator.LOWER_THAN
+Operator.GREATER_OR_EQUALS_THAN
+Operator.LOWER_OR_EQUALS_THAN
+Operator.TRUTHY
+Operator.IN
+Operator.NOT_IN
+Operator.HAS
+Operator.NOT_HAS
+
+BoolOperator.AND
+BoolOperator.OR
+```
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+flyql.OpEquals
+flyql.OpNotEquals
+flyql.OpRegex
+flyql.OpNotRegex
+```
+
+## 为什么 AST 重要
+
+理解 AST 后，你可以：
+
+- 构建新的 SQL 或 DSL 生成器
+- 针对特定后端自定义优化
+- 在服务端或内存中实现自定义匹配逻辑
+- 做静态分析、lint 或查询重写
+
+## 下一步
+
+如果你想扩展列值转换能力，请继续阅读[自定义转换器](/zh/advanced/custom-transformers/)。
+

@@ -1,0 +1,124 @@
+---
+title: JavaScript 快速开始
+description: 在 JavaScript 项目中安装并使用 FlyQL
+---
+
+## 安装
+
+```bash
+npm install flyql
+```
+
+**要求：** Node.js 16+。所有导入都基于 ES Modules。
+
+## 解析查询
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status=200 and active")
+console.log(result.root)
+```
+
+`parse()` 返回一个包含 `root` 节点的解析结果对象。输入非法时会抛出 `ParserError`：
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status=200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
+
+## 生成 SQL
+
+可以通过生成器把 AST 转换为 WHERE 条件片段。每种数据库方言都通过独立的子路径导入。
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status>=400 and host=prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### 其他方言
+
+PostgreSQL 和 StarRocks 的用法也相同：
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+注意：PostgreSQL 的 `newColumn` 签名不同，为 `newColumn(name, type, values)`，没有 `jsonString` 参数。
+
+## 内存匹配
+
+可以直接对 JavaScript 对象执行匹配，而无需生成 SQL：
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status=200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## 解析列表达式
+
+列表达式可以被解析为带有字段段、转换器和别名的结构化数据：
+
+```javascript
+import { parse, parseToJson } from 'flyql/columns'
+
+const parsed = parse("message, status")
+for (const col of parsed) {
+    console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
+}
+
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
+
+const json = parseToJson("message, status|upper", { transformers: true })
+console.log(json)
+```
+
+## 带转换器的查询
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("message|upper = 'ERROR'")
+
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+完整语法见[转换器](/zh/syntax/transformers/)。
+
+## 下一步
+
+- [语法参考](/zh/syntax/)：查看所有操作符、布尔逻辑、模式匹配等内容
+- [SQL 方言](/zh/sql/)：了解不同数据库的 SQL 生成差异
+

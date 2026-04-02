@@ -1,0 +1,50 @@
+---
+title: FlyQL
+description: 一种轻量级、天然防注入的查询语言，可生成多种 SQL 方言
+---
+
+一种轻量级查询语言，可转换为适用于 ClickHouse、PostgreSQL 和 StarRocks 的防注入 SQL，并提供 Go、Python 和 JavaScript 实现。
+
+## 什么是 FlyQL？
+
+FlyQL 是一种简单、易读的人类友好型查询语言，专门用于数据过滤。你可以写出像 `status>=400 and host=prod*` 这样的查询，然后让 FlyQL 将其转换为数据库可用的 SQL，或者在内存中直接对数据记录进行匹配。
+
+```
+status>=400 and host=prod* and not debug
+```
+
+无论你的后端使用 ClickHouse、PostgreSQL、StarRocks，还是内存中的数据集，这条查询的行为都保持一致。
+
+## 核心特性
+
+- **天然防注入**：语法本身无法表达子查询、JOIN、UNION 或 DDL。安全性来自语言设计，而不是额外防御。所有生成的 SQL 都会安全处理值。
+- **多 SQL 方言支持**：同一套查询语法，可输出不同数据库的正确 SQL。FlyQL 能针对 ClickHouse、PostgreSQL 和 StarRocks 生成符合各自特性的语句，包括 JSON 路径、Map 访问和数组处理。
+- **多语言实现**：提供 Go、Python 和 JavaScript 的完整实现。你可以在前端解析、在后端校验、在任意位置生成 SQL，同一条查询在不同环境中保持一致。
+- **零依赖**：所有实现都使用手写状态机解析器，不依赖外部库。集成简单，不容易引入额外冲突。
+
+## 快速示例
+
+```
+service!=api and (status>=400 or level=error) and message~"timeout.*"
+```
+
+| 组成部分 | 含义 |
+|-----------|------|
+| `service!=api` | `service` 字段不等于 `"api"` |
+| `status>=400` | `status` 大于或等于 `400` |
+| `level=error` | `level` 字段等于 `"error"` |
+| `message~"timeout.*"` | `message` 匹配正则表达式 |
+| `and`, `or` | 支持优先级的布尔逻辑 |
+| `( )` | 显式分组 |
+
+## 支持的语言
+
+| 语言 | 解析器 | SQL 生成器 | 内存匹配器 |
+|------|--------|------------|------------|
+| Go | 支持 | ClickHouse、PostgreSQL、StarRocks | 支持 |
+| Python | 支持 | ClickHouse、PostgreSQL、StarRocks | 支持 |
+| JavaScript | 支持 | ClickHouse、PostgreSQL、StarRocks | 支持 |
+
+## 下一步
+
+如果你想尽快上手，建议先阅读[快速开始](/zh/getting-started/)；如果你想了解完整语法规则，可以继续阅读[语法参考](/zh/syntax/)。

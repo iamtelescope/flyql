@@ -1,0 +1,112 @@
+---
+title: 主题
+description: 通过 CSS 自定义属性定制 FlyQL 编辑器外观
+---
+
+FlyQL 编辑器的视觉样式全部基于 CSS 自定义属性（变量）。你可以覆盖任意 `--flyql-*` 变量，使其与应用整体设计保持一致。
+
+## CSS 自定义属性
+
+### 颜色
+
+| 变量 | 浅色默认值 | 深色默认值 | 说明 |
+|------|------------|------------|------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | 编辑器背景色 |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | 文本颜色 |
+| `--flyql-border` | `#d4d4d4` | `#525252` | 边框颜色 |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | 聚焦时边框颜色 |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | 占位文本颜色 |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | 错误高亮颜色 |
+
+### 语法高亮
+
+| 变量 | 浅色默认值 | 深色默认值 | 说明 |
+|------|------------|------------|------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | 列名 / 键名 |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | 操作符 |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | 字符串值 |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | 数字值 |
+
+### 建议面板
+
+| 变量 | 浅色默认值 | 深色默认值 | 说明 |
+|------|------------|------------|------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | 面板背景 |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | 面板边框 |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | hover 项 |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | 当前选中项 |
+
+### 字体
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI 字体 |
+| `--flyql-code-font-family` | `monospace` | 代码 / 查询字体 |
+| `--flyql-font-size` | `13px` | 基础字号 |
+
+## 浅色主题
+
+浅色主题是默认主题，不需要额外类名：
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## 深色主题
+
+通过 `dark` prop 启用内置深色主题：
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+`dark` prop 会把 `flyql-dark` 类应用到建议面板。由于建议面板会被 teleport 到 `<body>`，因此它无法继承局部组件树中的类名。
+
+另一种做法是直接在 `<html>` 或 `<body>` 上添加 `flyql-dark`：
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## 自定义主题
+
+可以在 CSS 中覆盖特定变量：
+
+```css
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## 局部主题
+
+如果你只想对某一个编辑器实例应用定制主题，可以用一个包装容器：
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS 变量会沿祖先节点级联，因此包装容器上的覆盖值会自动作用到内部所有 FlyQL 组件。
+

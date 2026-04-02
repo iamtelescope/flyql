@@ -1,0 +1,162 @@
+---
+title: Go 快速开始
+description: 在 Go 项目中安装并使用 FlyQL
+---
+
+## 安装
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## 解析查询
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status=200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` 会返回一个 `*ParseResult`，其中 `Root` 节点就是查询对应的 AST。
+
+## 生成 SQL
+
+使用生成器可以把 AST 转换为 WHERE 条件片段。每种数据库方言都有自己的生成器和列类型定义。
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status>=400 and host=prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+PostgreSQL 和 StarRocks 的生成器使用方式相同，只需改为从 `generators/postgresql` 或 `generators/starrocks` 导入即可。
+
+## 内存匹配
+
+你也可以不生成 SQL，而是直接在内存中对一条记录执行匹配：
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status=200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## 解析列表达式
+
+列表达式可以被解析为带有字段段、转换器和别名的结构化数据。第二个参数是 `Capabilities` 结构体，用来控制启用的能力。默认情况下，transformer 是关闭的。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", columns.Capabilities{
+		Transformers: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms)
+}
+```
+
+## 带转换器的查询
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("message|upper = 'ERROR'")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+完整语法请参见[转换器](/zh/syntax/transformers/)。
+
+## 下一步
+
+- [语法参考](/zh/syntax/)：查看所有操作符、布尔逻辑、模式匹配等内容
+- [SQL 方言](/zh/sql/)：了解不同数据库的 SQL 生成差异
+

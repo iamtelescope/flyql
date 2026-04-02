@@ -1,0 +1,94 @@
+---
+title: SQL 方言
+description: FlyQL 如何为 ClickHouse、PostgreSQL 和 StarRocks 生成 SQL
+---
+
+FlyQL 生成器会输出一个纯 SQL 的 WHERE 条件片段，所有值都会在输出前被正确转义并直接嵌入。相同的 FlyQL 查询，在不同数据库方言下会生成不同的 SQL。
+
+## 支持的方言
+
+- [ClickHouse](/zh/sql/clickhouse/)：列名通常不加引号，正则使用 `match()`
+- [PostgreSQL](/zh/sql/postgresql/)：使用双引号标识符，正则使用 `~`
+- [StarRocks](/zh/sql/starrocks/)：使用反引号标识符，正则使用 `regexp()`
+
+## 主要差异
+
+| 特性 | ClickHouse | PostgreSQL | StarRocks |
+|------|-----------|-----------|-----------|
+| 列名引用 | 无 | `"name"` | `` `name` `` |
+| 正则 | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| 取反正则 | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| 通配前缀 | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| 布尔操作符 | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| 空 `IN []` | `0` | `FALSE` | `0` |
+| 空 `NOT IN []` | `1` | `TRUE` | `1` |
+| 字符串 `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+
+## JSON 访问
+
+不同方言在处理嵌套 JSON 时差异最大。
+
+**FlyQL 输入：** `data.user.name='john'`
+
+**ClickHouse（原生 JSON）：**
+
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse（字符串形式 JSON）：**
+
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL（JSONB）：**
+
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks（原生 JSON）：**
+
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+## Map 访问
+
+**FlyQL 输入：** `metadata.key1='value1'`
+
+| 方言 | 生成 SQL |
+|------|----------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+## 数组访问
+
+**FlyQL 输入：** `tags.0='first'`
+
+| 方言 | 生成 SQL | 下标方式 |
+|------|----------|----------|
+| ClickHouse | `equals(tags[0], 'first')` | 0-based |
+| PostgreSQL | `"tags"[1] = 'first'` | 1-based |
+| StarRocks | `` `tags`[0] = 'first' `` | 0-based |
+
+PostgreSQL 的数组是 1-based，因此 FlyQL 会自动把索引加 1。
+
+## 输出格式
+
+生成器返回的是 WHERE 条件片段，而不是完整 SQL：
+
+```
+message = 'hello' and count > 10
+```
+
+而不是：
+
+```
+WHERE message = ? AND count > ?
+```
+

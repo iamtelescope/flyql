@@ -1,0 +1,88 @@
+---
+title: Columns 组件
+description: 用于编辑列表达式的 FlyqlColumns 组件
+---
+
+`FlyqlColumns` 组件提供了一个专门用于列表达式输入的编辑器，可用于选择列、过滤列，以及为列应用转换器。
+
+## 快速接入
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `modelValue` | `String` | `''` | 表达式文本（`v-model`） |
+| `columns` | `Object` | `{}` | 列 [schema](/zh/editor/schema/) |
+| `capabilities` | `Object` | `null` | 解析能力，例如 `{ transformers: true }` |
+| `onKeyDiscovery` | `Function` | `null` | 远程键发现回调 |
+| `placeholder` | `String` | `''` | 占位文本 |
+| `autofocus` | `Boolean` | `false` | 自动聚焦 |
+| `debug` | `Boolean` | `false` | 调试日志 |
+| `dark` | `Boolean` | `false` | 启用暗色主题 |
+
+## 事件
+
+| 事件 | 载荷 | 说明 |
+|------|------|------|
+| `update:modelValue` | `string` | 表达式文本变化 |
+| `update:parsed` | `ParsedColumn[]` | 解析结果更新 |
+| `submit` | — | 用户按下 `Shift+Enter` |
+| `parse-error` | `string` | 解析错误信息 |
+| `focus` | — | 组件获得焦点 |
+| `blur` | — | 组件失去焦点 |
+
+## 暴露方法
+
+| 方法 | 返回值 | 说明 |
+|------|--------|------|
+| `focus()` | — | 聚焦输入框 |
+| `blur()` | — | 取消焦点 |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | 校验表达式 |
+| `getParsedColumns()` | `ParsedColumn[]` | 获取解析后的列数组 |
+
+## 列表达式语法
+
+列表达式采用逗号分隔格式，并支持可选的转换器与别名：
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| 组成部分 | 语法 | 示例 |
+|----------|------|------|
+| 列名 | `name` | `message` |
+| 转换器 | `name\|transformer` | `status\|upper` |
+| 带参数转换器 | `name\|transformer(arg)` | `name\|truncate(50)` |
+| 别名 | `name as alias` | `host as h` |
+| 嵌套路径 | `parent.child` | `metadata.labels.env` |
+| 链式转换器 | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |
+

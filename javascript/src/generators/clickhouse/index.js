@@ -29,6 +29,13 @@ const operatorToClickHouseFunc = {
     [Operator.LOWER_OR_EQUALS_THAN]: 'lessOrEquals',
 }
 
+function getIdentifier(column) {
+    if (column.rawIdentifier) {
+        return column.rawIdentifier
+    }
+    return column.name
+}
+
 const jsonKeyPattern = /^[a-zA-Z_][.a-zA-Z0-9_-]*$/
 
 const escapeCharsMap = {
@@ -134,7 +141,7 @@ function expressionToSQLSimple(expr, columns, registry = null) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
-    let colRef = column.name
+    let colRef = getIdentifier(column)
     if (expr.key.transformers.length) {
         validateTransformerChain(expr.key.transformers, registry)
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse', registry)
@@ -196,6 +203,8 @@ function expressionToSQLSegmented(expr, columns) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
+    const colId = getIdentifier(column)
+
     if (column.jsonString) {
         const jsonPath = expr.key.segments.slice(1)
         const jsonPathParts = jsonPath.map((p) => escapeParam(p))
@@ -203,7 +212,7 @@ function expressionToSQLSegmented(expr, columns) {
 
         const strValue = escapeParam(expr.value)
         const multiIf = [
-            `JSONType(${column.name}, ${jsonPathStr}) = 'String', ${funcName}(JSONExtractString(${column.name}, ${jsonPathStr}), ${strValue})`,
+            `JSONType(${colId}, ${jsonPathStr}) = 'String', ${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${strValue})`,
         ]
 
         if (
@@ -213,9 +222,9 @@ function expressionToSQLSegmented(expr, columns) {
         ) {
             const numValue = String(expr.value)
             multiIf.push(
-                `JSONType(${column.name}, ${jsonPathStr}) = 'Int64', ${funcName}(JSONExtractInt(${column.name}, ${jsonPathStr}), ${numValue})`,
-                `JSONType(${column.name}, ${jsonPathStr}) = 'Double', ${funcName}(JSONExtractFloat(${column.name}, ${jsonPathStr}), ${numValue})`,
-                `JSONType(${column.name}, ${jsonPathStr}) = 'Bool', ${funcName}(JSONExtractBool(${column.name}, ${jsonPathStr}), ${numValue})`,
+                `JSONType(${colId}, ${jsonPathStr}) = 'Int64', ${funcName}(JSONExtractInt(${colId}, ${jsonPathStr}), ${numValue})`,
+                `JSONType(${colId}, ${jsonPathStr}) = 'Double', ${funcName}(JSONExtractFloat(${colId}, ${jsonPathStr}), ${numValue})`,
+                `JSONType(${colId}, ${jsonPathStr}) = 'Bool', ${funcName}(JSONExtractBool(${colId}, ${jsonPathStr}), ${numValue})`,
             )
         }
         multiIf.push('0')
@@ -228,12 +237,12 @@ function expressionToSQLSegmented(expr, columns) {
         const pathParts = jsonPath.map((part) => '`' + part + '`')
         const jsonPathStr = pathParts.join('.')
         const value = escapeParam(expr.value)
-        return `${column.name}.${jsonPathStr} ${expr.operator} ${value}`
+        return `${colId}.${jsonPathStr} ${expr.operator} ${value}`
     } else if (column.isMap) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
         const value = escapeParam(expr.value)
-        return `${reverseOperator}${funcName}(${column.name}[${escapedMapKey}], ${value})`
+        return `${reverseOperator}${funcName}(${colId}[${escapedMapKey}], ${value})`
     } else if (column.isArray) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -241,7 +250,7 @@ function expressionToSQLSegmented(expr, columns) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
         const value = escapeParam(expr.value)
-        return `${reverseOperator}${funcName}(${column.name}[${arrayIndex}], ${value})`
+        return `${reverseOperator}${funcName}(${colId}[${arrayIndex}], ${value})`
     } else {
         throw new Error('path search for unsupported column type')
     }
@@ -270,6 +279,8 @@ function inExpressionToSQL(expr, columns) {
 
     const sqlOp = isNotIn ? 'NOT IN' : 'IN'
 
+    const colId = getIdentifier(column)
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
@@ -278,29 +289,29 @@ function inExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => `$.${part}`)
             const jsonPathStr = pathParts.join('.')
-            return `JSON_VALUE(${column.name}, '${jsonPathStr}') ${sqlOp} (${valuesSQL})`
+            return `JSON_VALUE(${colId}, '${jsonPathStr}') ${sqlOp} (${valuesSQL})`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `JSONExtractString(${column.name}, ${jsonPathStr}) ${sqlOp} (${valuesSQL})`
+            return `JSONExtractString(${colId}, ${jsonPathStr}) ${sqlOp} (${valuesSQL})`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `${column.name}[${escapedMapKey}] ${sqlOp} (${valuesSQL})`
+            return `${colId}[${escapedMapKey}] ${sqlOp} (${valuesSQL})`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `${column.name}[${arrayIndex}] ${sqlOp} (${valuesSQL})`
+            return `${colId}[${arrayIndex}] ${sqlOp} (${valuesSQL})`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    let colRef = column.name
+    let colRef = colId
     if (expr.key.transformers && expr.key.transformers.length) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
@@ -315,12 +326,14 @@ function truthyExpressionToSQL(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
+    const colId = getIdentifier(column)
+
     if (expr.key.isSegmented) {
         if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `(JSONHas(${column.name}, ${jsonPathStr}) AND JSONExtractString(${column.name}, ${jsonPathStr}) != '')`
+            return `(JSONHas(${colId}, ${jsonPathStr}) AND JSONExtractString(${colId}, ${jsonPathStr}) != '')`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
@@ -328,44 +341,44 @@ function truthyExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => '`' + part + '`')
             const jsonPathStr = pathParts.join('.')
-            return `(${column.name}.${jsonPathStr} IS NOT NULL)`
+            return `(${colId}.${jsonPathStr} IS NOT NULL)`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(mapContains(${column.name}, ${escapedMapKey}) AND ${column.name}[${escapedMapKey}] != '')`
+            return `(mapContains(${colId}, ${escapedMapKey}) AND ${colId}[${escapedMapKey}] != '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `(length(${column.name}) >= ${arrayIndex} AND ${column.name}[${arrayIndex}] != '')`
+            return `(length(${colId}) >= ${arrayIndex} AND ${colId}[${arrayIndex}] != '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
     if (expr.key.transformers && expr.key.transformers.length) {
-        const colRef = applyTransformerSQL(column.name, expr.key.transformers, 'clickhouse')
+        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'clickhouse')
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
     if (column.jsonString) {
-        return `(${column.name} IS NOT NULL AND ${column.name} != '' AND JSONLength(${column.name}) > 0)`
+        return `(${colId} IS NOT NULL AND ${colId} != '' AND JSONLength(${colId}) > 0)`
     }
 
     switch (column.normalizedType) {
         case NormalizedTypeBool:
-            return column.name
+            return colId
         case NormalizedTypeString:
-            return `(${column.name} IS NOT NULL AND ${column.name} != '')`
+            return `(${colId} IS NOT NULL AND ${colId} != '')`
         case NormalizedTypeInt:
         case NormalizedTypeFloat:
-            return `(${column.name} IS NOT NULL AND ${column.name} != 0)`
+            return `(${colId} IS NOT NULL AND ${colId} != 0)`
         case NormalizedTypeDate:
-            return `(${column.name} IS NOT NULL)`
+            return `(${colId} IS NOT NULL)`
         default:
-            return `(${column.name} IS NOT NULL)`
+            return `(${colId} IS NOT NULL)`
     }
 }
 
@@ -376,12 +389,14 @@ function falsyExpressionToSQL(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
+    const colId = getIdentifier(column)
+
     if (expr.key.isSegmented) {
         if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `(NOT JSONHas(${column.name}, ${jsonPathStr}) OR JSONExtractString(${column.name}, ${jsonPathStr}) = '')`
+            return `(NOT JSONHas(${colId}, ${jsonPathStr}) OR JSONExtractString(${colId}, ${jsonPathStr}) = '')`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
@@ -389,44 +404,44 @@ function falsyExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => '`' + part + '`')
             const jsonPathStr = pathParts.join('.')
-            return `(${column.name}.${jsonPathStr} IS NULL)`
+            return `(${colId}.${jsonPathStr} IS NULL)`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(NOT mapContains(${column.name}, ${escapedMapKey}) OR ${column.name}[${escapedMapKey}] = '')`
+            return `(NOT mapContains(${colId}, ${escapedMapKey}) OR ${colId}[${escapedMapKey}] = '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `(length(${column.name}) < ${arrayIndex} OR ${column.name}[${arrayIndex}] = '')`
+            return `(length(${colId}) < ${arrayIndex} OR ${colId}[${arrayIndex}] = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
     if (expr.key.transformers && expr.key.transformers.length) {
-        const colRef = applyTransformerSQL(column.name, expr.key.transformers, 'clickhouse')
+        const colRef = applyTransformerSQL(colId, expr.key.transformers, 'clickhouse')
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
     if (column.jsonString) {
-        return `(${column.name} IS NULL OR ${column.name} = '' OR JSONLength(${column.name}) = 0)`
+        return `(${colId} IS NULL OR ${colId} = '' OR JSONLength(${colId}) = 0)`
     }
 
     switch (column.normalizedType) {
         case NormalizedTypeBool:
-            return `NOT ${column.name}`
+            return `NOT ${colId}`
         case NormalizedTypeString:
-            return `(${column.name} IS NULL OR ${column.name} = '')`
+            return `(${colId} IS NULL OR ${colId} = '')`
         case NormalizedTypeInt:
         case NormalizedTypeFloat:
-            return `(${column.name} IS NULL OR ${column.name} = 0)`
+            return `(${colId} IS NULL OR ${colId} = 0)`
         case NormalizedTypeDate:
-            return `(${column.name} IS NULL)`
+            return `(${colId} IS NULL)`
         default:
-            return `(${column.name} IS NULL)`
+            return `(${colId} IS NULL)`
     }
 }
 
@@ -439,6 +454,7 @@ function hasExpressionToSQL(expr, columns) {
     }
 
     const value = escapeParam(expr.value)
+    const colId = getIdentifier(column)
 
     if (expr.key.isSegmented) {
         if (column.jsonString) {
@@ -446,9 +462,9 @@ function hasExpressionToSQL(expr, columns) {
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
             if (isNotHas) {
-                return `position(JSONExtractString(${column.name}, ${jsonPathStr}), ${value}) = 0`
+                return `position(JSONExtractString(${colId}, ${jsonPathStr}), ${value}) = 0`
             }
-            return `position(JSONExtractString(${column.name}, ${jsonPathStr}), ${value}) > 0`
+            return `position(JSONExtractString(${colId}, ${jsonPathStr}), ${value}) > 0`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
@@ -457,16 +473,16 @@ function hasExpressionToSQL(expr, columns) {
             const pathParts = jsonPath.map((part) => '`' + part + '`')
             const jsonPathStr = pathParts.join('.')
             if (isNotHas) {
-                return `position(${column.name}.${jsonPathStr}, ${value}) = 0`
+                return `position(${colId}.${jsonPathStr}, ${value}) = 0`
             }
-            return `position(${column.name}.${jsonPathStr}, ${value}) > 0`
+            return `position(${colId}.${jsonPathStr}, ${value}) > 0`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
             if (isNotHas) {
-                return `position(${column.name}[${escapedMapKey}], ${value}) = 0`
+                return `position(${colId}[${escapedMapKey}], ${value}) = 0`
             }
-            return `position(${column.name}[${escapedMapKey}], ${value}) > 0`
+            return `position(${colId}[${escapedMapKey}], ${value}) > 0`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -474,15 +490,15 @@ function hasExpressionToSQL(expr, columns) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
             if (isNotHas) {
-                return `position(${column.name}[${arrayIndex}], ${value}) = 0`
+                return `position(${colId}[${arrayIndex}], ${value}) = 0`
             }
-            return `position(${column.name}[${arrayIndex}], ${value}) > 0`
+            return `position(${colId}[${arrayIndex}], ${value}) > 0`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    let colRef = column.name
+    let colRef = colId
     if (expr.key.transformers && expr.key.transformers.length) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
@@ -659,8 +675,10 @@ function resolveColumn(key, columns) {
 }
 
 function buildSelectExpr(column, path) {
+    const colId = getIdentifier(column)
+
     if (path.length === 0) {
-        return column.name
+        return colId
     }
 
     if (column.isJSON) {
@@ -668,18 +686,18 @@ function buildSelectExpr(column, path) {
             validateJSONPathPart(part)
         }
         const pathParts = path.map((part) => '`' + part + '`')
-        return `${column.name}.${pathParts.join('.')}`
+        return `${colId}.${pathParts.join('.')}`
     }
 
     if (column.jsonString) {
         const jsonPathParts = path.map((p) => escapeParam(p))
-        return `JSONExtractString(${column.name}, ${jsonPathParts.join(', ')})`
+        return `JSONExtractString(${colId}, ${jsonPathParts.join(', ')})`
     }
 
     if (column.isMap) {
         const mapKey = path.join('.')
         const escapedKey = escapeParam(mapKey)
-        return `${column.name}[${escapedKey}]`
+        return `${colId}[${escapedKey}]`
     }
 
     if (column.isArray) {
@@ -688,7 +706,7 @@ function buildSelectExpr(column, path) {
         if (isNaN(index)) {
             throw new Error(`invalid array index, expected number: ${indexStr}`)
         }
-        return `${column.name}[${index}]`
+        return `${colId}[${index}]`
     }
 
     throw new Error(`path access on non-composite column type: ${column.name}`)

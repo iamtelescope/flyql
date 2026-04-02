@@ -68,11 +68,11 @@ class Column:
     def __init__(
         self,
         name: str,
+        jsonstring: bool,
         _type: str,
         values: Optional[List[str]] = None,
         display_name: str = "",
         raw_identifier: str = "",
-        jsonstring: bool = False,
     ):
         self.name = name
         self.type = _type

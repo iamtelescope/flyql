@@ -42,6 +42,13 @@ OPERATOR_TO_CLICKHOUSE_FUNC = {
     Operator.LOWER_OR_EQUALS_THAN.value: "lessOrEquals",
 }
 
+
+def get_identifier(column: Column) -> str:
+    if column.raw_identifier:
+        return column.raw_identifier
+    return column.name
+
+
 LIKE_PATTERN_CHAR = "*"
 SQL_LIKE_PATTERN_CHAR = "%"
 JSON_KEY_PATTERN = re.compile(r"^[a-zA-Z_][.a-zA-Z0-9_-]*$")
@@ -147,26 +154,28 @@ def truthy_expression_to_sql(
 
     column = columns[column_name]
 
+    col_id = get_identifier(column)
+
     if expression.key.is_segmented:
         if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             return (
-                f"(JSONHas({column.name}, {json_path_str}) AND "
-                f"JSONExtractString({column.name}, {json_path_str}) != '')"
+                f"(JSONHas({col_id}, {json_path_str}) AND "
+                f"JSONExtractString({col_id}, {json_path_str}) != '')"
             )
         elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
-            return f"({column.name}.{json_path_str} IS NOT NULL)"
+            return f"({col_id}.{json_path_str} IS NOT NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
-                f"(mapContains({column.name}, {escaped_map_key}) AND "
-                f"{column.name}[{escaped_map_key}] != '')"
+                f"(mapContains({col_id}, {escaped_map_key}) AND "
+                f"{col_id}[{escaped_map_key}] != '')"
             )
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -177,32 +186,32 @@ def truthy_expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             return (
-                f"(length({column.name}) >= {array_index} AND "
-                f"{column.name}[{array_index}] != '')"
+                f"(length({col_id}) >= {array_index} AND "
+                f"{col_id}[{array_index}] != '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
         if expression.key.transformers:
             col_ref = apply_transformer_sql(
-                column.name, expression.key.transformers, "clickhouse"
+                col_id, expression.key.transformers, "clickhouse"
             )
             return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
         elif column.jsonstring:
             return (
-                f"({column.name} IS NOT NULL AND {column.name} != '' AND "
-                f"JSONLength({column.name}) > 0)"
+                f"({col_id} IS NOT NULL AND {col_id} != '' AND "
+                f"JSONLength({col_id}) > 0)"
             )
         elif column.normalized_type == NORMALIZED_TYPE_BOOL:
-            return column.name
+            return col_id
         elif column.normalized_type == NORMALIZED_TYPE_STRING:
-            return f"({column.name} IS NOT NULL AND {column.name} != '')"
+            return f"({col_id} IS NOT NULL AND {col_id} != '')"
         elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
-            return f"({column.name} IS NOT NULL AND {column.name} != 0)"
+            return f"({col_id} IS NOT NULL AND {col_id} != 0)"
         elif column.normalized_type == NORMALIZED_TYPE_DATE:
-            return f"({column.name} IS NOT NULL)"
+            return f"({col_id} IS NOT NULL)"
         else:
-            return f"({column.name} IS NOT NULL)"
+            return f"({col_id} IS NOT NULL)"
 
 
 def falsy_expression_to_sql(
@@ -222,26 +231,28 @@ def falsy_expression_to_sql(
 
     column = columns[column_name]
 
+    col_id = get_identifier(column)
+
     if expression.key.is_segmented:
         if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             return (
-                f"(NOT JSONHas({column.name}, {json_path_str}) OR "
-                f"JSONExtractString({column.name}, {json_path_str}) = '')"
+                f"(NOT JSONHas({col_id}, {json_path_str}) OR "
+                f"JSONExtractString({col_id}, {json_path_str}) = '')"
             )
         elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
-            return f"({column.name}.{json_path_str} IS NULL)"
+            return f"({col_id}.{json_path_str} IS NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             return (
-                f"(NOT mapContains({column.name}, {escaped_map_key}) OR "
-                f"{column.name}[{escaped_map_key}] = '')"
+                f"(NOT mapContains({col_id}, {escaped_map_key}) OR "
+                f"{col_id}[{escaped_map_key}] = '')"
             )
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -252,32 +263,31 @@ def falsy_expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             return (
-                f"(length({column.name}) < {array_index} OR "
-                f"{column.name}[{array_index}] = '')"
+                f"(length({col_id}) < {array_index} OR "
+                f"{col_id}[{array_index}] = '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
         if expression.key.transformers:
             col_ref = apply_transformer_sql(
-                column.name, expression.key.transformers, "clickhouse"
+                col_id, expression.key.transformers, "clickhouse"
             )
             return f"({col_ref} IS NULL OR {col_ref} = '')"
         elif column.jsonstring:
             return (
-                f"({column.name} IS NULL OR {column.name} = '' OR "
-                f"JSONLength({column.name}) = 0)"
+                f"({col_id} IS NULL OR {col_id} = '' OR " f"JSONLength({col_id}) = 0)"
             )
         elif column.normalized_type == NORMALIZED_TYPE_BOOL:
-            return f"NOT {column.name}"
+            return f"NOT {col_id}"
         elif column.normalized_type == NORMALIZED_TYPE_STRING:
-            return f"({column.name} IS NULL OR {column.name} = '')"
+            return f"({col_id} IS NULL OR {col_id} = '')"
         elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
-            return f"({column.name} IS NULL OR {column.name} = 0)"
+            return f"({col_id} IS NULL OR {col_id} = 0)"
         elif column.normalized_type == NORMALIZED_TYPE_DATE:
-            return f"({column.name} IS NULL)"
+            return f"({col_id} IS NULL)"
         else:
-            return f"({column.name} IS NULL)"
+            return f"({col_id} IS NULL)"
 
 
 def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
@@ -304,23 +314,25 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     values_sql = ", ".join(escape_param(v) for v in expression.values)
     sql_op = "NOT IN" if is_not_in else "IN"
 
+    col_id = get_identifier(column)
+
     if expression.key.is_segmented:
         if column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"$.{part}" for part in json_path)
-            return (
-                f"JSON_VALUE({column.name}, '{json_path_str}') {sql_op} ({values_sql})"
-            )
+            return f"JSON_VALUE({col_id}, '{json_path_str}') {sql_op} ({values_sql})"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
-            return f"JSONExtractString({column.name}, {json_path_str}) {sql_op} ({values_sql})"
+            return (
+                f"JSONExtractString({col_id}, {json_path_str}) {sql_op} ({values_sql})"
+            )
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            return f"{column.name}[{escaped_map_key}] {sql_op} ({values_sql})"
+            return f"{col_id}[{escaped_map_key}] {sql_op} ({values_sql})"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -329,11 +341,11 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            return f"{column.name}[{array_index}] {sql_op} ({values_sql})"
+            return f"{col_id}[{array_index}] {sql_op} ({values_sql})"
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
-        col_ref = column.name
+        col_ref = col_id
         if expression.key.transformers:
             col_ref = apply_transformer_sql(
                 col_ref, expression.key.transformers, "clickhouse"
@@ -350,27 +362,29 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
     is_not_has = expression.operator == Operator.NOT_HAS.value
     value = escape_param(expression.value)
 
+    col_id = get_identifier(column)
+
     if expression.key.is_segmented:
         if column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"$.{part}" for part in json_path)
-            leaf_expr = f"JSON_VALUE({column.name}, '{json_path_str}')"
+            leaf_expr = f"JSON_VALUE({col_id}, '{json_path_str}')"
             if is_not_has:
                 return f"position({leaf_expr}, {value}) = 0"
             return f"position({leaf_expr}, {value}) > 0"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join(escape_param(x) for x in json_path)
-            leaf_expr = f"JSONExtractString({column.name}, {json_path_str})"
+            leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
             if is_not_has:
                 return f"position({leaf_expr}, {value}) = 0"
             return f"position({leaf_expr}, {value}) > 0"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            leaf_expr = f"{column.name}[{escaped_map_key}]"
+            leaf_expr = f"{col_id}[{escaped_map_key}]"
             if is_not_has:
                 return f"position({leaf_expr}, {value}) = 0"
             return f"position({leaf_expr}, {value}) > 0"
@@ -382,14 +396,14 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            leaf_expr = f"{column.name}[{array_index}]"
+            leaf_expr = f"{col_id}[{array_index}]"
             if is_not_has:
                 return f"position({leaf_expr}, {value}) = 0"
             return f"position({leaf_expr}, {value}) > 0"
         else:
             raise FlyqlError("path search for unsupported column type")
 
-    col_ref = column.name
+    col_ref = col_id
     is_array_result = column.is_array
     if expression.key.transformers:
         col_ref = apply_transformer_sql(
@@ -463,13 +477,15 @@ def expression_to_sql(
                 expression.value, column.normalized_type, expression.operator
             )
 
+        col_id = get_identifier(column)
+
         if column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
 
             str_value = escape_param(expression.value)
             multi_if = [
-                f"JSONType({column.name}, {json_path_str}) = 'String', {func}(JSONExtractString({column.name}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
+                f"JSONType({col_id}, {json_path_str}) = 'String', {func}(JSONExtractString({col_id}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
             ]
             if is_number(expression.value) and expression.operator not in [
                 Operator.REGEX.value,
@@ -477,9 +493,9 @@ def expression_to_sql(
             ]:
                 multi_if.extend(
                     [
-                        f"JSONType({column.name}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                        f"JSONType({column.name}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                        f"JSONType({column.name}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({column.name}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({col_id}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({col_id}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                        f"JSONType({col_id}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
                     ]
                 )
             multi_if.append("0")
@@ -491,14 +507,12 @@ def expression_to_sql(
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
             value = escape_param(expression.value)
-            text = f"{column.name}.{json_path_str} {expression.operator} {value}"
+            text = f"{col_id}.{json_path_str} {expression.operator} {value}"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             value = escape_param(expression.value)
-            text = (
-                f"{reverse_operator}{func}({column.name}[{escaped_map_key}], {value})"
-            )
+            text = f"{reverse_operator}{func}({col_id}[{escaped_map_key}], {value})"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -508,7 +522,7 @@ def expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             value = escape_param(expression.value)
-            text = f"{reverse_operator}{func}({column.name}[{array_index}], {value})"
+            text = f"{reverse_operator}{func}({col_id}[{array_index}], {value})"
         else:
             raise FlyqlError("path search for unsupported column type")
 
@@ -527,7 +541,7 @@ def expression_to_sql(
                 expression.value, column.normalized_type, expression.operator
             )
 
-        col_ref = column.name
+        col_ref = get_identifier(column)
         if expression.key.transformers:
             validate_transformer_chain(expression.key.transformers, registry=registry)
             col_ref = apply_transformer_sql(
@@ -662,23 +676,25 @@ def _resolve_column(
 
 
 def _build_select_expr(column: Column, path: List[str]) -> str:
+    col_id = get_identifier(column)
+
     if not path:
-        return column.name
+        return col_id
 
     if column.is_json:
         for part in path:
             validate_json_path_part(part)
         path_parts = [f"`{part}`" for part in path]
-        return f"{column.name}.{'.'.join(path_parts)}"
+        return f"{col_id}.{'.'.join(path_parts)}"
 
     if column.jsonstring:
         json_path_parts = [escape_param(p) for p in path]
-        return f"JSONExtractString({column.name}, {', '.join(json_path_parts)})"
+        return f"JSONExtractString({col_id}, {', '.join(json_path_parts)})"
 
     if column.is_map:
         map_key = ".".join(path)
         escaped_key = escape_param(map_key)
-        return f"{column.name}[{escaped_key}]"
+        return f"{col_id}[{escaped_key}]"
 
     if column.is_array:
         index_str = ".".join(path)
@@ -688,7 +704,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
             raise FlyqlError(
                 f"invalid array index, expected number: {index_str}"
             ) from err
-        return f"{column.name}[{index}]"
+        return f"{col_id}[{index}]"
 
     raise FlyqlError(f"path access on non-composite column type: {column.name}")
 

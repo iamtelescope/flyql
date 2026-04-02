@@ -68,7 +68,7 @@ func resolveColumn(key flyql.Key, columns map[string]*Column) (*Column, []string
 
 func buildSelectExpr(column *Column, path []string) (string, error) {
 	if len(path) == 0 {
-		return fmt.Sprintf("`%s`", column.Name), nil
+		return getIdentifier(column), nil
 	}
 
 	if column.IsJSON {
@@ -81,7 +81,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		for i, part := range path {
 			pathParts[i] = QuoteJSONPathPart(part)
 		}
-		return fmt.Sprintf("`%s`->%s", column.Name, strings.Join(pathParts, "->")), nil
+		return fmt.Sprintf("%s->%s", getIdentifier(column), strings.Join(pathParts, "->")), nil
 	}
 
 	if column.JSONString {
@@ -89,7 +89,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		for i, part := range path {
 			pathParts[i] = QuoteJSONPathPart(part)
 		}
-		return fmt.Sprintf("parse_json(`%s`)->%s", column.Name, strings.Join(pathParts, "->")), nil
+		return fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), strings.Join(pathParts, "->")), nil
 	}
 
 	if column.IsMap {
@@ -98,7 +98,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("`%s`[%s]", column.Name, escapedKey), nil
+		return fmt.Sprintf("%s[%s]", getIdentifier(column), escapedKey), nil
 	}
 
 	if column.IsArray {
@@ -107,12 +107,12 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", indexStr)
 		}
-		return fmt.Sprintf("`%s`[%d]", column.Name, index), nil
+		return fmt.Sprintf("%s[%d]", getIdentifier(column), index), nil
 	}
 
 	if column.IsStruct {
 		structColumn := strings.Join(path, "`.`")
-		return fmt.Sprintf("`%s`.`%s`", column.Name, structColumn), nil
+		return fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn), nil
 	}
 
 	return "", fmt.Errorf("path access on non-composite column type: %s", column.Name)

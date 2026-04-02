@@ -83,6 +83,7 @@ func NormalizeStarRocksType(srType string) string {
 
 type Column struct {
 	Name           string   `json:"name" yaml:"name"`
+	RawIdentifier  string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
 	JSONString     bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type           string   `json:"type" yaml:"type"`
 	Values         []string `json:"values,omitempty" yaml:"values,omitempty"`
@@ -95,17 +96,19 @@ type Column struct {
 }
 
 type ColumnDef struct {
-	Name        string   `json:"name" yaml:"name"`
-	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
-	Type        string   `json:"type" yaml:"type"`
-	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
-	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Name          string   `json:"name" yaml:"name"`
+	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
+	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
+	Type          string   `json:"type" yaml:"type"`
+	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 }
 
 func NewColumn(def ColumnDef) *Column {
 	normalizedType := NormalizeStarRocksType(def.Type)
 	return &Column{
 		Name:           def.Name,
+		RawIdentifier:  def.RawIdentifier,
 		JSONString:     def.JSONString,
 		Type:           def.Type,
 		Values:         def.Values,

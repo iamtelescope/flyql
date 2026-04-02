@@ -253,6 +253,12 @@ export class Column {
         this.isMap = this.normalizedType === NormalizedTypeMap
         this.isArray = this.normalizedType === NormalizedTypeArray
         this.isJSON = this.normalizedType === NormalizedTypeJSON
+        this.rawIdentifier = ''
+    }
+
+    withRawIdentifier(identifier) {
+        this.rawIdentifier = identifier
+        return this
     }
 }
 

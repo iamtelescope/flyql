@@ -96,7 +96,7 @@ class TestCustomTransformerClickHouse:
 
 class TestCustomTransformerPostgreSQL:
     COLUMNS = {
-        "src_ip": PgColumn("src_ip", "text"),
+        "src_ip": PgColumn("src_ip", False, "text"),
     }
 
     def test_where_clause(self) -> None:

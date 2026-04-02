@@ -84,6 +84,12 @@ export class Column {
         this.isArray = this.normalizedType === NormalizedTypeArray
         this.isStruct = this.normalizedType === NormalizedTypeStruct
         this.isJSON = this.normalizedType === NormalizedTypeJSON
+        this.rawIdentifier = ''
+    }
+
+    withRawIdentifier(identifier) {
+        this.rawIdentifier = identifier
+        return this
     }
 }
 

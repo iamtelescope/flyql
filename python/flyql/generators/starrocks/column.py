@@ -93,6 +93,7 @@ class Column:
         _type: str,
         values: Optional[List[str]] = None,
         display_name: str = "",
+        raw_identifier: str = "",
     ):
         self.name = name
         self.jsonstring = jsonstring
@@ -104,3 +105,8 @@ class Column:
         self.is_struct = self.normalized_type == NORMALIZED_TYPE_STRUCT
         self.is_json = self.normalized_type == NORMALIZED_TYPE_JSON
         self.display_name = display_name
+        self.raw_identifier = raw_identifier
+
+    def with_raw_identifier(self, identifier: str) -> "Column":
+        self.raw_identifier = identifier
+        return self

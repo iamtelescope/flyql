@@ -1,0 +1,56 @@
+---
+title: 構文概要
+description: FlyQL の基本的なクエリ構造と構文ルール
+---
+
+FlyQL のクエリは、1 つ以上の条件をブール演算子 `and`、`or`、`not` でつないで構成します。各条件は比較式または truthy チェックです。
+
+## 基本的なクエリ構造
+
+```
+status=200 and active and not archived
+```
+
+- `status=200`: `status` フィールドが `200` と等しい
+- `active`: `active` フィールドが truthy な値を持つ
+- `not archived`: `archived` フィールドが falsy である（`null`、空、0、または `false`）
+
+## 追加の例
+
+```
+service!=api or user="john doe"
+```
+
+```
+message~"error.*" and not debug
+```
+
+```
+(a=1 or b=2) and not (c=3 and d=4)
+```
+
+```
+status in [200, 201] and method not in ['DELETE', 'PUT']
+```
+
+```
+message has 'error' and tags not has 'debug'
+```
+
+## 一般ルール
+
+- **単独のキー**: 演算子なしのキーは truthy チェックとして扱われます
+- **比較式**: 演算子付きのキーには、対応する値が必要です
+- **空白**: 演算子の前後のスペースは任意です。`status=200` と `status = 200` は同じ意味です
+- **演算子の優先順位**: `and` は `or` より優先されるため、`a=1 or b=2 and c=3` は `a=1 or (b=2 and c=3)` として parse されます
+- **括弧**: `(` と `)` を使うと、優先順位を上書きして条件を明示的にグループ化できます
+
+## 構文セクション
+
+- [演算子](/ja/syntax/operators/): 比較演算子（`=`, `!=`, `>`, `>=`, `<`, `<=`）
+- [ブールロジック](/ja/syntax/boolean-logic/): `and`、`or`、`not`、優先順位、グループ化
+- [パターンマッチ](/ja/syntax/pattern-matching/): regex（`~`, `!~`）とワイルドカード（`*`）による一致
+- [リスト](/ja/syntax/lists/): リスト値に対する `in` と `not in`
+- [包含チェック](/ja/syntax/operators/#包含チェック): 部分文字列、キー存在、要素所属を判定する `has` と `not has`
+- [値と式](/ja/syntax/values/): truthy/falsy、クォート付き文字列、数値
+- [ネストしたキー](/ja/syntax/nested-keys/): ドット区切りパスとクォート付きキーセグメント

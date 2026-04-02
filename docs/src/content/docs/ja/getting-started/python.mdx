@@ -1,0 +1,116 @@
+---
+title: Python クイックスタート
+description: Python プロジェクトに FlyQL をインストールして使う
+---
+
+## インストール
+
+Python 版 FlyQL は PyPI ではなく git からインストールします。
+
+```bash
+pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+```
+
+これにより、`flyql` パッケージと依存関係の `google-re2` がインストールされます。
+
+**要件:** Python 3.10+
+
+## クエリを parse する
+
+```python
+from flyql.core.parser import parse
+
+result = parse("status=200 and active")
+print(result.root)
+```
+
+`parse()` は、AST を表す `root` ノードを持つ `Parser` オブジェクトを返します。入力が不正な場合は `ParserError` を送出します。
+
+## SQL を生成する
+
+generator を使うと、AST をパラメータ化 WHERE 句へ変換できます。データベース方言ごとに専用 generator があります。
+
+### ClickHouse
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status>=400 and host=prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql(result.root, columns)
+print(sql)
+```
+
+PostgreSQL と StarRocks の generator も同じパターンです。`flyql.generators.postgresql` または `flyql.generators.starrocks` を import してください。
+
+## メモリ上でマッチさせる
+
+SQL を生成せずに、データレコードに対してクエリを評価できます。
+
+```python
+from flyql.core.parser import parse
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+result = parse("status=200 and active")
+
+data = {
+    "status": 200,
+    "active": True,
+    "host": "prod-api-01",
+}
+
+evaluator = Evaluator()
+matches = evaluator.evaluate(result.root, Record(data))
+print(f"Matches: {matches}")  # True
+```
+
+## カラム式を parse する
+
+カラム式を、segments、transformers、aliases を持つ構造化データに parse できます。
+
+```python
+from flyql.columns import parse, parse_to_json
+
+# Parse basic columns (transformers disabled by default)
+parsed = parse("message, status")
+for col in parsed:
+    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
+
+# Enable transformers via capabilities
+with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
+
+# Or serialize directly to JSON for API responses
+json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
+print(json_str)
+```
+
+## クエリ内で Transformers を使う
+
+transformer を含むクエリを parse し、SQL を生成できます。
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql, Column
+
+# Parse a transformer query
+result = parse("message|upper = 'ERROR'")
+
+# Generate SQL for ClickHouse
+columns = {"message": Column("message", False, "String")}
+sql = to_sql(result.root, columns)
+print(sql)  # equals(upper(message), 'ERROR')
+```
+
+構文の詳細は [Transformers](/ja/syntax/transformers/) を参照してください。
+
+## 次のステップ
+
+- [構文リファレンス](/ja/syntax/): すべての演算子、ブールロジック、パターンなど

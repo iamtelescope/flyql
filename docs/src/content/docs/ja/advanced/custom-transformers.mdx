@@ -1,0 +1,200 @@
+---
+title: カスタム Transformers
+description: ドメイン固有の transformer を登録して、FlyQL を独自の値変換で拡張する
+---
+
+FlyQL の transformer システムは拡張可能です。`upper`、`lower`、`len` のような組み込み transformer と同じように、parser、SQL generator、メモリ上の matcher、editor の autocomplete で動作するカスタム transformer を登録できます。
+
+## Transformer インターフェース
+
+すべての transformer は 5 つのメンバーを実装します。
+
+| メンバー | 型 | 説明 |
+|----------|----|------|
+| `name` | string | 一意な小文字識別子（例: `"firstoctet"`） |
+| `inputType` | TransformerType | 想定入力型（`string`, `int`, `float`） |
+| `outputType` | TransformerType | 変換後の出力型 |
+| `sql(dialect, columnRef)` | string | カラム参照をラップする方言別 SQL を生成 |
+| `apply(value)` | any | メモリ上で実行時値を変換 |
+
+`sql()` メソッドは SQL 方言名（`"clickhouse"`、`"postgresql"`、`"starrocks"`）と、カラム参照文字列を受け取ります。返り値は、その参照をラップする SQL 式です。`apply()` メソッドは実行時値を受け取り、変換後の値を返します。
+
+## Registry API
+
+| メソッド | 説明 |
+|----------|------|
+| `defaultRegistry()` | 組み込み transformer をロード済みの新しい registry を返す |
+| `registry.register(transformer)` | カスタム transformer を追加する（同名登録済みならエラー） |
+| `registry.get(name)` | 名前で transformer を取得する（見つからなければ null/None/nil） |
+| `registry.names()` | 登録済み transformer 名を列挙する |
+
+基本パターンは、デフォルト registry を取得し、カスタム transformer を登録し、その registry を generator や matcher に渡す、という流れです。
+
+## Python
+
+`Transformer` を継承してカスタム transformer を定義します。
+
+```python
+from flyql.transformers import Transformer, TransformerType, default_registry
+
+class FirstOctetTransformer(Transformer):
+    @property
+    def name(self): return "firstoctet"
+    @property
+    def input_type(self): return TransformerType.STRING
+    @property
+    def output_type(self): return TransformerType.INT
+    def sql(self, dialect, column_ref):
+        if dialect == "clickhouse":
+            return f"toUInt8(splitByChar('.', {column_ref})[1])"
+        return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
+    def apply(self, value):
+        return int(str(value).split('.')[0])
+```
+
+登録して使う例:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.postgresql.generator import to_sql, Column
+
+registry = default_registry()
+registry.register(FirstOctetTransformer())
+
+result = parse("src_ip|firstoctet > 192")
+columns = {"src_ip": Column("src_ip", "text")}
+sql = to_sql(result.root, columns, registry=registry)
+# CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+メモリ上で評価する例:
+
+```python
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+evaluator = Evaluator(registry=registry)
+record = Record({"src_ip": "193.0.0.1"})
+evaluator.evaluate(result.root, record)  # True (193 > 192)
+```
+
+## JavaScript
+
+`Transformer` を拡張してカスタム transformer を定義します。
+
+```javascript
+import { Transformer, TransformerType, defaultRegistry } from 'flyql/transformers'
+
+class FirstOctetTransformer extends Transformer {
+    get name() { return 'firstoctet' }
+    get inputType() { return TransformerType.STRING }
+    get outputType() { return TransformerType.INT }
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
+        return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
+    }
+    apply(value) { return parseInt(String(value).split('.')[0], 10) }
+}
+```
+
+登録して使う例:
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+
+const registry = defaultRegistry()
+registry.register(new FirstOctetTransformer())
+
+const result = parse("src_ip|firstoctet > 192")
+const columns = { src_ip: newColumn('src_ip', false, 'text') }
+const sql = generateWhere(result.root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+メモリ上で評価する例:
+
+```javascript
+import { match } from 'flyql/matcher'
+
+match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
+```
+
+editor の autocomplete では、カスタム transformer も組み込みと同じように候補表示されます。
+
+```javascript
+import { EditorEngine } from 'flyql/editor'
+
+const engine = new EditorEngine(columns, { registry })
+// After typing "src_ip|", suggestions include "firstoctet", "upper", "lower", "len"
+```
+
+## Go
+
+`Transformer` インターフェースを実装してカスタム transformer を定義します。
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+    "strings"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type FirstOctet struct{}
+
+func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
+func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f FirstOctet) SQL(dialect, colRef string) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
+    }
+    return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
+}
+func (f FirstOctet) Apply(value interface{}) interface{} {
+    parts := strings.SplitN(fmt.Sprint(value), ".", 2)
+    n, _ := strconv.Atoi(parts[0])
+    return n
+}
+```
+
+登録して使う例:
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    postgresqlgen "github.com/iamtelescope/flyql/golang/generators/postgresql"
+)
+
+registry := transformers.DefaultRegistry()
+registry.Register(FirstOctet{})
+
+result, _ := flyql.Parse("src_ip|firstoctet > 192")
+columns := map[string]*postgresqlgen.Column{
+    "src_ip": postgresqlgen.NewColumn("src_ip", "text", nil),
+}
+sql, _ := postgresqlgen.ToSQLWhere(result.Root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+メモリ上で評価する例:
+
+```go
+import "github.com/iamtelescope/flyql/golang/matcher"
+
+matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": "193.0.0.1"}, registry)
+// matched == true
+```
+
+## 型互換性
+
+カスタム transformer も、組み込み transformer と同じ型チェーン検証に参加します。たとえば `field|firstoctet|upper` とチェーンした場合、`firstoctet` が `int` を出力し、`upper` が `string` 入力を要求するため、生成時に型エラーが検出されます。
+
+利用可能な型は `STRING`、`INT`、`FLOAT`、`BOOL`、`ARRAY` です。
+
+## セキュリティ
+
+カスタム transformer の `sql()` メソッドが受け取るのは、schema 由来のカラム参照だけであり、ユーザー入力値は渡されません。ユーザー値のエスケープやパラメータ化は generator が担当します。そのため、FlyQL のインジェクション耐性は維持されます。カスタム SQL がラップするのはカラム名であり、ユーザー入力ではありません。

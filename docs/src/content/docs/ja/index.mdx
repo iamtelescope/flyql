@@ -1,11 +1,46 @@
 ---
 title: FlyQL
-description: 日本語ドキュメントは準備中です
+description: 複数の SQL 方言を生成できる、軽量でインジェクション耐性のあるクエリ言語
 ---
 
-日本語ドキュメントは現在準備中です。
+FlyQL は、ClickHouse、PostgreSQL、StarRocks 向けにインジェクション耐性のある SQL へ変換できる軽量なクエリ言語です。Go、Python、JavaScript 向けの実装を提供しています。
 
-このページはプレースホルダーです。今後、FlyQL のガイド、構文リファレンス、SQL 方言の説明を順次追加していきます。
+## FlyQL とは
 
-それまでは、必要に応じて英語版ドキュメントを参照してください。
+FlyQL は、データを絞り込むために設計された、シンプルで読みやすいクエリ言語です。`status>=400 and host=prod*` のようなクエリを書くと、FlyQL はそのクエリをデータベース向けのパラメータ化 SQL に変換するか、データレコードに対してメモリ上で評価します。
 
+```
+status>=400 and host=prod* and not debug
+```
+
+このクエリは、バックエンドが ClickHouse、PostgreSQL、StarRocks、またはメモリ上のデータセットのどれであっても同じように動作します。
+
+## 主な特長
+
+- **設計段階からインジェクション耐性を確保**: 文法上、サブクエリ、`JOIN`、`UNION`、DDL を表現できません。防御的な対策ではなく、言語構造そのものによって安全性を担保します。生成される SQL はすべてパラメータ化された値を使用します。
+- **複数 SQL 方言に対応**: 1 つのクエリ言語から、方言ごとに適切な SQL を生成します。ClickHouse、PostgreSQL、StarRocks に対して、JSON パス、Map アクセス、Array 処理などの型差異を考慮した SQL を出力します。
+- **複数言語で利用可能**: Go、Python、JavaScript にフル実装があります。フロントエンドで parse し、バックエンドで validate し、どこでも SQL を生成できます。同じクエリなら同じ結果になります。
+- **依存関係なし**: すべての言語実装で、外部依存のない手書きの状態機械ベース parser を採用しています。組み込みやすく、依存関係の競合もありません。
+
+## クイック例
+
+```
+service!=api and (status>=400 or level=error) and message~"timeout.*"
+```
+
+| 要素 | 意味 |
+|------|------|
+| `service!=api` | `service` フィールドが `"api"` ではない |
+| `status>=400` | `status` が 400 以上 |
+| `level=error` | `level` フィールドが `"error"` と等しい |
+| `message~"timeout.*"` | `message` が regex パターンに一致する |
+| `and`, `or` | 優先順位付きのブールロジック |
+| `( )` | 明示的なグループ化 |
+
+## 対応言語
+
+| 言語 | Parser | SQL Generator | メモリ上の Matcher |
+|------|--------|---------------|--------------------|
+| Go | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| Python | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| JavaScript | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |

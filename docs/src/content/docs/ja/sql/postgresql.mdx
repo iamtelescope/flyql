@@ -1,0 +1,128 @@
+---
+title: PostgreSQL
+description: PostgreSQL 向けに生成される SQL の例
+---
+
+PostgreSQL の SQL では、識別子をダブルクォートし、regex には `~`、ブール演算子には大文字の `AND` / `OR` を使い、ネストアクセスには JSONB 演算子を使います。
+
+## 基本例
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `message='hello'` | `"message" = 'hello'` |
+| `message!='hello'` | `"message" != 'hello'` |
+| `count>10` | `"count" > 10` |
+| `count<=100` | `"count" <= 100` |
+| `message~'error.*'` | `"message" ~ 'error.*'` |
+| `message!~'test.*'` | `"message" !~ 'test.*'` |
+| `host=prod*` | `"host" LIKE 'prod%'` |
+
+## ブール演算子
+
+PostgreSQL では、ClickHouse や StarRocks と異なり `AND` / `OR` を大文字で出力します。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `a='1' and b>10` | `("a" = '1' AND "b" > 10)` |
+| `a='1' or b='2'` | `("a" = '1' OR "b" = '2')` |
+| `not a='1'` | `NOT ("a" = '1')` |
+
+## リスト所属
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `status in [200, 201]` | `"status" IN (200, 201)` |
+| `env not in ['dev', 'test']` | `"env" NOT IN ('dev', 'test')` |
+| `status in []` | `FALSE` |
+| `status not in []` | `TRUE` |
+
+## 包含（`has` / `not has`）
+
+`has` 演算子は、カラム型によって異なる SQL を生成します。
+
+| カラム型 | FlyQL | 生成される SQL |
+|----------|-------|-----------------|
+| String | `message has 'error'` | `position('error' in "message") > 0` |
+| String（否定） | `message not has 'error'` | `("message" IS NULL OR position('error' in "message") = 0)` |
+| Array | `tags has 'web'` | `'web' = ANY("tags")` |
+| Array（否定） | `tags not has 'web'` | `NOT ('web' = ANY("tags"))` |
+| JSONB | `data has 'key'` | `"data" ? 'key'` |
+| JSONB（否定） | `data not has 'key'` | `NOT ("data" ? 'key')` |
+| Hstore | `metadata has 'key'` | `"metadata" ? 'key'` |
+
+## JSONB カラム
+
+PostgreSQL は `jsonb_typeof()` による型チェック付きで JSONB 演算子を使います。
+
+### 文字列比較
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `data.name='test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| `data.user.name='john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+
+### 数値比較
+
+数値比較では、抽出した値をキャストします。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `data.age>25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+
+### JSONB 演算子
+
+- `->` は JSONB を返し、パスの中間走査に使います
+- `->>` はテキストを返し、最終値の抽出に使います
+- `jsonb_typeof()` は比較前に JSON 型を確認します
+
+## Hstore（Map）カラム
+
+PostgreSQL では、hstore 型に対して `->` 演算子でキーアクセスを行います。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `metadata.key1='value1'` | `"metadata"->'key1' = 'value1'` |
+| `metadata.key1!='value1'` | `"metadata"->'key1' != 'value1'` |
+| `metadata.pattern~'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
+
+## Array カラム
+
+PostgreSQL の array は 1 始まりです。FlyQL は 0 始まりのインデックスを自動変換します。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `tags.0='first'` | `"tags"[1] = 'first'` |
+| `tags.1='second'` | `"tags"[2] = 'second'` |
+| `tags.0~'tag.*'` | `"tags"[1] ~ 'tag.*'` |
+
+### カラム設定
+
+PostgreSQL のカラムには `jsonString` パラメータがありません。JSONB 型かどうかはカラム型から判定されます。
+
+```go
+// Go
+columns := map[string]*postgresql.Column{
+    "message": postgresql.NewColumn("message", "varchar", nil),
+    "data":    postgresql.NewColumn("data", "jsonb", nil),
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", "varchar", null),
+    data:    newColumn("data", "jsonb", null),
+}
+```
+
+## Transformers
+
+transformer は PostgreSQL 標準の関数呼び出しを生成します。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `status\|upper = "ERROR"` | `UPPER(status) = 'ERROR'` |
+| `status\|lower = "info"` | `LOWER(status) = 'info'` |
+| `message\|len > 100` | `LENGTH(message) > 100` |
+| `message\|lower\|len > 100` | `LENGTH(LOWER(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |

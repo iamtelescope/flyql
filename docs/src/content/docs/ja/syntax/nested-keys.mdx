@@ -1,0 +1,84 @@
+---
+title: ネストしたキー
+description: FlyQL におけるドット区切りパス走査とクォート付きキーセグメント
+---
+
+## ドット記法
+
+JSON、Map、構造化データ内のネストしたフィールドへアクセスするには、ドット区切りパスを使います。
+
+```
+request.url="/api/users"
+response.headers.content_type="application/json"
+metadata.labels.env=prod
+```
+
+ドットで区切られた各セグメントが、ネスト構造を 1 段階ずつたどります。SQL generator は、これらのパスを各データベース方言に適した構文（JSON パスアクセス、Map lookup など）へ変換します。
+
+## クォート付きキーセグメント
+
+キーセグメント自体にドットが含まれる場合は、そのドットが区切りと解釈されないようにクォートで囲みます。
+
+```
+"foo.bar".baz=value
+```
+
+この例では:
+
+- `"foo.bar"` は 1 つのキーセグメントであり、ドットはリテラルです
+- `baz` は `"foo.bar"` の子要素です
+
+クォートがない `foo.bar.baz` は、`foo` → `bar` → `baz` の 3 セグメントとして扱われます。
+
+### クォートルール
+
+キーセグメントにはシングルクォートとダブルクォートのどちらも使えます。
+
+```
+"foo.bar".baz=value
+'foo.bar'.baz=value
+```
+
+クォートが必要なのは、ドットを含むセグメントだけです。
+
+```
+metadata."dotted.key".value=123
+```
+
+## パスの深さ
+
+ネストの深さに制限はありません。
+
+```
+a.b.c.d.e=value
+```
+
+SQL 生成時やメモリ上の評価時には、各セグメントを順にたどります。
+
+## 演算子との組み合わせ
+
+ネストしたキーは、すべての演算子で利用できます。
+
+```
+request.status>=400
+response.body~"error.*"
+metadata.tags in ['prod', 'staging']
+request.headers.content_type!="text/html"
+not request.authenticated
+```
+
+## 例
+
+```
+# Simple nested access
+request.method=GET
+
+# Deep nesting
+response.headers.content_type="application/json"
+
+# Quoted segment with literal dot
+"app.config".debug=true
+
+# Combined with boolean logic
+request.status>=400 and response.body~"error" and not request.internal
+```

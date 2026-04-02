@@ -1,0 +1,113 @@
+---
+title: テーマ設定
+description: CSS カスタムプロパティで FlyQL editor の見た目をカスタマイズする
+---
+
+FlyQL editor は、見た目のスタイル全体に CSS カスタムプロパティ（変数）を使用します。`--flyql-*` 変数を上書きすることで、アプリケーションのデザインに合わせて調整できます。
+
+## CSS カスタムプロパティ
+
+### カラー
+
+| 変数 | Light の既定値 | Dark の既定値 | 説明 |
+|------|----------------|---------------|------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | editor 背景色 |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | テキスト色 |
+| `--flyql-border` | `#d4d4d4` | `#525252` | ボーダー色 |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | フォーカス時のボーダー色 |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | プレースホルダーの文字色 |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | エラーハイライト色 |
+
+### シンタックスハイライト
+
+| 変数 | Light の既定値 | Dark の既定値 | 説明 |
+|------|----------------|---------------|------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | カラム名 / キー名 |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | 演算子（`=`, `!=`, `and` など） |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | 文字列値 |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | 数値 |
+
+### サジェストパネル
+
+| 変数 | Light の既定値 | Dark の既定値 | 説明 |
+|------|----------------|---------------|------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | パネル背景色 |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | パネル枠線 |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | hover 中の項目 |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | 選択中の項目 |
+
+### タイポグラフィ
+
+| 変数 | 既定値 | 説明 |
+|------|--------|------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI フォント |
+| `--flyql-code-font-family` | `monospace` | コード / クエリ用フォント |
+| `--flyql-font-size` | `13px` | ベースフォントサイズ |
+
+## Light テーマ
+
+Light テーマがデフォルトです。追加のクラスは必要ありません。
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Dark テーマ
+
+組み込みの Dark テーマを有効にするには `dark` prop を使います。
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+`dark` prop は、`<body>` へ teleport されるサジェストパネルに `flyql-dark` クラスを適用します。このパネルは祖先ラッパーから継承できません。一方で editor 入力本体は通常どおり祖先から CSS 変数を継承するため、ラッパー側での上書きはそのまま機能します。
+
+あるいは、`flyql-dark` クラスを `<html>` または `<body>` に適用することでも、CSS 変数の継承によって editor と teleport されたパネルの両方に反映できます。
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## カスタムテーマ
+
+CSS で必要な変数だけを上書きできます。
+
+```css
+/* Custom brand theme */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Custom dark overrides */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## スコープしたテーマ設定
+
+特定の editor インスタンスだけにテーマを適用するには、上書きを持つコンテナで囲みます。
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS カスタムプロパティは継承されるため、任意の祖先要素で行った上書きは、その配下のすべての FlyQL コンポーネントに適用されます。

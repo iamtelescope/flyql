@@ -1,0 +1,127 @@
+---
+title: ClickHouse
+description: ClickHouse 向けに生成される SQL の例
+---
+
+ClickHouse の SQL では、カラム名はクォートされず、regex には `match()`、ワイルドカードには `LIKE` を使います。
+
+## 基本例
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `message='hello'` | `message = 'hello'` |
+| `message!='hello'` | `message != 'hello'` |
+| `count>10` | `count > 10` |
+| `count<=100` | `count <= 100` |
+| `message~'error.*'` | `match(message, 'error.*')` |
+| `message!~'test.*'` | `not match(message, 'test.*')` |
+| `host=prod*` | `host LIKE 'prod%'` |
+
+## ブール演算子
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `a='1' and b>10` | `(a = '1' and b > 10)` |
+| `a='1' or b='2'` | `(a = '1' or b = '2')` |
+| `not a='1'` | `not (a = '1')` |
+
+## リスト所属
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `status in [200, 201]` | `status IN (200, 201)` |
+| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## 包含（`has` / `not has`）
+
+`has` 演算子は、カラム型によって異なる SQL を生成します。
+
+| カラム型 | FlyQL | 生成される SQL |
+|----------|-------|-----------------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String（否定） | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array（否定） | `tags not has 'web'` | `NOT has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map（否定） | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
+| ネイティブ JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+
+## JSON カラム
+
+ClickHouse は 2 種類の JSON カラム型をサポートし、それぞれ異なる SQL を生成します。
+
+### ネイティブ JSON 型
+
+`JSON` 型として宣言されたカラムは、バッククォート付きセグメントのドット記法を使います。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `data.name='test'` | `` data.`name` = 'test' `` |
+| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age=25` | `` data.`age` = 25 `` |
+
+### JSON String 型
+
+JSON を文字列として保持するカラム（例: JSON 内容を持つ `String` 型）は、型チェックのために `multiIf` でラップした `JSONExtract` 関数を使います。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+
+## Map カラム
+
+Map カラムでは、角括弧記法と `equals()` / `notEquals()` 関数を使います。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+
+## Array カラム
+
+Array カラムでは、0 始まりの角括弧インデックスと `equals()` を使います。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `tags.0='first'` | `equals(tags[0], 'first')` |
+| `tags.1='second'` | `equals(tags[1], 'second')` |
+| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+
+### カラム設定
+
+どちらのモードを使うかは `jsonString` パラメータで制御します。
+
+```go
+// Go
+columns := map[string]*clickhouse.Column{
+    "message": clickhouse.NewColumn("message", false, "String", nil),
+    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "String", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "String", null),       // JSON string
+}
+```
+
+## Transformers
+
+transformer は、ClickHouse 固有の関数呼び出しを生成します。
+
+| FlyQL | 生成される SQL |
+|-------|-----------------|
+| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
+| `status\|lower = "info"` | `equals(lower(status), 'info')` |
+| `message\|len > 100` | `length(message) > 100` |
+| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |

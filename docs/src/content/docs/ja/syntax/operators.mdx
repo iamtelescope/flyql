@@ -1,0 +1,98 @@
+---
+title: 比較演算子
+description: データを絞り込むための FlyQL の比較演算子
+---
+
+FlyQL は次の比較演算子をサポートしています。
+
+## 等価比較
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `=` | 等しい | `status=200` |
+| `!=` | 等しくない | `env!=prod` |
+
+```
+status=200
+service!="api-gateway"
+```
+
+演算子の両側には必ずキーと値が必要です。
+
+## 数値比較
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `>` | より大きい | `status>399` |
+| `>=` | 以上 | `status>=400` |
+| `<` | より小さい | `duration<1000` |
+| `<=` | 以下 | `duration<=500` |
+
+```
+status>=400 and duration<5000
+response_time>100 and response_time<=2000
+```
+
+数値比較演算子は数値に対して機能します。文字列に対して使う場合は辞書順比較になります。
+
+## Regex マッチ
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `~` | regex に一致 | `message~"error.*"` |
+| `!~` | regex に一致しない | `path!~"^/health"` |
+
+```
+message~"timeout|connection refused"
+host!~"^test-.*"
+```
+
+regex パターンは、対象のデータベースまたは runtime の構文に従います。
+
+## リスト所属
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `in` | リストに含まれる | `status in [200, 201]` |
+| `not in` | リストに含まれない | `env not in ['dev', 'test']` |
+
+リスト構文の詳細は [リスト](/ja/syntax/lists/) を参照してください。
+
+## 包含チェック
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `has` | 含む | `message has 'error'` |
+| `not has` | 含まない | `message not has 'test'` |
+
+```
+message has 'timeout'
+tags not has 'deprecated'
+```
+
+`has` は型に応じた包含チェックを行います。
+
+- **String**: 部分文字列一致。`message has 'error'` は、`message` に `"error"` が含まれていれば true
+- **Map**: キー存在チェック。`metadata has 'region'` は、map に `"region"` キーがあれば true
+- **Array/List**: 要素所属チェック。`tags has 'web'` は、array に `"web"` が含まれていれば true
+- **JSON**: キー存在チェック。`data has 'name'` は、JSON オブジェクトに `"name"` キーがあれば true
+- **Null/空**: `has` では常に false、`not has` では常に true
+
+`has` は単一値を受け取ります。値集合への所属判定には `in` を使ってください。
+
+## 演算子一覧
+
+| 演算子 | 名称 | 例 |
+|--------|------|----|
+| `=` | 等しい | `status=200` |
+| `!=` | 等しくない | `env!=prod` |
+| `>` | より大きい | `count>10` |
+| `>=` | 以上 | `count>=10` |
+| `<` | より小さい | `count<100` |
+| `<=` | 以下 | `count<=100` |
+| `~` | regex に一致 | `msg~"err.*"` |
+| `!~` | regex に一致しない | `msg!~"^ok"` |
+| `in` | リストに含まれる | `s in [1, 2]` |
+| `not in` | リストに含まれない | `s not in [3]` |
+| `has` | 含む | `msg has 'err'` |
+| `not has` | 含まない | `msg not has 'ok'` |

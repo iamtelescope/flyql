@@ -1,0 +1,178 @@
+---
+title: Editor コンポーネント
+description: Vue 3 アプリケーションに FlyQL クエリエディタを組み込む
+---
+
+FlyQL editor は、スキーマ駆動のクエリ入力、オートコンプリート、シンタックスハイライト、キーボードナビゲーションを提供する Vue 3 コンポーネントです。
+
+## クイックセットアップ
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onSubmit() {
+    console.log('Query submitted:', query.value)
+}
+
+function onParseError(error) {
+    console.log('Parse error:', error)
+}
+</script>
+
+<template>
+    <FlyqlEditor
+        v-model="query"
+        :columns="columns"
+        placeholder="Type a FlyQL query..."
+        @submit="onSubmit"
+        @parse-error="onParseError"
+    />
+</template>
+```
+
+これにより、`columns` スキーマに基づいて、カラム候補、型に応じた演算子候補、ブール演算子候補を備えたテキスト入力が表示されます。
+
+## インストール
+
+```bash
+npm install flyql
+```
+
+editor は peer dependency として Vue 3 を必要とします。
+
+```bash
+npm install vue
+```
+
+`flyql/editor` サブパスから import してください。
+
+```javascript
+import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+```
+
+両コンポーネントは内部で `flyql.css` を読み込みます。ここにはテーマ変数、サジェストパネルのスタイル、トークンハイライトが含まれます。Vite や webpack など標準的な bundler では自動的に機能します。
+
+環境によっては JS からの CSS import を処理しない場合があるため、その場合はスタイルシートを手動で import してください。
+
+```javascript
+import 'flyql/editor/flyql.css'
+```
+
+## Props
+
+| Prop | 型 | デフォルト | 説明 |
+|------|----|------------|------|
+| `modelValue` | `String` | `''` | クエリ文字列（v-model） |
+| `columns` | `Object` | `{}` | カラム [schema](/ja/editor/schema/) |
+| `onAutocomplete` | `Function` | `null` | 非同期値取得 callback |
+| `onKeyDiscovery` | `Function` | `null` | リモートキー探索 callback |
+| `placeholder` | `String` | `''` | プレースホルダー文字列 |
+| `autofocus` | `Boolean` | `false` | mount 時に自動フォーカス |
+| `debug` | `Boolean` | `false` | デバッグログ |
+| `debounceMs` | `Number` | `300` | 非同期 autocomplete 呼び出しの debounce 時間（ms）。`0` で無効化 |
+| `dark` | `Boolean` | `false` | ダークテーマを有効化（[テーマ設定](/ja/editor/theming/) を参照） |
+
+**Callback シグネチャ:**
+- `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` を返します
+- `onKeyDiscovery(columnName, segments)` — `Promise<Array<{ name, type?, hasChildren? }>>` を返します
+
+レスポンスで `incomplete` が `true` の場合、editor は返されたリストが部分結果であると判断し、次のキー入力時に再取得します。非同期呼び出しには debounce が適用され、新しいリクエストが始まると進行中のリクエストは自動的にキャンセルされます。
+
+## Events
+
+| Event | Payload | 説明 |
+|-------|---------|------|
+| `update:modelValue` | `string` | クエリ文字列が変化した（v-model） |
+| `submit` | — | ユーザーが Shift+Enter を押した |
+| `parse-error` | `string` | クエリが不正なときの parse error メッセージ |
+| `focus` | — | editor がフォーカスを得た |
+| `blur` | — | editor がフォーカスを失った |
+
+## 公開メソッド
+
+template ref 経由でアクセスできます。
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const editorRef = ref(null)
+
+function checkStatus() {
+    const status = editorRef.value.getQueryStatus()
+    console.log(status.valid, status.message)
+}
+</script>
+
+<template>
+    <FlyqlEditor ref="editorRef" v-model="query" :columns="columns" />
+    <button @click="checkStatus">Check</button>
+</template>
+```
+
+| メソッド | 戻り値 | 説明 |
+|----------|--------|------|
+| `focus()` | — | editor 入力にフォーカスする |
+| `blur()` | — | editor 入力のフォーカスを外す |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | 現在のクエリを検証する |
+
+## 非同期値オートコンプリート
+
+`onAutocomplete` callback を渡すと、API から値候補を取得できます。
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    service: { type: 'string', suggest: true, autocomplete: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
+}
+
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+</script>
+
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" :on-autocomplete="onAutocomplete" />
+</template>
+```
+
+callback はカラム `key` と現在の `value` プレフィックスを受け取り、`{ items: string[], incomplete?: boolean }` を返します。200ms 後に自動でローディングインジケーターが表示されます。
+
+### 状態付き autocomplete フロー
+
+editor はサーバー呼び出しを減らすため、状態付きの autocomplete フローを採用しています。
+
+- **初回ロード**: 値入力コンテキスト（例: `service=`）に入ると、debounce なしで即時に取得します。結果が返るまで全体のスピナーが表示されます。
+- **完全な一覧**（`incomplete: false`）: editor は返却された候補を保持し、クライアント側フィルタリングに切り替えます。ユーザーが別のカラムに移るまで、以後の入力ではサーバー呼び出しなしで即時フィルタします。
+- **不完全な一覧**（`incomplete: true`）: 現在の候補を表示し続けつつ、debounce 付きの再取得をバックグラウンドで実行します。ヘッダーにインラインスピナーが表示され、新しい結果が届くと候補を置き換えます。
+
+サーバーが 0 件を返した場合、editor は "No matching values" と表示します。完全な一覧に対するクライアント側フィルタリングで結果が空になった場合は、単に候補が表示されなくなるだけで、バックスペースで候補を再表示できます。
+
+`autocomplete: true` と静的な `values` を持つカラムは、その値を直接使い callback を呼びません。`autocomplete: true` だが `values` を持たないカラムでは callback が呼ばれます。
+
+## キーボードショートカット
+
+| キー | 動作 |
+|------|------|
+| ↑ / ↓ | 候補を移動 |
+| Enter / Tab | 選択中の候補を確定 |
+| Escape | 候補を閉じる |
+| Shift+Enter | クエリを送信し、`submit` event を発火 |

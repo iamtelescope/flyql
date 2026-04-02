@@ -1,0 +1,90 @@
+---
+title: リスト
+description: FlyQL のリスト所属演算子（`in`, `not in`）
+---
+
+## リスト所属
+
+`in` は値がリストに含まれるかを、`not in` は含まれないかを判定します。
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+## 構文ルール
+
+- 値は角括弧 `[ ]` で囲み、カンマ区切りで記述します
+- リスト内の値はすべて同じ型である必要があります（文字列のみ、または数値のみ）
+- 文字列はクォートが必要です: `['a', 'b', 'c']`
+- 数値はクォートしません: `[1, 2, 3]`
+- カンマや角括弧の前後のスペースは任意です
+
+### 文字列リスト
+
+```
+method in ['GET', 'POST', 'PUT']
+env not in ['dev', 'test', 'local']
+```
+
+文字列値にはシングルクォートとダブルクォートのどちらも使えます。
+
+### 数値リスト
+
+```
+status in [200, 201, 204]
+port not in [80, 443]
+```
+
+### 空リスト
+
+空リストも使用できます。
+
+```
+status in []        # always false — nothing matches an empty list
+status not in []    # always true — everything is "not in" an empty list
+```
+
+## 型の整合性
+
+リストには **同一型の値だけ** を含める必要があります。1 つのリストに型の異なる値を混在させると parse error になります。
+
+```
+# Valid — all numbers
+status in [200, 201, 204]
+
+# Valid — all strings
+env in ['prod', 'staging']
+
+# Invalid — mixed types (parse error)
+values in [200, 'ok']
+```
+
+parser はリストの先頭要素の型を記録し、以降に異なる型の値が現れた場合は拒否します。この検証は parse 時点で行われ、generator や matcher に到達する前にチェックされます。
+
+さらに SQL generator は、リスト内の値型が対象カラムの型と互換性があるかも検証します。たとえば数値カラムに文字列値を渡すと、SQL 生成時に validation error になります。
+
+parse 済み expression の `valuesType` フィールドは、そのリストが `"string"` または `"number"` のどちらの値を含むかを示します。空リストの場合、`valuesType` は `null` です。
+
+## 他の演算子との組み合わせ
+
+リスト演算子は、他の条件と同様にブール演算子と組み合わせて使えます。
+
+```
+status in [200, 201] and method in ['GET', 'POST']
+level=error or status not in [200, 201, 204]
+(status in [500, 502, 503] or level=critical) and env=prod
+```
+
+## 例
+
+```
+# HTTP success codes
+status in [200, 201, 204]
+
+# Exclude test environments
+env not in ['dev', 'test', 'staging']
+
+# Multiple list conditions
+method in ['GET', 'POST'] and status not in [401, 403, 404]
+```

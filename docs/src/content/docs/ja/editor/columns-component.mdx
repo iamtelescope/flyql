@@ -1,0 +1,87 @@
+---
+title: Columns コンポーネント
+description: カラム式を編集するための FlyqlColumns コンポーネント
+---
+
+`FlyqlColumns` コンポーネントは、カラム式専用の入力 UI を提供します。カラムの選択、フィルタ、transformer の適用を行えます。
+
+## クイックセットアップ
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | 型 | デフォルト | 説明 |
+|------|----|------------|------|
+| `modelValue` | `String` | `''` | 式文字列（v-model） |
+| `columns` | `Object` | `{}` | カラム [schema](/ja/editor/schema/) |
+| `capabilities` | `Object` | `null` | parser の capabilities（例: `{ transformers: true }`） |
+| `onKeyDiscovery` | `Function` | `null` | リモートキー探索 callback |
+| `placeholder` | `String` | `''` | プレースホルダー文字列 |
+| `autofocus` | `Boolean` | `false` | mount 時に自動フォーカス |
+| `debug` | `Boolean` | `false` | デバッグログ |
+| `dark` | `Boolean` | `false` | ダークテーマを有効化（[テーマ設定](/ja/editor/theming/) を参照） |
+
+## Events
+
+| Event | Payload | 説明 |
+|-------|---------|------|
+| `update:modelValue` | `string` | 式文字列が変化した（v-model） |
+| `update:parsed` | `ParsedColumn[]` | parse 済みカラム配列が更新された |
+| `submit` | — | ユーザーが Shift+Enter を押した |
+| `parse-error` | `string` | parse error メッセージ |
+| `focus` | — | コンポーネントがフォーカスを得た |
+| `blur` | — | コンポーネントがフォーカスを失った |
+
+## 公開メソッド
+
+| メソッド | 戻り値 | 説明 |
+|----------|--------|------|
+| `focus()` | — | 入力欄にフォーカスする |
+| `blur()` | — | 入力欄のフォーカスを外す |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | 式を検証する |
+| `getParsedColumns()` | `ParsedColumn[]` | parse 済みカラム配列を取得する |
+
+## カラム式の構文
+
+カラム式は、カンマ区切りで、必要に応じて transformer と alias を付ける形式です。
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| 要素 | 構文 | 例 |
+|------|------|----|
+| カラム | `name` | `message` |
+| Transformer | `name\|transformer` | `status\|upper` |
+| 引数付き Transformer | `name\|transformer(arg)` | `name\|truncate(50)` |
+| Alias | `name as alias` | `host as h` |
+| ネスト | `parent.child` | `metadata.labels.env` |
+| Transformer チェーン | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

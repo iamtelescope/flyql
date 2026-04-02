@@ -1,0 +1,142 @@
+---
+title: JavaScript クイックスタート
+description: JavaScript プロジェクトに FlyQL をインストールして使う
+---
+
+## インストール
+
+```bash
+npm install flyql
+```
+
+**要件:** Node.js 16 以上。すべての import は ES modules を使います。
+
+## クエリを parse する
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status=200 and active")
+console.log(result.root)
+```
+
+`parse()` は、AST を表す `root` ノードを持つ `Parser` オブジェクトを返します。入力が不正な場合は `ParserError` を throw します。
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status=200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
+
+## SQL を生成する
+
+generator を使うと、AST をパラメータ化 WHERE 句へ変換できます。各データベース方言は個別のサブパスから import します。
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status>=400 and host=prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### 他の方言
+
+PostgreSQL と StarRocks の generator も同じパターンです。
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+注: PostgreSQL の `newColumn` はシグネチャが異なり、`newColumn(name, type, values)` です。`jsonString` パラメータはありません。
+
+## メモリ上でマッチさせる
+
+SQL を生成せずに、データレコードに対してクエリを評価できます。
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status=200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## カラム式を parse する
+
+カラム式を、segments、transformers、aliases を持つ構造化データに parse できます。
+
+```javascript
+import { parse, parseToJson } from 'flyql/columns'
+
+// Parse basic columns (transformers disabled by default)
+const parsed = parse("message, status")
+for (const col of parsed) {
+    console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
+}
+
+// Enable transformers via capabilities
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
+
+// Or serialize directly to JSON for API responses
+const json = parseToJson("message, status|upper", { transformers: true })
+console.log(json)
+```
+
+## クエリ内で Transformers を使う
+
+transformer を含むクエリを parse し、SQL を生成できます。
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// Parse a transformer query
+const result = parse("message|upper = 'ERROR'")
+
+// Generate SQL for ClickHouse
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql) // equals(upper(message), 'ERROR')
+```
+
+構文の詳細は [Transformers](/ja/syntax/transformers/) を参照してください。
+
+## 利用できるサブパス import
+
+| Import パス | 内容 |
+|-------------|------|
+| `flyql` | コア parser（`parse`, `ParserError`, 演算子、定数） |
+| `flyql/core` | parser モジュールを直接利用 |
+| `flyql/columns` | カラム式 parser |
+| `flyql/generators/clickhouse` | ClickHouse SQL generator |
+| `flyql/generators/postgresql` | PostgreSQL SQL generator |
+| `flyql/generators/starrocks` | StarRocks SQL generator |
+| `flyql/matcher` | メモリ上のレコード matcher |
+| `flyql/editor` | Web editor コンポーネント（Vue 3 が必要） |
+
+## 次のステップ
+
+- [構文リファレンス](/ja/syntax/): すべての演算子、ブールロジック、パターンなど

@@ -1,0 +1,94 @@
+---
+title: Transformers
+description: 比較前にパイプで連結した関数でカラム値を変換する
+---
+
+Transformers は、クエリで比較する前、または SQL として出力する前にカラム値を変換します。パイプ構文（`|`）を使い、左から右へ適用されます。
+
+## パイプ構文
+
+カラムに transformer を適用するには `|` を使います。
+
+```
+message|upper = "ERROR"
+```
+
+これは `message` の値に `upper` を適用してから `"ERROR"` と比較します。
+
+## チェーン
+
+複数の transformer はパイプを追加して連結できます。
+
+```
+message|lower|len > 100
+```
+
+transformer は左から右へ適用されます。まず `lower`（string → string）、次に `len`（string → int）が実行され、その結果を `> 100` で比較します。
+
+## 型システム
+
+各 transformer は入力型と出力型を宣言します。チェーンされた transformer 同士は型互換である必要があります。前の transformer の出力型は、次の transformer の入力型と一致しなければなりません。
+
+| 型 | 説明 |
+|----|------|
+| `string` | テキスト値 |
+| `int` | 整数 |
+| `float` | 浮動小数点数 |
+| `array` | 値の配列。所属チェックには `has` を使います |
+
+## 組み込み Transformers
+
+| Transformer | 入力 | 出力 | 説明 |
+|-------------|------|------|------|
+| `upper` | string | string | 大文字に変換 |
+| `lower` | string | string | 小文字に変換 |
+| `len` | string | int | 文字列長を取得 |
+| `split` | string | array | 区切り文字で分割: `split(".")` |
+
+## 方言ごとの SQL 出力
+
+transformer は方言ごとの SQL 関数呼び出しを生成します。チェーンされた transformer はネストした呼び出しになり、最も内側から評価されます。
+
+**単一 transformer:** `status|upper = "ERROR"`
+
+| 方言 | 生成される SQL |
+|------|-----------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**チェーンされた transformer:** `message|lower|len > 100`
+
+| 方言 | 生成される SQL |
+|------|-----------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split と has:** `message|split(" ") has "hello"`
+
+| 方言 | 生成される SQL |
+|------|-----------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## 型エラー
+
+チェーン内に型互換のない transformer がある場合、editor はエラーを表示します。
+
+```
+message|len|upper
+```
+
+これは `len` が `int` を返す一方、`upper` が `string` 入力を必要とするため失敗します。editor には "len outputs int, upper requires string input" と表示されます。
+
+## 例
+
+```
+status|upper = "ERROR"           # Uppercase comparison
+message|lower|len > 100          # Chain: lowercase then length
+host|lower != "localhost"        # Case-insensitive not-equals
+path|len > 0                     # Non-empty check
+tags|split(",") has "urgent"     # Split and check membership
+```

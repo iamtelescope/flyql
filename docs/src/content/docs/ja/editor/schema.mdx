@@ -1,0 +1,199 @@
+---
+title: Schema 設定
+description: FlyQL editor 向けカラム schema の構造
+---
+
+`columns` prop は、editor の候補表示を駆動するデータ schema を定義します。キーはカラム名、値はカラム定義です。
+
+## 基本 schema
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## カラム定義フィールド
+
+| フィールド | 型 | デフォルト | 説明 |
+|------------|----|------------|------|
+| `type` | `string` | — | カラム型: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | 候補一覧にこのカラムを表示する |
+| `autocomplete` | `boolean` | `false` | このカラムで値の autocomplete を有効にする |
+| `values` | `string[]` or `number[]` | — | autocomplete 用の静的値。`onAutocomplete` callback より先に使われます |
+| `children` | `object` | — | object 型カラム用のネストしたカラム定義 |
+| `display_name` | `string` | `''` | ユーザー向け表示名。parse 済みカラムでは alias がこの値を上書きします |
+
+## カラム型
+
+### `string`
+
+一般的なテキストカラムです。regex（`~`, `!~`）を含むすべての比較演算子が使えます。
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+数値カラムです。regex 演算子（`~`, `!~`）は候補から除外されます。
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+固定値集合を持つ列挙型カラムです。`number` と同様に regex 演算子は除外されます。値集合は `values` で指定します。
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+子要素を持つネストカラムです。ユーザーがカラム名の後に `.` を入力すると、子カラムが候補として表示されます。
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## 値の autocomplete
+
+### 静的値
+
+候補が決まっているカラムでは `values` 配列を指定します。
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### 非同期値
+
+`values` を指定せずに `autocomplete: true` を設定し、editor コンポーネント側で `onAutocomplete` callback を渡します。ユーザーがそのカラムの値位置まで入力すると callback が呼ばれます。
+
+```javascript
+// Column definition — no static values
+{ type: 'string', suggest: true, autocomplete: true }
+
+// Editor callback fetches values from API
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## ネストしたカラム（JSONSchema）
+
+object 型カラムの `children` を使ってネスト構造を定義します。
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+`metadata.` と入力すると `labels` と `version` が候補に出ます。`metadata.labels.` と入力すると `tier` と `env` が候補になります。深さ制限はありません。
+
+## リモートキー探索（スキーマレス）
+
+schema 定義時点でネストキーが不明な object カラムでは、`children` を省略し、`onKeyDiscovery` callback を渡します。
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true }, // no children — triggers discovery
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
+}
+```
+
+ユーザーが `request.` と入力すると、callback は `('request', ['request'])` で呼ばれます。見つかったキーはアクティベーションセッションごとにキャッシュされます。
+
+カラムに `children` と `onKeyDiscovery` の両方がある場合は、静的 `children` が優先されます。
+
+## 完全な例
+
+```javascript
+const columns = {
+    // Enum with static values
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+
+    // String with async autocomplete
+    service: { type: 'string', suggest: true, autocomplete: true },
+
+    // Number — excludes regex operators
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+
+    // Simple string
+    host: { type: 'string', suggest: true },
+
+    // Nested with known children
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+
+    // Schemaless — nested keys discovered at runtime
+    request: { type: 'object', suggest: true },
+}
+```

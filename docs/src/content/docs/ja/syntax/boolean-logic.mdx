@@ -1,0 +1,104 @@
+---
+title: ブールロジック
+description: FlyQL におけるブール演算子、優先順位、括弧によるグループ化
+---
+
+## ブール演算子
+
+FlyQL では、条件を組み合わせるために 3 つのブール演算子を使います。
+
+| 演算子 | 意味 | 例 |
+|--------|------|----|
+| `and` | 両方の条件が true である必要がある | `status=200 and active` |
+| `or` | どちらか一方が true であればよい | `level=error or level=critical` |
+| `not` | 式を否定する | `not archived` |
+
+### 組み合わせた否定
+
+`not` は `and` や `or` と組み合わせて使えます。
+
+```
+active and not archived
+level=error or not healthy
+```
+
+## 演算子の優先順位
+
+`and` は `or` より優先されます。つまり、
+
+```
+a=1 or b=2 and c=3
+```
+
+は次のように parse されます。
+
+```
+a=1 or (b=2 and c=3)
+```
+
+優先順位を変えたい場合は、括弧を明示的に使ってください。
+
+## 括弧によるグループ化
+
+括弧を使うと評価順序を制御できます。
+
+```
+(status>=400 or level=error) and service=api
+```
+
+括弧がない場合、`and` のほうが優先されます。
+
+```
+status>=400 or level=error and service=api
+→ status>=400 or (level=error and service=api)
+```
+
+### ネストしたグループ化
+
+括弧はネストできます。
+
+```
+(a=1 or b=2) and not (c=3 and d=4)
+```
+
+### グループの否定
+
+`not` はグループ全体に適用されます。
+
+```
+not (status=200 and healthy)
+```
+
+これは複合条件全体を否定します。`status` が 200 ではないか、`healthy` が false のときにのみ true になります。
+
+## 否定
+
+`not` は、truthy チェック、比較式、グループなど、あらゆる式を否定できます。
+
+```
+not active                  # field is falsy
+not status=200              # status is not 200
+not (a=1 and b=2)           # negates the group
+active and not archived     # combined with other conditions
+```
+
+二重否定は打ち消し合います。`not not active` は `active` と同じ意味です。
+
+## 例
+
+```
+# Simple AND
+status=200 and service=api
+
+# Simple OR
+level=error or level=critical
+
+# Mixed with precedence
+status>=400 or level=error and service=api
+
+# Explicit grouping
+(status>=400 or level=error) and service=api
+
+# Complex query with negation and grouping
+(status>=500 and host=prod*) or (level=error and not service=healthcheck)
+```

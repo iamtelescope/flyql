@@ -1,0 +1,96 @@
+---
+title: SQL 方言
+description: FlyQL が ClickHouse、PostgreSQL、StarRocks 向けに SQL を生成する方法
+---
+
+FlyQL の generator は、すべての値を埋め込み済みかつエスケープ済みのプレーンな SQL 文字列として WHERE 句断片を生成します。同じ FlyQL クエリでも、ターゲット方言によって生成される SQL は異なります。
+
+## 対応方言
+
+- [ClickHouse](/ja/sql/clickhouse/): カラム名はクォートせず、regex には `match()`、JSON 文字列には `JSONExtract` 関数を使用
+- [PostgreSQL](/ja/sql/postgresql/): 識別子はダブルクォート、regex には `~`、JSONB 演算子を使用
+- [StarRocks](/ja/sql/starrocks/): 識別子はバッククォート、regex には `regexp()`、JSON 文字列には `parse_json()` を使用
+
+## 主な違い
+
+| 機能 | ClickHouse | PostgreSQL | StarRocks |
+|------|------------|------------|-----------|
+| カラムのクォート | なし | `"name"` | `` `name` `` |
+| Regex | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| 否定 Regex | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| ワイルドカード | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| ブール演算子 | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| 空の `IN []` | `0` | `FALSE` | `0` |
+| 空の `NOT IN []` | `1` | `TRUE` | `1` |
+| String に対する `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| Array に対する `has` | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| Map に対する `has` | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON に対する `has` | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+
+## JSON アクセス: 最も大きな違い
+
+ネストした JSON カラムの扱いは、方言ごとに大きく異なります。
+
+**FlyQL 入力:** `data.user.name='john'`
+
+**ClickHouse**（ネイティブ JSON カラム）:
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse**（JSON を文字列として保存）:
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL**（JSONB）:
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks**（ネイティブ JSON）:
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+完全な例は各方言ページを参照してください。
+
+## Map アクセス
+
+**FlyQL 入力:** `metadata.key1='value1'`
+
+| 方言 | 生成される SQL |
+|------|-----------------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+ClickHouse は Map アクセスに `equals()` / `notEquals()` を使います。PostgreSQL は hstore の `->` 演算子を使います。StarRocks は角括弧記法を直接使います。
+
+## Array アクセス
+
+**FlyQL 入力:** `tags.0='first'`（FlyQL では 0 始まり）
+
+| 方言 | 生成される SQL | 添字 |
+|------|-----------------|------|
+| ClickHouse | `equals(tags[0], 'first')` | 0 始まり |
+| PostgreSQL | `"tags"[1] = 'first'` | 1 始まり（変換される） |
+| StarRocks | `` `tags`[0] = 'first' `` | 0 始まり |
+
+PostgreSQL の array は 1 始まりのため、FlyQL は自動的にインデックスへ 1 を加えます。
+
+## 出力形式
+
+generator は WHERE 句断片だけを返します。`WHERE` キーワードも、プレースホルダー形式のパラメータ化も行いません。すべての値はエスケープされたうえで直接埋め込まれます。
+
+```
+message = 'hello' and count > 10
+```
+
+次のようにはなりません。
+
+```
+WHERE message = ? AND count > ?
+```

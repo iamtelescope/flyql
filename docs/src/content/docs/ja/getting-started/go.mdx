@@ -1,0 +1,161 @@
+---
+title: Go クイックスタート
+description: Go プロジェクトに FlyQL をインストールして使う
+---
+
+## インストール
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## クエリを parse する
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status=200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` は、AST を表す `Root` ノードを持つ `*ParseResult` を返します。
+
+## SQL を生成する
+
+generator を使うと、AST をパラメータ化 WHERE 句へ変換できます。データベース方言ごとに専用 generator があり、それぞれ方言固有のカラム型を扱います。
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status>=400 and host=prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+PostgreSQL と StarRocks の generator も同じパターンです。`generators/postgresql` または `generators/starrocks` を import してください。
+
+## メモリ上でマッチさせる
+
+SQL を生成せずに、データレコードに対してクエリを評価できます。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status=200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## カラム式を parse する
+
+カラム式を、segments、transformers、aliases を持つ構造化データに parse できます。
+第 2 引数には、どの機能を有効にするかを制御する `Capabilities` struct を渡します。
+transformer はデフォルトでは無効です。
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	// Parse basic columns (transformers disabled by default)
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	// Enable transformers via capabilities
+	caps := columns.Capabilities{Transformers: true}
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms[0].Transformers)
+
+	// Or serialize directly to JSON for API responses
+	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
+	fmt.Println(string(jsonBytes))
+}
+```
+
+## クエリ内で Transformers を使う
+
+transformer を含むクエリを parse し、SQL を生成できます。
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, _ := flyql.Parse("message|upper = 'ERROR'")
+	columns := map[string]*clickhousegen.Column{
+		"message": clickhousegen.NewColumn("message", false, "String", nil),
+	}
+	sql, _ := clickhousegen.ToSQL(result.Root, columns)
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+構文の詳細は [Transformers](/ja/syntax/transformers/) を参照してください。
+
+## 次のステップ
+
+- [構文リファレンス](/ja/syntax/): すべての演算子、ブールロジック、パターンなど

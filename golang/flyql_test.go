@@ -294,6 +294,7 @@ func TestParser(t *testing.T) {
 		"parser/int64.json",
 		"parser/has.json",
 		"parser/escaped_quotes_in_values.json",
+		"parser/types.json",
 	}
 
 	for _, file := range files {

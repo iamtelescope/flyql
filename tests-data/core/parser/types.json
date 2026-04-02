@@ -1,0 +1,472 @@
+{
+  "version": "1.0",
+  "description": "Type system value classification test cases",
+  "test_suite": "types",
+  "tests": [
+    {
+      "name": "integer_zero",
+      "input": "field=0",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 0.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_positive",
+      "input": "field=42",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 42.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_negative",
+      "input": "field=-1",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": -1.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_large",
+      "input": "field=999999",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 999999.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_large_negative",
+      "input": "field=-999999",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": -999999.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_greater_than",
+      "input": "count>100",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": ">",
+          "value": 100.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_less_than",
+      "input": "count<50",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": "<",
+          "value": 50.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_greater_or_equals",
+      "input": "count>=0",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": ">=",
+          "value": 0.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_less_or_equals",
+      "input": "count<=-1",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "count",
+          "operator": "<=",
+          "value": -1.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "integer_not_equals",
+      "input": "status!=0",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "!=",
+          "value": 0.0,
+          "value_type": "integer"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_common",
+      "input": "field=3.14",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 3.14,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_small_decimal",
+      "input": "field=0.5",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 0.5,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_negative",
+      "input": "field=-3.14",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": -3.14,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_very_small",
+      "input": "field=0.001",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": 0.001,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_greater_than",
+      "input": "price>9.99",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": ">",
+          "value": 9.99,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_less_than",
+      "input": "price<0.5",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "price",
+          "operator": "<",
+          "value": 0.5,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "float_not_equals",
+      "input": "ratio!=1.0",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ratio",
+          "operator": "!=",
+          "value": 1.0,
+          "value_type": "float"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "bigint_int64_max",
+      "input": "id=9223372036854775807",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "id",
+          "operator": "=",
+          "value": "9223372036854775807",
+          "value_type": "integer",
+          "value_type_js": "bigint"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "bigint_int64_max_plus_one",
+      "input": "id=9223372036854775808",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "id",
+          "operator": "=",
+          "value": "9223372036854775808",
+          "value_type": "bigint"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "bigint_uint64_max",
+      "input": "id=18446744073709551615",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "id",
+          "operator": "=",
+          "value": "18446744073709551615",
+          "value_type": "bigint"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "string_unquoted",
+      "input": "field=hello",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "hello",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "string_single_quoted",
+      "input": "field='hello world'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "hello world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "string_double_quoted",
+      "input": "field=\"hello world\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "hello world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "string_unquoted_with_letters_and_digits",
+      "input": "field=abc123",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "abc123",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_integer_single",
+      "input": "field='42'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "42",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_integer_double",
+      "input": "field=\"42\"",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "42",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_float",
+      "input": "field='3.14'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "3.14",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_negative_integer",
+      "input": "field='-1'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "-1",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "quoted_zero",
+      "input": "field='0'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "0",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

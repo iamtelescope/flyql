@@ -87,7 +87,9 @@ def escape_param(item: Any) -> str:
         return f"'{''.join(ESCAPE_CHARS_MAP.get(c, c) for c in item)}'"
     elif isinstance(item, bool):
         return "true" if item else "false"
-    elif isinstance(item, (int, float)):
+    elif isinstance(item, float):
+        return str(int(item)) if item == int(item) else str(item)
+    elif isinstance(item, int):
         return str(item)
     else:
         raise FlyqlError(f"unsupported type for escape_param: {type(item).__name__}")

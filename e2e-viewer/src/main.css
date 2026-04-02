@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+
+body {
+    min-width: 1480px;
+}
+
+html {
+    overflow-x: overlay;
+    scrollbar-gutter: stable;
+}
+
+/* Force visible scrollbars on macOS */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a0a0a0;
+}

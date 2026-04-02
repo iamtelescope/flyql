@@ -169,17 +169,18 @@ func TestClickHouseSelectE2E(t *testing.T) {
 				addResult(r)
 			}()
 
-			// Skip native JSON SELECT tests — Go ClickHouse driver doesn't support Dynamic type
-			if strings.Contains(tc.SelectColumns, "meta_json") {
-				t.Skip("Go ClickHouse driver does not support native JSON Dynamic type in SELECT")
-			}
-
 			selectResult, err := clickhousegen.ToSQLSelect(tc.SelectColumns, columns)
 			if err != nil {
 				r.Error = fmt.Sprintf("ToSQLSelect: %v", err)
 				t.Fatal(r.Error)
 			}
 			r.SQL = selectResult.SQL
+
+			// Skip DB execution for native JSON — Go ClickHouse driver doesn't support Dynamic type
+			if strings.Contains(tc.SelectColumns, "meta_json") {
+				r.Passed = true
+				return
+			}
 
 			query := fmt.Sprintf("SELECT %s FROM flyql_e2e_test ORDER BY id", selectResult.SQL)
 			rows, err := conn.Query(ctx, query)

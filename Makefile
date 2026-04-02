@@ -1,3 +1,5 @@
+e2e-viewer:
+	cd e2e && make viewer
 all: test
 test:
 	cd python && make test
@@ -7,10 +9,11 @@ fmt:
 	cd python && make fmt
 	cd javascript && make fmt
 	cd golang && make fmt
+	cd e2e-viewer && make fmt
 lint:
 	cd python && make lint
 	cd golang && make lint
-.PHONY: e2e e2e-run e2e-venv e2e-clean
+.PHONY: e2e e2e-run e2e-venv e2e-clean e2e-viewer
 e2e:
 	cd e2e && make run
 e2e-run:

@@ -85,7 +85,9 @@ def escape_param(item: Any) -> str:
         return "'%s'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in item)
     elif isinstance(item, bool):
         return str(item).lower()
-    elif isinstance(item, (int, float)):
+    elif isinstance(item, float):
+        return str(int(item)) if item == int(item) else str(item)
+    elif isinstance(item, int):
         return str(item)
     else:
         raise FlyqlError(f"unsupported type for escape_param: {type(item).__name__}")
@@ -617,10 +619,7 @@ def expression_to_sql(
                         operator = "NOT LIKE"
                 text = f"{col_ref} {operator} {value}"
         else:
-            if isinstance(expression.value, (int, float)):
-                value = str(expression.value)
-            else:
-                value = escape_param(str(expression.value))
+            value = escape_param(expression.value)
             text = f"{col_ref} {expression.operator} {value}"
     return text
 

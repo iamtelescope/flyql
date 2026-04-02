@@ -4,7 +4,7 @@ JSON_REPORT  := $(CURDIR)/output/report.json
 LANGUAGES    ?= go,javascript,python
 DATABASES    ?= clickhouse,postgresql,starrocks
 
-.PHONY: up down test-go test-js test-python test report run install clean
+.PHONY: up down test-go test-js test-python test report run install clean viewer
 
 up:
 	env $$(cat $(VERSION_FILE) | xargs) docker compose up -d --wait || (bash wait-for-dbs.sh)
@@ -35,6 +35,9 @@ run:
 
 report:
 	open $(REPORT)
+
+viewer:
+	cd ../e2e-viewer && E2E_REPORT_FILE=$(JSON_REPORT) npx vite
 
 clean: down
 	rm -f $(REPORT)

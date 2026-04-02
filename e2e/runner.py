@@ -132,6 +132,62 @@ def fmt_dur(seconds: float) -> str:
     return f"{seconds:.1f}s"
 
 
+def _load_test_data() -> dict:
+    rows_path = SCRIPT_DIR.parent / "tests-data" / "e2e" / "rows.json"
+    rows = []
+    if rows_path.exists():
+        rows = json.loads(rows_path.read_text()).get("rows", [])
+
+    column_types: dict = {}
+    for dialect in ["clickhouse", "postgresql", "starrocks"]:
+        cols_path = SCRIPT_DIR.parent / "tests-data" / "e2e" / dialect / "columns.json"
+        if cols_path.exists():
+            data = json.loads(cols_path.read_text())
+            for name, col in data.get("columns", {}).items():
+                column_types.setdefault(name, {})[dialect] = col.get("type", "")
+
+    return {"rows": rows, "column_types": column_types}
+
+
+def _normalize_result(r: dict) -> dict:
+    return {
+        "language": r.get("language", ""),
+        "database": r.get("database", ""),
+        "kind": r.get("kind", ""),
+        "name": r.get("name", ""),
+        "flyql": r.get("flyql", r.get("select_columns", "")),
+        "sql": r.get("sql", ""),
+        "expected": r.get("expected_ids", r.get("expected_rows", [])),
+        "actual": r.get("returned_ids", r.get("returned_rows", [])),
+        "passed": r.get("passed", False),
+        "error": r.get("error", ""),
+    }
+
+
+def _build_collapsed_results(sql_groups: dict) -> list:
+    rows = []
+    for (_name, _database, _kind), group in sql_groups.items():
+        all_passed = all(r.get("passed") for r in group)
+        non_empty_sqls = [r.get("sql", "") for r in group if r.get("sql")]
+        unique_sqls = set(non_empty_sqls)
+        parity = len(unique_sqls) <= 1
+
+        if parity and all_passed:
+            base = _normalize_result(group[0])
+            base["language"] = "all"
+            if non_empty_sqls:
+                base["sql"] = non_empty_sqls[0]
+            rows.append(base)
+        else:
+            for r in group:
+                row = _normalize_result(r)
+                if not parity:
+                    row["passed"] = False
+                    row["error"] = row["error"] or "SQL parity mismatch across languages"
+                rows.append(row)
+    return rows
+
+
 def main():
     parser = argparse.ArgumentParser(description="FlyQL E2E orchestrator")
     parser.add_argument(
@@ -330,33 +386,103 @@ def main():
     print(f"Report: {output}")
 
     if args.json:
+        by_db: dict = {}
+        for r in all_results:
+            db = r.get("database", "")
+            if db not in by_db:
+                by_db[db] = {"total": 0, "passed": 0, "failed": 0}
+            by_db[db]["total"] += 1
+            if r.get("passed"):
+                by_db[db]["passed"] += 1
+            else:
+                by_db[db]["failed"] += 1
+
+        # SQL parity check: same flyql + same database should produce identical SQL across languages
+        sql_groups: dict = {}
+        for r in all_results:
+            key = (r.get("name", ""), r.get("database", ""), r.get("kind", ""))
+            sql_groups.setdefault(key, []).append(r)
+
+        sql_mismatches = []
+        sql_not_implemented = []
+        for (name, database, kind), group in sql_groups.items():
+            sqls = {r.get("language", ""): r.get("sql", "") for r in group}
+            empty_langs = [lang for lang, sql in sqls.items() if not sql]
+            non_empty = {lang: sql for lang, sql in sqls.items() if sql}
+
+            if empty_langs and non_empty:
+                sql_not_implemented.append({
+                    "name": name,
+                    "database": database,
+                    "kind": kind,
+                    "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
+                    "missing_languages": empty_langs,
+                    "implemented_languages": list(non_empty.keys()),
+                })
+
+            if len(non_empty) >= 2:
+                unique_sqls = set(non_empty.values())
+                if len(unique_sqls) > 1:
+                    sql_mismatches.append({
+                        "name": name,
+                        "database": database,
+                        "kind": kind,
+                        "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
+                        "by_language": non_empty,
+                    })
+
         json_report = {
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "summary": {"total": total, "passed": passed_count, "failed": total - passed_count},
-            "failures": [
-                {
-                    "language": r.get("language", ""),
-                    "database": r.get("database", ""),
-                    "kind": r.get("kind", ""),
-                    "name": r.get("name", ""),
-                    "flyql": r.get("flyql", r.get("select_columns", "")),
-                    "sql": r.get("sql", ""),
-                    "expected": r.get("expected_ids", r.get("expected_rows", [])),
-                    "actual": r.get("returned_ids", r.get("returned_rows", [])),
-                    "error": r.get("error", ""),
-                }
-                for r in all_results
-                if not r.get("passed")
-            ],
+            "versions": version_env,
+            "summary": {
+                "total": total,
+                "passed": passed_count,
+                "failed": total - passed_count,
+                "by_language": {
+                    g["key"]: {"total": g["total"], "passed": g["passed"], "failed": g["failed"]}
+                    for g in language_groups
+                },
+                "by_database": by_db,
+                "parity": {
+                    "total_groups": len(sql_groups),
+                    "matching": len(sql_groups) - len(sql_mismatches),
+                    "mismatched": len(sql_mismatches),
+                    "not_implemented": len(sql_not_implemented),
+                },
+            },
+            "infrastructure": infra_steps,
+            "test_data": _load_test_data(),
+            "sql_parity": {
+                "total_groups": len(sql_groups),
+                "mismatches": len(sql_mismatches),
+                "details": sql_mismatches,
+                "not_implemented": sql_not_implemented,
+            },
+            "results": _build_collapsed_results(sql_groups),
         }
         json_path = Path(args.json)
         json_path.parent.mkdir(parents=True, exist_ok=True)
         json_path.write_text(json.dumps(json_report, indent=2))
         print(f"JSON report: {json_path}")
 
+    if sql_not_implemented:
+        print(f"\nSQL PARITY WARNING: {len(sql_not_implemented)} test(s) not implemented in all languages", file=sys.stderr)
+        for m in sql_not_implemented:
+            print(f"  {m['name']} / {m['database']}: missing in {', '.join(m['missing_languages'])}", file=sys.stderr)
+
+    if sql_mismatches:
+        print(f"\nSQL PARITY: {len(sql_mismatches)} mismatch(es) across languages", file=sys.stderr)
+        for m in sql_mismatches:
+            print(f"  {m['name']} / {m['database']}:", file=sys.stderr)
+            for lang, sql in m["by_language"].items():
+                print(f"    {lang}: {sql}", file=sys.stderr)
+
     failed_count = total - passed_count
     if failed_count > 0:
         print(f"\nFAILED: {failed_count}/{total} tests failed", file=sys.stderr)
+        sys.exit(1)
+    elif sql_mismatches:
+        print(f"\nFAILED: SQL parity check found {len(sql_mismatches)} mismatch(es)", file=sys.stderr)
         sys.exit(1)
     else:
         print(f"\nOK: {total}/{total} tests passed")

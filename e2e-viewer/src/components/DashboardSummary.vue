@@ -1,60 +1,42 @@
 <template>
     <div class="mb-6">
-        <div class="flex gap-4 mb-5">
-            <div class="flex-1 p-5 rounded-lg bg-gray-50 border-l-4 border-blue-500 text-center">
-                <div class="text-3xl font-bold">{{ summary.total }}</div>
-                <div class="text-sm text-gray-500 mt-1">Total Tests</div>
-            </div>
-            <div class="flex-1 p-5 rounded-lg bg-gray-50 border-l-4 border-green-500 text-center">
-                <div class="text-3xl font-bold text-green-600">{{ summary.passed }}</div>
-                <div class="text-sm text-gray-500 mt-1">Passed</div>
-            </div>
-            <div
-                class="flex-1 p-5 rounded-lg bg-gray-50 border-l-4 text-center"
-                :class="summary.failed > 0 ? 'border-red-500' : 'border-green-500'"
-            >
-                <div class="text-3xl font-bold" :class="summary.failed > 0 ? 'text-red-600' : 'text-green-600'">
-                    {{ summary.failed }}
+        <div class="flex gap-8 mb-4 items-end">
+            <div>
+                <h3 class="text-sm text-gray-500 mb-2">Total</h3>
+                <div class="flex items-center gap-3">
+                    <span class="font-semibold">{{ summary.total }}</span>
+                    <span class="text-green-600 font-semibold">{{ summary.passed }} passed</span>
+                    <span v-if="summary.failed > 0" class="text-red-600 font-semibold"
+                        >{{ summary.failed }} failed</span
+                    >
+                    <span
+                        v-if="summary.parity"
+                        class="text-sm"
+                        :class="summary.parity.mismatched > 0 ? 'text-red-600' : 'text-gray-500'"
+                    >
+                        parity {{ summary.parity.matching }}/{{ summary.parity.total_groups }}
+                    </span>
                 </div>
-                <div class="text-sm text-gray-500 mt-1">Failed</div>
             </div>
-            <div
-                v-if="summary.parity"
-                class="flex-1 p-5 rounded-lg bg-gray-50 border-l-4 text-center"
-                :class="summary.parity.mismatched > 0 ? 'border-red-500' : 'border-green-500'"
-            >
-                <div
-                    class="text-3xl font-bold"
-                    :class="summary.parity.mismatched > 0 ? 'text-red-600' : 'text-green-600'"
-                >
-                    {{ summary.parity.matching }}/{{ summary.parity.total_groups }}
-                </div>
-                <div class="text-sm text-gray-500 mt-1">SQL Parity</div>
-            </div>
-        </div>
-
-        <div class="flex gap-8 mb-4">
             <div>
                 <h3 class="text-sm text-gray-500 mb-2">By Language</h3>
-                <div class="flex gap-3 flex-wrap">
-                    <div v-for="(stats, lang) in summary.by_language" :key="lang" class="flex items-center gap-1.5">
-                        <Tag :value="lang" severity="info" />
+                <div class="flex gap-4 flex-wrap">
+                    <div v-for="(stats, lang) in summary.by_language" :key="lang" class="flex items-center gap-2">
+                        <img v-if="LANG_ICONS[lang]" :src="LANG_ICONS[lang]" :alt="langLabel(lang)" class="icon" />
+                        <span class="text-sm font-medium">{{ langLabel(lang) }}</span>
                         <span class="text-green-600 font-semibold">{{ stats.passed }}</span>
-                        <span v-if="stats.failed > 0" class="text-red-600 font-semibold"
-                            >/ {{ stats.failed }} failed</span
-                        >
+                        <span v-if="stats.failed > 0" class="text-red-600 font-semibold">/ {{ stats.failed }}</span>
                     </div>
                 </div>
             </div>
             <div>
                 <h3 class="text-sm text-gray-500 mb-2">By Database</h3>
-                <div class="flex gap-3 flex-wrap">
-                    <div v-for="(stats, db) in summary.by_database" :key="db" class="flex items-center gap-1.5">
-                        <Tag :value="db" :severity="dbSeverity(db)" />
+                <div class="flex gap-4 flex-wrap">
+                    <div v-for="(stats, db) in summary.by_database" :key="db" class="flex items-center gap-2">
+                        <img v-if="DB_ICONS[db]" :src="DB_ICONS[db]" :alt="dbLabel(db)" class="icon" />
+                        <span class="text-sm font-medium">{{ dbLabel(db) }}</span>
                         <span class="text-green-600 font-semibold">{{ stats.passed }}</span>
-                        <span v-if="stats.failed > 0" class="text-red-600 font-semibold"
-                            >/ {{ stats.failed }} failed</span
-                        >
+                        <span v-if="stats.failed > 0" class="text-red-600 font-semibold">/ {{ stats.failed }}</span>
                     </div>
                 </div>
             </div>
@@ -70,16 +52,19 @@
 </template>
 
 <script setup>
-import Tag from 'primevue/tag'
+import { LANG_ICONS, DB_ICONS, langLabel, dbLabel } from './labels.js'
 
 defineProps({
     summary: Object,
     generatedAt: String,
     versions: Object,
 })
-
-const DB_COLORS = { clickhouse: 'warn', postgresql: 'info', starrocks: 'success', matcher: 'secondary' }
-function dbSeverity(db) {
-    return DB_COLORS[db] || 'info'
-}
 </script>
+
+<style scoped>
+.icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+</style>

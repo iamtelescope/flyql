@@ -20,6 +20,9 @@
     "./columns/*": {
       "import": "./src/columns/*.js"
     },
+    "./highlight": {
+      "import": "./src/highlight.js"
+    },
     "./editor": {
       "import": "./src/editor/index.js"
     },

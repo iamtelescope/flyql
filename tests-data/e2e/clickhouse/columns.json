@@ -56,8 +56,8 @@
       "type": "String",
       "values": null
     },
-    "meta": {
-      "name": "meta",
+    "meta_str": {
+      "name": "meta_str",
       "jsonstring": true,
       "type": "String",
       "values": null

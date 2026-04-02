@@ -1,5 +1,5 @@
 <template>
-    <div class="text-sm">
+    <div class="text-xs font-mono">
         <h3 class="text-base font-semibold mb-2">
             Test Results
             <span class="text-sm font-normal text-gray-500">({{ results.length }} rows)</span>
@@ -37,7 +37,7 @@
             <Column field="language" header="Lang" :showFilterMenu="false" :sortable="true">
                 <template #body="{ data }">
                     <span v-if="data.language === 'all'" class="font-semibold text-green-700">all</span>
-                    <span v-else>{{ data.language }}</span>
+                    <span v-else>{{ langLabel(data.language) }}</span>
                 </template>
                 <template #filter="{ filterModel, filterCallback }">
                     <MultiSelect
@@ -52,7 +52,21 @@
             </Column>
 
             <Column field="database" header="DB" :showFilterMenu="false" :sortable="true">
-                <template #body="{ data }">{{ data.database }}</template>
+                <template #body="{ data }">
+                    <span style="white-space: nowrap"
+                        ><img
+                            v-if="DB_ICONS[data.database]"
+                            :src="DB_ICONS[data.database]"
+                            style="
+                                width: 14px;
+                                height: 14px;
+                                display: inline;
+                                vertical-align: middle;
+                                margin-right: 4px;
+                            "
+                        />{{ dbLabel(data.database) }}</span
+                    >
+                </template>
                 <template #filter="{ filterModel, filterCallback }">
                     <MultiSelect
                         v-model="filterModel.value"
@@ -91,9 +105,9 @@
                 </template>
             </Column>
 
-            <Column field="flyql" header="FlyQL" :showFilterMenu="false">
+            <Column field="flyql" header="FlyQL" :showFilterMenu="false" :sortable="true">
                 <template #body="{ data }">
-                    <code class="font-mono">{{ data.flyql }}</code>
+                    <code class="font-mono" v-html="highlightFlyql(data.flyql, data.kind)"></code>
                 </template>
                 <template #filter="{ filterModel, filterCallback }">
                     <InputText
@@ -106,9 +120,12 @@
                 </template>
             </Column>
 
-            <Column field="sql" header="Generated SQL" :showFilterMenu="false">
+            <Column field="sql" header="Generated SQL" :showFilterMenu="false" :sortable="true">
                 <template #body="{ data }">
-                    <code class="font-mono" v-html="highlightSql(data.sql)"></code>
+                    <span v-if="!data.sql || data.sql === '(in-memory)'" class="text-gray-400 italic font-mono">{{
+                        data.sql
+                    }}</span>
+                    <code v-else class="font-mono" v-html="highlightSql(data.sql, data.database)"></code>
                 </template>
                 <template #filter="{ filterModel, filterCallback }">
                     <InputText
@@ -118,20 +135,6 @@
                         size="small"
                         class="text-xs"
                     />
-                </template>
-            </Column>
-
-            <Column field="expected" header="Expected IDs">
-                <template #body="{ data }">
-                    <code class="font-mono text-xs">{{ formatIds(data.expected) }}</code>
-                </template>
-            </Column>
-
-            <Column field="actual" header="Returned IDs">
-                <template #body="{ data }">
-                    <code class="font-mono text-xs" :class="{ 'text-red-500 font-semibold': !data.passed }">{{
-                        formatIds(data.actual)
-                    }}</code>
                 </template>
             </Column>
 
@@ -180,8 +183,20 @@ import Column from 'primevue/column'
 import MultiSelect from 'primevue/multiselect'
 import InputText from 'primevue/inputtext'
 import StatusBadge from './StatusBadge.vue'
-import Prism from 'prismjs'
-import 'prismjs/components/prism-sql'
+import hljs from 'highlight.js/lib/core'
+import pgsql from 'highlight.js/lib/languages/pgsql'
+import mysql from 'highlight.js/lib/languages/sql'
+import { highlight } from '../../../javascript/src/highlight.js'
+
+hljs.registerLanguage('pgsql', pgsql)
+hljs.registerLanguage('mysql', mysql)
+import '../../../javascript/src/editor/flyql.css'
+import { DB_ICONS, dbLabel, langLabel } from './labels.js'
+
+function highlightFlyql(text, kind) {
+    if (!text) return ''
+    return highlight(text, { mode: kind === 'select' ? 'columns' : 'query' })
+}
 
 const props = defineProps({
     results: Array,
@@ -224,18 +239,27 @@ const statusOptions = [
     { label: 'Failed', value: false },
 ]
 
-function formatIds(val) {
-    if (val == null) return ''
-    if (Array.isArray(val)) return val.join(', ')
-    return String(val)
+const SQL_DIALECT = {
+    postgresql: 'pgsql',
+    clickhouse: 'mysql',
+    starrocks: 'mysql',
 }
 
-function highlightSql(sql) {
+function highlightSql(sql, database) {
     if (!sql) return ''
-    return Prism.highlight(sql, Prism.languages.sql, 'sql')
+    const lang = SQL_DIALECT[database] || 'mysql'
+    return hljs.highlight(sql, { language: lang }).value
 }
 
 const languageOptions = computed(() => [...new Set(props.results.map((r) => r.language))].sort())
 const databaseOptions = computed(() => [...new Set(props.results.map((r) => r.database))].sort())
 const kindOptions = computed(() => [...new Set(props.results.map((r) => r.kind))].sort())
 </script>
+
+<style scoped>
+:deep(.p-datatable input),
+:deep(.p-datatable .p-multiselect),
+:deep(.p-datatable .p-multiselect-label) {
+    font-family: ui-sans-serif, system-ui, sans-serif;
+}
+</style>

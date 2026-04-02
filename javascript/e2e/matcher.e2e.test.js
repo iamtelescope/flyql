@@ -25,10 +25,6 @@ function loadTestCases() {
         !tc.flyql.includes('tags.') &&
         !tc.flyql.includes('metadata.') &&
         !tc.flyql.includes('meta_json.') &&
-        !tc.flyql.includes("meta.'dc.region'") &&
-        !tc.flyql.includes("meta.'0'") &&
-        !tc.flyql.includes('meta.tags.') &&
-        !tc.flyql.includes('json_meta') &&
         !tc.flyql.includes("hello*'") &&
         !tc.flyql.includes("'*@") &&
         !tc.flyql.includes('created_at<=')
@@ -81,37 +77,6 @@ describe('Matcher E2E', () => {
                 reportResults.push(result)
                 throw e
             }
-        })
-    })
-
-    describe('JSON path matching', () => {
-        it.each([
-            ['json_level1_region', "meta.region='us-east'", [1, 3, 5]],
-            ['json_level1_tier', "meta.tier='premium'", [1, 4, 6]],
-            ['json_level2_city', "meta.location.city='NYC'", [1, 5]],
-            ['json_level3_provider_aws', "meta.location.cloud.provider='aws'", [1, 3]],
-            ['json_level3_provider_azure', "meta.location.cloud.provider='azure'", [5, 6]],
-        ])('%s: %s', (name, flyql, expectedIds) => {
-            const result = {
-                kind: 'where',
-                database: 'matcher',
-                name,
-                flyql,
-                sql: '(in-memory)',
-                expected_ids: expectedIds,
-                returned_ids: [],
-                passed: false,
-                error: '',
-            }
-
-            const matchedIds = rows
-                .filter((row) => match(flyql, row))
-                .map((row) => row.id)
-
-            result.returned_ids = matchedIds
-            result.passed = JSON.stringify([...matchedIds].sort()) === JSON.stringify([...expectedIds].sort())
-            reportResults.push(result)
-            expect(matchedIds.sort()).toEqual([...expectedIds].sort())
         })
     })
 })

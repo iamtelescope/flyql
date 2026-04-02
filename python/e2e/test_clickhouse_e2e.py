@@ -192,7 +192,9 @@ def test_clickhouse_select(
 
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
         rows = ch_query(query)
-        returned_rows = [[str(v) for v in row.values()] for row in rows]
+        returned_rows = [
+            [str(v) if v is not None else "null" for v in row.values()] for row in rows
+        ]
         result["returned_rows"] = returned_rows
         result["passed"] = returned_rows == expected_rows
 

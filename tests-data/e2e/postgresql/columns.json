@@ -56,8 +56,14 @@
       "type": "text",
       "values": null
     },
-    "meta": {
-      "name": "meta",
+    "meta_str": {
+      "name": "meta_str",
+      "jsonstring": true,
+      "type": "text",
+      "values": null
+    },
+    "meta_json": {
+      "name": "meta_json",
       "jsonstring": false,
       "type": "jsonb",
       "values": null
@@ -77,12 +83,6 @@
     "user@host": {
       "name": "user@host",
       "jsonstring": false,
-      "type": "text",
-      "values": null
-    },
-    "json_meta": {
-      "name": "json_meta",
-      "jsonstring": true,
       "type": "text",
       "values": null
     },

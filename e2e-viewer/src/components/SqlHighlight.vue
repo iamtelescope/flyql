@@ -6,15 +6,20 @@
 
 <script setup>
 import { computed } from 'vue'
-import Prism from 'prismjs'
-import 'prismjs/components/prism-sql'
+import hljs from 'highlight.js/lib/core'
+import pgsql from 'highlight.js/lib/languages/pgsql'
+import mysql from 'highlight.js/lib/languages/sql'
+
+hljs.registerLanguage('pgsql', pgsql)
+hljs.registerLanguage('mysql', mysql)
 
 const props = defineProps({
     sql: String,
+    dialect: { type: String, default: 'mysql' },
 })
 
 const highlighted = computed(() => {
     if (!props.sql) return ''
-    return Prism.highlight(props.sql, Prism.languages.sql, 'sql')
+    return hljs.highlight(props.sql, { language: props.dialect }).value
 })
 </script>

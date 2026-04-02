@@ -266,7 +266,9 @@ def test_starrocks_select(
 
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
         rows = sr_query(query)
-        raw_rows = [[str(v) for v in row.values()] for row in rows]
+        raw_rows = [
+            [str(v) if v is not None else "null" for v in row.values()] for row in rows
+        ]
         # Strip JSON quotes from StarRocks JSON path values and normalize nulls
         returned_rows = [
             [

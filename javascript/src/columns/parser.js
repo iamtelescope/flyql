@@ -185,6 +185,7 @@ export class Parser {
             }
 
             if (this.char.isNewline() && !parsedNewline) {
+                this.trackChar(CharType.SPACE)
                 this.line += 1
                 this.linePos = 0
                 i += 1
@@ -285,6 +286,7 @@ export class Parser {
     inStateExpectColumn() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             return
         } else if (this.char.isColumnValue()) {
             this.extendColumn()
@@ -298,6 +300,7 @@ export class Parser {
     inStateColumn() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isColumnValue()) {
             this.extendColumn()
@@ -344,6 +347,7 @@ export class Parser {
             this.storeTransformer()
             this.setState(State.EXPECT_TRANSFORMER)
         } else if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             this.storeTransformer()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isBracketOpen()) {
@@ -363,6 +367,7 @@ export class Parser {
     inStateExpectTransformerArgument() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             return
         }
         if (this.char.isDoubleQuote()) {
@@ -466,6 +471,7 @@ export class Parser {
     inStateTransformerComplete() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             this.storeTransformer()
             this.setState(State.EXPECT_ALIAS_OPERATOR)
         } else if (this.char.isColumnsDelimiter()) {
@@ -491,11 +497,14 @@ export class Parser {
     inStateExpectAliasOperator() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             return
         } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
             this.storeColumn()
             this.setState(State.EXPECT_COLUMN)
         } else if (this.char.isAliasChar()) {
+            this.trackChar(CharType.ALIAS_OPERATOR)
             this.extendAliasOperator()
             if (this.aliasOperator.length < 2) {
                 return
@@ -516,6 +525,7 @@ export class Parser {
     inStateExpectAlias() {
         if (!this.char) return
         if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
             return
         } else if (this.char.isColumnValue()) {
             this.extendAlias()
@@ -529,6 +539,7 @@ export class Parser {
     inStateExpectAliasDelimiter() {
         if (!this.char) return
         if (this.char.isAliasDelimiter()) {
+            this.trackChar(CharType.SPACE)
             this.setState(State.EXPECT_ALIAS)
         } else {
             this.trackChar(CharType.ERROR)

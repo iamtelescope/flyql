@@ -5,7 +5,7 @@ import App from './App.vue'
 
 import './main.css'
 import 'primeicons/primeicons.css'
-import 'prismjs/themes/prism-tomorrow.css'
+import 'highlight.js/styles/github.css'
 
 const app = createApp(App)
 

@@ -39,49 +39,49 @@
     },
     {
       "name": "jsonstring_single_path",
-      "select_columns": "id, meta.region",
+      "select_columns": "id, meta_str.region",
       "expected_rows": [
         ["1", "us-east"],
         ["2", "eu-west"],
         ["3", "us-east"],
-        ["4", "ap-south"],
+        ["4", "null"],
         ["5", "us-east"],
         ["6", "eu-west"]
       ]
     },
     {
       "name": "jsonstring_nested_path",
-      "select_columns": "id, meta.location.city",
+      "select_columns": "id, meta_str.location.city",
       "expected_rows": [
         ["1", "NYC"],
         ["2", "London"],
         ["3", "Boston"],
-        ["4", "Mumbai"],
+        ["4", "null"],
         ["5", "NYC"],
         ["6", "Paris"]
       ]
     },
     {
       "name": "jsonstring_deeply_nested_path",
-      "select_columns": "id, meta.location.cloud.provider",
+      "select_columns": "id, meta_str.location.cloud.provider",
       "expected_rows": [
         ["1", "aws"],
         ["2", "gcp"],
         ["3", "aws"],
-        ["4", "gcp"],
+        ["4", "null"],
         ["5", "azure"],
         ["6", "azure"]
       ]
     },
     {
       "name": "jsonstring_with_alias",
-      "select_columns": "id, meta.region as region",
+      "select_columns": "id, meta_str.region as region",
       "expected_column_names": ["id", "region"],
       "expected_rows": [
         ["1", "us-east"],
         ["2", "eu-west"],
         ["3", "us-east"],
-        ["4", "ap-south"],
+        ["4", "null"],
         ["5", "us-east"],
         ["6", "eu-west"]
       ]
@@ -93,7 +93,7 @@
         ["1", "us-east"],
         ["2", "eu-west"],
         ["3", "us-east"],
-        ["4", "ap-south"],
+        ["4", "null"],
         ["5", "us-east"],
         ["6", "eu-west"]
       ]
@@ -105,7 +105,7 @@
         ["1", "NYC"],
         ["2", "London"],
         ["3", "Boston"],
-        ["4", "Mumbai"],
+        ["4", "null"],
         ["5", "NYC"],
         ["6", "Paris"]
       ]
@@ -117,7 +117,7 @@
         ["1", "aws"],
         ["2", "gcp"],
         ["3", "aws"],
-        ["4", "gcp"],
+        ["4", "null"],
         ["5", "azure"],
         ["6", "azure"]
       ]
@@ -130,7 +130,7 @@
         ["1", "us-east"],
         ["2", "eu-west"],
         ["3", "us-east"],
-        ["4", "ap-south"],
+        ["4", "null"],
         ["5", "us-east"],
         ["6", "eu-west"]
       ]
@@ -199,13 +199,13 @@
     },
     {
       "name": "mixed_columns",
-      "select_columns": "id, message, meta.region as region, count",
+      "select_columns": "id, message, meta_str.region as region, count",
       "expected_column_names": ["id", "message", "region", "count"],
       "expected_rows": [
         ["1", "hello",       "us-east",  "42"],
         ["2", "world",       "eu-west",  "10"],
         ["3", "hello world", "us-east",  "100"],
-        ["4", "",            "ap-south", "0"],
+        ["4", "",            "null",     "0"],
         ["5", "error test",  "us-east",  "5"],
         ["6", "hello test",  "eu-west",  "200"]
       ]
@@ -237,26 +237,26 @@
     },
     {
       "name": "mixed_all_types",
-      "select_columns": "id, message, metadata.tier as tier, tags.1 as tag1, meta.region as region",
+      "select_columns": "id, message, metadata.tier as tier, tags.1 as tag1, meta_str.region as region",
       "expected_column_names": ["id", "message", "tier", "tag1", "region"],
       "expected_rows": [
         ["1", "hello",       "premium", "web",    "us-east"],
         ["2", "world",       "free",    "mobile", "eu-west"],
         ["3", "hello world", "free",    "web",    "us-east"],
-        ["4", "",            "premium", "iot",    "ap-south"],
+        ["4", "",            "premium", "iot",    "null"],
         ["5", "error test",  "free",    "web",    "us-east"],
         ["6", "hello test",  "premium", "api",    "eu-west"]
       ]
     },
     {
       "name": "mixed_jsonstring_and_native_json",
-      "select_columns": "id, meta.region as js_region, meta_json.region as nj_region",
+      "select_columns": "id, meta_str.region as js_region, meta_json.region as nj_region",
       "expected_column_names": ["id", "js_region", "nj_region"],
       "expected_rows": [
         ["1", "us-east",  "us-east"],
         ["2", "eu-west",  "eu-west"],
         ["3", "us-east",  "us-east"],
-        ["4", "ap-south", "ap-south"],
+        ["4", "null",     "null"],
         ["5", "us-east",  "us-east"],
         ["6", "eu-west",  "eu-west"]
       ]

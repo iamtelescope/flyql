@@ -54,17 +54,21 @@ export const KNOWN_TRANSFORMERS = Object.keys(TRANSFORMER_INFO)
 export const CharType = {
     COLUMN: 'column',
     ALIAS: 'alias',
+    ALIAS_OPERATOR: 'aliasOperator',
     OPERATOR: 'operator',
     TRANSFORMER: 'transformer',
     ARGUMENT: 'argument',
+    SPACE: 'space',
     ERROR: 'error',
 }
 
 export const tokenTypes = [
     CharType.COLUMN,
     CharType.ALIAS,
+    CharType.ALIAS_OPERATOR,
     CharType.OPERATOR,
     CharType.TRANSFORMER,
     CharType.ARGUMENT,
+    CharType.SPACE,
     CharType.ERROR,
 ]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FlyQL E2E orchestrator – starts DBs, runs language test suites, writes combined HTML report."""
+"""FlyQL E2E orchestrator – starts DBs, runs language test suites, writes JSON report."""
 
 import argparse
 import json
@@ -10,8 +10,6 @@ import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-
-import jinja2
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -196,11 +194,6 @@ def main():
         help=f"Comma-separated languages to test (default: {','.join(LANGUAGE_CONFIGS.keys())})",
     )
     parser.add_argument(
-        "--output",
-        default=str(SCRIPT_DIR / "report.html"),
-        help="Output HTML report path (default: e2e/report.html)",
-    )
-    parser.add_argument(
         "--down",
         action="store_true",
         default=False,
@@ -365,25 +358,39 @@ def main():
     total = len(all_results)
     passed_count = sum(1 for r in all_results if r.get("passed"))
 
-    jinja_env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(SCRIPT_DIR / "templates")),
-        autoescape=jinja2.select_autoescape(["html"]),
-    )
-    template = jinja_env.get_template("report.html.j2")
+    # SQL parity check: same flyql + same database should produce identical SQL across languages
+    sql_groups: dict = {}
+    for r in all_results:
+        key = (r.get("name", ""), r.get("database", ""), r.get("kind", ""))
+        sql_groups.setdefault(key, []).append(r)
 
-    html = template.render(
-        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        infra_steps=infra_steps,
-        language_groups=language_groups,
-        total=total,
-        passed=passed_count,
-        failed=total - passed_count,
-    )
+    sql_mismatches = []
+    sql_not_implemented = []
+    for (name, database, kind), group in sql_groups.items():
+        sqls = {r.get("language", ""): r.get("sql", "") for r in group}
+        empty_langs = [lang for lang, sql in sqls.items() if not sql]
+        non_empty = {lang: sql for lang, sql in sqls.items() if sql}
 
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(html)
-    print(f"Report: {output}")
+        if empty_langs and non_empty:
+            sql_not_implemented.append({
+                "name": name,
+                "database": database,
+                "kind": kind,
+                "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
+                "missing_languages": empty_langs,
+                "implemented_languages": list(non_empty.keys()),
+            })
+
+        if len(non_empty) >= 2:
+            unique_sqls = set(non_empty.values())
+            if len(unique_sqls) > 1:
+                sql_mismatches.append({
+                    "name": name,
+                    "database": database,
+                    "kind": kind,
+                    "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
+                    "by_language": non_empty,
+                })
 
     if args.json:
         by_db: dict = {}
@@ -396,40 +403,6 @@ def main():
                 by_db[db]["passed"] += 1
             else:
                 by_db[db]["failed"] += 1
-
-        # SQL parity check: same flyql + same database should produce identical SQL across languages
-        sql_groups: dict = {}
-        for r in all_results:
-            key = (r.get("name", ""), r.get("database", ""), r.get("kind", ""))
-            sql_groups.setdefault(key, []).append(r)
-
-        sql_mismatches = []
-        sql_not_implemented = []
-        for (name, database, kind), group in sql_groups.items():
-            sqls = {r.get("language", ""): r.get("sql", "") for r in group}
-            empty_langs = [lang for lang, sql in sqls.items() if not sql]
-            non_empty = {lang: sql for lang, sql in sqls.items() if sql}
-
-            if empty_langs and non_empty:
-                sql_not_implemented.append({
-                    "name": name,
-                    "database": database,
-                    "kind": kind,
-                    "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
-                    "missing_languages": empty_langs,
-                    "implemented_languages": list(non_empty.keys()),
-                })
-
-            if len(non_empty) >= 2:
-                unique_sqls = set(non_empty.values())
-                if len(unique_sqls) > 1:
-                    sql_mismatches.append({
-                        "name": name,
-                        "database": database,
-                        "kind": kind,
-                        "flyql": group[0].get("flyql", group[0].get("select_columns", "")),
-                        "by_language": non_empty,
-                    })
 
         json_report = {
             "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

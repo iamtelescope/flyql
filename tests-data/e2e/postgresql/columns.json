@@ -85,6 +85,12 @@
       "jsonstring": true,
       "type": "text",
       "values": null
+    },
+    "nullable_field": {
+      "name": "nullable_field",
+      "jsonstring": false,
+      "type": "text",
+      "values": null
     }
   },
   "transformer_columns": [

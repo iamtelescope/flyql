@@ -86,9 +86,9 @@ message|len|upper
 ## 例
 
 ```
-status|upper = "ERROR"           # Uppercase comparison
-message|lower|len > 100          # Chain: lowercase then length
-host|lower != "localhost"        # Case-insensitive not-equals
-path|len > 0                     # Non-empty check
-tags|split(",") has "urgent"     # Split and check membership
+status|upper = "ERROR"           # Vergleich in Großbuchstaben
+message|lower|len > 100          # Verkettung: zuerst Kleinschreibung, dann Länge
+host|lower != "localhost"        # Ungleich ohne Beachtung der Groß-/Kleinschreibung
+path|len > 0                     # Prüfung auf nicht leer
+tags|split(",") has "urgent"     # Aufteilen und Zugehörigkeit prüfen
 ```

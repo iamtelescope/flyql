@@ -87,18 +87,18 @@ La doble negación se cancela: `not not active` es equivalente a `active`.
 ## Ejemplos
 
 ```
-# Simple AND
+# AND simple
 status=200 and service=api
 
-# Simple OR
+# OR simple
 level=error or level=critical
 
-# Mixed with precedence
+# Mezclado con precedencia
 status>=400 or level=error and service=api
 
-# Explicit grouping
+# Agrupación explícita
 (status>=400 or level=error) and service=api
 
-# Complex query with negation and grouping
+# Consulta compleja con negación y agrupación
 (status>=500 and host=prod*) or (level=error and not service=healthcheck)
 ```

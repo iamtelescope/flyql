@@ -91,16 +91,16 @@ Parsea una expresión de columnas en datos estructurados con segmentos, transfor
 ```javascript
 import { parse, parseToJson } from 'flyql/columns'
 
-// Parse basic columns (transformers disabled by default)
+// Parsea columnas básicas (los transformers están desactivados por defecto)
 const parsed = parse("message, status")
 for (const col of parsed) {
     console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
 }
 
-// Enable transformers via capabilities
+// Activa transformers mediante capabilities
 const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
 
-// Or serialize directly to JSON for API responses
+// O serializa directamente a JSON para respuestas de API
 const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
@@ -113,10 +113,10 @@ Parsea una consulta con transformers y genera SQL:
 import { parse } from 'flyql'
 import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 
-// Parse a transformer query
+// Parsea una consulta con transformers
 const result = parse("message|upper = 'ERROR'")
 
-// Generate SQL for ClickHouse
+// Genera SQL para ClickHouse
 const columns = { message: newColumn('message', false, 'String') }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')

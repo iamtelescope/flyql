@@ -1,0 +1,87 @@
+---
+title: Columns-Komponente
+description: FlyqlColumns-Komponente zum Bearbeiten von Spaltenausdrücken
+---
+
+Die `FlyqlColumns`-Komponente bietet ein dediziertes Eingabefeld für Spaltenausdrücke – zum Auswählen, Filtern und Anwenden von Transformern auf Spalten.
+
+## Schnellstart
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | Typ | Default | Beschreibung |
+|------|-----|---------|--------------|
+| `modelValue` | `String` | `''` | Ausdruckstext (`v-model`) |
+| `columns` | `Object` | `{}` | Spalten-[Schema](/de/editor/schema/) |
+| `capabilities` | `Object` | `null` | Parser-Capabilities (z. B. `{ transformers: true }`) |
+| `onKeyDiscovery` | `Function` | `null` | Callback-Funktion für Remote-Key-Discovery |
+| `placeholder` | `String` | `''` | Platzhaltertext |
+| `autofocus` | `Boolean` | `false` | Beim Mounten automatisch fokussieren |
+| `debug` | `Boolean` | `false` | Debug-Logging |
+| `dark` | `Boolean` | `false` | Dunkles Theme aktivieren ([siehe Theming](/de/editor/theming/)) |
+
+## Events
+
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `update:modelValue` | `string` | Ausdruckstext wurde geändert (`v-model`) |
+| `update:parsed` | `ParsedColumn[]` | Geparstes Spaltenarray wurde aktualisiert |
+| `submit` | — | Benutzer hat Shift+Enter gedrückt |
+| `parse-error` | `string` | Parse-Fehlermeldung |
+| `focus` | — | Komponente hat Fokus erhalten |
+| `blur` | — | Komponente hat Fokus verloren |
+
+## Exponierte Methoden
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `focus()` | — | Fokussiert das Eingabefeld |
+| `blur()` | — | Entfernt den Fokus vom Eingabefeld |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Validiert den Ausdruck |
+| `getParsedColumns()` | `ParsedColumn[]` | Gibt das geparste Spaltenarray zurück |
+
+## Syntax von Spaltenausdrücken
+
+Spaltenausdrücke verwenden ein komma-separiertes Format mit optionalen Transformern und Aliasen:
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| Teil | Syntax | Beispiel |
+|------|--------|----------|
+| Spalte | `name` | `message` |
+| Transformer | `name\|transformer` | `status\|upper` |
+| Transformer mit Argumenten | `name\|transformer(arg)` | `name\|truncate(50)` |
+| Alias | `name as alias` | `host as h` |
+| Verschachtelt | `parent.child` | `metadata.labels.env` |
+| Verkettete Transformer | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

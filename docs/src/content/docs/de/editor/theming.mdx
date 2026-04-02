@@ -1,0 +1,113 @@
+---
+title: Theming
+description: Passe das Erscheinungsbild des FlyQL-Editors mit CSS-Custom-Properties an
+---
+
+Der FlyQL-Editor verwendet CSS-Custom-Properties (Variablen) für das gesamte visuelle Styling. Überschreibe beliebige `--flyql-*`-Variablen, um den Editor an das Design deiner Anwendung anzupassen.
+
+## CSS-Custom-Properties
+
+### Farben
+
+| Variable | Light-Default | Dark-Default | Beschreibung |
+|----------|---------------|--------------|--------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | Hintergrund des Editors |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Textfarbe |
+| `--flyql-border` | `#d4d4d4` | `#525252` | Rahmenfarbe |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | Rahmenfarbe bei Fokus |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Platzhaltertext |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | Fehlerhervorhebung |
+
+### Syntaxhervorhebung
+
+| Variable | Light-Default | Dark-Default | Beschreibung |
+|----------|---------------|--------------|--------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | Spalten-/Schlüsselnamen |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | Operatoren (`=`, `!=`, `and` usw.) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | String-Werte |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | Numerische Werte |
+
+### Vorschlags-Panel
+
+| Variable | Light-Default | Dark-Default | Beschreibung |
+|----------|---------------|--------------|--------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | Hintergrund des Panels |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | Rahmen des Panels |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | Hover-Zustand eines Eintrags |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | Ausgewählter Eintrag |
+
+### Typografie
+
+| Variable | Default | Beschreibung |
+|----------|---------|--------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI-Schriftart |
+| `--flyql-code-font-family` | `monospace` | Schriftart für Code/Abfragen |
+| `--flyql-font-size` | `13px` | Basis-Schriftgröße |
+
+## Light-Theme
+
+Das Light-Theme ist die Voreinstellung. Es sind keine zusätzlichen Klassen erforderlich:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Dark-Theme
+
+Verwende die Prop `dark`, um das eingebaute Dark-Theme zu aktivieren:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+Die Prop `dark` wendet die Klasse `flyql-dark` auf das Vorschlags-Panel an, das nach `<body>` teleportiert wird und daher keine Styles von umgebenden Wrappers erben kann. Das Editor-Eingabefeld selbst erbt weiterhin wie gewohnt CSS-Variablen von seinen Vorfahren, daher funktionieren Wrapper-basierte Overrides dort weiterhin.
+
+Alternativ kannst du die Klasse `flyql-dark` auf `<html>` oder `<body>` anwenden. Dadurch erreichen die Variablenvererbung sowohl den Editor als auch das teleportierte Panel:
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## Eigenes Theme
+
+Überschreibe gezielt einzelne Variablen in deinem CSS:
+
+```css
+/* Custom brand theme */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Custom dark overrides */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## Eingeschränktes Theming
+
+Theme eine bestimmte Editor-Instanz, indem du sie in einen Container mit Overrides einbettest:
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS-Custom-Properties vererben sich, daher gelten Overrides auf jedem Vorfahren für alle FlyQL-Komponenten innerhalb dieses Bereichs.

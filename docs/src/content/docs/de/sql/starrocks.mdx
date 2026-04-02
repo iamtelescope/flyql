@@ -1,0 +1,125 @@
+---
+title: StarRocks
+description: Beispiele für generiertes SQL in StarRocks
+---
+
+StarRocks-SQL verwendet mit Backticks quotierte Bezeichner, `regexp()` für Regex und `->` mit JSON-stringifizierten Schlüsseln für JSON-Zugriffe.
+
+## Grundlegende Beispiele
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `message='hello'` | `` `message` = 'hello' `` |
+| `message!='hello'` | `` `message` != 'hello' `` |
+| `count>10` | `` `count` > 10 `` |
+| `count<=100` | `` `count` <= 100 `` |
+| `message~'error.*'` | `` regexp(`message`, 'error.*') `` |
+| `message!~'test.*'` | `` not regexp(`message`, 'test.*') `` |
+| `host=prod*` | `` `host` LIKE 'prod%' `` |
+
+## Boolesche Operatoren
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `a='1' and b>10` | `` (`a` = '1' and `b` > 10) `` |
+| `a='1' or b='2'` | `` (`a` = '1' or `b` = '2') `` |
+| `not a='1'` | `` not (`a` = '1') `` |
+
+## Listenzugehörigkeit
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status in [200, 201]` | `` `status` IN (200, 201) `` |
+| `env not in ['dev', 'test']` | `` `env` NOT IN ('dev', 'test') `` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## Enthalten (`has` / `not has`)
+
+Der Operator `has` erzeugt je nach Spaltentyp unterschiedliches SQL:
+
+| Spaltentyp | FlyQL | Generiertes SQL |
+|------------|-------|-----------------|
+| String | `message has 'error'` | `` INSTR(`message`, 'error') > 0 `` |
+| String (negiert) | `message not has 'error'` | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| Array | `tags has 'web'` | `` array_contains(`tags`, 'web') `` |
+| Array (negiert) | `tags not has 'web'` | `` NOT array_contains(`tags`, 'web') `` |
+| Map | `metadata has 'key'` | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map (negiert) | `metadata not has 'key'` | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| Natives JSON | `data has 'key'` | `` json_exists(`data`, concat('$.', 'key')) `` |
+
+## JSON-Spalten
+
+StarRocks unterstützt zwei Typen von JSON-Spalten mit unterschiedlicher SQL-Ausgabe.
+
+### Nativer JSON-Typ
+
+Native JSON-Spalten verwenden den `->`-Operator mit JSON-stringifizierten Schlüsseln:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.name='test'` | `` `data`->'\"name\"' = 'test' `` |
+| `data.user.name='john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### JSON-String-Typ
+
+Spalten, die JSON als String speichern, benötigen vor der Traversierung `parse_json()`:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.name='test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| `data.user.name='john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Map-Spalten
+
+Map-Spalten verwenden Klammernotation mit direktem Vergleich:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `metadata.key1='value1'` | `` `metadata`['key1'] = 'value1' `` |
+| `metadata.key1!='value1'` | `` `metadata`['key1'] != 'value1' `` |
+| `metadata.nested.key='value'` | `` `metadata`['nested']['key'] = 'value' `` |
+| `metadata.pattern~'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## Array-Spalten
+
+Array-Spalten verwenden 0-basierte Klammerindizierung:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `tags.0='first'` | `` `tags`[0] = 'first' `` |
+| `tags.1='second'` | `` `tags`[1] = 'second' `` |
+
+### Spaltenkonfiguration
+
+Der Parameter `jsonString` steuert wie bei ClickHouse, welcher Modus verwendet wird:
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```
+
+## Transformers
+
+Transformers erzeugen StarRocks-Standardfunktionsaufrufe mit in Backticks quotierten Spaltennamen:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status\|upper = "ERROR"` | `` UPPER(`status`) = 'ERROR' `` |
+| `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
+| `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
+| `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |
+| `tags\|split(",") has "urgent"` | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

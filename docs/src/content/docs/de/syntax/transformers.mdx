@@ -1,0 +1,94 @@
+---
+title: Transformers
+description: Transformiere Spaltenwerte vor dem Vergleich mit pipe-verketteten Funktionen
+---
+
+Transformers verändern Spaltenwerte, bevor sie in Abfragen verglichen oder als SQL ausgegeben werden. Sie verwenden die Pipe-Syntax (`|`) und werden von links nach rechts angewendet.
+
+## Pipe-Syntax
+
+Wende einen Transformer mit `|` auf eine Spalte an:
+
+```
+message|upper = "ERROR"
+```
+
+Dadurch wird der Wert von `message` zuerst mit `upper` transformiert und dann mit `"ERROR"` verglichen.
+
+## Verkettung
+
+Mehrere Transformer lassen sich mit weiteren Pipes verketten:
+
+```
+message|lower|len > 100
+```
+
+Transformers werden von links nach rechts angewendet: zuerst `lower` (String zu String), dann `len` (String zu int). Das Ergebnis wird anschließend mit `> 100` verglichen.
+
+## Typsystem
+
+Jeder Transformer deklariert einen Eingabetyp und einen Ausgabetyp. Verkettete Transformer müssen typkompatibel sein – der Ausgabetyp des einen muss dem Eingabetyp des nächsten entsprechen.
+
+| Typ | Beschreibung |
+|-----|--------------|
+| `string` | Textwerte |
+| `int` | Ganze Zahlen |
+| `float` | Gleitkommazahlen |
+| `array` | Werteliste (Mitgliedschaft wird typischerweise mit `has` geprüft) |
+
+## Eingebaute Transformers
+
+| Transformer | Eingabe | Ausgabe | Beschreibung |
+|-------------|---------|---------|--------------|
+| `upper` | string | string | In Großbuchstaben umwandeln |
+| `lower` | string | string | In Kleinbuchstaben umwandeln |
+| `len` | string | int | Zeichenkettenlänge ermitteln |
+| `split` | string | array | Nach Trennzeichen aufteilen: `split(".")` |
+
+## SQL-Ausgabe nach Dialekt
+
+Transformers erzeugen dialektspezifische SQL-Funktionsaufrufe. Verkettete Transformer ergeben verschachtelte Aufrufe (innerster Aufruf zuerst):
+
+**Einzelner Transformer:** `status|upper = "ERROR"`
+
+| Dialekt | Generiertes SQL |
+|---------|-----------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**Verkettete Transformer:** `message|lower|len > 100`
+
+| Dialekt | Generiertes SQL |
+|---------|-----------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split mit has:** `message|split(" ") has "hello"`
+
+| Dialekt | Generiertes SQL |
+|---------|-----------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## Typfehler
+
+Wenn eine Transformer-Kette inkompatible Typen enthält, zeigt der Editor einen Fehler an:
+
+```
+message|len|upper
+```
+
+Das schlägt fehl, weil `len` ein `int` ausgibt, `upper` aber einen `string` als Eingabe benötigt. Der Editor zeigt: "len outputs int, upper requires string input".
+
+## Beispiele
+
+```
+status|upper = "ERROR"           # Vergleich in Großbuchstaben
+message|lower|len > 100          # Verkettung: zuerst Kleinschreibung, dann Länge
+host|lower != "localhost"        # Ungleich ohne Berücksichtigung der Groß-/Kleinschreibung
+path|len > 0                     # Prüfung auf nicht leer
+tags|split(",") has "urgent"     # Aufteilen und Zugehörigkeit prüfen
+```

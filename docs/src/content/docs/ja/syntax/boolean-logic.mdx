@@ -87,18 +87,18 @@ active and not archived     # combined with other conditions
 ## 例
 
 ```
-# Simple AND
+# Einfache UND-Verknüpfung
 status=200 and service=api
 
-# Simple OR
+# Einfache ODER-Verknüpfung
 level=error or level=critical
 
-# Mixed with precedence
+# Gemischt mit Priorität
 status>=400 or level=error and service=api
 
-# Explicit grouping
+# Explizite Gruppierung
 (status>=400 or level=error) and service=api
 
-# Complex query with negation and grouping
+# Komplexe Abfrage mit Negation und Gruppierung
 (status>=500 and host=prod*) or (level=error and not service=healthcheck)
 ```

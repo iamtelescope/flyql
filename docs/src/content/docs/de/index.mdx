@@ -1,11 +1,46 @@
 ---
 title: FlyQL
-description: Die deutsche Dokumentation ist in Vorbereitung
+description: Eine leichtgewichtige, injektionssichere Abfragesprache zur Generierung mehrerer SQL-Dialekte
 ---
 
-Die deutsche Dokumentation ist in Vorbereitung.
+FlyQL ist eine leichtgewichtige Abfragesprache, die in injektionssicheres SQL für ClickHouse, PostgreSQL und StarRocks transpiliert wird, mit Implementierungen in Go, Python und JavaScript.
 
-Diese Seite ist ein Platzhalter. Nach und nach werden hier Anleitungen, Syntaxreferenz und SQL-Dialekt-Dokumentation für FlyQL ergänzt.
+## Was ist FlyQL?
 
-Bis dahin kannst du die englische Dokumentation verwenden.
+FlyQL ist eine einfache, gut lesbare Abfragesprache zum Filtern von Daten. Schreibe eine Abfrage wie `status>=400 and host=prod*`, und FlyQL transpiliert sie in parametriertes SQL für deine Datenbank oder wertet sie im Speicher gegen Datensätze aus.
 
+```
+status>=400 and host=prod* and not debug
+```
+
+Diese Abfrage funktioniert identisch, egal ob dein Backend ClickHouse, PostgreSQL, StarRocks oder einen Datensatz im Speicher verwendet.
+
+## Hauptmerkmale
+
+- **Injektionssicher per Design**: Die Grammatik kann keine Subqueries, `JOIN`s, `UNION`s oder DDL ausdrücken. Sicherheit ist strukturell verankert, nicht nur defensiv umgesetzt. Das gesamte generierte SQL verwendet parametrisierte Werte.
+- **Mehrere SQL-Dialekte**: Eine Abfragesprache, dialektspezifische Ausgabe. FlyQL generiert korrektes SQL für ClickHouse, PostgreSQL und StarRocks mit passender Typbehandlung für JSON-Pfade, Map-Zugriffe und Arrays.
+- **Mehrere Programmiersprachen**: Vollständige Implementierungen in Go, Python und JavaScript. Parse im Frontend, validiere im Backend, generiere SQL überall, gleiche Abfrage, gleiches Ergebnis.
+- **Keine Abhängigkeiten**: Ein handgeschriebener State-Machine-Parser ohne externe Abhängigkeiten in jeder Sprache. Leicht integrierbar und konfliktfrei.
+
+## Schnelles Beispiel
+
+```
+service!=api and (status>=400 or level=error) and message~"timeout.*"
+```
+
+| Komponente | Bedeutung |
+|-----------|-----------|
+| `service!=api` | Feld `service` ist nicht `"api"` |
+| `status>=400` | `status` ist 400 oder größer |
+| `level=error` | Feld `level` ist gleich `"error"` |
+| `message~"timeout.*"` | `message` entspricht dem Regex-Muster |
+| `and`, `or` | boolesche Logik mit Priorität |
+| `( )` | explizite Gruppierung |
+
+## Unterstützte Sprachen
+
+| Sprache | Parser | SQL-Generatoren | In-Memory-Matcher |
+|----------|--------|-----------------|-------------------|
+| Go | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| Python | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |
+| JavaScript | Yes | ClickHouse, PostgreSQL, StarRocks | Yes |

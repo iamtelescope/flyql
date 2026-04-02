@@ -1,0 +1,56 @@
+---
+title: Syntaxüberblick
+description: Grundstruktur von Abfragen und Syntaxregeln in FlyQL
+---
+
+FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit booleschen Operatoren (`and`, `or`, `not`) verbunden sind. Jede Bedingung ist entweder ein Vergleich oder eine Truthy-Prüfung.
+
+## Grundstruktur einer Abfrage
+
+```
+status=200 and active and not archived
+```
+
+- `status=200` – Feld `status` ist gleich `200`
+- `active` – Feld `active` hat einen truthy Wert
+- `not archived` – Feld `archived` ist falsy (`null`, leer, nullwertig oder `false`)
+
+## Weitere Beispiele
+
+```
+service!=api or user="john doe"
+```
+
+```
+message~"error.*" and not debug
+```
+
+```
+(a=1 or b=2) and not (c=3 and d=4)
+```
+
+```
+status in [200, 201] and method not in ['DELETE', 'PUT']
+```
+
+```
+message has 'error' and tags not has 'debug'
+```
+
+## Allgemeine Regeln
+
+- **Einzelne Schlüssel** – Ein Schlüssel ohne Operator wird als Truthy-Prüfung behandelt
+- **Vergleiche** – Ein Schlüssel mit Operator muss einen zugehörigen Wert haben
+- **Leerzeichen** – Leerzeichen um Operatoren sind erlaubt: `status=200` und `status = 200` sind äquivalent
+- **Operator-Priorität** – `and` bindet stärker als `or`: `a=1 or b=2 and c=3` wird als `a=1 or (b=2 and c=3)` geparst
+- **Klammern** – Verwende `(` und `)`, um Prioritäten zu überschreiben und Bedingungen explizit zu gruppieren
+
+## Syntaxbereiche
+
+- [Operatoren](/de/syntax/operators/) – Vergleichsoperatoren (`=`, `!=`, `>`, `>=`, `<`, `<=`)
+- [Boolesche Logik](/de/syntax/boolean-logic/) – `and`, `or`, `not`, Priorität, Gruppierung
+- [Pattern Matching](/de/syntax/pattern-matching/) – Regex (`~`, `!~`) und Wildcard-Matching (`*`)
+- [Listen](/de/syntax/lists/) – `in` und `not in` mit Listenwerten
+- [Enthalten-Prüfung](/de/syntax/operators/#enthalten-prufung) – `has` und `not has` für Teilstrings, Schlüsselerkennung und Elementzugehörigkeit
+- [Werte und Ausdrücke](/de/syntax/values/) – Truthy/Falsy, Strings in Anführungszeichen, Zahlen
+- [Verschachtelte Schlüssel](/de/syntax/nested-keys/) – punktgetrennte Pfade und Schlüssel-Segmente in Anführungszeichen

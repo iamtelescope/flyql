@@ -1,0 +1,107 @@
+---
+title: Pattern Matching
+description: Regex- und Wildcard-Matching in FlyQL
+---
+
+## Regex-Matching
+
+Verwende `~`, um einen Wert gegen einen regulären Ausdruck zu prüfen, und `!~`, um das Matching zu negieren:
+
+```
+message~"error.*timeout"
+path!~"^/health"
+```
+
+| Operator | Bedeutung |
+|----------|-----------|
+| `~` | Wert passt auf das Regex-Muster |
+| `!~` | Wert passt nicht auf das Regex-Muster |
+
+### Syntax von Regex-Mustern
+
+Die Regex-Syntax hängt vom Ziel-Backend ab:
+
+- **ClickHouse** – verwendet die Funktion `match()` (RE2-Syntax)
+- **PostgreSQL** – verwendet die Operatoren `~` und `!~` (POSIX-Regex)
+- **StarRocks** – verwendet die Funktion `regexp`
+- **In-Memory-Matcher** – verwendet die Regex-Engine der Host-Sprache (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Setze das Muster in Anführungszeichen, wenn es Leerzeichen oder Sonderzeichen enthält:
+
+```
+message~"connection (refused|reset)"
+host~"^prod-[0-9]+"
+```
+
+### Groß-/Kleinschreibung ignorieren
+
+Für case-insensitive Regex-Matches verwende das `(?i)`-Flag am Anfang des Musters:
+
+```
+message~"(?i)error"
+level~"(?i)^(warn|error|fatal)$"
+```
+
+Das Inline-Flag `(?i)` ist eine Regex-Funktion, deren Unterstützung je nach Backend variiert:
+
+| Backend | Unterstützung für `(?i)` | Hinweise |
+|---------|--------------------------|----------|
+| **ClickHouse** | Yes | RE2-Syntax |
+| **PostgreSQL** | Yes | POSIX-Regex |
+| **StarRocks** | Yes | RE2-Syntax |
+| **Go In-Memory-Matcher** | Yes | Go `regexp` (RE2) |
+| **Python In-Memory-Matcher** | Yes | `google-re2` |
+| **JavaScript In-Memory-Matcher** | No | ECMAScript-`RegExp` unterstützt keine Inline-Flags wie `(?i)` |
+
+Beim JavaScript-In-Memory-Matcher kannst du stattdessen Zeichenklassen verwenden, um case-insensitives Matching zu erreichen:
+
+```
+message~"[eE][rR][rR][oO][rR]"
+```
+
+Wenn du ausschließlich SQL-Backends targetierst, funktioniert `(?i)` zuverlässig in allen drei Dialekten.
+
+Case-insensitives Matching kann mit Negation kombiniert werden, um Muster unabhängig von der Groß-/Kleinschreibung auszuschließen:
+
+```
+message~"(?i)error" and message!~"(?i)warning"
+```
+
+## Wildcard-Matching
+
+Verwende `*` am Ende eines nicht in Anführungszeichen gesetzten Werts für glob-artiges Prefix-Matching:
+
+```
+host=prod*
+service=api-*
+```
+
+Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden nur am Ende eines Werts unterstützt – `*prod` oder `pr*od` sind nicht zulässig.
+
+### Wildcard vs. Regex
+
+| Muster | Syntax | Beispiel |
+|--------|--------|----------|
+| Wildcard (Präfix) | `key=value*` | `host=prod*` |
+| Regex (vollständig) | `key~"pattern"` | `host~"^prod-[0-9]+"` |
+
+Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komplexere Muster brauchst.
+
+## Beispiele
+
+```
+# Regex: Meldungen mit „error“ oder „fail“
+message~"error|fail"
+
+# Regex: Pfade, die mit /api/v2 beginnen
+path~"^/api/v2"
+
+# Negiertes Regex: Health-Check-Pfade ausschließen
+path!~"^/health"
+
+# Wildcard: Hosts, die mit „prod“ beginnen
+host=prod*
+
+# Kombiniert
+host=prod* and message~"timeout.*" and path!~"^/health"
+```

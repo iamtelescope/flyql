@@ -1,0 +1,90 @@
+---
+title: Listen
+description: Listenoperatoren in FlyQL (`in`, `not in`)
+---
+
+## Listenzugehörigkeit
+
+Verwende `in`, um zu prüfen, ob ein Wert in einer Liste enthalten ist, und `not in`, um zu prüfen, dass er nicht enthalten ist:
+
+```
+status in [200, 201, 204]
+env not in ['prod', 'staging']
+```
+
+## Syntaxregeln
+
+- Werte werden in eckige Klammern `[ ]` eingeschlossen und durch Kommas getrennt
+- Alle Werte in einer Liste müssen denselben Typ haben (entweder nur Strings oder nur Zahlen)
+- String-Werte müssen in Anführungszeichen stehen: `['a', 'b', 'c']`
+- Numerische Werte stehen ohne Anführungszeichen: `[1, 2, 3]`
+- Leerzeichen um Kommas und Klammern sind erlaubt
+
+### String-Listen
+
+```
+method in ['GET', 'POST', 'PUT']
+env not in ['dev', 'test', 'local']
+```
+
+Für String-Werte funktionieren sowohl einfache als auch doppelte Anführungszeichen.
+
+### Numerische Listen
+
+```
+status in [200, 201, 204]
+port not in [80, 443]
+```
+
+### Leere Listen
+
+Leere Listen sind erlaubt:
+
+```
+status in []        # always false — nothing matches an empty list
+status not in []    # always true — everything is "not in" an empty list
+```
+
+## Typkonsistenz
+
+Listen **müssen** Werte eines einheitlichen Typs enthalten – entweder nur Strings oder nur Zahlen. Gemischte Typen innerhalb einer Liste führen zu einem Parse-Fehler:
+
+```
+# Valid — all numbers
+status in [200, 201, 204]
+
+# Valid — all strings
+env in ['prod', 'staging']
+
+# Invalid — mixed types (parse error)
+values in [200, 'ok']
+```
+
+Der Parser merkt sich den Typ des ersten Werts in der Liste und lehnt jeden nachfolgenden Wert mit abweichendem Typ ab. Diese Prüfung erfolgt bereits beim Parsen, bevor die Abfrage einen Generator oder Matcher erreicht.
+
+Wenn ein SQL-Generator eine Liste verarbeitet, prüft er zusätzlich, ob die Werttypen der Liste mit dem Typ der Zielspalte kompatibel sind. Werden beispielsweise String-Werte an eine numerische Spalte übergeben, führt das bei der SQL-Generierung zu einem Validierungsfehler.
+
+Das Feld `valuesType` im geparsten Ausdruck zeigt an, ob die Liste `"string"`- oder `"number"`-Werte enthält. Bei leeren Listen ist `valuesType` `null`.
+
+## Kombination mit anderen Operatoren
+
+Listenoperatoren lassen sich wie jede andere Bedingung mit booleschen Operatoren kombinieren:
+
+```
+status in [200, 201] and method in ['GET', 'POST']
+level=error or status not in [200, 201, 204]
+(status in [500, 502, 503] or level=critical) and env=prod
+```
+
+## Beispiele
+
+```
+# HTTP-Erfolgscodes
+status in [200, 201, 204]
+
+# Testumgebungen ausschließen
+env not in ['dev', 'test', 'staging']
+
+# Mehrere Listenbedingungen
+method in ['GET', 'POST'] and status not in [401, 403, 404]
+```

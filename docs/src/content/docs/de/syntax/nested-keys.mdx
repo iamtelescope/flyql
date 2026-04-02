@@ -1,0 +1,83 @@
+---
+title: Verschachtelte Schlüssel
+description: Punktgetrennte Pfade und Schlüssel-Segmente in Anführungszeichen in FlyQL
+---
+
+## Punktnotation
+
+Verwende punktgetrennte Pfade, um auf verschachtelte Felder in JSON, Map oder strukturierten Daten zuzugreifen:
+
+```
+request.url="/api/users"
+response.headers.content_type="application/json"
+metadata.labels.env=prod
+```
+
+Jedes punktgetrennte Segment traversiert eine Ebene in der verschachtelten Struktur. Die SQL-Generatoren übersetzen diese Pfade in die korrekte Syntax für jeden Datenbankdialekt (JSON-Pfad-Zugriff, Map-Lookups usw.).
+
+## Schlüssel-Segmente in Anführungszeichen
+
+Wenn ein Schlüssel-Segment selbst einen Punkt enthält, setze es in Anführungszeichen, damit der Punkt nicht als Trenner behandelt wird:
+
+```
+"foo.bar".baz=value
+```
+
+Hier gilt:
+- `"foo.bar"` ist ein einzelnes Schlüssel-Segment (der Punkt ist wörtlich)
+- `baz` ist ein Kind von `"foo.bar"`
+
+Ohne Anführungszeichen wäre `foo.bar.baz` in drei Segmente aufgeteilt: `foo` → `bar` → `baz`.
+
+### Regeln für Anführungszeichen
+
+Für Schlüssel-Segmente funktionieren sowohl einfache als auch doppelte Anführungszeichen:
+
+```
+"foo.bar".baz=value
+'foo.bar'.baz=value
+```
+
+Nur die Segmente mit Punkten müssen in Anführungszeichen stehen:
+
+```
+metadata."dotted.key".value=123
+```
+
+## Pfadtiefe
+
+Die Verschachtelungstiefe ist unbegrenzt:
+
+```
+a.b.c.d.e=value
+```
+
+Jedes Segment wird in der angegebenen Reihenfolge traversiert, wenn SQL generiert oder im Speicher ausgewertet wird.
+
+## Kombination mit Operatoren
+
+Verschachtelte Schlüssel funktionieren mit allen Operatoren:
+
+```
+request.status>=400
+response.body~"error.*"
+metadata.tags in ['prod', 'staging']
+request.headers.content_type!="text/html"
+not request.authenticated
+```
+
+## Beispiele
+
+```
+# Einfacher verschachtelter Zugriff
+request.method=GET
+
+# Tiefe Verschachtelung
+response.headers.content_type="application/json"
+
+# Quotiertes Segment mit literalem Punkt
+"app.config".debug=true
+
+# Mit boolescher Logik kombiniert
+request.status>=400 and response.body~"error" and not request.internal
+```

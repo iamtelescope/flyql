@@ -1,0 +1,98 @@
+---
+title: Vergleichsoperatoren
+description: FlyQL-Vergleichsoperatoren zum Filtern von Daten
+---
+
+FlyQL unterstützt die folgenden Vergleichsoperatoren:
+
+## Gleichheit
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `=` | Gleich | `status=200` |
+| `!=` | Ungleich | `env!=prod` |
+
+```
+status=200
+service!="api-gateway"
+```
+
+Beide Seiten des Operators sind erforderlich: ein Schlüssel und ein Wert.
+
+## Numerische Vergleiche
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `>` | Größer als | `status>399` |
+| `>=` | Größer oder gleich | `status>=400` |
+| `<` | Kleiner als | `duration<1000` |
+| `<=` | Kleiner oder gleich | `duration<=500` |
+
+```
+status>=400 and duration<5000
+response_time>100 and response_time<=2000
+```
+
+Numerische Vergleichsoperatoren arbeiten mit numerischen Werten. Bei Strings wird lexikografisch verglichen.
+
+## Regex-Matching
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `~` | Regex-Match | `message~"error.*"` |
+| `!~` | Kein Regex-Match | `path!~"^/health"` |
+
+```
+message~"timeout|connection refused"
+host!~"^test-.*"
+```
+
+Regex-Muster folgen der Syntax der Zieldatenbank oder der Laufzeitumgebung.
+
+## Listenzugehörigkeit
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `in` | In Liste | `status in [200, 201]` |
+| `not in` | Nicht in Liste | `env not in ['dev', 'test']` |
+
+Siehe die Seite [Listen](/de/syntax/lists/) für detaillierte Regeln zur Listensyntax.
+
+## Enthalten-Prüfung
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `has` | Enthält | `message has 'error'` |
+| `not has` | Enthält nicht | `message not has 'test'` |
+
+```
+message has 'timeout'
+tags not has 'deprecated'
+```
+
+Der Operator `has` führt eine typabhängige Enthalten-Prüfung aus:
+
+- **String** – Teilstring-Match: `message has 'error'` ist true, wenn `message` `"error"` enthält
+- **Map** – Schlüsselerkennung: `metadata has 'region'` ist true, wenn die Map einen Schlüssel `"region"` hat
+- **Array/List** – Elementzugehörigkeit: `tags has 'web'` ist true, wenn das Array `"web"` enthält
+- **JSON** – Schlüsselerkennung: `data has 'name'` ist true, wenn das JSON-Objekt einen Schlüssel `"name"` hat
+- **Null/leer** – immer false für `has`, immer true für `not has`
+
+`has` akzeptiert einen einzelnen Wert, keine Liste. Verwende `in`, um die Zugehörigkeit zu einer Wertemenge zu prüfen.
+
+## Operatorübersicht
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| `=` | Gleich | `status=200` |
+| `!=` | Ungleich | `env!=prod` |
+| `>` | Größer als | `count>10` |
+| `>=` | Größer oder gleich | `count>=10` |
+| `<` | Kleiner als | `count<100` |
+| `<=` | Kleiner oder gleich | `count<=100` |
+| `~` | Regex-Match | `msg~"err.*"` |
+| `!~` | Kein Regex-Match | `msg!~"^ok"` |
+| `in` | In Liste | `s in [1, 2]` |
+| `not in` | Nicht in Liste | `s not in [3]` |
+| `has` | Enthält | `msg has 'err'` |
+| `not has` | Enthält nicht | `msg not has 'ok'` |

@@ -79,15 +79,15 @@ print(f"Matches: {matches}")  # True
 ```python
 from flyql.columns import parse, parse_to_json
 
-# Parse basic columns (transformers disabled by default)
+# 基本的なカラムを parse（transformers はデフォルトで無効）
 parsed = parse("message, status")
 for col in parsed:
     print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
 
-# Enable transformers via capabilities
+# capabilities で transformers を有効化
 with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
 
-# Or serialize directly to JSON for API responses
+# または API レスポンス用に直接 JSON へシリアライズ
 json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
 print(json_str)
 ```
@@ -100,10 +100,10 @@ transformer を含むクエリを parse し、SQL を生成できます。
 from flyql.core.parser import parse
 from flyql.generators.clickhouse.generator import to_sql, Column
 
-# Parse a transformer query
+# transformer を含むクエリを parse
 result = parse("message|upper = 'ERROR'")
 
-# Generate SQL for ClickHouse
+# ClickHouse 用の SQL を生成
 columns = {"message": Column("message", False, "String")}
 sql = to_sql(result.root, columns)
 print(sql)  # equals(upper(message), 'ERROR')

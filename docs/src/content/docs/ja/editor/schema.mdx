@@ -103,10 +103,10 @@ const columns = {
 `values` を指定せずに `autocomplete: true` を設定し、editor コンポーネント側で `onAutocomplete` callback を渡します。ユーザーがそのカラムの値位置まで入力すると callback が呼ばれます。
 
 ```javascript
-// Column definition — no static values
+// Spaltendefinition — keine statischen Werte
 { type: 'string', suggest: true, autocomplete: true }
 
-// Editor callback fetches values from API
+// Editor-Callback lädt Werte aus der API
 async function onAutocomplete(key, value) {
     const resp = await fetch(`/api/values?column=${key}`)
     const data = await resp.json()
@@ -164,19 +164,19 @@ async function onKeyDiscovery(columnName, segments) {
 
 ```javascript
 const columns = {
-    // Enum with static values
+    // Enum mit statischen Werten
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
-    // String with async autocomplete
+    // String mit asynchroner Autovervollständigung
     service: { type: 'string', suggest: true, autocomplete: true },
 
-    // Number — excludes regex operators
+    // Number — Regex-Operatoren ausgeschlossen
     status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
 
-    // Simple string
+    // Einfacher String
     host: { type: 'string', suggest: true },
 
-    // Nested with known children
+    // Verschachtelt mit bekannten Kindern
     metadata: {
         type: 'object',
         suggest: true,
@@ -193,7 +193,7 @@ const columns = {
         },
     },
 
-    // Schemaless — nested keys discovered at runtime
+    // Schemafrei — verschachtelte Schlüssel werden zur Laufzeit erkannt
     request: { type: 'object', suggest: true },
 }
 ```

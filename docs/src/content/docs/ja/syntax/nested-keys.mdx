@@ -70,15 +70,15 @@ not request.authenticated
 ## 例
 
 ```
-# Simple nested access
+# Einfacher verschachtelter Zugriff
 request.method=GET
 
-# Deep nesting
+# Tiefe Verschachtelung
 response.headers.content_type="application/json"
 
-# Quoted segment with literal dot
+# Segment in Anführungszeichen mit wörtlichem Punkt
 "app.config".debug=true
 
-# Combined with boolean logic
+# Mit boolescher Logik kombiniert
 request.status>=400 and response.body~"error" and not request.internal
 ```

@@ -1,0 +1,127 @@
+---
+title: ClickHouse
+description: Beispiele für generiertes SQL in ClickHouse
+---
+
+ClickHouse-SQL verwendet unquotierte Spaltennamen, `match()` für Regex und `LIKE` für Wildcards.
+
+## Grundlegende Beispiele
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `message='hello'` | `message = 'hello'` |
+| `message!='hello'` | `message != 'hello'` |
+| `count>10` | `count > 10` |
+| `count<=100` | `count <= 100` |
+| `message~'error.*'` | `match(message, 'error.*')` |
+| `message!~'test.*'` | `not match(message, 'test.*')` |
+| `host=prod*` | `host LIKE 'prod%'` |
+
+## Boolesche Operatoren
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `a='1' and b>10` | `(a = '1' and b > 10)` |
+| `a='1' or b='2'` | `(a = '1' or b = '2')` |
+| `not a='1'` | `not (a = '1')` |
+
+## Listenzugehörigkeit
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status in [200, 201]` | `status IN (200, 201)` |
+| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
+| `status in []` | `0` |
+| `status not in []` | `1` |
+
+## Enthalten (`has` / `not has`)
+
+Der Operator `has` erzeugt je nach Spaltentyp unterschiedliches SQL:
+
+| Spaltentyp | FlyQL | Generiertes SQL |
+|------------|-------|-----------------|
+| String | `message has 'error'` | `position(message, 'error') > 0` |
+| String (negiert) | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | `tags has 'web'` | `has(tags, 'web')` |
+| Array (negiert) | `tags not has 'web'` | `NOT has(tags, 'web')` |
+| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
+| Map (negiert) | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
+| Natives JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON-String | `data has 'key'` | `JSONHas(data, 'key')` |
+
+## JSON-Spalten
+
+ClickHouse unterstützt zwei Typen von JSON-Spalten mit unterschiedlicher SQL-Ausgabe.
+
+### Nativer JSON-Typ
+
+Spalten des Typs `JSON` verwenden Punktnotation mit in Backticks gesetzten Segmenten:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.name='test'` | `` data.`name` = 'test' `` |
+| `data.user.name='john'` | `` data.`user`.`name` = 'john' `` |
+| `data.age=25` | `` data.`age` = 25 `` |
+
+### JSON-String-Typ
+
+Spalten, die JSON als String speichern (z. B. Typ `String` mit JSON-Inhalt), verwenden `JSONExtract`-Funktionen, die zur Typprüfung in `multiIf` eingebettet sind:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.name='test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| `data.user.name='john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+
+## Map-Spalten
+
+Map-Spalten verwenden Klammernotation mit den Funktionen `equals()` / `notEquals()`:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `metadata.key1='value1'` | `equals(metadata['key1'], 'value1')` |
+| `metadata.key1!='value1'` | `notEquals(metadata['key1'], 'value1')` |
+| `metadata.pattern~'test.*'` | `match(metadata['pattern'], 'test.*')` |
+
+## Array-Spalten
+
+Array-Spalten verwenden 0-basierte Klammerindizes mit `equals()`:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `tags.0='first'` | `equals(tags[0], 'first')` |
+| `tags.1='second'` | `equals(tags[1], 'second')` |
+| `tags.0~'tag.*'` | `match(tags[0], 'tag.*')` |
+
+### Spaltenkonfiguration
+
+Der Parameter `jsonString` steuert, welcher Modus verwendet wird:
+
+```go
+// Go
+columns := map[string]*clickhouse.Column{
+    "message": clickhouse.NewColumn("message", false, "String", nil),
+    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "String", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "String", null),       // JSON string
+}
+```
+
+## Transformers
+
+Transformers erzeugen ClickHouse-spezifische Funktionsaufrufe:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
+| `status\|lower = "info"` | `equals(lower(status), 'info')` |
+| `message\|len > 100` | `length(message) > 100` |
+| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |

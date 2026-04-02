@@ -1,21 +1,21 @@
 ---
-title: Inicio rápido con Python
-description: Instala y usa FlyQL en un proyecto Python
+title: Python-Quickstart
+description: Installiere und verwende FlyQL in einem Python-Projekt
 ---
 
-## Instalación
+## Installation
 
-FlyQL para Python se instala desde git, no está publicado en PyPI:
+FlyQL für Python wird aus git installiert (nicht auf PyPI veröffentlicht):
 
 ```bash
 pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
 ```
 
-Esto instala el paquete `flyql` junto con su dependencia `google-re2`.
+Dadurch wird das Paket `flyql` zusammen mit seiner Abhängigkeit `google-re2` installiert.
 
-**Requisitos:** Python 3.10+
+**Anforderungen:** Python 3.10+
 
-## Parsear una consulta
+## Eine Abfrage parsen
 
 ```python
 from flyql.core.parser import parse
@@ -24,11 +24,11 @@ result = parse("status=200 and active")
 print(result.root)
 ```
 
-`parse()` devuelve un objeto `Parser` con un nodo `root` que representa el AST. Lanza `ParserError` si la entrada no es válida.
+`parse()` gibt ein `Parser`-Objekt mit einem `root`-Knoten zurück, der den AST repräsentiert. Bei ungültiger Eingabe wird `ParserError` ausgelöst.
 
-## Generar SQL
+## SQL generieren
 
-Usa un generador para convertir el AST en una cláusula WHERE parametrizada. Cada dialecto de base de datos tiene su propio generador.
+Verwende einen Generator, um den AST in eine parametrisierte WHERE-Klausel umzuwandeln. Jeder Datenbankdialekt hat seinen eigenen Generator.
 
 ### ClickHouse
 
@@ -48,11 +48,11 @@ sql = to_sql(result.root, columns)
 print(sql)
 ```
 
-Los generadores de PostgreSQL y StarRocks siguen el mismo patrón; solo cambia la importación a `flyql.generators.postgresql` o `flyql.generators.starrocks`.
+Die Generatoren für PostgreSQL und StarRocks folgen demselben Muster – importiere stattdessen aus `flyql.generators.postgresql` oder `flyql.generators.starrocks`.
 
-## Evaluar en memoria
+## Im Speicher matchen
 
-Evalúa una consulta sobre un registro de datos sin generar SQL:
+Werte eine Abfrage gegen einen Datensatz aus, ohne SQL zu generieren:
 
 ```python
 from flyql.core.parser import parse
@@ -72,45 +72,45 @@ matches = evaluator.evaluate(result.root, Record(data))
 print(f"Matches: {matches}")  # True
 ```
 
-## Parsear expresiones de columnas
+## Spaltenausdrücke parsen
 
-Parsea una expresión de columnas en datos estructurados con segmentos, transformers y alias:
+Parse einen Spaltenausdruck in strukturierte Daten mit Segmenten, Transformern und Aliasen:
 
 ```python
 from flyql.columns import parse, parse_to_json
 
-# Parsea columnas básicas (los transformers están desactivados por defecto)
+# Einfache Spalten parsen (Transformers sind standardmäßig deaktiviert)
 parsed = parse("message, status")
 for col in parsed:
     print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
 
-# Activa transformers mediante capabilities
+# Transformers über Capabilities aktivieren
 with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
 
-# O serializa directamente a JSON para respuestas de API
+# Oder direkt als JSON für API-Antworten serialisieren
 json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
 print(json_str)
 ```
 
-## Transformers en consultas
+## Transformers in Abfragen
 
-Parsea una consulta con transformers y genera SQL:
+Parse eine Abfrage mit Transformern und generiere SQL:
 
 ```python
 from flyql.core.parser import parse
 from flyql.generators.clickhouse.generator import to_sql, Column
 
-# Parsea una consulta con transformers
+# Eine Abfrage mit Transformern parsen
 result = parse("message|upper = 'ERROR'")
 
-# Genera SQL para ClickHouse
+# SQL für ClickHouse generieren
 columns = {"message": Column("message", False, "String")}
 sql = to_sql(result.root, columns)
 print(sql)  # equals(upper(message), 'ERROR')
 ```
 
-Consulta [Transformers](/es/syntax/transformers/) para ver la referencia completa de sintaxis.
+Siehe [Transformers](/de/syntax/transformers/) für die vollständige Syntaxreferenz.
 
-## Siguiente paso
+## Wie geht es weiter?
 
-- [Referencia de sintaxis](/es/syntax/): todos los operadores, lógica booleana, patrones y más
+- [Syntaxreferenz](/de/syntax/) – alle Operatoren, boolesche Logik, Muster und mehr

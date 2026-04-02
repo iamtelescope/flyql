@@ -86,9 +86,9 @@ Esto falla porque `len` devuelve `int`, pero `upper` requiere una entrada `strin
 ## Ejemplos
 
 ```
-status|upper = "ERROR"           # Uppercase comparison
-message|lower|len > 100          # Chain: lowercase then length
-host|lower != "localhost"        # Case-insensitive not-equals
-path|len > 0                     # Non-empty check
-tags|split(",") has "urgent"     # Split and check membership
+status|upper = "ERROR"           # Comparación en mayúsculas
+message|lower|len > 100          # Cadena: primero minúsculas, luego longitud
+host|lower != "localhost"        # Distinto sin distinguir mayúsculas y minúsculas
+path|len > 0                     # Comprobación de valor no vacío
+tags|split(",") has "urgent"     # Dividir y comprobar pertenencia
 ```

@@ -1,0 +1,128 @@
+---
+title: PostgreSQL
+description: Beispiele für generiertes SQL in PostgreSQL
+---
+
+PostgreSQL-SQL verwendet doppelt quotierte Bezeichner, `~` für Regex, Großbuchstaben bei `AND`/`OR` und JSONB-Operatoren für verschachtelten Zugriff.
+
+## Grundlegende Beispiele
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `message='hello'` | `"message" = 'hello'` |
+| `message!='hello'` | `"message" != 'hello'` |
+| `count>10` | `"count" > 10` |
+| `count<=100` | `"count" <= 100` |
+| `message~'error.*'` | `"message" ~ 'error.*'` |
+| `message!~'test.*'` | `"message" !~ 'test.*'` |
+| `host=prod*` | `"host" LIKE 'prod%'` |
+
+## Boolesche Operatoren
+
+PostgreSQL verwendet Großbuchstaben bei `AND`/`OR` (anders als ClickHouse und StarRocks):
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `a='1' and b>10` | `("a" = '1' AND "b" > 10)` |
+| `a='1' or b='2'` | `("a" = '1' OR "b" = '2')` |
+| `not a='1'` | `NOT ("a" = '1')` |
+
+## Listenzugehörigkeit
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status in [200, 201]` | `"status" IN (200, 201)` |
+| `env not in ['dev', 'test']` | `"env" NOT IN ('dev', 'test')` |
+| `status in []` | `FALSE` |
+| `status not in []` | `TRUE` |
+
+## Enthalten (`has` / `not has`)
+
+Der Operator `has` erzeugt je nach Spaltentyp unterschiedliches SQL:
+
+| Spaltentyp | FlyQL | Generiertes SQL |
+|------------|-------|-----------------|
+| String | `message has 'error'` | `position('error' in "message") > 0` |
+| String (negiert) | `message not has 'error'` | `("message" IS NULL OR position('error' in "message") = 0)` |
+| Array | `tags has 'web'` | `'web' = ANY("tags")` |
+| Array (negiert) | `tags not has 'web'` | `NOT ('web' = ANY("tags"))` |
+| JSONB | `data has 'key'` | `"data" ? 'key'` |
+| JSONB (negiert) | `data not has 'key'` | `NOT ("data" ? 'key')` |
+| Hstore | `metadata has 'key'` | `"metadata" ? 'key'` |
+
+## JSONB-Spalten
+
+PostgreSQL verwendet JSONB-Operatoren mit Typprüfung über `jsonb_typeof()`:
+
+### String-Vergleich
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.name='test'` | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| `data.user.name='john'` | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+
+### Numerischer Vergleich
+
+Numerische Vergleiche casten den extrahierten Wert:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `data.age>25` | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+
+### JSONB-Operatoren
+
+- `->` gibt JSONB zurück (für die Traversierung der Zwischenpfade)
+- `->>` gibt Text zurück (für die Extraktion des finalen Werts)
+- `jsonb_typeof()` prüft den JSON-Typ vor dem Vergleich
+
+## Hstore- (Map-)Spalten
+
+PostgreSQL verwendet beim hstore-Typ den Operator `->` für den Schlüsselzugriff:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `metadata.key1='value1'` | `"metadata"->'key1' = 'value1'` |
+| `metadata.key1!='value1'` | `"metadata"->'key1' != 'value1'` |
+| `metadata.pattern~'test.*'` | `"metadata"->'pattern' ~ 'test.*'` |
+
+## Array-Spalten
+
+PostgreSQL-Arrays sind 1-basiert – FlyQL konvertiert den 0-basierten Index automatisch:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `tags.0='first'` | `"tags"[1] = 'first'` |
+| `tags.1='second'` | `"tags"[2] = 'second'` |
+| `tags.0~'tag.*'` | `"tags"[1] ~ 'tag.*'` |
+
+### Spaltenkonfiguration
+
+PostgreSQL-Spalten haben keinen `jsonString`-Parameter – der JSONB-Typ wird aus dem Spaltentyp erkannt:
+
+```go
+// Go
+columns := map[string]*postgresql.Column{
+    "message": postgresql.NewColumn("message", "varchar", nil),
+    "data":    postgresql.NewColumn("data", "jsonb", nil),
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", "varchar", null),
+    data:    newColumn("data", "jsonb", null),
+}
+```
+
+## Transformers
+
+Transformers erzeugen PostgreSQL-Standardfunktionen:
+
+| FlyQL | Generiertes SQL |
+|-------|-----------------|
+| `status\|upper = "ERROR"` | `UPPER(status) = 'ERROR'` |
+| `status\|lower = "info"` | `LOWER(status) = 'info'` |
+| `message\|len > 100` | `LENGTH(message) > 100` |
+| `message\|lower\|len > 100` | `LENGTH(LOWER(message)) > 100` |
+| `tags\|split(",") has "urgent"` | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |

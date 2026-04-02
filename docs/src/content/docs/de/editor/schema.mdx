@@ -1,11 +1,11 @@
 ---
-title: Configuración del esquema
-description: Estructura del esquema de columnas para el editor de FlyQL
+title: Schema-Konfiguration
+description: Struktur des Spaltenschemas für den FlyQL-Editor
 ---
 
-La prop `columns` define el esquema de datos que alimenta las sugerencias del editor. Las claves son nombres de columna y los valores son definiciones de columna.
+Die Prop `columns` definiert das Datenschema, das die Vorschläge im Editor steuert. Schlüssel sind Spaltennamen, Werte sind Spaltendefinitionen.
 
-## Esquema básico
+## Grundschema
 
 ```javascript
 const columns = {
@@ -16,22 +16,22 @@ const columns = {
 }
 ```
 
-## Campos de la definición de columna
+## Felder der Spaltendefinition
 
-| Campo | Tipo | Valor por defecto | Descripción |
-|-------|------|-------------------|-------------|
-| `type` | `string` | — | Tipo de columna: `'string'`, `'number'`, `'enum'`, `'object'` |
-| `suggest` | `boolean` | `true` | Muestra esta columna en las sugerencias |
-| `autocomplete` | `boolean` | `false` | Activa el autocompletado de valores para esta columna |
-| `values` | `string[]` o `number[]` | — | Valores estáticos para autocompletado, usados antes del callback `onAutocomplete` |
-| `children` | `object` | — | Definiciones de columnas anidadas para columnas de tipo objeto |
-| `display_name` | `string` | `''` | Nombre opcional legible para mostrar. En las columnas parseadas, el alias sobrescribe este valor |
+| Feld | Typ | Default | Beschreibung |
+|------|-----|---------|--------------|
+| `type` | `string` | — | Spaltentyp: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | Zeigt diese Spalte in Vorschlägen an |
+| `autocomplete` | `boolean` | `false` | Aktiviert Wert-Autovervollständigung für diese Spalte |
+| `values` | `string[]` oder `number[]` | — | Statische Werte für Autovervollständigung (werden vor `onAutocomplete` verwendet) |
+| `children` | `object` | — | Verschachtelte Spaltendefinitionen für Objektspalten |
+| `display_name` | `string` | `''` | Optionaler benutzerfreundlicher Anzeigename. Bei geparsten Spalten überschreibt der Alias diesen Wert |
 
-## Tipos de columna
+## Spaltentypen
 
 ### `string`
 
-Columna de texto general. Todos los operadores de comparación están disponibles, incluidos los regex `~` y `!~`.
+Allgemeine Textspalte. Alle Vergleichsoperatoren inklusive Regex (`~`, `!~`) sind verfügbar.
 
 ```javascript
 { type: 'string', suggest: true }
@@ -39,7 +39,7 @@ Columna de texto general. Todos los operadores de comparación están disponible
 
 ### `number`
 
-Columna numérica. Los operadores regex `~` y `!~` se excluyen de las sugerencias de operadores.
+Numerische Spalte. Regex-Operatoren (`~`, `!~`) werden aus den Operatorvorschlägen ausgeschlossen.
 
 ```javascript
 { type: 'number', suggest: true }
@@ -47,7 +47,7 @@ Columna numérica. Los operadores regex `~` y `!~` se excluyen de las sugerencia
 
 ### `enum`
 
-Columna enumerada con un conjunto fijo de valores. Igual que `number`, excluye operadores regex. Usa `values` para proporcionar el conjunto:
+Enumerierte Spalte mit festem Wertesatz. Wie bei `number` werden Regex-Operatoren ausgeschlossen. Verwende `values`, um den Wertesatz bereitzustellen:
 
 ```javascript
 { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
@@ -55,7 +55,7 @@ Columna enumerada con un conjunto fijo de valores. Igual que `number`, excluye o
 
 ### `object`
 
-Columna anidada con hijos. Cuando el usuario escribe el nombre de la columna seguido de `.`, se sugieren las columnas hijas:
+Verschachtelte Spalte mit untergeordneten Feldern. Wenn der Benutzer den Spaltennamen gefolgt von `.` eingibt, werden untergeordnete Spalten vorgeschlagen:
 
 ```javascript
 {
@@ -75,11 +75,11 @@ Columna anidada con hijos. Cuando el usuario escribe el nombre de la columna seg
 }
 ```
 
-## Autocompletado de valores
+## Wert-Autovervollständigung
 
-### Valores estáticos
+### Statische Werte
 
-Proporciona un array `values` para columnas con opciones conocidas:
+Gib für Spalten mit bekannten Optionen ein `values`-Array an:
 
 ```javascript
 {
@@ -98,15 +98,15 @@ Proporciona un array `values` para columnas con opciones conocidas:
 }
 ```
 
-### Valores asíncronos
+### Asynchrone Werte
 
-Define `autocomplete: true` sin `values` y proporciona un callback `onAutocomplete` en el componente del editor. El callback se llama cuando el usuario llega a la posición del valor para esa columna.
+Setze `autocomplete: true` ohne `values` und stelle im Editor eine `onAutocomplete`-Callback-Funktion bereit. Der Callback wird aufgerufen, wenn der Benutzer die Wertposition für diese Spalte erreicht.
 
 ```javascript
-// Definición de columna: sin valores estáticos
+// Spaltendefinition — keine statischen Werte
 { type: 'string', suggest: true, autocomplete: true }
 
-// El callback del editor obtiene valores desde la API
+// Editor-Callback lädt Werte aus der API
 async function onAutocomplete(key, value) {
     const resp = await fetch(`/api/values?column=${key}`)
     const data = await resp.json()
@@ -114,9 +114,9 @@ async function onAutocomplete(key, value) {
 }
 ```
 
-## Columnas anidadas (JSONSchema)
+## Verschachtelte Spalten (JSONSchema)
 
-Define estructuras anidadas usando `children` en columnas de tipo objeto:
+Definiere verschachtelte Strukturen mit `children` bei Objektspalten:
 
 ```javascript
 const columns = {
@@ -138,11 +138,11 @@ const columns = {
 }
 ```
 
-Al escribir `metadata.`, se sugieren `labels` y `version`. Al escribir `metadata.labels.`, se sugieren `tier` y `env`. No hay límite de profundidad.
+Bei `metadata.` werden `labels` und `version` vorgeschlagen. Bei `metadata.labels.` werden `tier` und `env` vorgeschlagen. Die Tiefe ist unbegrenzt.
 
-## Descubrimiento remoto de claves (sin esquema)
+## Remote-Key-Discovery (schemafrei)
 
-Para columnas de tipo objeto cuyas claves anidadas no se conocen al definir el esquema, omite `children` y proporciona un callback `onKeyDiscovery`:
+Bei Objektspalten, deren verschachtelte Schlüssel zur Schema-Definition noch nicht bekannt sind, lasse `children` weg und gib eine `onKeyDiscovery`-Callback-Funktion an:
 
 ```javascript
 const columns = {
@@ -156,27 +156,27 @@ async function onKeyDiscovery(columnName, segments) {
 }
 ```
 
-Cuando el usuario escribe `request.`, el callback se invoca con `('request', ['request'])`. Las claves descubiertas se almacenan en caché por sesión de activación.
+Wenn der Benutzer `request.` eingibt, wird der Callback mit `('request', ['request'])` aufgerufen. Entdeckte Schlüssel werden pro Aktivierungssitzung zwischengespeichert.
 
-Si una columna tiene tanto `children` como `onKeyDiscovery`, los `children` estáticos tienen prioridad.
+Wenn eine Spalte sowohl `children` als auch `onKeyDiscovery` hat, haben die statischen `children` Vorrang.
 
-## Ejemplo completo
+## Vollständiges Beispiel
 
 ```javascript
 const columns = {
-    // Enum con valores estáticos
+    // Enum mit statischen Werten
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
-    // String con autocompletado asíncrono
+    // String mit asynchroner Autovervollständigung
     service: { type: 'string', suggest: true, autocomplete: true },
 
-    // Number: excluye operadores regex
+    // Number — Regex-Operatoren ausgeschlossen
     status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
 
-    // String simple
+    // Einfacher String
     host: { type: 'string', suggest: true },
 
-    // Anidado con hijos conocidos
+    // Verschachtelt mit bekannten Kindern
     metadata: {
         type: 'object',
         suggest: true,
@@ -193,7 +193,7 @@ const columns = {
         },
     },
 
-    // Sin esquema: claves anidadas descubiertas en tiempo de ejecución
+    // Schemalos — verschachtelte Schlüssel werden zur Laufzeit erkannt
     request: { type: 'object', suggest: true },
 }
 ```

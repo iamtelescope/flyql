@@ -1,0 +1,186 @@
+---
+title: Werte und Typen
+description: Werttypen, typisierte Literale und Ausdrücke in FlyQL
+---
+
+FlyQL unterstützt 7 Werttypen: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** und **Array**. Jeder Wert im AST trägt ein explizites Feld `value_type`.
+
+## Werttypen
+
+### Integer
+
+Ganzzahlen innerhalb des int64-Bereichs:
+
+```
+count=42
+status!=200
+age>=18
+```
+
+AST: `value_type: "integer"`
+
+### BigInt
+
+Ganzzahlen, die den int64-Bereich (Go/Python) oder `MAX_SAFE_INTEGER` (JavaScript) überschreiten:
+
+```
+id=18446744073709551615
+```
+
+AST: `value_type: "bigint"`
+
+### Float
+
+Zahlen mit Dezimalpunkt:
+
+```
+price>9.99
+ratio=3.14
+temperature<=-0.5
+```
+
+AST: `value_type: "float"`
+
+### String
+
+Textwerte, mit oder ohne Anführungszeichen:
+
+```
+level=error              # unquoted string
+user="John Doe"          # double-quoted (spaces)
+message='hello world'    # single-quoted (spaces)
+count='42'               # quoted number is a string
+```
+
+AST: `value_type: "string"`
+
+Anführungszeichen lassen sich mit Backslash escapen:
+
+```
+user='John\'s account'
+message="said \"hello\""
+```
+
+### Boolean
+
+Die Schlüsselwörter `true` und `false` (kleingeschrieben, case-sensitive):
+
+```
+active=true
+debug=false
+active!=true
+```
+
+AST: `value_type: "boolean"`, der Wert ist ein nativer Boolean.
+
+Großgeschriebene Varianten (`True`, `FALSE`) werden als Strings behandelt.
+
+**SQL-Generierung:**
+| Dialekt | `field=true` | `field=false` |
+|---------|--------------|---------------|
+| ClickHouse | `field = true` | `field = false` |
+| PostgreSQL | `field = TRUE` | `field = FALSE` |
+| StarRocks | `field = true` | `field = false` |
+
+### Null
+
+Das Schlüsselwort `null` (kleingeschrieben, case-sensitive):
+
+```
+field=null
+field!=null
+```
+
+AST: `value_type: "null"`, der Wert ist natives null.
+
+Großgeschriebene Varianten (`Null`, `NULL`) werden als Strings behandelt.
+
+**Einschränkungen:** Mit null sind nur `=` und `!=` gültig. Die Verwendung von `>`, `<`, `>=`, `<=`, `~` oder `!~` mit null erzeugt einen Parse-Fehler.
+
+**SQL-Generierung:** `field=null` erzeugt `field IS NULL`, `field!=null` erzeugt `field IS NOT NULL` (in allen Dialekten).
+
+### Array
+
+Arrays werden mit `in` und `not in` verwendet. Elemente dürfen gemischte Typen haben (heterogen):
+
+```
+status in [200, 201, 202]
+name in ['alice', 'bob']
+field in [1, "hello", true, null]
+```
+
+Jedes Element trägt seinen eigenen Typ im Array `values_types`.
+
+## Truthy/Falsy-Ausdrücke
+
+Ein einzelner Schlüssel ohne Operator prüft, ob das Feld einen truthy Wert hat:
+
+```
+active
+message and status
+```
+
+Ein Wert gilt als **falsy**, wenn er:
+- `null` / `None` / nicht vorhanden ist
+- ein leerer String `""` ist
+- Null `0` ist
+- der Boolean `false` ist
+
+Alles andere ist **truthy**.
+
+Verwende `not`, um auf falsy Werte zu prüfen:
+
+```
+not archived
+active and not debug
+```
+
+Truthy/Falsy-Prüfungen unterscheiden sich von Null-Vergleichen: `not field` matcht, wenn das Feld null, leer oder Null ist. `field=null` matcht nur dann, wenn das Feld explizit null ist.
+
+## Leerzeichen
+
+FlyQL ist tolerant gegenüber Leerzeichen. Leerzeichen um Operatoren sind optional:
+
+```
+status=200
+status = 200
+status =200
+```
+
+Alle drei Varianten sind äquivalent.
+
+## Typkonstanten-Modul
+
+Alle Typkonstanten sind über das Modul `flyql.types` verfügbar:
+
+**Python:**
+```python
+from flyql.types import ValueType
+# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+**Go:**
+```go
+import "github.com/iamtelescope/flyql/golang/types"
+// types.Integer, types.BigInt, types.Float,
+// types.String, types.Boolean, types.Null, types.Array
+```
+
+**JavaScript:**
+```javascript
+import { ValueType } from 'flyql/types'
+// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+## Hinweise zur Migration
+
+Beim Upgrade von einer früheren FlyQL-Version:
+
+- **Breaking:** Go `ValueTypeString` / `ValueTypeNumber` wurden entfernt und durch `types.ValueType` mit 7 Werten ersetzt
+- **Breaking:** Das AST-Feld `value_type` wurde von `"string"` / `"number"` auf `"integer"` / `"float"` / `"bigint"` / `"string"` / `"boolean"` / `"null"` geändert
+- **Breaking:** Die Erzwingung homogener Listen wurde entfernt – heterogene Arrays sind jetzt gültig
+- **Neu:** `true`, `false`, `null` werden als typisierte Literale geparst (nicht als Strings)
+- **Neu:** Das Array `values_types` bei IN-Listen-Ausdrücken stellt Typen pro Element bereit
+- **Neu:** Das Modul `flyql.types` exportiert die kanonischen Typkonstanten

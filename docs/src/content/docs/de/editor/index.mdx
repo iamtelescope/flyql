@@ -1,0 +1,178 @@
+---
+title: Editor-Komponente
+description: Integriere den FlyQL-Abfrageeditor in deine Vue-3-Anwendung
+---
+
+Der FlyQL-Editor ist eine Vue-3-Komponente, die eine schema-gesteuerte Abfrageeingabe mit Autovervollständigung, Syntaxhervorhebung und Tastaturnavigation bietet.
+
+## Schnellstart
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onSubmit() {
+    console.log('Query submitted:', query.value)
+}
+
+function onParseError(error) {
+    console.log('Parse error:', error)
+}
+</script>
+
+<template>
+    <FlyqlEditor
+        v-model="query"
+        :columns="columns"
+        placeholder="Type a FlyQL query..."
+        @submit="onSubmit"
+        @parse-error="onParseError"
+    />
+</template>
+```
+
+Dadurch wird ein Texteingabefeld mit Autovervollständigung für Spalten, typbewussten Operatoren und booleschen Operatoren gerendert – alles gesteuert durch das `columns`-Schema.
+
+## Installation
+
+```bash
+npm install flyql
+```
+
+Der Editor benötigt Vue 3 als Peer-Dependency:
+
+```bash
+npm install vue
+```
+
+Importiere aus dem Unterpfad `flyql/editor`:
+
+```javascript
+import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+```
+
+Beide Komponenten importieren intern `flyql.css`, das Theme-Variablen, Stile für das Vorschlags-Panel und Token-Highlighting bereitstellt. Mit üblichen Bundlern wie Vite oder webpack funktioniert das automatisch.
+
+Wenn dein Setup keine CSS-Imports aus JavaScript verarbeitet, importiere das Stylesheet manuell:
+
+```javascript
+import 'flyql/editor/flyql.css'
+```
+
+## Props
+
+| Prop | Typ | Default | Beschreibung |
+|------|-----|---------|--------------|
+| `modelValue` | `String` | `''` | Abfragetext (`v-model`) |
+| `columns` | `Object` | `{}` | Spalten-[Schema](/de/editor/schema/) |
+| `onAutocomplete` | `Function` | `null` | Asynchrone Callback-Funktion für Werte |
+| `onKeyDiscovery` | `Function` | `null` | Callback-Funktion für Remote-Key-Discovery |
+| `placeholder` | `String` | `''` | Platzhaltertext |
+| `autofocus` | `Boolean` | `false` | Beim Mounten automatisch fokussieren |
+| `debug` | `Boolean` | `false` | Debug-Logging |
+| `debounceMs` | `Number` | `300` | Debounce-Verzögerung in ms für asynchrone Autocomplete-Aufrufe. Mit `0` deaktivieren |
+| `dark` | `Boolean` | `false` | Dunkles Theme aktivieren ([siehe Theming](/de/editor/theming/)) |
+
+**Callback-Signaturen:**
+- `onAutocomplete(key, value)` – gibt `Promise<{ items: string[], incomplete?: boolean }>` zurück
+- `onKeyDiscovery(columnName, segments)` – gibt `Promise<Array<{ name, type?, hasChildren? }>>` zurück
+
+Wenn `incomplete` in der Antwort `true` ist, weiß der Editor, dass die zurückgegebene Liste nur teilweise vollständig ist und ruft sie beim nächsten Tastendruck erneut ab. Asynchrone Aufrufe werden mit Debounce versehen und laufende Requests werden automatisch abgebrochen, wenn ein neuer startet.
+
+## Events
+
+| Event | Payload | Beschreibung |
+|-------|---------|--------------|
+| `update:modelValue` | `string` | Abfragetext wurde geändert (`v-model`) |
+| `submit` | — | Benutzer hat Shift+Enter gedrückt |
+| `parse-error` | `string` | Parse-Fehlermeldung bei ungültiger Abfrage |
+| `focus` | — | Editor hat Fokus erhalten |
+| `blur` | — | Editor hat Fokus verloren |
+
+## Exponierte Methoden
+
+Zugriff per Template-Ref:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const editorRef = ref(null)
+
+function checkStatus() {
+    const status = editorRef.value.getQueryStatus()
+    console.log(status.valid, status.message)
+}
+</script>
+
+<template>
+    <FlyqlEditor ref="editorRef" v-model="query" :columns="columns" />
+    <button @click="checkStatus">Check</button>
+</template>
+```
+
+| Methode | Rückgabe | Beschreibung |
+|---------|----------|--------------|
+| `focus()` | — | Fokussiert das Eingabefeld des Editors |
+| `blur()` | — | Entfernt den Fokus vom Eingabefeld des Editors |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Validiert die aktuelle Abfrage |
+
+## Asynchrone Wert-Autovervollständigung
+
+Stelle einen `onAutocomplete`-Callback bereit, um Wertvorschläge von deiner API zu laden:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    service: { type: 'string', suggest: true, autocomplete: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
+}
+
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+</script>
+
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" :on-autocomplete="onAutocomplete" />
+</template>
+```
+
+Der Callback erhält den Spalten-`key` und den aktuellen `value`-Präfix. Gib `{ items: string[], incomplete?: boolean }` zurück. Nach 200 ms erscheint automatisch ein Ladeindikator.
+
+### Zustandsbehafteter Autocomplete-Ablauf
+
+Der Editor verwendet einen zustandsbehafteten Autocomplete-Ablauf, um Serveraufrufe zu minimieren:
+
+- **Erstes Laden** – Beim Einstieg in den Wertkontext (z. B. `service=`) lädt der Editor sofort ohne Debounce. Bis Ergebnisse eintreffen, wird ein vollständiger Spinner angezeigt.
+- **Vollständige Liste** (`incomplete: false`) – Der Editor speichert die zurückgegebenen Elemente und wechselt auf clientseitiges Filtern. Weitere Tasteneingaben werden sofort lokal gefiltert, ohne Serveraufrufe, bis der Benutzer zu einer anderen Spalte wechselt.
+- **Unvollständige Liste** (`incomplete: true`) – Der Editor zeigt die aktuellen Vorschläge weiter an, während im Hintergrund mit Debounce erneut geladen wird. Im Header erscheint ein Inline-Spinner. Sobald neue Ergebnisse eintreffen, ersetzen sie die bisherigen Vorschläge.
+
+Gibt der Server 0 Elemente zurück, zeigt der Editor "No matching values" an. Beim clientseitigen Filtern einer vollständigen Liste bedeutet ein leeres Ergebnis einfach, dass keine Vorschläge angezeigt werden; der Benutzer kann mit Backspace wieder mehr sehen.
+
+Spalten mit `autocomplete: true` und statischen `values` verwenden diese Werte direkt, ohne den Callback aufzurufen. Spalten mit `autocomplete: true`, aber ohne `values`, lösen den Callback aus.
+
+## Tastenkürzel
+
+| Taste | Aktion |
+|-------|--------|
+| Pfeil hoch/runter | Zwischen Vorschlägen navigieren |
+| Enter / Tab | Ausgewählten Vorschlag übernehmen |
+| Escape | Vorschläge schließen |
+| Shift+Enter | Abfrage absenden (`submit`-Event) |

@@ -90,18 +90,18 @@ Usa comodines para coincidencias simples por prefijo. Usa regex cuando necesites
 ## Ejemplos
 
 ```
-# Regex: messages containing "error" or "fail"
+# Regex: mensajes que contienen "error" o "fail"
 message~"error|fail"
 
-# Regex: paths starting with /api/v2
+# Regex: rutas que empiezan por /api/v2
 path~"^/api/v2"
 
-# Negated regex: exclude health check paths
+# Regex negada: excluir rutas de health check
 path!~"^/health"
 
-# Wildcard: hosts starting with "prod"
+# Comodín: hosts que empiezan por "prod"
 host=prod*
 
-# Combined
+# Combinado
 host=prod* and message~"timeout.*" and path!~"^/health"
 ```

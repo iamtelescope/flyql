@@ -79,12 +79,12 @@ level=error or status not in [200, 201, 204]
 ## Ejemplos
 
 ```
-# HTTP success codes
+# Códigos HTTP de éxito
 status in [200, 201, 204]
 
-# Exclude test environments
+# Excluir entornos de prueba
 env not in ['dev', 'test', 'staging']
 
-# Multiple list conditions
+# Varias condiciones de lista
 method in ['GET', 'POST'] and status not in [401, 403, 404]
 ```

@@ -1,15 +1,15 @@
 ---
-title: Go クイックスタート
-description: Go プロジェクトに FlyQL をインストールして使う
+title: Go-Quickstart
+description: Installiere und verwende FlyQL in einem Go-Projekt
 ---
 
-## インストール
+## Installation
 
 ```bash
 go get github.com/iamtelescope/flyql/golang
 ```
 
-## クエリを parse する
+## Eine Abfrage parsen
 
 ```go
 package main
@@ -28,11 +28,11 @@ func main() {
 }
 ```
 
-`Parse` は、AST を表す `Root` ノードを持つ `*ParseResult` を返します。
+`Parse` gibt ein `*ParseResult` mit einem `Root`-Knoten zurück, der den AST repräsentiert.
 
-## SQL を生成する
+## SQL generieren
 
-generator を使うと、AST をパラメータ化 WHERE 句へ変換できます。データベース方言ごとに専用 generator があり、それぞれ方言固有のカラム型を扱います。
+Verwende einen Generator, um den AST in eine parametrisierte WHERE-Klausel umzuwandeln. Jeder Datenbankdialekt hat seinen eigenen Generator mit dialektspezifischen Spaltentypen.
 
 ### ClickHouse
 
@@ -64,11 +64,11 @@ func main() {
 }
 ```
 
-PostgreSQL と StarRocks の generator も同じパターンです。`generators/postgresql` または `generators/starrocks` を import してください。
+Die Generatoren für PostgreSQL und StarRocks folgen demselben Muster – importiere stattdessen `generators/postgresql` oder `generators/starrocks`.
 
-## メモリ上でマッチさせる
+## Im Speicher matchen
 
-SQL を生成せずに、データレコードに対してクエリを評価できます。
+Werte eine Abfrage gegen einen Datensatz aus, ohne SQL zu generieren:
 
 ```go
 package main
@@ -93,11 +93,11 @@ func main() {
 }
 ```
 
-## カラム式を parse する
+## Spaltenausdrücke parsen
 
-カラム式を、segments、transformers、aliases を持つ構造化データに parse できます。
-第 2 引数には、どの機能を有効にするかを制御する `Capabilities` struct を渡します。
-transformer はデフォルトでは無効です。
+Parse einen Spaltenausdruck in strukturierte Daten mit Segmenten, Transformern und Aliasen.
+Das zweite Argument ist eine `Capabilities`-Struktur, die steuert, welche Funktionen aktiviert sind.
+Transformers sind standardmäßig deaktiviert.
 
 ```go
 package main
@@ -108,7 +108,7 @@ import (
 )
 
 func main() {
-	// 基本的なカラムを parse（transformers はデフォルトで無効）
+	// Einfache Spalten parsen (Transformers sind standardmäßig deaktiviert)
 	parsed, err := columns.Parse("message, status", columns.Capabilities{})
 	if err != nil {
 		panic(err)
@@ -117,7 +117,7 @@ func main() {
 		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
 	}
 
-	// capabilities で transformers を有効化
+	// Transformers über Capabilities aktivieren
 	caps := columns.Capabilities{Transformers: true}
 	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
 	if err != nil {
@@ -125,15 +125,15 @@ func main() {
 	}
 	fmt.Println(withTransforms[0].Transformers)
 
-	// または API レスポンス用に直接 JSON へシリアライズ
+	// Oder direkt als JSON für API-Antworten serialisieren
 	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
 	fmt.Println(string(jsonBytes))
 }
 ```
 
-## クエリ内で Transformers を使う
+## Transformers in Abfragen
 
-transformer を含むクエリを parse し、SQL を生成できます。
+Parse eine Abfrage mit Transformern und generiere SQL:
 
 ```go
 package main
@@ -154,8 +154,8 @@ func main() {
 }
 ```
 
-構文の詳細は [Transformers](/ja/syntax/transformers/) を参照してください。
+Siehe [Transformers](/de/syntax/transformers/) für die vollständige Syntaxreferenz.
 
-## 次のステップ
+## Wie geht es weiter?
 
-- [構文リファレンス](/ja/syntax/): すべての演算子、ブールロジック、パターンなど
+- [Syntaxreferenz](/de/syntax/) – alle Operatoren, boolesche Logik, Muster und mehr

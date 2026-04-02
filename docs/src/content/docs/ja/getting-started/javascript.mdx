@@ -91,16 +91,16 @@ console.log(`Matches: ${matches}`) // true
 ```javascript
 import { parse, parseToJson } from 'flyql/columns'
 
-// Parse basic columns (transformers disabled by default)
+// 基本的なカラムを parse（transformers はデフォルトで無効）
 const parsed = parse("message, status")
 for (const col of parsed) {
     console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
 }
 
-// Enable transformers via capabilities
+// capabilities で transformers を有効化
 const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
 
-// Or serialize directly to JSON for API responses
+// または API レスポンス用に直接 JSON へシリアライズ
 const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
@@ -113,10 +113,10 @@ transformer を含むクエリを parse し、SQL を生成できます。
 import { parse } from 'flyql'
 import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 
-// Parse a transformer query
+// transformer を含むクエリを parse
 const result = parse("message|upper = 'ERROR'")
 
-// Generate SQL for ClickHouse
+// ClickHouse 用の SQL を生成
 const columns = { message: newColumn('message', false, 'String') }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')

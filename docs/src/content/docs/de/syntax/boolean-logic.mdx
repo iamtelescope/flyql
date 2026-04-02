@@ -1,0 +1,104 @@
+---
+title: Boolesche Logik
+description: Boolesche Operatoren, Priorität und Klammer-Gruppierung in FlyQL
+---
+
+## Boolesche Operatoren
+
+FlyQL verwendet drei boolesche Operatoren, um Bedingungen zu kombinieren:
+
+| Operator | Bedeutung | Beispiel |
+|----------|-----------|----------|
+| `and` | Beide Bedingungen müssen true sein | `status=200 and active` |
+| `or` | Eine der beiden Bedingungen kann true sein | `level=error or level=critical` |
+| `not` | Negiert einen Ausdruck | `not archived` |
+
+### Kombinierte Negation
+
+`not` kann mit `and` und `or` kombiniert werden:
+
+```
+active and not archived
+level=error or not healthy
+```
+
+## Operator-Priorität
+
+`and` bindet stärker als `or`. Das bedeutet:
+
+```
+a=1 or b=2 and c=3
+```
+
+wird geparst als:
+
+```
+a=1 or (b=2 and c=3)
+```
+
+Verwende Klammern, um die Priorität explizit zu überschreiben.
+
+## Gruppierung mit Klammern
+
+Verwende Klammern, um die Auswertungsreihenfolge zu steuern:
+
+```
+(status>=400 or level=error) and service=api
+```
+
+Ohne Klammern würde `and` stärker binden:
+
+```
+status>=400 or level=error and service=api
+→ status>=400 or (level=error and service=api)
+```
+
+### Verschachtelte Gruppierung
+
+Klammern können verschachtelt werden:
+
+```
+(a=1 or b=2) and not (c=3 and d=4)
+```
+
+### Gruppen negieren
+
+`not` wirkt auf die gesamte Gruppe:
+
+```
+not (status=200 and healthy)
+```
+
+Dadurch wird die kombinierte Bedingung negiert: true ist sie nur dann, wenn entweder `status` nicht 200 ist oder `healthy` false ist.
+
+## Negation
+
+`not` negiert jeden Ausdruck – eine Truthy-Prüfung, einen Vergleich oder eine Gruppe:
+
+```
+not active                  # field is falsy
+not status=200              # status is not 200
+not (a=1 and b=2)           # negates the group
+active and not archived     # combined with other conditions
+```
+
+Doppelte Negation hebt sich auf: `not not active` ist äquivalent zu `active`.
+
+## Beispiele
+
+```
+# Einfaches AND
+status=200 and service=api
+
+# Einfaches OR
+level=error or level=critical
+
+# Gemischt mit Priorität
+status>=400 or level=error and service=api
+
+# Explizite Gruppierung
+(status>=400 or level=error) and service=api
+
+# Komplexe Abfrage mit Negation und Gruppierung
+(status>=500 and host=prod*) or (level=error and not service=healthcheck)
+```

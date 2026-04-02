@@ -90,18 +90,18 @@ service=api-*
 ## 例
 
 ```
-# Regex: messages containing "error" or "fail"
+# Regex: Meldungen mit „error“ oder „fail“
 message~"error|fail"
 
-# Regex: paths starting with /api/v2
+# Regex: Pfade, die mit /api/v2 beginnen
 path~"^/api/v2"
 
-# Negated regex: exclude health check paths
+# Negiertes Regex: Health-Check-Pfade ausschließen
 path!~"^/health"
 
-# Wildcard: hosts starting with "prod"
+# Wildcard: Hosts, die mit „prod“ beginnen
 host=prod*
 
-# Combined
+# Kombiniert
 host=prod* and message~"timeout.*" and path!~"^/health"
 ```

@@ -232,6 +232,15 @@ class Parser:
                 value_type=ValueType.NULL,
             )
 
+        if value in ("true", "false") and not self.value_is_string:
+            return Expression(
+                key=parse_key(self.key),
+                operator=self.key_value_operator,
+                value=value == "true",
+                value_is_string=None,
+                value_type=ValueType.BOOLEAN,
+            )
+
         return Expression(
             key=parse_key(self.key),
             operator=self.key_value_operator,

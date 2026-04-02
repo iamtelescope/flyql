@@ -233,8 +233,8 @@
           "expression": {
             "key": "error",
             "operator": "=",
-            "value": "true",
-            "value_type": "string"
+            "value": true,
+            "value_type": "boolean"
           },
           "left": null,
           "right": null

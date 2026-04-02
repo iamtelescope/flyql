@@ -232,6 +232,15 @@ func (p *Parser) newExpression() *Expression {
 		}
 	}
 
+	if (value == "true" || value == "false") && !valueIsString {
+		return &Expression{
+			Key:       key,
+			Operator:  p.keyValueOperator,
+			Value:     value == "true",
+			ValueType: types.Boolean,
+		}
+	}
+
 	if valueIsString && p.keyValueOperator != OpRegex && p.keyValueOperator != OpNotRegex {
 		value = unescapeQuotes(value, p.valueQuoteChar)
 	}

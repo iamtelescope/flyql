@@ -22,8 +22,8 @@ class TestEscapeParam:
     def test_escape_numbers(self) -> None:
         assert escape_param(123) == "123"
         assert escape_param(12.34) == "12.34"
-        assert escape_param(True) == "True"
-        assert escape_param(False) == "False"
+        assert escape_param(True) == "true"
+        assert escape_param(False) == "false"
 
     def test_escape_unknown_type_raises_error(self) -> None:
         class CustomType:

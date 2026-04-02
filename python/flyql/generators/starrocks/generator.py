@@ -83,7 +83,7 @@ def escape_param(item: Any) -> str:
     elif isinstance(item, str):
         return "'%s'" % "".join(ESCAPE_CHARS_MAP.get(c, c) for c in item)
     elif isinstance(item, bool):
-        return str(item)
+        return str(item).lower()
     elif isinstance(item, (int, float)):
         return str(item)
     else:
@@ -589,7 +589,12 @@ def expression_to_sql(
             text = f"not regexp({col_ref}, {value})"
         elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:
             operator = expression.operator
-            is_like_pattern, value = prepare_like_pattern_value(str(expression.value))
+            value_str = (
+                str(expression.value).lower()
+                if isinstance(expression.value, bool)
+                else str(expression.value)
+            )
+            is_like_pattern, value = prepare_like_pattern_value(value_str)
             value = escape_param(value)
             if is_like_pattern:
                 if expression.operator == Operator.EQUALS.value:

@@ -204,7 +204,12 @@ def expression_to_sql_simple(
         return f"{identifier} !~ {value}"
     elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
         operator = expression.operator
-        is_like_pattern, processed = prepare_like_pattern_value(str(expression.value))
+        value_str = (
+            str(expression.value).lower()
+            if isinstance(expression.value, bool)
+            else str(expression.value)
+        )
+        is_like_pattern, processed = prepare_like_pattern_value(value_str)
         escaped_value = escape_param(processed)
         if is_like_pattern:
             operator = (

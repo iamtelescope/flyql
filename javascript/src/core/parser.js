@@ -230,6 +230,19 @@ export class Parser {
             )
         }
 
+        if ((value === 'true' || value === 'false') && !this.valueIsString) {
+            return new Expression(
+                parseKey(this.key),
+                this.keyValueOperator,
+                value === 'true',
+                null,
+                null,
+                null,
+                null,
+                ValueType.BOOLEAN,
+            )
+        }
+
         if (
             this.valueIsString &&
             this.keyValueOperator !== Operator.REGEX &&

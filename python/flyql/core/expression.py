@@ -29,7 +29,7 @@ class Expression:
         self,
         key: Key,
         operator: str,
-        value: str | int | float | None,
+        value: str | int | float | bool | None,
         value_is_string: bool | None,
         values: Optional[List[Any]] = None,
         values_type: Optional[str] = None,

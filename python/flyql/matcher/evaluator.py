@@ -137,8 +137,12 @@ class Evaluator:
             regex = self._get_regex(str(expression.value))
 
         if expression.operator == Operator.EQUALS.value:
+            if isinstance(expression.value, bool) or expression.value is None:
+                return value is expression.value
             return bool(value == expression.value)
         elif expression.operator == Operator.NOT_EQUALS.value:
+            if isinstance(expression.value, bool) or expression.value is None:
+                return value is not expression.value
             return bool(value != expression.value)
         elif expression.operator == Operator.REGEX.value:
             if regex is None:

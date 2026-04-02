@@ -30,6 +30,7 @@ describe('Matcher', () => {
     runMatcherTestSuite('not.json')
     runMatcherTestSuite('has.json')
     runMatcherTestSuite('transformers.json')
+    runMatcherTestSuite('types.json')
 
     describe('basic matching', () => {
         it('matches string equals', () => {

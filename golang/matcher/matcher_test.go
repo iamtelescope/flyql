@@ -201,6 +201,7 @@ func TestMatcherFromDataFiles(t *testing.T) {
 		"in.json",
 		"has.json",
 		"transformers.json",
+		"types.json",
 	}
 
 	for _, file := range files {

@@ -8,11 +8,9 @@ import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.a
 import TechLabel from '../../../components/TechLabel.astro'
 import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
 
-Uma linguagem de consulta leve que transpila em SQL à prova de injeção para ClickHouse, PostgreSQL e StarRocks — com implementações em Go, Python e JavaScript.
+Bem-vindo à documentação do projeto **FlyQL**. Versão atual: **1.0.0** ([registo de alterações](/pt/changelog)).
 
-## O que é o FlyQL?
-
-O FlyQL é uma linguagem de consulta simples e legível, concebida para filtrar dados. Escreva uma consulta como `status >= 400 and host = prod*`, e o FlyQL transpila-a em SQL parametrizado para a sua base de dados — ou avalia-a em memória contra registos de dados.
+O FlyQL é uma linguagem de consulta leve e legível, concebida para filtrar dados. Transpila em SQL parametrizado e à prova de injeção para **ClickHouse**, **PostgreSQL** e **StarRocks** — com implementações completas em **Go**, **Python** e **JavaScript**. Escreva uma consulta uma vez, e o FlyQL gera SQL específico do dialeto para a sua base de dados — ou avalia-a em memória contra registos de dados.
 
 <FlyqlCode code={landingIntroQuery} />
 

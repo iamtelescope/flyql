@@ -1,0 +1,116 @@
+---
+title: Python क्विकस्टार्ट
+description: Python प्रोजेक्ट में FlyQL इंस्टॉल और उपयोग करें
+---
+
+## इंस्टॉलेशन
+
+Python के लिए FlyQL git से इंस्टॉल किया जाता है (PyPI पर प्रकाशित नहीं):
+
+```bash
+pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+```
+
+यह अपनी डिपेंडेंसी `google-re2` के साथ `flyql` पैकेज इंस्टॉल करता है।
+
+**आवश्यकताएँ:** Python 3.10+
+
+## क्वेरी पार्स करें
+
+```python
+from flyql.core.parser import parse
+
+result = parse("status = 200 and active")
+print(result.root)
+```
+
+`parse()` AST का प्रतिनिधित्व करने वाले `root` नोड के साथ एक `Parser` ऑब्जेक्ट लौटाता है। अमान्य इनपुट पर यह `ParserError` उत्पन्न करता है।
+
+## SQL उत्पन्न करें
+
+AST को पैरामीटराइज़्ड WHERE क्लॉज़ में बदलने के लिए जनरेटर का उपयोग करें। प्रत्येक डेटाबेस बोली का अपना जनरेटर है।
+
+### ClickHouse
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status >= 400 and host = prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql(result.root, columns)
+print(sql)
+```
+
+PostgreSQL और StarRocks जनरेटर समान पैटर्न का पालन करते हैं — इसके बजाय `flyql.generators.postgresql` या `flyql.generators.starrocks` से इम्पोर्ट करें।
+
+## इन-मेमोरी मैच
+
+SQL उत्पन्न किए बिना डेटा रिकॉर्ड के विरुद्ध क्वेरी का मूल्यांकन करें:
+
+```python
+from flyql.core.parser import parse
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+result = parse("status = 200 and active")
+
+data = {
+    "status": 200,
+    "active": True,
+    "host": "prod-api-01",
+}
+
+evaluator = Evaluator()
+matches = evaluator.evaluate(result.root, Record(data))
+print(f"Matches: {matches}")  # True
+```
+
+## कॉलम एक्सप्रेशन पार्स करें
+
+कॉलम एक्सप्रेशन को सेगमेंट, ट्रांसफ़ॉर्मर, और उपनामों के साथ संरचित डेटा में पार्स करें:
+
+```python
+from flyql.columns import parse, parse_to_json
+
+# Parse basic columns (transformers disabled by default)
+parsed = parse("message, status")
+for col in parsed:
+    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
+
+# Enable transformers via capabilities
+with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
+
+# Or serialize directly to JSON for API responses
+json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
+print(json_str)
+```
+
+## क्वेरी में ट्रांसफ़ॉर्मर
+
+ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql, Column
+
+# Parse a transformer query
+result = parse("message|upper = 'ERROR'")
+
+# Generate SQL for ClickHouse
+columns = {"message": Column("message", False, "String")}
+sql = to_sql(result.root, columns)
+print(sql)  # equals(upper(message), 'ERROR')
+```
+
+पूर्ण सिंटैक्स संदर्भ के लिए [ट्रांसफ़ॉर्मर](/hi/syntax/transformers/) देखें।
+
+## आगे क्या
+
+- [सिंटैक्स संदर्भ](/hi/syntax/) — सभी ऑपरेटर, बूलियन लॉजिक, पैटर्न, और अधिक

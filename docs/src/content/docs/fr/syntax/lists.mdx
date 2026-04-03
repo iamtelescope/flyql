@@ -1,0 +1,77 @@
+---
+title: Listes
+description: Operateurs d'appartenance aux listes dans FlyQL (in, not in)
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Appartenance a une liste
+
+Utilisez <FlyqlToken type="operator">in</FlyqlToken> pour verifier si une valeur se trouve dans une liste, et <FlyqlToken type="operator">not in</FlyqlToken> pour verifier qu'elle ne s'y trouve pas :
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
+
+## Regles de syntaxe
+
+- Les valeurs sont entre crochets <FlyqlToken type="operator">[ ]</FlyqlToken> et separees par des virgules
+- Toutes les valeurs d'une liste doivent etre du meme type (toutes des chaines ou tous des nombres)
+- Les valeurs de type chaine doivent etre entre guillemets : <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- Les valeurs numeriques ne sont pas entre guillemets : <FlyqlCode code={`[1, 2, 3]`} inline />
+- Les espaces autour des virgules et des crochets sont autorises
+
+### Listes de chaines
+
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
+
+Les guillemets simples et doubles fonctionnent pour les valeurs de type chaine.
+
+### Listes numeriques
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
+
+### Listes vides
+
+Les listes vides sont autorisees :
+
+<FlyqlCode code={`status in []`} />
+
+Une liste <FlyqlToken type="operator">in</FlyqlToken> vide est toujours fausse — rien ne correspond a une liste vide.
+
+<FlyqlCode code={`status not in []`} />
+
+Une liste <FlyqlToken type="operator">not in</FlyqlToken> vide est toujours vraie — tout est "pas dans" une liste vide.
+
+## Coherence des types
+
+Les listes **doivent** contenir des valeurs d'un type uniforme — toutes des chaines ou tous des nombres. Le melange de types au sein d'une meme liste provoque une erreur d'analyse :
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
+
+L'exemple suivant est invalide (types melanges — erreur d'analyse) :
+
+<FlyqlCode code={`values in [200, 'ok']`} />
+
+L'analyseur suit le type de la premiere valeur de la liste et rejette toute valeur suivante d'un type different. Cela est applique au moment de l'analyse, avant que la requete n'atteigne un generateur ou un evaluateur.
+
+Lorsqu'un generateur SQL traite une liste, il valide en plus que les types de valeurs de la liste sont compatibles avec le type de la colonne cible. Par exemple, passer des valeurs de type chaine a une colonne numerique generera une erreur de validation lors de la generation SQL.
+
+Le champ `valuesType` de l'expression analysee indique si la liste contient des valeurs `"string"` ou `"number"`. Pour les listes vides, `valuesType` est `null`.
+
+## Combinaison avec d'autres operateurs
+
+Les operateurs de liste se combinent avec les operateurs booleens comme toute autre condition :
+
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+
+## Exemples
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

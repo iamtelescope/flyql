@@ -1,0 +1,47 @@
+---
+title: Visao Geral da Sintaxe
+description: Estrutura basica de consultas e regras de sintaxe do FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+As consultas FlyQL consistem em uma ou mais condicoes ligadas por operadores booleanos (<FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>). Cada condicao e uma comparacao ou uma verificacao truthy.
+
+## Estrutura Basica de uma Consulta
+
+<FlyqlCode code={`status = 200 and active and not archived`} />
+
+- <FlyqlCode code={`status = 200`} inline /> — o campo <FlyqlToken type="key">status</FlyqlToken> e igual a <FlyqlToken type="value">200</FlyqlToken>
+- <FlyqlCode code={`active`} inline /> — o campo <FlyqlToken type="key">active</FlyqlToken> tem um valor truthy
+- <FlyqlCode code={`not archived`} inline /> — o campo <FlyqlToken type="key">archived</FlyqlToken> e falsy (null, vazio, zero ou false)
+
+## Mais Exemplos
+
+<FlyqlCode code={`service != api or user = "john doe"`} />
+
+<FlyqlCode code={`message ~ "error.*" and not debug`} />
+
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
+
+<FlyqlCode code={`status in [200, 201] and method not in ['DELETE', 'PUT']`} />
+
+<FlyqlCode code={`message has 'error' and tags not has 'debug'`} />
+
+## Regras Gerais
+
+- **Chaves isoladas** — Uma chave sem operador e tratada como verificacao truthy: <FlyqlCode code={`active`} inline />
+- **Comparacoes** — Uma chave com operador deve ter um valor correspondente: <FlyqlCode code={`status = 200`} inline />
+- **Espacos em branco** — Espacos a volta dos operadores sao opcionais: <FlyqlCode code={`status=200`} inline /> e <FlyqlCode code={`status = 200`} inline /> sao equivalentes
+- **Precedencia de operadores** — <FlyqlToken type="operator">and</FlyqlToken> tem maior precedencia do que <FlyqlToken type="operator">or</FlyqlToken>: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> e interpretado como <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
+- **Parenteses** — Use <FlyqlToken type="operator">( )</FlyqlToken> para alterar a precedencia: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
+
+## Seccoes de Sintaxe
+
+- [Operadores](/pt/syntax/operators/) — Operadores de comparacao (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
+- [Logica Booleana](/pt/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, precedencia, agrupamento
+- [Correspondencia de Padroes](/pt/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) e correspondencia por wildcards (<FlyqlToken type="operator">{'*'}</FlyqlToken>)
+- [Listas](/pt/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken> com valores em lista
+- [Contencao](/pt/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> e <FlyqlToken type="operator">not has</FlyqlToken> para substrings, existencia de chaves e pertenca a conjuntos
+- [Valores e Expressoes](/pt/syntax/values/) — Truthy/falsy, strings entre aspas, numeros
+- [Chaves Aninhadas](/pt/syntax/nested-keys/) — Caminhos separados por pontos e segmentos de chave entre aspas

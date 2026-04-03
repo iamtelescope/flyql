@@ -1,0 +1,77 @@
+---
+title: सूचियाँ
+description: FlyQL में सूची सदस्यता ऑपरेटर (in, not in)
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## सूची सदस्यता
+
+किसी मान की सूची में उपस्थिति जाँचने के लिए <FlyqlToken type="operator">in</FlyqlToken> का उपयोग करें, और अनुपस्थिति जाँचने के लिए <FlyqlToken type="operator">not in</FlyqlToken>:
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
+
+## सिंटैक्स नियम
+
+- मान वर्ग कोष्ठक <FlyqlToken type="operator">[ ]</FlyqlToken> में बंद होते हैं और कॉमा से अलग किए जाते हैं
+- सूची के सभी मान एक ही प्रकार के होने चाहिए (सभी स्ट्रिंग या सभी संख्याएँ)
+- स्ट्रिंग मान उद्धृत होने चाहिए: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- संख्यात्मक मान अनउद्धृत होते हैं: <FlyqlCode code={`[1, 2, 3]`} inline />
+- कॉमा और कोष्ठक के आसपास स्पेस अनुमत हैं
+
+### स्ट्रिंग सूचियाँ
+
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
+
+स्ट्रिंग मानों के लिए सिंगल और डबल दोनों उद्धरण चिह्न काम करते हैं।
+
+### संख्यात्मक सूचियाँ
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
+
+### खाली सूचियाँ
+
+खाली सूचियाँ अनुमत हैं:
+
+<FlyqlCode code={`status in []`} />
+
+खाली <FlyqlToken type="operator">in</FlyqlToken> सूची सदैव false होती है — खाली सूची से कुछ भी मैच नहीं होता।
+
+<FlyqlCode code={`status not in []`} />
+
+खाली <FlyqlToken type="operator">not in</FlyqlToken> सूची सदैव true होती है — सब कुछ खाली सूची में "नहीं" है।
+
+## प्रकार संगतता
+
+सूचियों में एक समान प्रकार के मान होने **चाहिए** — सभी स्ट्रिंग या सभी संख्याएँ। एक ही सूची में प्रकार मिश्रित करने पर पार्स त्रुटि होती है:
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
+
+निम्नलिखित अमान्य है (मिश्रित प्रकार — पार्स त्रुटि):
+
+<FlyqlCode code={`values in [200, 'ok']`} />
+
+पार्सर सूची के पहले मान का प्रकार ट्रैक करता है और किसी भी बाद के भिन्न प्रकार के मान को अस्वीकार करता है। यह पार्स समय पर लागू होता है, क्वेरी किसी जनरेटर या मैचर तक पहुँचने से पहले।
+
+जब SQL जनरेटर किसी सूची को प्रोसेस करता है, तो वह अतिरिक्त रूप से यह सत्यापित करता है कि सूची मान प्रकार लक्ष्य कॉलम प्रकार के साथ संगत हैं। उदाहरण के लिए, संख्यात्मक कॉलम को स्ट्रिंग मान देने से SQL जनरेशन के दौरान सत्यापन त्रुटि होगी।
+
+पार्स की गई अभिव्यक्ति पर `valuesType` फ़ील्ड इंगित करता है कि सूची में `"string"` या `"number"` मान हैं। खाली सूचियों के लिए, `valuesType` `null` होता है।
+
+## अन्य ऑपरेटर के साथ संयोजन
+
+सूची ऑपरेटर किसी भी अन्य शर्त की तरह बूलियन ऑपरेटर के साथ संयोजित होते हैं:
+
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+
+## उदाहरण
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

@@ -1,0 +1,87 @@
+---
+title: कॉलम कम्पोनेंट
+description: कॉलम एक्सप्रेशन एडिटिंग के लिए FlyqlColumns कम्पोनेंट
+---
+
+`FlyqlColumns` कम्पोनेंट कॉलम एक्सप्रेशन के लिए एक समर्पित इनपुट प्रदान करता है — कॉलम का चयन, फ़िल्टरिंग, और ट्रांसफ़ॉर्मर लागू करना।
+
+## त्वरित सेटअप
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | प्रकार | डिफ़ॉल्ट | विवरण |
+|------|------|---------|-------------|
+| `modelValue` | `String` | `''` | एक्सप्रेशन टेक्स्ट (v-model) |
+| `columns` | `Object` | `{}` | कॉलम [स्कीमा](/hi/editor/schema/) |
+| `capabilities` | `Object` | `null` | पार्सर क्षमताएँ (जैसे, `{ transformers: true }`) |
+| `onKeyDiscovery` | `Function` | `null` | रिमोट कुंजी खोज कॉलबैक |
+| `placeholder` | `String` | `''` | प्लेसहोल्डर टेक्स्ट |
+| `autofocus` | `Boolean` | `false` | माउंट पर ऑटो-फ़ोकस |
+| `debug` | `Boolean` | `false` | डीबग लॉगिंग |
+| `dark` | `Boolean` | `false` | डार्क थीम सक्षम करें ([थीमिंग देखें](/hi/editor/theming/)) |
+
+## इवेंट
+
+| इवेंट | पेलोड | विवरण |
+|-------|---------|-------------|
+| `update:modelValue` | `string` | एक्सप्रेशन टेक्स्ट बदला (v-model) |
+| `update:parsed` | `ParsedColumn[]` | पार्स्ड कॉलम ऐरे अपडेट हुआ |
+| `submit` | — | उपयोगकर्ता ने Shift+Enter दबाया |
+| `parse-error` | `string` | पार्स त्रुटि संदेश |
+| `focus` | — | कम्पोनेंट ने फ़ोकस प्राप्त किया |
+| `blur` | — | कम्पोनेंट ने फ़ोकस खोया |
+
+## एक्सपोज़्ड विधियाँ
+
+| विधि | रिटर्न | विवरण |
+|--------|---------|-------------|
+| `focus()` | — | इनपुट को फ़ोकस करें |
+| `blur()` | — | इनपुट को ब्लर करें |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | एक्सप्रेशन को मान्य करें |
+| `getParsedColumns()` | `ParsedColumn[]` | पार्स्ड कॉलम ऐरे प्राप्त करें |
+
+## कॉलम एक्सप्रेशन सिंटैक्स
+
+कॉलम एक्सप्रेशन वैकल्पिक ट्रांसफ़ॉर्मर और उपनामों के साथ कॉमा-सेपरेटेड प्रारूप का उपयोग करते हैं:
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| भाग | सिंटैक्स | उदाहरण |
+|------|--------|---------|
+| कॉलम | `name` | `message` |
+| ट्रांसफ़ॉर्मर | `name\|transformer` | `status\|upper` |
+| आर्ग्युमेंट सहित ट्रांसफ़ॉर्मर | `name\|transformer(arg)` | `name\|truncate(50)` |
+| उपनाम | `name as alias` | `host as h` |
+| नेस्टेड | `parent.child` | `metadata.labels.env` |
+| चेन्ड ट्रांसफ़ॉर्मर | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

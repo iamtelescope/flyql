@@ -1,0 +1,83 @@
+---
+title: बूलियन लॉजिक
+description: FlyQL में बूलियन ऑपरेटर, प्राथमिकता, और कोष्ठक समूहीकरण
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## बूलियन ऑपरेटर
+
+FlyQL शर्तों को जोड़ने के लिए तीन बूलियन ऑपरेटर का उपयोग करता है:
+
+| ऑपरेटर | अर्थ | उदाहरण |
+|----------|---------|---------|
+| <FlyqlToken type="operator">and</FlyqlToken> | दोनों शर्तें सत्य होनी चाहिए | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | कोई भी एक शर्त सत्य हो सकती है | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | अभिव्यक्ति को नकारता है | <FlyqlCode code={`not archived`} inline /> |
+
+### संयुक्त निषेध
+
+<FlyqlToken type="operator">not</FlyqlToken> को <FlyqlToken type="operator">and</FlyqlToken> और <FlyqlToken type="operator">or</FlyqlToken> के साथ जोड़ा जा सकता है:
+
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
+
+## ऑपरेटर प्राथमिकता
+
+<FlyqlToken type="operator">and</FlyqlToken> की बाइंडिंग <FlyqlToken type="operator">or</FlyqlToken> से मजबूत है। इसका अर्थ है:
+
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
+
+इसे इस प्रकार पार्स किया जाता है:
+
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
+
+प्राथमिकता बदलने के लिए, स्पष्ट रूप से कोष्ठक का उपयोग करें।
+
+## कोष्ठक समूहीकरण
+
+मूल्यांकन क्रम को नियंत्रित करने के लिए कोष्ठक का उपयोग करें:
+
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+
+कोष्ठक के बिना, <FlyqlToken type="operator">and</FlyqlToken> की बाइंडिंग मजबूत होती:
+
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+यह इसके समतुल्य है:
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
+
+### नेस्टेड समूहीकरण
+
+कोष्ठक को नेस्ट किया जा सकता है:
+
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
+
+### समूहों का निषेध
+
+<FlyqlToken type="operator">not</FlyqlToken> पूरे समूह पर लागू होता है:
+
+<FlyqlCode code={`not (status = 200 and healthy)`} />
+
+यह संयुक्त शर्त को नकारता है — केवल तभी सत्य जब <FlyqlToken type="key">status</FlyqlToken> 200 नहीं है या <FlyqlToken type="key">healthy</FlyqlToken> false है।
+
+## निषेध
+
+<FlyqlToken type="operator">not</FlyqlToken> किसी भी अभिव्यक्ति को नकारता है — truthy जाँच, तुलना, या समूह:
+
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
+
+दोहरा निषेध रद्द हो जाता है: <FlyqlCode code={`not not active`} inline /> <FlyqlCode code={`active`} inline /> के समतुल्य है।
+
+## उदाहरण
+
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

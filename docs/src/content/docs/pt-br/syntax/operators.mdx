@@ -1,0 +1,93 @@
+---
+title: Operadores de Comparação
+description: Operadores de comparação do FlyQL para filtragem de dados
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+O FlyQL suporta os seguintes operadores de comparação:
+
+## Igualdade
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">=</FlyqlToken> | Igual | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Diferente | <FlyqlCode code={`env != prod`} inline /> |
+
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`service != "api-gateway"`} />
+
+Ambos os lados do operador são obrigatórios — uma <FlyqlToken type="key">chave</FlyqlToken> e um <FlyqlToken type="value">valor</FlyqlToken>.
+
+## Comparação Numérica
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | Maior que | <FlyqlCode code={`status > 399`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | Maior ou igual | <FlyqlCode code={`status >= 400`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | Menor que | <FlyqlCode code={`duration < 1000`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | Menor ou igual | <FlyqlCode code={`duration <= 500`} inline /> |
+
+<FlyqlCode code={`status >= 400 and duration < 5000`} />
+<FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
+
+Os operadores de comparação numérica funcionam com valores numéricos. Quando usados com valores de string, a comparação lexicográfica é aplicada.
+
+## Correspondência Regex
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | Correspondência regex | <FlyqlCode code={`message ~ "error.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | Não corresponde ao regex | <FlyqlCode code={`path !~ "^/health"`} inline /> |
+
+<FlyqlCode code={`message ~ "timeout|connection refused"`} />
+<FlyqlCode code={`host !~ "^test-.*"`} />
+
+Os padrões regex seguem a sintaxe do banco de dados ou runtime de destino. Veja [Correspondência de Padrões](/pt-br/syntax/pattern-matching/) para flags de regex e detalhes.
+
+## Pertencimento a Lista
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">in</FlyqlToken> | Na lista | <FlyqlCode code={`status in [200, 201]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | Fora da lista | <FlyqlCode code={`env not in ['dev', 'test']`} inline /> |
+
+Veja a página de [Listas](/pt-br/syntax/lists/) para regras detalhadas de sintaxe de listas.
+
+## Verificação de Contenção
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">has</FlyqlToken> | Contém | <FlyqlCode code={`message has 'error'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | Não contém | <FlyqlCode code={`message not has 'test'`} inline /> |
+
+<FlyqlCode code={`message has 'timeout'`} />
+<FlyqlCode code={`tags not has 'deprecated'`} />
+
+O operador <FlyqlToken type="operator">has</FlyqlToken> realiza uma verificação de contenção dependente do tipo:
+
+- **String** — correspondência de substring: <FlyqlCode code={`message has 'error'`} inline /> é verdadeiro se <FlyqlToken type="key">message</FlyqlToken> contiver <FlyqlToken type="string">"error"</FlyqlToken>
+- **Map** — existência de chave: <FlyqlCode code={`metadata has 'region'`} inline /> é verdadeiro se o map possuir a chave <FlyqlToken type="string">"region"</FlyqlToken>
+- **Array/Lista** — pertencimento de item: <FlyqlCode code={`tags has 'web'`} inline /> é verdadeiro se o array contiver <FlyqlToken type="string">"web"</FlyqlToken>
+- **JSON** — existência de chave: <FlyqlCode code={`data has 'name'`} inline /> é verdadeiro se o objeto JSON possuir a chave <FlyqlToken type="string">"name"</FlyqlToken>
+- **Null/vazio** — sempre falso para <FlyqlToken type="operator">has</FlyqlToken>, sempre verdadeiro para <FlyqlToken type="operator">not has</FlyqlToken>
+
+<FlyqlToken type="operator">has</FlyqlToken> aceita um único valor (não uma lista). Use <FlyqlToken type="operator">in</FlyqlToken> para verificar pertencimento em um conjunto de valores.
+
+## Resumo dos Operadores
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">=</FlyqlToken> | Igual | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Diferente | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | Maior que | <FlyqlCode code={`count > 10`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | Maior ou igual | <FlyqlCode code={`count >= 10`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | Menor que | <FlyqlCode code={`count < 100`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | Menor ou igual | <FlyqlCode code={`count <= 100`} inline /> |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | Correspondência regex | <FlyqlCode code={`msg ~ "err.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | Não corresponde ao regex | <FlyqlCode code={`msg !~ "^ok"`} inline /> |
+| <FlyqlToken type="operator">in</FlyqlToken> | Na lista | <FlyqlCode code={`s in [1, 2]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | Fora da lista | <FlyqlCode code={`s not in [3]`} inline /> |
+| <FlyqlToken type="operator">has</FlyqlToken> | Contém | <FlyqlCode code={`msg has 'err'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | Não contém | <FlyqlCode code={`msg not has 'ok'`} inline /> |

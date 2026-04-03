@@ -1,0 +1,65 @@
+---
+title: Cles imbriquees
+description: Parcours de chemins separes par des points et segments de cle entre guillemets dans FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Notation par points
+
+Utilisez des chemins separes par des points pour acceder aux champs imbriques dans des donnees JSON, Map ou structurees :
+
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
+
+Chaque segment separe par un point traverse un niveau dans la structure imbriquee. Les generateurs SQL traduisent ces chemins dans la syntaxe correcte pour chaque dialecte de base de donnees (acces au chemin JSON, recherches dans les Map, etc.).
+
+## Segments de cle entre guillemets
+
+Lorsqu'un segment de cle contient lui-meme un point, encadrez-le avec des guillemets pour que le point ne soit pas traite comme un separateur :
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+
+Ici :
+- `"foo.bar"` est un seul segment de cle (le point est litteral)
+- <FlyqlToken type="key">baz</FlyqlToken> est un enfant de `"foo.bar"`
+
+Sans guillemets, <FlyqlToken type="key">foo.bar.baz</FlyqlToken> serait trois segments : <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>.
+
+### Regles de mise entre guillemets
+
+Les guillemets simples et doubles fonctionnent pour les segments de cle :
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
+
+Seuls les segments contenant des points doivent etre entre guillemets :
+
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
+
+## Profondeur du chemin
+
+Il n'y a pas de limite sur la profondeur d'imbrication :
+
+<FlyqlCode code={`a.b.c.d.e = value`} />
+
+Chaque segment est parcouru dans l'ordre lors de la generation SQL ou de l'evaluation en memoire.
+
+## Combinaison avec les operateurs
+
+Les cles imbriquees fonctionnent avec tous les operateurs :
+
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
+
+## Exemples
+
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

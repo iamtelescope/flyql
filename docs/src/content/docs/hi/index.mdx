@@ -1,0 +1,59 @@
+---
+title: प्रलेखन
+description: बहु-बोली SQL जनरेशन के लिए एक हल्की, इंजेक्शन-प्रूफ़ क्वेरी भाषा
+---
+
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
+import TechLabel from '../../../components/TechLabel.astro'
+import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
+
+FlyQL एक हल्की क्वेरी भाषा है जो ClickHouse, PostgreSQL, और StarRocks के लिए इंजेक्शन-प्रूफ़ SQL में ट्रांसपाइल होती है — Go, Python, और JavaScript में कार्यान्वयन के साथ।
+
+## FlyQL क्या है?
+
+FlyQL डेटा फ़िल्टरिंग के लिए डिज़ाइन की गई एक सरल, मानव-पठनीय क्वेरी भाषा है। `status >= 400 and host = prod*` जैसी क्वेरी लिखें, और FlyQL इसे आपके डेटाबेस के लिए पैरामीटराइज़्ड SQL में ट्रांसपाइल करता है — या इसे इन-मेमोरी डेटा रिकॉर्ड के विरुद्ध मूल्यांकित करता है।
+
+<FlyqlCode code={landingIntroQuery} />
+
+यह क्वेरी समान रूप से काम करती है चाहे आपका बैकएंड ClickHouse हो, PostgreSQL हो, StarRocks हो, या इन-मेमोरी डेटासेट हो।
+
+## प्रमुख विशेषताएँ
+
+- **डिज़ाइन द्वारा इंजेक्शन-प्रूफ़** — व्याकरण सबक्वेरी, JOIN, UNION, या DDL व्यक्त नहीं कर सकता। सुरक्षा संरचनात्मक है, रक्षात्मक नहीं। सभी उत्पन्न SQL पैरामीटराइज़्ड मानों का उपयोग करता है।
+- **बहु-बोली SQL** — एक क्वेरी भाषा, बोली-विशिष्ट आउटपुट। उचित प्रकार हैंडलिंग (JSON पथ, मैप एक्सेस, ऐरे हैंडलिंग) के साथ ClickHouse, PostgreSQL, और StarRocks के लिए सही SQL उत्पन्न करता है।
+- **बहु-भाषा** — Go, Python, और JavaScript में पूर्ण कार्यान्वयन। फ़्रंटएंड पर पार्स करें, बैकएंड पर मान्य करें, कहीं भी SQL उत्पन्न करें — समान क्वेरी, समान परिणाम।
+- **शून्य डिपेंडेंसी** — किसी भी भाषा में बिना बाहरी डिपेंडेंसी के हाथ से लिखा गया स्टेट-मशीन पार्सर। एकीकृत करना सरल, कोई विरोध नहीं।
+
+## त्वरित उदाहरण
+
+<FlyqlCode code={landingQuickExampleQuery} />
+
+<FlyqlQuickExampleTable
+  componentHeader="घटक"
+  meaningHeader="अर्थ"
+  meanings={{
+    service: 'service फ़ील्ड "api" नहीं है',
+    status: 'status 400 या उससे अधिक है',
+    level: 'level फ़ील्ड "error" के बराबर है',
+    message: 'message रेगेक्स पैटर्न से मेल खाता है',
+    boolean: 'प्राथमिकता के साथ बूलियन लॉजिक',
+    grouping: 'स्पष्ट समूहन',
+  }}
+/>
+
+## समर्थित भाषाएँ
+
+| भाषा | पार्सर | इन-मेमोरी मैचर |
+|----------|--------|-------------------|
+| <TechLabel icon="/icons/go.svg" label="Go" variant="go" /> | Yes | Yes |
+| <TechLabel icon="/icons/python.svg" label="Python" /> | Yes | Yes |
+| <TechLabel icon="/icons/javascript.svg" label="JavaScript" /> | Yes | Yes |
+
+## SQL जनरेटर
+
+| डेटाबेस | Go | Python | JavaScript |
+|----------|----|--------|------------|
+| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Yes | Yes | Yes |

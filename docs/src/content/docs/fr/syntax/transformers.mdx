@@ -1,0 +1,89 @@
+---
+title: Transformateurs
+description: Transformer les valeurs de colonnes avec des fonctions chainees par pipe avant la comparaison
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+Les transformateurs modifient les valeurs de colonnes avant qu'elles ne soient comparees dans les requetes ou emises en SQL. Ils utilisent la syntaxe pipe (`|`), appliquee de gauche a droite.
+
+## Syntaxe pipe
+
+Appliquez un transformateur a une colonne avec `|` :
+
+<FlyqlCode code={`message|upper = "ERROR"`} />
+
+Cela transforme la valeur de <FlyqlToken type="key">message</FlyqlToken> en utilisant <FlyqlToken type="transformer">upper</FlyqlToken> avant la comparaison avec `"ERROR"`.
+
+## Chainage
+
+Chainez plusieurs transformateurs avec des pipes supplementaires :
+
+<FlyqlCode code={`message|lower|len > 100`} />
+
+Les transformateurs s'appliquent de gauche a droite : <FlyqlToken type="transformer">lower</FlyqlToken> s'execute en premier (chaine vers chaine), puis <FlyqlToken type="transformer">len</FlyqlToken> (chaine vers int). Le resultat est compare avec `> 100`.
+
+## Systeme de types
+
+Chaque transformateur declare un type d'entree et un type de sortie. Les transformateurs chaines doivent etre compatibles en types — le type de sortie de l'un doit correspondre au type d'entree du suivant.
+
+| Type | Description |
+|------|-------------|
+| `string` | Valeurs textuelles |
+| `int` | Nombres entiers |
+| `float` | Nombres a virgule flottante |
+| `array` | Tableau de valeurs (utilisez l'operateur <FlyqlToken type="operator">has</FlyqlToken> pour verifier l'appartenance) |
+
+## Transformateurs integres
+
+| Transformateur | Entree | Sortie | Description |
+|----------------|--------|--------|-------------|
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | Convertir en majuscules |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | Convertir en minuscules |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | Obtenir la longueur de la chaine |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | Decouper par delimiteur : `split(".")` |
+
+## Sortie SQL par dialecte
+
+Les transformateurs generent des appels de fonctions SQL specifiques au dialecte. Les transformateurs chaines produisent des appels imbriques (le plus interne en premier) :
+
+**Transformateur unique :** <FlyqlCode code={`status|upper = "ERROR"`} inline />
+
+| Dialecte | SQL genere |
+|----------|------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**Transformateurs chaines :** <FlyqlCode code={`message|lower|len > 100`} inline />
+
+| Dialecte | SQL genere |
+|----------|------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split avec has :** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
+
+| Dialecte | SQL genere |
+|----------|------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## Erreurs de types
+
+Si une chaine a des types incompatibles, l'editeur affiche une erreur :
+
+<FlyqlCode code={`message|len|upper`} />
+
+Cela echoue car <FlyqlToken type="transformer">len</FlyqlToken> produit un `int`, mais <FlyqlToken type="transformer">upper</FlyqlToken> necessite une entree `string`. L'editeur affiche : "len outputs int, upper requires string input".
+
+## Exemples
+
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

@@ -1,0 +1,131 @@
+---
+title: PostgreSQL
+description: PostgreSQL के लिए उत्पन्न SQL उदाहरण
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+PostgreSQL SQL डबल-कोटेड आइडेंटिफ़ायर, रेगेक्स के लिए <FlyqlToken type="operator">{'~'}</FlyqlToken>, अपरकेस <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken>, और नेस्टेड एक्सेस के लिए JSONB ऑपरेटर का उपयोग करता है।
+
+## मूल उदाहरण
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`message = 'hello'`} inline /> | `"message" = 'hello'` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `"message" != 'hello'` |
+| <FlyqlCode code={`count > 10`} inline /> | `"count" > 10` |
+| <FlyqlCode code={`count <= 100`} inline /> | `"count" <= 100` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `"message" ~ 'error.*'` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `"message" !~ 'test.*'` |
+| <FlyqlCode code={`host = prod*`} inline /> | `"host" LIKE 'prod%'` |
+
+## बूलियन ऑपरेटर
+
+PostgreSQL अपरकेस <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken> का उपयोग करता है (ClickHouse और StarRocks के विपरीत):
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `("a" = '1' AND "b" > 10)` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `("a" = '1' OR "b" = '2')` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `NOT ("a" = '1')` |
+
+## सूची सदस्यता
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `"status" IN (200, 201)` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `"env" NOT IN ('dev', 'test')` |
+| <FlyqlCode code={`status in []`} inline /> | `FALSE` |
+| <FlyqlCode code={`status not in []`} inline /> | `TRUE` |
+
+## कंटेनमेंट (`has` / `not has`)
+
+<FlyqlToken type="operator">has</FlyqlToken> ऑपरेटर कॉलम प्रकार के आधार पर अलग-अलग SQL उत्पन्न करता है:
+
+| कॉलम प्रकार | FlyQL | उत्पन्न SQL |
+|-------------|-------|--------------|
+| स्ट्रिंग | <FlyqlCode code={`message has 'error'`} inline /> | `position('error' in "message") > 0` |
+| स्ट्रिंग (निषेधित) | <FlyqlCode code={`message not has 'error'`} inline /> | `("message" IS NULL OR position('error' in "message") = 0)` |
+| ऐरे | <FlyqlCode code={`tags has 'web'`} inline /> | `'web' = ANY("tags")` |
+| ऐरे (निषेधित) | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT ('web' = ANY("tags"))` |
+| JSONB | <FlyqlCode code={`data has 'key'`} inline /> | `"data" ? 'key'` |
+| JSONB (निषेधित) | <FlyqlCode code={`data not has 'key'`} inline /> | `NOT ("data" ? 'key')` |
+| Hstore | <FlyqlCode code={`metadata has 'key'`} inline /> | `"metadata" ? 'key'` |
+
+## JSONB कॉलम
+
+PostgreSQL टाइप चेकिंग के लिए `jsonb_typeof()` के साथ JSONB ऑपरेटर का उपयोग करता है:
+
+### स्ट्रिंग तुलना
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+
+### संख्यात्मक तुलना
+
+संख्यात्मक तुलनाएँ निकाले गए मान को कास्ट करती हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`data.age > 25`} inline /> | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+
+### JSONB ऑपरेटर
+
+- `->` JSONB लौटाता है (मध्यवर्ती पथ ट्रैवर्सल के लिए उपयोग)
+- `->>` टेक्स्ट लौटाता है (अंतिम मान निष्कर्षण के लिए उपयोग)
+- `jsonb_typeof()` तुलना से पहले JSON प्रकार की जाँच करता है
+
+## Hstore (मैप) कॉलम
+
+PostgreSQL कुंजी एक्सेस के लिए `->` ऑपरेटर के साथ hstore प्रकार का उपयोग करता है:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `"metadata"->'key1' = 'value1'` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `"metadata"->'key1' != 'value1'` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `"metadata"->'pattern' ~ 'test.*'` |
+
+## ऐरे कॉलम
+
+PostgreSQL ऐरे 1-आधारित हैं — FlyQL स्वचालित रूप से 0-आधारित इंडेक्स को परिवर्तित करता है:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `"tags"[1] = 'first'` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `"tags"[2] = 'second'` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `"tags"[1] ~ 'tag.*'` |
+
+### कॉलम सेटअप
+
+PostgreSQL कॉलम में `jsonString` पैरामीटर नहीं होता — JSONB प्रकार कॉलम प्रकार से पता लगाया जाता है:
+
+```go
+// Go
+columns := map[string]*postgresql.Column{
+    "message": postgresql.NewColumn("message", "varchar", nil),
+    "data":    postgresql.NewColumn("data", "jsonb", nil),
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", "varchar", null),
+    data:    newColumn("data", "jsonb", null),
+}
+```
+
+## ट्रांसफ़ॉर्मर
+
+ट्रांसफ़ॉर्मर PostgreSQL-मानक फ़ंक्शन कॉल उत्पन्न करते हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `UPPER(status) = 'ERROR'` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `LOWER(status) = 'info'` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `LENGTH(message) > 100` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `LENGTH(LOWER(message)) > 100` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |

@@ -1,0 +1,89 @@
+---
+title: Transformadores
+description: Transformar valores de colunas com funcoes encadeadas por pipe antes da comparacao
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+Os transformadores modificam os valores das colunas antes de serem comparados em consultas ou emitidos em SQL. Utilizam a sintaxe de pipe (`|`), aplicada da esquerda para a direita.
+
+## Sintaxe de Pipe
+
+Aplique um transformador a uma coluna com `|`:
+
+<FlyqlCode code={`message|upper = "ERROR"`} />
+
+Isto transforma o valor de <FlyqlToken type="key">message</FlyqlToken> utilizando <FlyqlToken type="transformer">upper</FlyqlToken> antes de comparar com `"ERROR"`.
+
+## Encadeamento
+
+Encadeie multiplos transformadores com pipes adicionais:
+
+<FlyqlCode code={`message|lower|len > 100`} />
+
+Os transformadores aplicam-se da esquerda para a direita: <FlyqlToken type="transformer">lower</FlyqlToken> executa primeiro (string para string), depois <FlyqlToken type="transformer">len</FlyqlToken> (string para int). O resultado e comparado com `> 100`.
+
+## Sistema de Tipos
+
+Cada transformador declara um tipo de entrada e um tipo de saida. Transformadores encadeados devem ser compativeis em termos de tipo — o tipo de saida de um deve corresponder ao tipo de entrada do seguinte.
+
+| Tipo | Descricao |
+|------|-----------|
+| `string` | Valores de texto |
+| `int` | Numeros inteiros |
+| `float` | Numeros de virgula flutuante |
+| `array` | Array de valores (use o operador <FlyqlToken type="operator">has</FlyqlToken> para verificar pertenca) |
+
+## Transformadores Incorporados
+
+| Transformador | Entrada | Saida | Descricao |
+|---------------|---------|-------|-----------|
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | Converter para maiusculas |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | Converter para minusculas |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | Obter o comprimento da string |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | Dividir por delimitador: `split(".")` |
+
+## Saida SQL por Dialecto
+
+Os transformadores geram chamadas de funcao SQL especificas de cada dialecto. Transformadores encadeados produzem chamadas aninhadas (o mais interno primeiro):
+
+**Transformador unico:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
+
+| Dialecto | SQL Gerado |
+|----------|------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**Transformadores encadeados:** <FlyqlCode code={`message|lower|len > 100`} inline />
+
+| Dialecto | SQL Gerado |
+|----------|------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split com has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
+
+| Dialecto | SQL Gerado |
+|----------|------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## Erros de Tipo
+
+Se uma cadeia tiver tipos incompativeis, o editor mostra um erro:
+
+<FlyqlCode code={`message|len|upper`} />
+
+Isto falha porque <FlyqlToken type="transformer">len</FlyqlToken> produz `int`, mas <FlyqlToken type="transformer">upper</FlyqlToken> requer entrada `string`. O editor apresenta: "len outputs int, upper requires string input".
+
+## Exemplos
+
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

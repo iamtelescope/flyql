@@ -1,0 +1,199 @@
+---
+title: स्कीमा कॉन्फ़िगरेशन
+description: FlyQL एडिटर के लिए कॉलम स्कीमा संरचना
+---
+
+`columns` prop डेटा स्कीमा को परिभाषित करता है जो एडिटर सुझावों को संचालित करता है। कुंजियाँ कॉलम नाम हैं, मान कॉलम परिभाषाएँ हैं।
+
+## मूल स्कीमा
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## कॉलम परिभाषा फ़ील्ड
+
+| फ़ील्ड | प्रकार | डिफ़ॉल्ट | विवरण |
+|-------|------|---------|-------------|
+| `type` | `string` | — | कॉलम प्रकार: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | सुझावों में यह कॉलम दिखाएँ |
+| `autocomplete` | `boolean` | `false` | इस कॉलम के लिए वैल्यू ऑटोकम्प्लीट सक्षम करें |
+| `values` | `string[]` या `number[]` | — | ऑटोकम्प्लीट के लिए स्थैतिक मान (`onAutocomplete` कॉलबैक से पहले उपयोग किए जाते हैं) |
+| `children` | `object` | — | ऑब्जेक्ट-प्रकार कॉलम के लिए नेस्टेड कॉलम परिभाषाएँ |
+| `display_name` | `string` | `''` | कॉलम के लिए वैकल्पिक उपयोगकर्ता-अनुकूल प्रदर्शन नाम। पार्स्ड कॉलम पर, उपनाम इस मान को ओवरराइड करता है |
+
+## कॉलम प्रकार
+
+### `string`
+
+सामान्य टेक्स्ट कॉलम। रेगेक्स (`~`, `!~`) सहित सभी तुलना ऑपरेटर उपलब्ध हैं।
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+संख्यात्मक कॉलम। रेगेक्स ऑपरेटर (`~`, `!~`) ऑपरेटर सुझावों से बाहर रखे जाते हैं।
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+मानों के एक निश्चित सेट के साथ एन्युमरेटेड कॉलम। `number` की तरह, रेगेक्स ऑपरेटर बाहर रखे जाते हैं। सेट प्रदान करने के लिए `values` का उपयोग करें:
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+चिल्ड्रेन के साथ नेस्टेड कॉलम। जब उपयोगकर्ता कॉलम नाम के बाद `.` टाइप करता है, तो चाइल्ड कॉलम सुझाए जाते हैं:
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## वैल्यू ऑटोकम्प्लीट
+
+### स्थैतिक मान
+
+ज्ञात विकल्पों वाले कॉलम के लिए `values` ऐरे प्रदान करें:
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### एसिंक मान
+
+`values` के बिना `autocomplete: true` सेट करें और एडिटर कम्पोनेंट पर `onAutocomplete` कॉलबैक प्रदान करें। जब उपयोगकर्ता उस कॉलम के लिए वैल्यू पोजीशन पर पहुँचता है तो कॉलबैक कॉल किया जाता है।
+
+```javascript
+// Column definition — no static values
+{ type: 'string', suggest: true, autocomplete: true }
+
+// Editor callback fetches values from API
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## नेस्टेड कॉलम (JSONSchema)
+
+ऑब्जेक्ट-प्रकार कॉलम पर `children` का उपयोग करके नेस्टेड संरचनाएँ परिभाषित करें:
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+`metadata.` टाइप करने पर `labels` और `version` सुझाए जाते हैं। `metadata.labels.` टाइप करने पर `tier` और `env` सुझाए जाते हैं। गहराई की कोई सीमा नहीं है।
+
+## रिमोट कुंजी खोज (स्कीमालेस)
+
+ऑब्जेक्ट कॉलम के लिए जहाँ नेस्टेड कुंजियाँ स्कीमा परिभाषा समय पर ज्ञात नहीं हैं, `children` छोड़ें और `onKeyDiscovery` कॉलबैक प्रदान करें:
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true }, // no children — triggers discovery
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
+}
+```
+
+जब उपयोगकर्ता `request.` टाइप करता है, तो कॉलबैक `('request', ['request'])` के साथ कॉल किया जाता है। खोजी गई कुंजियाँ प्रति सक्रियण सत्र कैश की जाती हैं।
+
+यदि किसी कॉलम में `children` और `onKeyDiscovery` दोनों हैं, तो स्थैतिक `children` को प्राथमिकता मिलती है।
+
+## पूर्ण उदाहरण
+
+```javascript
+const columns = {
+    // Enum with static values
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+
+    // String with async autocomplete
+    service: { type: 'string', suggest: true, autocomplete: true },
+
+    // Number — excludes regex operators
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+
+    // Simple string
+    host: { type: 'string', suggest: true },
+
+    // Nested with known children
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+
+    // Schemaless — nested keys discovered at runtime
+    request: { type: 'object', suggest: true },
+}
+```

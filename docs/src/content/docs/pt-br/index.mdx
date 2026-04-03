@@ -1,11 +1,59 @@
 ---
-title: FlyQL
-description: A documentação em português do Brasil está em preparação
+title: Documentação
+description: Uma linguagem de consultas leve e à prova de injeção para geração de SQL em múltiplos dialetos
 ---
 
-A documentação em português do Brasil está em preparação.
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
+import TechLabel from '../../../components/TechLabel.astro'
+import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
 
-Esta página é um placeholder. Em breve vamos adicionar guias, referência de sintaxe e documentação dos dialetos SQL do FlyQL.
+Uma linguagem de consultas leve que transpila para SQL à prova de injeção para ClickHouse, PostgreSQL e StarRocks — com implementações em Go, Python e JavaScript.
 
-Enquanto isso, você pode consultar a documentação em inglês.
+## O que é FlyQL?
 
+FlyQL é uma linguagem de consultas simples e legível projetada para filtrar dados. Escreva uma consulta como `status >= 400 and host = prod*`, e o FlyQL a transpila em SQL parametrizado para seu banco de dados — ou a avalia em memória contra registros de dados.
+
+<FlyqlCode code={landingIntroQuery} />
+
+Esta consulta funciona de forma idêntica independentemente de seu backend ser ClickHouse, PostgreSQL, StarRocks ou um conjunto de dados em memória.
+
+## Principais Funcionalidades
+
+- **À Prova de Injeção por Design** — A gramática não pode expressar subconsultas, JOINs, UNIONs ou DDL. A segurança é estrutural, não defensiva. Todo o SQL gerado usa valores parametrizados.
+- **SQL Multi-Dialeto** — Uma linguagem de consultas, saída específica por dialeto. Gera SQL correto para ClickHouse, PostgreSQL e StarRocks com tratamento adequado de tipos (caminhos JSON, acesso a Map, tratamento de Array).
+- **Multi-Linguagem** — Implementações completas em Go, Python e JavaScript. Parseie no frontend, valide no backend, gere SQL em qualquer lugar — mesma consulta, mesmos resultados.
+- **Zero Dependências** — Parser escrito à mão como máquina de estados sem dependências externas em nenhuma linguagem. Trivial de integrar, nada para conflitar.
+
+## Exemplo Rápido
+
+<FlyqlCode code={landingQuickExampleQuery} />
+
+<FlyqlQuickExampleTable
+  componentHeader="Componente"
+  meaningHeader="Significado"
+  meanings={{
+    service: 'o campo `service` não é `"api"`',
+    status: '`status` é 400 ou maior',
+    level: 'o campo `level` é igual a `"error"`',
+    message: '`message` corresponde ao padrão regex',
+    boolean: 'lógica booleana com precedência',
+    grouping: 'agrupamento explícito',
+  }}
+/>
+
+## Linguagens Suportadas
+
+| Linguagem | Parser | Matcher em Memória |
+|----------|--------|-------------------|
+| <TechLabel icon="/icons/go.svg" label="Go" variant="go" /> | Sim | Sim |
+| <TechLabel icon="/icons/python.svg" label="Python" /> | Sim | Sim |
+| <TechLabel icon="/icons/javascript.svg" label="JavaScript" /> | Sim | Sim |
+
+## Geradores SQL
+
+| Banco de Dados | Go | Python | JavaScript |
+|----------|----|--------|------------|
+| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Sim | Sim | Sim |
+| <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Sim | Sim | Sim |
+| <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Sim | Sim | Sim |

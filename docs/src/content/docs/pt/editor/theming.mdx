@@ -1,0 +1,113 @@
+---
+title: Temas
+description: Personalizar a aparência do editor FlyQL com propriedades CSS personalizadas
+---
+
+O editor FlyQL utiliza propriedades CSS personalizadas (variáveis) para toda a estilização visual. Substitua qualquer variável `--flyql-*` para corresponder ao design da sua aplicação.
+
+## Propriedades CSS Personalizadas
+
+### Cores
+
+| Variável | Predefinição Clara | Predefinição Escura | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | Fundo do editor |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Cor do texto |
+| `--flyql-border` | `#d4d4d4` | `#525252` | Cor da borda |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | Cor da borda com foco |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Texto de placeholder |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | Destaque de erro |
+
+### Destaque de Sintaxe
+
+| Variável | Predefinição Clara | Predefinição Escura | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | Nomes de colunas/chaves |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | Operadores (`=`, `!=`, `and`, etc.) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | Valores de string |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | Valores numéricos |
+
+### Painel de Sugestões
+
+| Variável | Predefinição Clara | Predefinição Escura | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | Fundo do painel |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | Borda do painel |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | Item com hover |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | Item selecionado |
+
+### Tipografia
+
+| Variável | Predefinição | Descrição |
+|----------|---------|-------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | Fonte da interface |
+| `--flyql-code-font-family` | `monospace` | Fonte de código/consulta |
+| `--flyql-font-size` | `13px` | Tamanho base da fonte |
+
+## Tema Claro
+
+O tema claro é o predefinido. Não são necessárias classes adicionais:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Tema Escuro
+
+Utilize a prop `dark` para ativar o tema escuro integrado:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+A prop `dark` aplica a classe `flyql-dark` ao painel de sugestões, que é teleportado para `<body>` e não pode herdar de elementos ancestrais. A entrada do editor em si continua a herdar variáveis CSS dos seus ancestrais normalmente, pelo que as substituições ao nível do wrapper continuam a funcionar.
+
+Em alternativa, pode aplicar a classe `flyql-dark` a `<html>` ou `<body>`, o que alcançará tanto o editor como o painel teleportado via herança de variáveis CSS:
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## Tema Personalizado
+
+Substitua variáveis específicas no seu CSS:
+
+```css
+/* Tema de marca personalizado */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Substituições escuras personalizadas */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## Temas com Escopo
+
+Aplique tema a uma instância específica do editor envolvendo-a num contentor com substituições:
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+As propriedades CSS personalizadas propagam-se em cascata, pelo que as substituições em qualquer ancestral aplicam-se a todos os componentes FlyQL dentro dele.

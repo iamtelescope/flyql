@@ -1,0 +1,87 @@
+---
+title: Componente Columns
+description: Componente FlyqlColumns para edição de expressões de colunas
+---
+
+O componente `FlyqlColumns` fornece um campo dedicado para expressões de colunas — selecionando, filtrando e aplicando transformadores em colunas.
+
+## Configuração Rápida
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlColumns } from 'flyql/editor'
+
+const expr = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true },
+    service: { type: 'string', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onParsed(parsed) {
+    console.log('Parsed columns:', parsed)
+}
+</script>
+
+<template>
+    <FlyqlColumns
+        v-model="expr"
+        :columns="columns"
+        :capabilities="{ transformers: true }"
+        placeholder="message, status|upper, host as h"
+        @update:parsed="onParsed"
+    />
+</template>
+```
+
+## Props
+
+| Prop | Tipo | Padrão | Descrição |
+|------|------|---------|-------------|
+| `modelValue` | `String` | `''` | Texto da expressão (v-model) |
+| `columns` | `Object` | `{}` | [Schema](/pt-br/editor/schema/) de colunas |
+| `capabilities` | `Object` | `null` | Capacidades do parser (ex.: `{ transformers: true }`) |
+| `onKeyDiscovery` | `Function` | `null` | Callback de descoberta remota de chaves |
+| `placeholder` | `String` | `''` | Texto do placeholder |
+| `autofocus` | `Boolean` | `false` | Foco automático ao montar |
+| `debug` | `Boolean` | `false` | Log de depuração |
+| `dark` | `Boolean` | `false` | Ativar tema escuro ([veja temas](/pt-br/editor/theming/)) |
+
+## Eventos
+
+| Evento | Payload | Descrição |
+|-------|---------|-------------|
+| `update:modelValue` | `string` | Texto da expressão alterado (v-model) |
+| `update:parsed` | `ParsedColumn[]` | Array de colunas parseadas atualizado |
+| `submit` | — | Usuário pressionou Shift+Enter |
+| `parse-error` | `string` | Mensagem de erro de parse |
+| `focus` | — | Componente recebeu foco |
+| `blur` | — | Componente perdeu foco |
+
+## Métodos Expostos
+
+| Método | Retorno | Descrição |
+|--------|---------|-------------|
+| `focus()` | — | Focar o campo |
+| `blur()` | — | Desfocar o campo |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | Validar a expressão |
+| `getParsedColumns()` | `ParsedColumn[]` | Obter array de colunas parseadas |
+
+## Sintaxe de Expressões de Colunas
+
+Expressões de colunas usam um formato separado por vírgulas com transformadores e aliases opcionais:
+
+```
+message, status|upper, host as h, metadata.labels.env
+```
+
+| Parte | Sintaxe | Exemplo |
+|------|--------|---------|
+| Coluna | `name` | `message` |
+| Transformador | `name\|transformer` | `status\|upper` |
+| Transformador com argumentos | `name\|transformer(arg)` | `name\|truncate(50)` |
+| Alias | `name as alias` | `host as h` |
+| Aninhado | `parent.child` | `metadata.labels.env` |
+| Transformadores encadeados | `name\|t1\|t2` | `msg\|lower\|truncate(100)` |

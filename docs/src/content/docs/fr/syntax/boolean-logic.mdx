@@ -1,0 +1,83 @@
+---
+title: Logique booleenne
+description: Operateurs booleens, precedence et regroupement par parentheses dans FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Operateurs booleens
+
+FlyQL utilise trois operateurs booleens pour combiner les conditions :
+
+| Operateur | Signification | Exemple |
+|-----------|---------------|---------|
+| <FlyqlToken type="operator">and</FlyqlToken> | Les deux conditions doivent etre vraies | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | L'une ou l'autre condition peut etre vraie | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Inverse une expression | <FlyqlCode code={`not archived`} inline /> |
+
+### Negation combinee
+
+<FlyqlToken type="operator">not</FlyqlToken> peut etre combine avec <FlyqlToken type="operator">and</FlyqlToken> et <FlyqlToken type="operator">or</FlyqlToken> :
+
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
+
+## Precedence des operateurs
+
+<FlyqlToken type="operator">and</FlyqlToken> a une priorite plus elevee que <FlyqlToken type="operator">or</FlyqlToken>. Cela signifie que :
+
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
+
+est interprete comme :
+
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
+
+Pour modifier la precedence, utilisez explicitement des parentheses.
+
+## Regroupement par parentheses
+
+Utilisez des parentheses pour controler l'ordre d'evaluation :
+
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+
+Sans parentheses, <FlyqlToken type="operator">and</FlyqlToken> aurait une priorite plus elevee :
+
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+est equivalent a :
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
+
+### Regroupement imbrique
+
+Les parentheses peuvent etre imbriquees :
+
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
+
+### Negation de groupes
+
+<FlyqlToken type="operator">not</FlyqlToken> s'applique a l'ensemble du groupe :
+
+<FlyqlCode code={`not (status = 200 and healthy)`} />
+
+Cela inverse la condition combinee — vrai uniquement lorsque <FlyqlToken type="key">status</FlyqlToken> n'est pas 200 ou que <FlyqlToken type="key">healthy</FlyqlToken> est faux.
+
+## Negation
+
+<FlyqlToken type="operator">not</FlyqlToken> inverse n'importe quelle expression — une verification de veracite, une comparaison ou un groupe :
+
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
+
+La double negation s'annule : <FlyqlCode code={`not not active`} inline /> est equivalent a <FlyqlCode code={`active`} inline />.
+
+## Exemples
+
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

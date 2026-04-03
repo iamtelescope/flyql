@@ -1,0 +1,530 @@
+---
+title: AST और कस्टम जनरेटर
+description: FlyQL एब्स्ट्रैक्ट सिंटैक्स ट्री को समझें और किसी भी लक्ष्य भाषा या डेटा संरचना के लिए कस्टम कोड जनरेटर बनाएँ
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL का पार्सर एक **एब्स्ट्रैक्ट सिंटैक्स ट्री (AST)** उत्पन्न करता है — क्वेरी का एक संरचित प्रतिनिधित्व जिसे आप किसी भी लक्ष्य के लिए आउटपुट उत्पन्न करने हेतु ट्रैवर्स कर सकते हैं। अंतर्निहित SQL जनरेटर (ClickHouse, PostgreSQL, StarRocks) सभी इसी AST को वॉक करके लागू किए गए हैं। आप Elasticsearch क्वेरी, MongoDB फ़िल्टर, Prometheus सेलेक्टर, लॉग grep कमांड, या किसी अन्य लक्ष्य के लिए अपना स्वयं का जनरेटर बना सकते हैं।
+
+## AST नोड प्रकार
+
+AST तीन प्रकारों से बनता है: **Node** (ट्री संरचना), **Expression** (लीफ़ कंडीशन), और **Key** (फ़ील्ड संदर्भ)।
+
+### Node
+
+एक `Node` या तो एक **ब्रांच** (दो सबट्री को बूलियन ऑपरेटर से जोड़ने वाला) या एक **लीफ़** (एकल एक्सप्रेशन धारण करने वाला) होता है। यह AST का मूलभूत निर्माण खंड है।
+
+| फ़ील्ड | प्रकार | विवरण |
+|-------|------|-------------|
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> या <FlyqlToken type="operator">or</FlyqlToken> — `left` और `right` कैसे संयोजित होते हैं। लीफ़ नोड्स पर खाली। |
+| `expression` | `Expression` या `null` | कंडीशन, यदि यह लीफ़ नोड है। ब्रांच नोड्स पर `null`। |
+| `left` | `Node` या `null` | बायाँ चाइल्ड सबट्री। लीफ़ नोड्स पर `null`। |
+| `right` | `Node` या `null` | दायाँ चाइल्ड सबट्री। लीफ़ नोड्स पर `null`। |
+| `negated` | `boolean` | `true` यदि यह नोड <FlyqlToken type="operator">not</FlyqlToken> में लिपटा है। |
+
+एक नोड **या तो** लीफ़ (`expression` सेट है, `left`/`right` null हैं) **या** ब्रांच (`left`/`right` सेट हैं, `expression` null है) होता है। यह कभी दोनों नहीं होता।
+
+### Expression
+
+एक `Expression` एकल कंडीशन का प्रतिनिधित्व करता है — एक कुंजी, एक ऑपरेटर, और एक मान।
+
+| फ़ील्ड | प्रकार | विवरण |
+|-------|------|-------------|
+| `key` | `Key` | परीक्षित फ़ील्ड (जैसे <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>)। |
+| `operator` | `string` | इनमें से एक: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>। |
+| `value` | `any` | तुलना मान। स्केलर ऑपरेटरों के लिए स्ट्रिंग, संख्या, बूलियन, या null। <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> के लिए खाली। |
+| `valueType` | `string` या `null` | `value` का स्पष्ट प्रकार: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, या `"null"`। <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> के लिए `null`। |
+| `values` | `array` या `null` | <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> ऑपरेटरों के लिए मानों की सूची। विषम हो सकती है। अन्य ऑपरेटरों के लिए `null`। |
+| `valuesTypes` | `string[]` या `null` | `values` के समानांतर प्रति-तत्व प्रकार ऐरे। प्रत्येक तत्व प्रकार स्थिरांकों में से एक है। जब `values` का उपयोग नहीं होता तो `null`। |
+
+### Key
+
+एक `Key` क्वेरी किए जा रहे फ़ील्ड पथ का प्रतिनिधित्व करता है।
+
+| फ़ील्ड | प्रकार | विवरण |
+|-------|------|-------------|
+| `segments` | `string[]` | पथ खंड। सरल कुंजी के लिए `["status"]`, नेस्टेड के लिए `["user", "metadata", "role"]`। |
+| `raw` | `string` | क्वेरी में लिखी गई मूल कुंजी स्ट्रिंग। |
+| `isSegmented` | `boolean` | `true` यदि कुंजी में एक से अधिक खंड हैं (अर्थात डॉट नोटेशन का उपयोग करती है)। |
+
+### ऑपरेटर
+
+सभी ऑपरेटर इम्पोर्ट करने योग्य स्थिरांकों के रूप में उपलब्ध हैं:
+
+```javascript
+// JavaScript
+import { Operator, BoolOperator } from 'flyql'
+
+Operator.EQUALS       // "="
+Operator.NOT_EQUALS   // "!="
+Operator.REGEX        // "~"
+Operator.NOT_REGEX    // "!~"
+Operator.GREATER_THAN // ">"
+Operator.LOWER_THAN   // "<"
+Operator.GREATER_OR_EQUALS_THAN // ">="
+Operator.LOWER_OR_EQUALS_THAN   // "<="
+Operator.TRUTHY       // "truthy"
+Operator.IN           // "in"
+Operator.NOT_IN       // "not in"
+Operator.HAS          // "has"
+Operator.NOT_HAS      // "not has"
+
+BoolOperator.AND      // "and"
+BoolOperator.OR       // "or"
+```
+
+```go
+// Go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+flyql.OpEquals          // "="
+flyql.OpNotEquals       // "!="
+flyql.OpRegex           // "~"
+flyql.OpNotRegex        // "!~"
+flyql.OpGreater         // ">"
+flyql.OpLess            // "<"
+flyql.OpGreaterOrEquals // ">="
+flyql.OpLessOrEquals    // "<="
+flyql.OpTruthy          // "truthy"
+flyql.OpIn              // "in"
+flyql.OpNotIn           // "not in"
+flyql.OpHas             // "has"
+flyql.OpNotHas          // "not has"
+
+flyql.BoolOpAnd      // "and"
+flyql.BoolOpOr       // "or"
+```
+
+```python
+# Python
+from flyql.core.constants import Operator, BoolOperator
+
+Operator.EQUALS       # "="
+Operator.NOT_EQUALS   # "!="
+Operator.REGEX        # "~"
+Operator.NOT_REGEX    # "!~"
+Operator.GREATER_THAN # ">"
+Operator.LOWER_THAN   # "<"
+Operator.GREATER_OR_EQUALS_THAN # ">="
+Operator.LOWER_OR_EQUALS_THAN   # "<="
+Operator.TRUTHY       # "truthy"
+Operator.IN           # "in"
+Operator.NOT_IN       # "not in"
+Operator.HAS          # "has"
+Operator.NOT_HAS      # "not has"
+
+BoolOperator.AND      # "and"
+BoolOperator.OR       # "or"
+```
+
+## AST संरचना उदाहरण
+
+### सरल कंडीशन
+
+क्वेरी: <FlyqlCode code="status = 200" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+```
+
+### बूलियन संयोजन
+
+क्वेरी: <FlyqlCode code='status = 200 and method = "GET"' inline />
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["status"], raw: "status" }
+      operator: "="
+      value: 200
+  right: Node (leaf)
+    expression:
+      key: { segments: ["method"], raw: "method" }
+      operator: "="
+      value: "GET"
+```
+
+### निषेध
+
+क्वेरी: <FlyqlCode code="not status = 500" inline />
+
+```
+Node (leaf, negated: true)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 500
+```
+
+### कोष्ठकों के साथ नेस्टेड बूलियन
+
+क्वेरी: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
+
+```
+Node (branch, boolOperator: "and")
+  left: Node (leaf)
+    expression:
+      key: { segments: ["env"], raw: "env" }
+      operator: "="
+      value: "prod"
+  right: Node (branch, boolOperator: "or")
+    left: Node (leaf)
+      expression:
+        key: { segments: ["status"], raw: "status" }
+        operator: "="
+        value: 500
+    right: Node (leaf)
+      expression:
+        key: { segments: ["level"], raw: "level" }
+        operator: "="
+        value: "error"
+```
+
+### सूची सदस्यता
+
+क्वेरी: <FlyqlCode code="status in [200, 201, 204]" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    value: ""
+    values: [200, 201, 204]
+    valuesType: "number"
+```
+
+### ट्रूथी जाँच
+
+क्वेरी: <FlyqlCode code="active" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["active"], raw: "active" }
+    operator: "truthy"
+    value: ""
+```
+
+### नेस्टेड कुंजी
+
+क्वेरी: <FlyqlCode code='user.metadata.role = "admin"' inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["user", "metadata", "role"], raw: "user.metadata.role", isSegmented: true }
+    operator: "="
+    value: "admin"
+```
+
+## AST ट्रैवर्स करना
+
+AST एक बाइनरी ट्री है। इसे प्रोसेस करने के लिए, रिकर्सिव ट्रैवर्सल का उपयोग करें:
+
+1. यदि नोड में `expression` है (लीफ़ नोड) — कंडीशन को हैंडल करें।
+2. यदि नोड में `left`/`right` हैं (ब्रांच नोड) — चाइल्ड में रिकर्स करें और `boolOperator` से संयोजित करें।
+3. यदि `negated` true है — परिणाम को निषेध में लपेटें।
+
+## कस्टम जनरेटर बनाना
+
+यहाँ एक कस्टम जनरेटर का पूर्ण उदाहरण है जो FlyQL AST को एक **Elasticsearch Query DSL** ऑब्जेक्ट में परिवर्तित करता है।
+
+### JavaScript
+
+```javascript
+import { parse } from 'flyql'
+import { Operator } from 'flyql'
+
+function generateElasticsearch(node) {
+  if (!node) return { match_all: {} }
+
+  let result
+
+  if (node.expression) {
+    // Leaf node — convert the expression
+    result = expressionToES(node.expression)
+  } else {
+    // Branch node — recurse and combine
+    const left = generateElasticsearch(node.left)
+    const right = generateElasticsearch(node.right)
+
+    if (node.boolOperator === 'and') {
+      result = { bool: { must: [left, right] } }
+    } else {
+      result = { bool: { should: [left, right], minimum_should_match: 1 } }
+    }
+  }
+
+  // Handle negation
+  if (node.negated) {
+    result = { bool: { must_not: [result] } }
+  }
+
+  return result
+}
+
+function expressionToES(expr) {
+  const field = expr.key.raw
+
+  switch (expr.operator) {
+    case Operator.EQUALS:
+      return { term: { [field]: expr.value } }
+
+    case Operator.NOT_EQUALS:
+      return { bool: { must_not: [{ term: { [field]: expr.value } }] } }
+
+    case Operator.REGEX:
+      return { regexp: { [field]: String(expr.value) } }
+
+    case Operator.NOT_REGEX:
+      return { bool: { must_not: [{ regexp: { [field]: String(expr.value) } }] } }
+
+    case Operator.GREATER_THAN:
+      return { range: { [field]: { gt: expr.value } } }
+
+    case Operator.GREATER_OR_EQUALS_THAN:
+      return { range: { [field]: { gte: expr.value } } }
+
+    case Operator.LOWER_THAN:
+      return { range: { [field]: { lt: expr.value } } }
+
+    case Operator.LOWER_OR_EQUALS_THAN:
+      return { range: { [field]: { lte: expr.value } } }
+
+    case Operator.IN:
+      return { terms: { [field]: expr.values || [] } }
+
+    case Operator.NOT_IN:
+      return { bool: { must_not: [{ terms: { [field]: expr.values || [] } }] } }
+
+    case Operator.TRUTHY:
+      return { exists: { field } }
+
+    case Operator.HAS:
+      return { wildcard: { [field]: `*${expr.value}*` } }
+
+    case Operator.NOT_HAS:
+      return { bool: { must_not: [{ wildcard: { [field]: `*${expr.value}*` } }] } }
+
+    default:
+      throw new Error(`unsupported operator: ${expr.operator}`)
+  }
+}
+
+// Usage
+const result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+const esQuery = generateElasticsearch(result.root)
+console.log(JSON.stringify(esQuery, null, 2))
+```
+
+### Go
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func generateElasticsearch(node *flyql.Node) map[string]any {
+	if node == nil {
+		return map[string]any{"match_all": map[string]any{}}
+	}
+
+	var result map[string]any
+
+	if node.Expression != nil {
+		// Leaf node — convert the expression
+		result = expressionToES(node.Expression)
+	} else {
+		// Branch node — recurse and combine
+		left := generateElasticsearch(node.Left)
+		right := generateElasticsearch(node.Right)
+
+		if node.BoolOperator == flyql.BoolOpAnd {
+			result = map[string]any{
+				"bool": map[string]any{"must": []any{left, right}},
+			}
+		} else {
+			result = map[string]any{
+				"bool": map[string]any{"should": []any{left, right}, "minimum_should_match": 1},
+			}
+		}
+	}
+
+	// Handle negation
+	if node.Negated {
+		result = map[string]any{
+			"bool": map[string]any{"must_not": []any{result}},
+		}
+	}
+
+	return result
+}
+
+func expressionToES(expr *flyql.Expression) map[string]any {
+	field := expr.Key.Raw
+
+	switch expr.Operator {
+	case flyql.OpEquals:
+		return map[string]any{"term": map[string]any{field: expr.Value}}
+	case flyql.OpNotEquals:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"term": map[string]any{field: expr.Value}}}}}
+	case flyql.OpGreater:
+		return map[string]any{"range": map[string]any{field: map[string]any{"gt": expr.Value}}}
+	case flyql.OpLess:
+		return map[string]any{"range": map[string]any{field: map[string]any{"lt": expr.Value}}}
+	case flyql.OpIn:
+		return map[string]any{"terms": map[string]any{field: expr.Values}}
+	case flyql.OpNotIn:
+		return map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"terms": map[string]any{field: expr.Values}}}}}
+	case flyql.OpTruthy:
+		return map[string]any{"exists": map[string]any{"field": field}}
+	case flyql.OpRegex:
+		return map[string]any{"regexp": map[string]any{field: fmt.Sprintf("%v", expr.Value)}}
+	default:
+		panic(fmt.Sprintf("unsupported operator: %s", expr.Operator))
+	}
+}
+
+func main() {
+	result, err := flyql.Parse(`status = 200 and env in ["prod", "staging"]`)
+	if err != nil {
+		panic(err)
+	}
+
+	esQuery := generateElasticsearch(result.Root)
+	data, _ := json.MarshalIndent(esQuery, "", "  ")
+	fmt.Println(string(data))
+}
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse
+from flyql.core.constants import Operator, BoolOperator
+
+def generate_elasticsearch(node):
+    if node is None:
+        return {"match_all": {}}
+
+    if node.expression is not None:
+        # Leaf node — convert the expression
+        result = expression_to_es(node.expression)
+    else:
+        # Branch node — recurse and combine
+        left = generate_elasticsearch(node.left)
+        right = generate_elasticsearch(node.right)
+
+        if node.bool_operator == BoolOperator.AND.value:
+            result = {"bool": {"must": [left, right]}}
+        else:
+            result = {"bool": {"should": [left, right], "minimum_should_match": 1}}
+
+    # Handle negation
+    if node.negated:
+        result = {"bool": {"must_not": [result]}}
+
+    return result
+
+def expression_to_es(expr):
+    field = expr.key.raw
+    op = expr.operator  # operator is stored as a string value, e.g. "=", "!=", "~"
+
+    if op == Operator.EQUALS.value:
+        return {"term": {field: expr.value}}
+    elif op == Operator.NOT_EQUALS.value:
+        return {"bool": {"must_not": [{"term": {field: expr.value}}]}}
+    elif op == Operator.REGEX.value:
+        return {"regexp": {field: str(expr.value)}}
+    elif op == Operator.NOT_REGEX.value:
+        return {"bool": {"must_not": [{"regexp": {field: str(expr.value)}}]}}
+    elif op == Operator.GREATER_THAN.value:
+        return {"range": {field: {"gt": expr.value}}}
+    elif op == Operator.LOWER_THAN.value:
+        return {"range": {field: {"lt": expr.value}}}
+    elif op == Operator.IN.value:
+        return {"terms": {field: expr.values or []}}
+    elif op == Operator.NOT_IN.value:
+        return {"bool": {"must_not": [{"terms": {field: expr.values or []}}]}}
+    elif op == Operator.TRUTHY.value:
+        return {"exists": {"field": field}}
+    elif op == Operator.HAS.value:
+        return {"wildcard": {field: f"*{expr.value}*"}}
+    elif op == Operator.NOT_HAS.value:
+        return {"bool": {"must_not": [{"wildcard": {field: f"*{expr.value}*"}}]}}
+    else:
+        raise ValueError(f"unsupported operator: {op}")
+
+
+# Usage
+result = parse('status = 200 and message ~ "error.*" and env in ["prod", "staging"]')
+es_query = generate_elasticsearch(result.root)
+print(es_query)
+```
+
+## अंतर्निहित जनरेटर कैसे काम करते हैं
+
+अंतर्निहित SQL जनरेटर ऊपर दिखाए गए समान रिकर्सिव पैटर्न का पालन करते हैं। प्रत्येक जनरेटर:
+
+1. **रूट `Node`** और एक कॉलम स्कीमा मैप प्राप्त करता है।
+2. **ट्री के माध्यम से रिकर्स करता है:** ब्रांच नोड्स `(left AND right)` या `(left OR right)` बनते हैं, लीफ़ नोड्स SQL कंडीशन बनते हैं।
+3. **प्रत्येक ऑपरेटर को हैंडल करता है** `expression.operator` पर स्विच करके और बोली-विशिष्ट SQL उत्सर्जित करके।
+4. **निषेधित नोड्स को** `NOT (...)` में लपेटता है।
+
+कस्टम जनरेटर से मुख्य अंतर यह है कि SQL जनरेटर कॉलम स्कीमा के विरुद्ध एक्सप्रेशन को मान्य भी करते हैं (प्रकार, अनुमत मान, और कॉलम अस्तित्व की जाँच करते हुए)। कस्टम जनरेटर इस चरण को छोड़ सकता है या अपना स्वयं का मान्यकरण तर्क लागू कर सकता है।
+
+## निर्यातित प्रकार संदर्भ
+
+### JavaScript
+
+```javascript
+import {
+  parse,               // Parse a query string into an AST
+  Parser,              // Parser class (advanced usage)
+  Node,                // AST branch/leaf node
+  Expression,          // Leaf condition
+  Key,                 // Field path
+  Operator,            // Comparison operator constants
+  BoolOperator,        // Boolean operator constants ("and", "or")
+  FlyqlError,          // Base error class
+  ParserError,         // Parse error (extends FlyqlError, includes errno)
+} from 'flyql'
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+// flyql.Parse(query string) (*ParseResult, error)
+// flyql.Node        — AST node struct
+// flyql.Expression  — leaf condition struct
+// flyql.Key         — field path struct
+// flyql.NewNode(), flyql.NewExpressionNode(), flyql.NewBranchNode()
+//
+// Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
+// Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
+```
+
+### Python
+
+```python
+from flyql.core.parser import parse, Parser
+from flyql.core.tree import Node
+from flyql.core.expression import Expression
+from flyql.core.key import Key
+from flyql.core.constants import Operator, BoolOperator
+from flyql.core.exceptions import FlyqlError, ParserError
+```

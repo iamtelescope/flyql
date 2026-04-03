@@ -1,0 +1,113 @@
+---
+title: थीमिंग
+description: CSS कस्टम प्रॉपर्टीज़ के साथ FlyQL एडिटर की उपस्थिति को अनुकूलित करें
+---
+
+FlyQL एडिटर सभी विज़ुअल स्टाइलिंग के लिए CSS कस्टम प्रॉपर्टीज़ (वेरिएबल) का उपयोग करता है। अपने एप्लिकेशन के डिज़ाइन से मिलान करने के लिए किसी भी `--flyql-*` वेरिएबल को ओवरराइड करें।
+
+## CSS कस्टम प्रॉपर्टीज़
+
+### रंग
+
+| वेरिएबल | लाइट डिफ़ॉल्ट | डार्क डिफ़ॉल्ट | विवरण |
+|----------|--------------|--------------|-------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | एडिटर पृष्ठभूमि |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | टेक्स्ट रंग |
+| `--flyql-border` | `#d4d4d4` | `#525252` | बॉर्डर रंग |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | फ़ोकस होने पर बॉर्डर रंग |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | प्लेसहोल्डर टेक्स्ट |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | त्रुटि हाइलाइट |
+
+### सिंटैक्स हाइलाइटिंग
+
+| वेरिएबल | लाइट डिफ़ॉल्ट | डार्क डिफ़ॉल्ट | विवरण |
+|----------|--------------|--------------|-------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | कॉलम/कुंजी नाम |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | ऑपरेटर (`=`, `!=`, `and`, आदि) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | स्ट्रिंग मान |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | संख्यात्मक मान |
+
+### सुझाव पैनल
+
+| वेरिएबल | लाइट डिफ़ॉल्ट | डार्क डिफ़ॉल्ट | विवरण |
+|----------|--------------|--------------|-------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | पैनल पृष्ठभूमि |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | पैनल बॉर्डर |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | होवर किया गया आइटम |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | चयनित आइटम |
+
+### टाइपोग्राफ़ी
+
+| वेरिएबल | डिफ़ॉल्ट | विवरण |
+|----------|---------|-------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | UI फ़ॉन्ट |
+| `--flyql-code-font-family` | `monospace` | कोड/क्वेरी फ़ॉन्ट |
+| `--flyql-font-size` | `13px` | मूल फ़ॉन्ट आकार |
+
+## लाइट थीम
+
+लाइट थीम डिफ़ॉल्ट है। किसी अतिरिक्त क्लास की आवश्यकता नहीं है:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## डार्क थीम
+
+अंतर्निहित डार्क थीम सक्षम करने के लिए `dark` prop का उपयोग करें:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+`dark` prop सुझाव पैनल पर `flyql-dark` क्लास लागू करता है, जो `<body>` में टेलीपोर्ट किया जाता है और पूर्वज रैपर से इनहेरिट नहीं कर सकता। एडिटर इनपुट स्वयं सामान्य रूप से अपने पूर्वजों से CSS वेरिएबल इनहेरिट करता रहता है, इसलिए रैपर-स्तरीय ओवरराइड अभी भी काम करते हैं।
+
+वैकल्पिक रूप से, आप `flyql-dark` क्लास को `<html>` या `<body>` पर लागू कर सकते हैं, जो CSS वेरिएबल इनहेरिटेंस के माध्यम से एडिटर और टेलीपोर्टेड पैनल दोनों तक पहुँचेगा:
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## कस्टम थीम
+
+अपनी CSS में विशिष्ट वेरिएबल ओवरराइड करें:
+
+```css
+/* Custom brand theme */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Custom dark overrides */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## स्कोप्ड थीमिंग
+
+ओवरराइड वाले कंटेनर में लपेटकर किसी विशिष्ट एडिटर इंस्टेंस को थीम करें:
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+CSS कस्टम प्रॉपर्टीज़ कैस्केड करती हैं, इसलिए किसी भी पूर्वज पर ओवरराइड उसके भीतर सभी FlyQL कम्पोनेंट पर लागू होते हैं।

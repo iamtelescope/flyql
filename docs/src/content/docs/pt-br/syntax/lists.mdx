@@ -1,0 +1,77 @@
+---
+title: Listas
+description: Operadores de pertencimento a listas no FlyQL (in, not in)
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Pertencimento a Lista
+
+Use <FlyqlToken type="operator">in</FlyqlToken> para verificar se um valor está em uma lista, e <FlyqlToken type="operator">not in</FlyqlToken> para verificar se não está:
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
+
+## Regras de Sintaxe
+
+- Os valores são colocados entre colchetes <FlyqlToken type="operator">[ ]</FlyqlToken> e separados por vírgulas
+- Todos os valores em uma lista devem ser do mesmo tipo (todos strings ou todos números)
+- Valores de string devem estar entre aspas: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- Valores numéricos não usam aspas: <FlyqlCode code={`[1, 2, 3]`} inline />
+- Espaços ao redor de vírgulas e colchetes são permitidos
+
+### Listas de Strings
+
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
+
+Tanto aspas simples quanto duplas funcionam para valores de string.
+
+### Listas Numéricas
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
+
+### Listas Vazias
+
+Listas vazias são permitidas:
+
+<FlyqlCode code={`status in []`} />
+
+Uma lista <FlyqlToken type="operator">in</FlyqlToken> vazia é sempre falsa — nada corresponde a uma lista vazia.
+
+<FlyqlCode code={`status not in []`} />
+
+Uma lista <FlyqlToken type="operator">not in</FlyqlToken> vazia é sempre verdadeira — tudo está "fora" de uma lista vazia.
+
+## Consistência de Tipos
+
+As listas **devem** conter valores de um tipo uniforme — todos strings ou todos números. Misturar tipos em uma única lista causa um erro de análise:
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
+
+O seguinte é inválido (tipos misturados — erro de análise):
+
+<FlyqlCode code={`values in [200, 'ok']`} />
+
+O analisador rastreia o tipo do primeiro valor na lista e rejeita qualquer valor subsequente de um tipo diferente. Isso é aplicado em tempo de análise, antes que a consulta chegue a qualquer gerador ou matcher.
+
+Quando um gerador SQL processa uma lista, ele também valida que os tipos dos valores da lista são compatíveis com o tipo da coluna de destino. Por exemplo, passar valores de string para uma coluna numérica gerará um erro de validação durante a geração do SQL.
+
+O campo `valuesType` na expressão analisada indica se a lista contém valores `"string"` ou `"number"`. Para listas vazias, `valuesType` é `null`.
+
+## Combinado com Outros Operadores
+
+Os operadores de lista combinam com operadores booleanos como qualquer outra condição:
+
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+
+## Exemplos
+
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

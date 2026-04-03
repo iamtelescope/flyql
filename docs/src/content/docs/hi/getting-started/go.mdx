@@ -1,0 +1,161 @@
+---
+title: Go क्विकस्टार्ट
+description: Go प्रोजेक्ट में FlyQL इंस्टॉल और उपयोग करें
+---
+
+## इंस्टॉलेशन
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## क्वेरी पार्स करें
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status = 200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` AST का प्रतिनिधित्व करने वाले `Root` नोड के साथ एक `*ParseResult` लौटाता है।
+
+## SQL उत्पन्न करें
+
+AST को पैरामीटराइज़्ड WHERE क्लॉज़ में बदलने के लिए जनरेटर का उपयोग करें। प्रत्येक डेटाबेस बोली का अपना जनरेटर है जिसमें बोली-विशिष्ट कॉलम प्रकार होते हैं।
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status >= 400 and host = prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+PostgreSQL और StarRocks जनरेटर समान पैटर्न का पालन करते हैं — इसके बजाय `generators/postgresql` या `generators/starrocks` से इम्पोर्ट करें।
+
+## इन-मेमोरी मैच
+
+SQL उत्पन्न किए बिना डेटा रिकॉर्ड के विरुद्ध क्वेरी का मूल्यांकन करें:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status = 200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## कॉलम एक्सप्रेशन पार्स करें
+
+कॉलम एक्सप्रेशन को सेगमेंट, ट्रांसफ़ॉर्मर, और उपनामों के साथ संरचित डेटा में पार्स करें।
+दूसरा आर्ग्युमेंट एक `Capabilities` स्ट्रक्ट है जो नियंत्रित करता है कि कौन सी सुविधाएँ सक्षम हैं।
+ट्रांसफ़ॉर्मर डिफ़ॉल्ट रूप से अक्षम हैं।
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	// Parse basic columns (transformers disabled by default)
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	// Enable transformers via capabilities
+	caps := columns.Capabilities{Transformers: true}
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms[0].Transformers)
+
+	// Or serialize directly to JSON for API responses
+	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
+	fmt.Println(string(jsonBytes))
+}
+```
+
+## क्वेरी में ट्रांसफ़ॉर्मर
+
+ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, _ := flyql.Parse("message|upper = 'ERROR'")
+	columns := map[string]*clickhousegen.Column{
+		"message": clickhousegen.NewColumn("message", false, "String", nil),
+	}
+	sql, _ := clickhousegen.ToSQL(result.Root, columns)
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+पूर्ण सिंटैक्स संदर्भ के लिए [ट्रांसफ़ॉर्मर](/hi/syntax/transformers/) देखें।
+
+## आगे क्या
+
+- [सिंटैक्स संदर्भ](/hi/syntax/) — सभी ऑपरेटर, बूलियन लॉजिक, पैटर्न, और अधिक

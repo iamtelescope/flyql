@@ -1,3 +1,18 @@
+/* Reduce header logo size and gap */
+.site-title img {
+  height: 1.5rem;
+  width: auto;
+}
+
+.site-title {
+  gap: 1rem;
+  color: black;
+}
+
+:root[data-theme='dark'] .site-title {
+  color: white;
+}
+
 /* Prevent wrapping in table cells that contain code (props, types, defaults, operators) */
 .sl-markdown-content table td code,
 .sl-markdown-content table th code {

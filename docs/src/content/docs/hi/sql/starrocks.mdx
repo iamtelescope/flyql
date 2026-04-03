@@ -1,0 +1,128 @@
+---
+title: StarRocks
+description: StarRocks के लिए उत्पन्न SQL उदाहरण
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+StarRocks SQL बैकटिक-कोटेड आइडेंटिफ़ायर, रेगेक्स के लिए `regexp()`, और JSON एक्सेस के लिए JSON-स्ट्रिंगिफ़ाइड कुंजियों के साथ `->` का उपयोग करता है।
+
+## मूल उदाहरण
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`message = 'hello'`} inline /> | `` `message` = 'hello' `` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `` `message` != 'hello' `` |
+| <FlyqlCode code={`count > 10`} inline /> | `` `count` > 10 `` |
+| <FlyqlCode code={`count <= 100`} inline /> | `` `count` <= 100 `` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `` regexp(`message`, 'error.*') `` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `` not regexp(`message`, 'test.*') `` |
+| <FlyqlCode code={`host = prod*`} inline /> | `` `host` LIKE 'prod%' `` |
+
+## बूलियन ऑपरेटर
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `` (`a` = '1' and `b` > 10) `` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `` (`a` = '1' or `b` = '2') `` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `` not (`a` = '1') `` |
+
+## सूची सदस्यता
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `` `status` IN (200, 201) `` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `` `env` NOT IN ('dev', 'test') `` |
+| <FlyqlCode code={`status in []`} inline /> | `0` |
+| <FlyqlCode code={`status not in []`} inline /> | `1` |
+
+## कंटेनमेंट (`has` / `not has`)
+
+<FlyqlToken type="operator">has</FlyqlToken> ऑपरेटर कॉलम प्रकार के आधार पर अलग-अलग SQL उत्पन्न करता है:
+
+| कॉलम प्रकार | FlyQL | उत्पन्न SQL |
+|-------------|-------|--------------|
+| स्ट्रिंग | <FlyqlCode code={`message has 'error'`} inline /> | `` INSTR(`message`, 'error') > 0 `` |
+| स्ट्रिंग (निषेधित) | <FlyqlCode code={`message not has 'error'`} inline /> | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| ऐरे | <FlyqlCode code={`tags has 'web'`} inline /> | `` array_contains(`tags`, 'web') `` |
+| ऐरे (निषेधित) | <FlyqlCode code={`tags not has 'web'`} inline /> | `` NOT array_contains(`tags`, 'web') `` |
+| मैप | <FlyqlCode code={`metadata has 'key'`} inline /> | `` array_contains(map_keys(`metadata`), 'key') `` |
+| मैप (निषेधित) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| नेटिव JSON | <FlyqlCode code={`data has 'key'`} inline /> | `` json_exists(`data`, concat('$.', 'key')) `` |
+
+## JSON कॉलम
+
+StarRocks दो JSON कॉलम प्रकारों का समर्थन करता है जिनका SQL आउटपुट अलग होता है।
+
+### नेटिव JSON प्रकार
+
+नेटिव JSON कॉलम JSON-स्ट्रिंगिफ़ाइड कुंजियों के साथ `->` ऑपरेटर का उपयोग करते हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` `data`->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### JSON स्ट्रिंग प्रकार
+
+JSON को स्ट्रिंग के रूप में संग्रहीत करने वाले कॉलम को ट्रैवर्सल से पहले `parse_json()` की आवश्यकता होती है:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## मैप कॉलम
+
+मैप कॉलम सीधी तुलना के साथ ब्रैकेट नोटेशन का उपयोग करते हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `` `metadata`['key1'] = 'value1' `` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `` `metadata`['key1'] != 'value1' `` |
+| <FlyqlCode code={`metadata.nested.key = 'value'`} inline /> | `` `metadata`['nested']['key'] = 'value' `` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## ऐरे कॉलम
+
+ऐरे कॉलम 0-आधारित ब्रैकेट इंडेक्सिंग का उपयोग करते हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+
+### कॉलम सेटअप
+
+`jsonString` पैरामीटर नियंत्रित करता है कि कौन सा मोड उपयोग किया जाता है (ClickHouse के समान):
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // native JSON
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // native JSON
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```
+
+## ट्रांसफ़ॉर्मर
+
+ट्रांसफ़ॉर्मर बैकटिक-कोटेड कॉलम नामों के साथ StarRocks-मानक फ़ंक्शन कॉल उत्पन्न करते हैं:
+
+| FlyQL | उत्पन्न SQL |
+|-------|--------------|
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `` UPPER(`status`) = 'ERROR' `` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `` LOWER(`status`) = 'info' `` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `` LENGTH(`message`) > 100 `` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `` LENGTH(LOWER(`message`)) > 100 `` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

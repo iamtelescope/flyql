@@ -1,0 +1,112 @@
+---
+title: Correspondência de Padrões
+description: Correspondência com regex e curinga no FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Correspondência Regex
+
+Use <FlyqlToken type="operator">{'~'}</FlyqlToken> para verificar se um valor corresponde a uma expressão regular, e <FlyqlToken type="operator">{'!~'}</FlyqlToken> para negar a correspondência:
+
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+
+| Operador | Significado |
+|----------|-------------|
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | O valor corresponde ao padrão regex |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | O valor não corresponde ao padrão regex |
+
+### Sintaxe do Padrão Regex
+
+A sintaxe regex depende do backend de destino:
+
+- **ClickHouse** — usa a função `match()` (sintaxe RE2)
+- **PostgreSQL** — usa os operadores <FlyqlToken type="operator">{'~'}</FlyqlToken> e <FlyqlToken type="operator">{'!~'}</FlyqlToken> (regex POSIX)
+- **StarRocks** — usa a função `regexp`
+- **Matcher em memória** — usa o motor de regex da linguagem hospedeira (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Coloque o padrão entre aspas quando ele contiver espaços ou caracteres especiais:
+
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
+
+### Flags de Regex
+
+Você pode modificar o comportamento do regex usando flags inline no início do padrão com a sintaxe `(?...)`. O FlyQL suporta três flags que funcionam em todos os backends:
+
+#### `(?i)` — Insensível a Maiúsculas/Minúsculas
+
+Faz o padrão corresponder independentemente do caso das letras:
+
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
+
+`(?i)error` corresponde a "Error", "ERROR", "error", etc.
+
+#### `(?m)` — Multilinha
+
+Altera `^` e `$` para corresponder ao início e fim de cada **linha** em vez da string inteira:
+
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
+
+Sem `(?m)`, `^ERROR` só corresponde se a string inteira começar com "ERROR". Com `(?m)`, também corresponde a "INFO first\nERROR second" porque "ERROR" aparece no início de uma linha.
+
+#### `(?s)` — Dotall
+
+Faz `.` corresponder a **qualquer** caractere incluindo quebras de linha. Por padrão, `.` não corresponde a `\n`:
+
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
+
+Sem `(?s)`, `start.*end` não corresponde a "start\nend" porque `.` não atravessa a quebra de linha. Com `(?s)`, corresponde.
+
+#### Combinando Flags
+
+As flags podem ser combinadas em um único grupo:
+
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
+
+#### Suporte por Backend
+
+Todas as três flags funcionam em todos os backends do FlyQL:
+
+| Backend | `(?i)` | `(?m)` | `(?s)` |
+|---------|--------|--------|--------|
+| **ClickHouse** | Sim | Sim | Sim |
+| **PostgreSQL** | Sim | Sim | Sim |
+| **StarRocks** | Sim | Sim | Sim |
+| **Go matcher** | Sim | Sim | Sim |
+| **Python matcher** | Sim | Sim | Sim |
+| **JavaScript matcher** | Sim | Sim | Sim |
+
+Combine correspondência insensível a maiúsculas/minúsculas com negação para excluir padrões independentemente do caso:
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+## Correspondência com Curinga
+
+Use <FlyqlToken type="operator">{'*'}</FlyqlToken> no final de um valor sem aspas para correspondência de prefixo estilo glob:
+
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
+
+Isso corresponde a qualquer valor que comece com o prefixo fornecido. Curingas são suportados apenas no final do valor — `*prod` ou `pr*od` não são suportados.
+
+### Curinga vs. Regex
+
+| Padrão | Sintaxe | Exemplo |
+|--------|---------|---------|
+| Curinga (prefixo) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex (completo) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Use curingas para correspondência simples de prefixo. Use regex quando precisar de padrões mais complexos.
+
+## Exemplos
+
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

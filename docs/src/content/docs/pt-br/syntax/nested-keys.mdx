@@ -1,0 +1,65 @@
+---
+title: Chaves Aninhadas
+description: Travessia de caminhos separados por ponto e segmentos de chave entre aspas no FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Notação com Ponto
+
+Use caminhos separados por ponto para acessar campos aninhados em JSON, Map ou dados estruturados:
+
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
+
+Cada segmento separado por ponto percorre um nível na estrutura aninhada. Os geradores SQL traduzem esses caminhos na sintaxe correta para cada dialeto de banco de dados (acesso a caminho JSON, consultas de Map, etc.).
+
+## Segmentos de Chave entre Aspas
+
+Quando um segmento de chave contém um ponto, coloque-o entre aspas para que o ponto não seja tratado como separador:
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+
+Aqui:
+- `"foo.bar"` é um único segmento de chave (o ponto é literal)
+- <FlyqlToken type="key">baz</FlyqlToken> é filho de `"foo.bar"`
+
+Sem aspas, <FlyqlToken type="key">foo.bar.baz</FlyqlToken> seria três segmentos: <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>.
+
+### Regras de Aspas
+
+Tanto aspas simples quanto duplas funcionam para segmentos de chave:
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
+
+Apenas os segmentos que contêm pontos precisam estar entre aspas:
+
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
+
+## Profundidade do Caminho
+
+Não há limite de profundidade de aninhamento:
+
+<FlyqlCode code={`a.b.c.d.e = value`} />
+
+Cada segmento é percorrido em ordem ao gerar SQL ou avaliar em memória.
+
+## Combinado com Operadores
+
+Chaves aninhadas funcionam com todos os operadores:
+
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
+
+## Exemplos
+
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

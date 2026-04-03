@@ -1,0 +1,142 @@
+---
+title: Início Rápido JavaScript
+description: Instalar e utilizar o FlyQL num projeto JavaScript
+---
+
+## Instalação
+
+```bash
+npm install flyql
+```
+
+**Requisitos:** Node.js 16+. Todas as importações utilizam módulos ES.
+
+## Analisar uma Consulta
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status = 200 and active")
+console.log(result.root)
+```
+
+`parse()` devolve um objeto `Parser` com um nó `root` que representa a AST. Lança uma `ParserError` em caso de entrada inválida:
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status = 200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
+
+## Gerar SQL
+
+Utilize um gerador para transformar a AST numa cláusula WHERE parametrizada. Cada dialeto de base de dados é uma importação de subpath separada.
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status >= 400 and host = prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### Outros Dialetos
+
+Os geradores PostgreSQL e StarRocks seguem o mesmo padrão:
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+Nota: O `newColumn` do PostgreSQL tem uma assinatura diferente — `newColumn(name, type, values)` (sem parâmetro `jsonString`).
+
+## Correspondência em Memória
+
+Avalie uma consulta contra um registo de dados sem gerar SQL:
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status = 200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## Analisar Expressões de Colunas
+
+Analise uma expressão de colunas em dados estruturados com segmentos, transformadores e aliases:
+
+```javascript
+import { parse, parseToJson } from 'flyql/columns'
+
+// Analisar colunas básicas (transformadores desativados por predefinição)
+const parsed = parse("message, status")
+for (const col of parsed) {
+    console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
+}
+
+// Ativar transformadores via capabilities
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
+
+// Ou serializar diretamente para JSON para respostas de API
+const json = parseToJson("message, status|upper", { transformers: true })
+console.log(json)
+```
+
+## Transformadores em Consultas
+
+Analise uma consulta com transformadores e gere SQL:
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// Analisar uma consulta com transformador
+const result = parse("message|upper = 'ERROR'")
+
+// Gerar SQL para ClickHouse
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql) // equals(upper(message), 'ERROR')
+```
+
+Consulte [Transformadores](/pt/syntax/transformers/) para a referência completa da sintaxe.
+
+## Importações de Subpath Disponíveis
+
+| Caminho de Importação | Conteúdo |
+|-------------|----------|
+| `flyql` | Parser principal (`parse`, `ParserError`, operadores, constantes) |
+| `flyql/core` | Módulo do parser principal diretamente |
+| `flyql/columns` | Parser de expressões de colunas |
+| `flyql/generators/clickhouse` | Gerador SQL ClickHouse |
+| `flyql/generators/postgresql` | Gerador SQL PostgreSQL |
+| `flyql/generators/starrocks` | Gerador SQL StarRocks |
+| `flyql/matcher` | Matcher de registos em memória |
+| `flyql/editor` | Componente editor web (requer Vue 3) |
+
+## Próximos Passos
+
+- [Referência de Sintaxe](/pt/syntax/) — todos os operadores, lógica booleana, padrões e mais

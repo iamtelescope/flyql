@@ -1,0 +1,89 @@
+---
+title: ट्रांसफ़ॉर्मर
+description: तुलना से पहले पाइप-चेन फ़ंक्शन से कॉलम मानों को रूपांतरित करें
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+ट्रांसफ़ॉर्मर कॉलम मानों को क्वेरी में तुलना या SQL में उत्सर्जन से पहले संशोधित करते हैं। ये पाइप (`|`) सिंटैक्स का उपयोग करते हैं, जो बाएँ से दाएँ लागू होता है।
+
+## पाइप सिंटैक्स
+
+कॉलम पर `|` के साथ ट्रांसफ़ॉर्मर लागू करें:
+
+<FlyqlCode code={`message|upper = "ERROR"`} />
+
+यह `"ERROR"` से तुलना करने से पहले <FlyqlToken type="key">message</FlyqlToken> के मान को <FlyqlToken type="transformer">upper</FlyqlToken> का उपयोग करके रूपांतरित करता है।
+
+## चेनिंग
+
+अतिरिक्त पाइप के साथ कई ट्रांसफ़ॉर्मर चेन करें:
+
+<FlyqlCode code={`message|lower|len > 100`} />
+
+ट्रांसफ़ॉर्मर बाएँ से दाएँ लागू होते हैं: <FlyqlToken type="transformer">lower</FlyqlToken> पहले चलता है (स्ट्रिंग से स्ट्रिंग), फिर <FlyqlToken type="transformer">len</FlyqlToken> (स्ट्रिंग से int)। परिणाम की तुलना `> 100` से होती है।
+
+## प्रकार प्रणाली
+
+प्रत्येक ट्रांसफ़ॉर्मर एक इनपुट प्रकार और आउटपुट प्रकार घोषित करता है। चेन किए गए ट्रांसफ़ॉर्मर प्रकार-संगत होने चाहिए — एक का आउटपुट प्रकार अगले के इनपुट प्रकार से मेल खाना चाहिए।
+
+| प्रकार | विवरण |
+|------|-------------|
+| `string` | टेक्स्ट मान |
+| `int` | पूर्णांक |
+| `float` | फ़्लोटिंग-पॉइंट संख्याएँ |
+| `array` | मानों की ऐरे (सदस्यता जाँचने के लिए <FlyqlToken type="operator">has</FlyqlToken> ऑपरेटर का उपयोग करें) |
+
+## बिल्ट-इन ट्रांसफ़ॉर्मर
+
+| ट्रांसफ़ॉर्मर | इनपुट | आउटपुट | विवरण |
+|-------------|-------|--------|-------------|
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | अपरकेस में बदलें |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | लोअरकेस में बदलें |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | स्ट्रिंग की लंबाई प्राप्त करें |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | डिलिमिटर से विभाजित करें: `split(".")` |
+
+## डायलेक्ट अनुसार SQL आउटपुट
+
+ट्रांसफ़ॉर्मर डायलेक्ट-विशिष्ट SQL फ़ंक्शन कॉल उत्पन्न करते हैं। चेन किए गए ट्रांसफ़ॉर्मर नेस्टेड कॉल (सबसे आंतरिक पहले) उत्पन्न करते हैं:
+
+**एकल ट्रांसफ़ॉर्मर:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
+
+| डायलेक्ट | जनरेटेड SQL |
+|---------|---------------|
+| ClickHouse | `equals(upper(status), 'ERROR')` |
+| PostgreSQL | `UPPER(status) = 'ERROR'` |
+| StarRocks | `UPPER(\`status\`) = 'ERROR'` |
+
+**चेन किए गए ट्रांसफ़ॉर्मर:** <FlyqlCode code={`message|lower|len > 100`} inline />
+
+| डायलेक्ट | जनरेटेड SQL |
+|---------|---------------|
+| ClickHouse | `length(lower(message)) > 100` |
+| PostgreSQL | `LENGTH(LOWER(message)) > 100` |
+| StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
+
+**Split with has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
+
+| डायलेक्ट | जनरेटेड SQL |
+|---------|---------------|
+| ClickHouse | `has(splitByChar(' ', message), 'hello')` |
+| PostgreSQL | `'hello' = ANY(STRING_TO_ARRAY(message, ' '))` |
+| StarRocks | `` array_contains(SPLIT(`message`, ' '), 'hello') `` |
+
+## प्रकार त्रुटियाँ
+
+यदि चेन में असंगत प्रकार हैं, तो एडिटर त्रुटि दिखाता है:
+
+<FlyqlCode code={`message|len|upper`} />
+
+यह विफल होता है क्योंकि <FlyqlToken type="transformer">len</FlyqlToken> `int` आउटपुट करता है, लेकिन <FlyqlToken type="transformer">upper</FlyqlToken> को `string` इनपुट चाहिए। एडिटर प्रदर्शित करता है: "len outputs int, upper requires string input"।
+
+## उदाहरण
+
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

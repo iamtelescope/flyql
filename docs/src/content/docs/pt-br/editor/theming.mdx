@@ -1,0 +1,113 @@
+---
+title: Temas
+description: Personalize a aparência do editor FlyQL com propriedades CSS customizadas
+---
+
+O editor FlyQL usa propriedades CSS customizadas (variáveis) para todo o estilo visual. Sobrescreva qualquer variável `--flyql-*` para combinar com o design da sua aplicação.
+
+## Propriedades CSS Customizadas
+
+### Cores
+
+| Variável | Padrão Claro | Padrão Escuro | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | Fundo do editor |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Cor do texto |
+| `--flyql-border` | `#d4d4d4` | `#525252` | Cor da borda |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | Cor da borda com foco |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Texto do placeholder |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | Destaque de erro |
+
+### Destaque de Sintaxe
+
+| Variável | Padrão Claro | Padrão Escuro | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | Nomes de colunas/chaves |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | Operadores (`=`, `!=`, `and`, etc.) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | Valores string |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | Valores numéricos |
+
+### Painel de Sugestões
+
+| Variável | Padrão Claro | Padrão Escuro | Descrição |
+|----------|--------------|--------------|-------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | Fundo do painel |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | Borda do painel |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | Item em hover |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | Item selecionado |
+
+### Tipografia
+
+| Variável | Padrão | Descrição |
+|----------|---------|-------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | Fonte da interface |
+| `--flyql-code-font-family` | `monospace` | Fonte de código/consulta |
+| `--flyql-font-size` | `13px` | Tamanho base da fonte |
+
+## Tema Claro
+
+O tema claro é o padrão. Nenhuma classe adicional é necessária:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Tema Escuro
+
+Use a prop `dark` para ativar o tema escuro integrado:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+A prop `dark` aplica a classe `flyql-dark` ao painel de sugestões, que é teleportado para o `<body>` e não pode herdar de elementos ancestrais. O campo do editor em si continua herdando variáveis CSS de seus ancestrais normalmente, então sobrescritas no wrapper ainda funcionam.
+
+Alternativamente, você pode aplicar a classe `flyql-dark` no `<html>` ou `<body>`, que alcançará tanto o editor quanto o painel teleportado via herança de variáveis CSS:
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## Tema Customizado
+
+Sobrescreva variáveis específicas no seu CSS:
+
+```css
+/* Tema de marca customizado */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Sobrescritas customizadas para tema escuro */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## Tema com Escopo
+
+Aplique tema a uma instância específica do editor envolvendo-o em um container com sobrescritas:
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+Propriedades CSS customizadas são herdadas em cascata, então sobrescritas em qualquer ancestral se aplicam a todos os componentes FlyQL dentro dele.

@@ -1,0 +1,171 @@
+---
+title: Valores e Tipos
+description: Tipos de valores, literais tipados e expressoes no FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+O FlyQL suporta 7 tipos de valores: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** e **Array**. Cada valor no AST possui um campo `value_type` explicito.
+
+## Tipos de Valores
+
+### Integer
+
+Numeros inteiros dentro do intervalo int64:
+
+<FlyqlCode code={`count = 42`} />
+<FlyqlCode code={`status != 200`} />
+<FlyqlCode code={`age >= 18`} />
+
+AST: `value_type: "integer"`
+
+### BigInt
+
+Inteiros que excedem o intervalo int64 (Go/Python) ou `MAX_SAFE_INTEGER` (JavaScript):
+
+<FlyqlCode code={`id = 18446744073709551615`} />
+
+AST: `value_type: "bigint"`
+
+### Float
+
+Numeros com ponto decimal:
+
+<FlyqlCode code={`price > 9.99`} />
+<FlyqlCode code={`ratio = 3.14`} />
+<FlyqlCode code={`temperature<=-0.5`} />
+
+AST: `value_type: "float"`
+
+### String
+
+Valores de texto, com ou sem aspas:
+
+<FlyqlCode code={`level = error`} />
+<FlyqlCode code={`user = "John Doe"`} />
+<FlyqlCode code={`message = 'hello world'`} />
+<FlyqlCode code={`count = '42'`} />
+
+AST: `value_type: "string"`
+
+Escape de aspas com barra invertida:
+
+```
+user = 'John
+message="said \"hello\""
+```
+
+### Boolean
+
+As palavras-chave <FlyqlToken type="boolean">true</FlyqlToken> e <FlyqlToken type="boolean">false</FlyqlToken> (minusculas, sensivel a maiusculas/minusculas):
+
+<FlyqlCode code={`active = true`} />
+<FlyqlCode code={`debug = false`} />
+<FlyqlCode code={`active != true`} />
+
+AST: `value_type: "boolean"`, o valor e um booleano nativo.
+
+Variantes em maiusculas (`True`, `FALSE`) sao tratadas como strings.
+
+**Geracao de SQL:**
+| Dialecto | FlyQL | SQL Gerado |
+|----------|-------|------------|
+| ClickHouse | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| ClickHouse | <FlyqlCode code={`field = false`} inline /> | `field = false` |
+| PostgreSQL | <FlyqlCode code={`field = true`} inline /> | `field = TRUE` |
+| PostgreSQL | <FlyqlCode code={`field = false`} inline /> | `field = FALSE` |
+| StarRocks | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| StarRocks | <FlyqlCode code={`field = false`} inline /> | `field = false` |
+
+### Null
+
+A palavra-chave <FlyqlToken type="null">null</FlyqlToken> (minusculas, sensivel a maiusculas/minusculas):
+
+<FlyqlCode code={`field = null`} />
+<FlyqlCode code={`field != null`} />
+
+AST: `value_type: "null"`, o valor e null nativo.
+
+Variantes em maiusculas (`Null`, `NULL`) sao tratadas como strings.
+
+**Restricoes:** Apenas os operadores <FlyqlToken type="operator">=</FlyqlToken> e <FlyqlToken type="operator">!=</FlyqlToken> sao validos com null. Utilizar <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken> ou <FlyqlToken type="operator">{'!~'}</FlyqlToken> com null produz um erro de analise.
+
+**Geracao de SQL:** <FlyqlCode code={`field = null`} inline /> gera `field IS NULL`, <FlyqlCode code={`field != null`} inline /> gera `field IS NOT NULL` (todos os dialectos).
+
+### Array
+
+Os arrays sao utilizados com os operadores <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. Os elementos podem ser de tipos mistos (heterogeneos):
+
+<FlyqlCode code={`status in [200, 201, 202]`} />
+<FlyqlCode code={`name in ['alice', 'bob']`} />
+<FlyqlCode code={`field in [1, "hello", true, null]`} />
+
+Cada elemento possui o seu proprio tipo no array `values_types`.
+
+## Expressoes Truthy/Falsy
+
+Uma chave isolada sem operador verifica se o campo tem um valor truthy:
+
+<FlyqlCode code={`active`} />
+<FlyqlCode code={`message and status`} />
+
+Um valor e considerado **falsy** se for:
+- `null` / `None` / ausente
+- String vazia `""`
+- Zero `0`
+- Booleano <FlyqlToken type="boolean">false</FlyqlToken>
+
+Tudo o resto e **truthy**.
+
+Use <FlyqlToken type="operator">not</FlyqlToken> para verificar valores falsy:
+
+<FlyqlCode code={`not archived`} />
+<FlyqlCode code={`active and not debug`} />
+
+As verificacoes truthy/falsy sao distintas das comparacoes com null: <FlyqlCode code={`not field`} inline /> corresponde quando o campo e null, vazio ou zero. <FlyqlCode code={`field = null`} inline /> corresponde apenas quando o campo e especificamente null.
+
+## Espacos em Branco
+
+O FlyQL e tolerante a espacos em branco. Espacos a volta dos operadores sao opcionais:
+
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`status =200`} />
+
+Todas as formas acima sao equivalentes.
+
+## Modulo de Constantes de Tipo
+
+Todas as constantes de tipo estao disponiveis no modulo `flyql.types`:
+
+**Python:**
+```python
+from flyql.types import ValueType
+# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+**Go:**
+```go
+import "github.com/iamtelescope/flyql/golang/types"
+// types.Integer, types.BigInt, types.Float,
+// types.String, types.Boolean, types.Null, types.Array
+```
+
+**JavaScript:**
+```javascript
+import { ValueType } from 'flyql/types'
+// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
+// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+```
+
+## Notas de Migracao
+
+Se estiver a actualizar a partir de uma versao anterior do FlyQL:
+
+- **Incompativel:** `ValueTypeString`/`ValueTypeNumber` do Go foram removidos, substituidos pelo `types.ValueType` com 7 valores
+- **Incompativel:** O campo `value_type` do AST mudou de `"string"`/`"number"` para `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
+- **Incompativel:** A imposicao de tipos uniformes em listas foi removida — arrays heterogeneos sao agora validos
+- **Novo:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> sao analisados como literais tipados (nao como strings)
+- **Novo:** O array `values_types` nas expressoes IN-list fornece tipos por elemento
+- **Novo:** O modulo `flyql.types` exporta constantes de tipo canonicas

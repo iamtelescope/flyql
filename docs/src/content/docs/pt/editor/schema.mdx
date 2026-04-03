@@ -1,0 +1,199 @@
+---
+title: Configuração de Esquema
+description: Estrutura do esquema de colunas para o editor FlyQL
+---
+
+A prop `columns` define o esquema de dados que orienta as sugestões do editor. As chaves são nomes de colunas, os valores são definições de colunas.
+
+## Esquema Básico
+
+```javascript
+const columns = {
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    status_code: { type: 'number', suggest: true },
+    host: { type: 'string', suggest: true },
+}
+```
+
+## Campos da Definição de Coluna
+
+| Campo | Tipo | Predefinição | Descrição |
+|-------|------|---------|-------------|
+| `type` | `string` | — | Tipo de coluna: `'string'`, `'number'`, `'enum'`, `'object'` |
+| `suggest` | `boolean` | `true` | Mostrar esta coluna nas sugestões |
+| `autocomplete` | `boolean` | `false` | Ativar autocompletar de valores para esta coluna |
+| `values` | `string[]` ou `number[]` | — | Valores estáticos para autocompletar (utilizados antes do callback `onAutocomplete`) |
+| `children` | `object` | — | Definições de colunas aninhadas para colunas do tipo object |
+| `display_name` | `string` | `''` | Nome de apresentação opcional para a coluna. Nas colunas analisadas, o alias substitui este valor |
+
+## Tipos de Colunas
+
+### `string`
+
+Coluna de texto geral. Todos os operadores de comparação estão disponíveis, incluindo regex (`~`, `!~`).
+
+```javascript
+{ type: 'string', suggest: true }
+```
+
+### `number`
+
+Coluna numérica. Os operadores regex (`~`, `!~`) são excluídos das sugestões de operadores.
+
+```javascript
+{ type: 'number', suggest: true }
+```
+
+### `enum`
+
+Coluna enumerada com um conjunto fixo de valores. Tal como `number`, os operadores regex são excluídos. Utilize `values` para fornecer o conjunto:
+
+```javascript
+{ type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'warning', 'error', 'critical'] }
+```
+
+### `object`
+
+Coluna aninhada com filhos. Quando o utilizador escreve o nome da coluna seguido de `.`, as colunas filhas são sugeridas:
+
+```javascript
+{
+    type: 'object',
+    suggest: true,
+    children: {
+        labels: {
+            type: 'object',
+            suggest: true,
+            children: {
+                tier: { type: 'string', suggest: true },
+                env: { type: 'string', suggest: true },
+            },
+        },
+        version: { type: 'string', suggest: true },
+    },
+}
+```
+
+## Autocompletar de Valores
+
+### Valores Estáticos
+
+Forneça um array `values` para colunas com opções conhecidas:
+
+```javascript
+{
+    level: {
+        type: 'enum',
+        suggest: true,
+        autocomplete: true,
+        values: ['debug', 'info', 'warning', 'error', 'critical'],
+    },
+    status_code: {
+        type: 'number',
+        suggest: true,
+        autocomplete: true,
+        values: [200, 201, 204, 400, 404, 500],
+    },
+}
+```
+
+### Valores Assíncronos
+
+Defina `autocomplete: true` sem `values` e forneça um callback `onAutocomplete` no componente editor. O callback é chamado quando o utilizador atinge a posição de valor para essa coluna.
+
+```javascript
+// Definição de coluna — sem valores estáticos
+{ type: 'string', suggest: true, autocomplete: true }
+
+// Callback do editor busca valores da API
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/values?column=${key}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+```
+
+## Colunas Aninhadas (JSONSchema)
+
+Defina estruturas aninhadas utilizando `children` em colunas do tipo object:
+
+```javascript
+const columns = {
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+}
+```
+
+Ao escrever `metadata.` são sugeridos `labels` e `version`. Ao escrever `metadata.labels.` são sugeridos `tier` e `env`. Não há limite de profundidade.
+
+## Descoberta Remota de Chaves (Sem Esquema)
+
+Para colunas object onde as chaves aninhadas não são conhecidas no momento da definição do esquema, omita `children` e forneça um callback `onKeyDiscovery`:
+
+```javascript
+const columns = {
+    request: { type: 'object', suggest: true }, // sem filhos — aciona descoberta
+}
+
+async function onKeyDiscovery(columnName, segments) {
+    const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
+    const data = await resp.json()
+    return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
+}
+```
+
+Quando o utilizador escreve `request.`, o callback é chamado com `('request', ['request'])`. As chaves descobertas são mantidas em cache por sessão de ativação.
+
+Se uma coluna tiver tanto `children` como `onKeyDiscovery`, os `children` estáticos têm prioridade.
+
+## Exemplo Completo
+
+```javascript
+const columns = {
+    // Enum com valores estáticos
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+
+    // String com autocompletar assíncrono
+    service: { type: 'string', suggest: true, autocomplete: true },
+
+    // Número — exclui operadores regex
+    status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
+
+    // String simples
+    host: { type: 'string', suggest: true },
+
+    // Aninhado com filhos conhecidos
+    metadata: {
+        type: 'object',
+        suggest: true,
+        children: {
+            labels: {
+                type: 'object',
+                suggest: true,
+                children: {
+                    tier: { type: 'string', suggest: true, autocomplete: true, values: ['dev', 'staging', 'prod'] },
+                    env: { type: 'string', suggest: true, autocomplete: true },
+                },
+            },
+            version: { type: 'string', suggest: true },
+        },
+    },
+
+    // Sem esquema — chaves aninhadas descobertas em tempo de execução
+    request: { type: 'object', suggest: true },
+}
+```

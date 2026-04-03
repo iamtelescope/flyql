@@ -1,0 +1,116 @@
+---
+title: Início Rápido Python
+description: Instalar e utilizar o FlyQL num projeto Python
+---
+
+## Instalação
+
+O FlyQL para Python é instalado a partir do git (não publicado no PyPI):
+
+```bash
+pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+```
+
+Isto instala o pacote `flyql` juntamente com a sua dependência `google-re2`.
+
+**Requisitos:** Python 3.10+
+
+## Analisar uma Consulta
+
+```python
+from flyql.core.parser import parse
+
+result = parse("status = 200 and active")
+print(result.root)
+```
+
+`parse()` devolve um objeto `Parser` com um nó `root` que representa a AST. Lança uma `ParserError` em caso de entrada inválida.
+
+## Gerar SQL
+
+Utilize um gerador para transformar a AST numa cláusula WHERE parametrizada. Cada dialeto de base de dados tem o seu próprio gerador.
+
+### ClickHouse
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status >= 400 and host = prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql(result.root, columns)
+print(sql)
+```
+
+Os geradores PostgreSQL e StarRocks seguem o mesmo padrão — importe de `flyql.generators.postgresql` ou `flyql.generators.starrocks` em vez disso.
+
+## Correspondência em Memória
+
+Avalie uma consulta contra um registo de dados sem gerar SQL:
+
+```python
+from flyql.core.parser import parse
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+result = parse("status = 200 and active")
+
+data = {
+    "status": 200,
+    "active": True,
+    "host": "prod-api-01",
+}
+
+evaluator = Evaluator()
+matches = evaluator.evaluate(result.root, Record(data))
+print(f"Matches: {matches}")  # True
+```
+
+## Analisar Expressões de Colunas
+
+Analise uma expressão de colunas em dados estruturados com segmentos, transformadores e aliases:
+
+```python
+from flyql.columns import parse, parse_to_json
+
+# Analisar colunas básicas (transformadores desativados por predefinição)
+parsed = parse("message, status")
+for col in parsed:
+    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
+
+# Ativar transformadores via capabilities
+with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
+
+# Ou serializar diretamente para JSON para respostas de API
+json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
+print(json_str)
+```
+
+## Transformadores em Consultas
+
+Analise uma consulta com transformadores e gere SQL:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse.generator import to_sql, Column
+
+# Analisar uma consulta com transformador
+result = parse("message|upper = 'ERROR'")
+
+# Gerar SQL para ClickHouse
+columns = {"message": Column("message", False, "String")}
+sql = to_sql(result.root, columns)
+print(sql)  # equals(upper(message), 'ERROR')
+```
+
+Consulte [Transformadores](/pt/syntax/transformers/) para a referência completa da sintaxe.
+
+## Próximos Passos
+
+- [Referência de Sintaxe](/pt/syntax/) — todos os operadores, lógica booleana, padrões e mais

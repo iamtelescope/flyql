@@ -1,0 +1,99 @@
+---
+title: SQL बोलियाँ
+description: FlyQL कैसे ClickHouse, PostgreSQL और StarRocks के लिए SQL उत्पन्न करता है
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL जनरेटर एक WHERE क्लॉज़ फ़्रैगमेंट को सादे SQL स्ट्रिंग के रूप में उत्पन्न करते हैं, जिसमें सभी मान एम्बेडेड (एस्केप्ड) होते हैं। वही FlyQL क्वेरी लक्ष्य बोली के आधार पर अलग-अलग SQL उत्पन्न करती है।
+
+## समर्थित बोलियाँ
+
+- [ClickHouse](/hi/sql/clickhouse/) — कोई कॉलम कोटिंग नहीं, रेगेक्स के लिए `match()`, JSON स्ट्रिंग्स के लिए `JSONExtract` फ़ंक्शन
+- [PostgreSQL](/hi/sql/postgresql/) — डबल-कोटेड आइडेंटिफ़ायर, रेगेक्स के लिए `~`, JSONB ऑपरेटर
+- [StarRocks](/hi/sql/starrocks/) — बैकटिक-कोटेड आइडेंटिफ़ायर, रेगेक्स के लिए `regexp()`, JSON स्ट्रिंग्स के लिए `parse_json()`
+
+## प्रमुख अंतर
+
+| विशेषता | ClickHouse | PostgreSQL | StarRocks |
+|---------|-----------|-----------|-----------|
+| कॉलम कोटिंग | कोई नहीं | `"name"` | `` `name` `` |
+| रेगेक्स | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
+| निषेधित रेगेक्स | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| वाइल्डकार्ड | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
+| बूलियन ऑपरेटर | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| खाली `IN []` | `0` | `FALSE` | `0` |
+| खाली `NOT IN []` | `1` | `TRUE` | `1` |
+| स्ट्रिंग <FlyqlToken type="operator">has</FlyqlToken> | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| ऐरे <FlyqlToken type="operator">has</FlyqlToken> | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| मैप <FlyqlToken type="operator">has</FlyqlToken> | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON <FlyqlToken type="operator">has</FlyqlToken> | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+
+## JSON एक्सेस — सबसे बड़ा अंतर
+
+प्रत्येक बोली नेस्टेड JSON कॉलम को बहुत अलग तरीके से हैंडल करती है:
+
+**FlyQL इनपुट:** <FlyqlCode code={`data.user.name = 'john'`} inline />
+
+**ClickHouse** (नेटिव JSON कॉलम):
+```sql
+data.`user`.`name` = 'john'
+```
+
+**ClickHouse** (स्ट्रिंग के रूप में संग्रहीत JSON):
+```sql
+multiIf(JSONType(data, 'user', 'name') = 'String',
+  equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)
+```
+
+**PostgreSQL** (JSONB):
+```sql
+(jsonb_typeof("data"->'user'->'name') = 'string'
+  AND "data"->'user'->>'name' = 'john')
+```
+
+**StarRocks** (नेटिव JSON):
+```sql
+`data`->'\"user\"'->'\"name\"' = 'john'
+```
+
+प्रत्येक बोली पृष्ठ पर पूर्ण उदाहरण देखें।
+
+## मैप एक्सेस
+
+**FlyQL इनपुट:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
+
+| बोली | उत्पन्न SQL |
+|---------|--------------|
+| ClickHouse | `equals(metadata['key1'], 'value1')` |
+| PostgreSQL | `"metadata"->'key1' = 'value1'` |
+| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+
+ClickHouse मैप एक्सेस के लिए `equals()`/`notEquals()` फ़ंक्शन का उपयोग करता है। PostgreSQL hstore `->` ऑपरेटर का उपयोग करता है। StarRocks सीधे ब्रैकेट नोटेशन का उपयोग करता है।
+
+## ऐरे एक्सेस
+
+**FlyQL इनपुट:** <FlyqlCode code={`tags.0 = 'first'`} inline /> (FlyQL में 0-आधारित इंडेक्स)
+
+| बोली | उत्पन्न SQL | इंडेक्सिंग |
+|---------|--------------|----------|
+| ClickHouse | `equals(tags[0], 'first')` | 0-आधारित |
+| PostgreSQL | `"tags"[1] = 'first'` | 1-आधारित (परिवर्तित) |
+| StarRocks | `` `tags`[0] = 'first' `` | 0-आधारित |
+
+PostgreSQL ऐरे 1-आधारित हैं, इसलिए FlyQL स्वचालित रूप से इंडेक्स में 1 जोड़ता है।
+
+## आउटपुट प्रारूप
+
+जनरेटर एक WHERE क्लॉज़ फ़्रैगमेंट लौटाते हैं — कोई `WHERE` कीवर्ड नहीं, कोई पैरामीटराइज़्ड प्लेसहोल्डर नहीं। सभी मान एस्केप्ड और सीधे एम्बेडेड होते हैं:
+
+```
+message = 'hello' and count > 10
+```
+
+नहीं:
+
+```
+WHERE message = ? AND count > ?
+```

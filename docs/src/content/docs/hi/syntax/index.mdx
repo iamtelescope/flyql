@@ -1,0 +1,47 @@
+---
+title: सिंटैक्स अवलोकन
+description: FlyQL की बुनियादी क्वेरी संरचना और सिंटैक्स नियम
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL क्वेरी एक या अधिक शर्तों से बनती हैं जो बूलियन ऑपरेटर (<FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>) से जुड़ी होती हैं। प्रत्येक शर्त या तो एक तुलना है या एक truthy जाँच।
+
+## बुनियादी क्वेरी संरचना
+
+<FlyqlCode code={`status = 200 and active and not archived`} />
+
+- <FlyqlCode code={`status = 200`} inline /> — <FlyqlToken type="key">status</FlyqlToken> फ़ील्ड <FlyqlToken type="value">200</FlyqlToken> के बराबर है
+- <FlyqlCode code={`active`} inline /> — <FlyqlToken type="key">active</FlyqlToken> फ़ील्ड का मान truthy है
+- <FlyqlCode code={`not archived`} inline /> — <FlyqlToken type="key">archived</FlyqlToken> फ़ील्ड falsy है (null, खाली, शून्य, या false)
+
+## और उदाहरण
+
+<FlyqlCode code={`service != api or user = "john doe"`} />
+
+<FlyqlCode code={`message ~ "error.*" and not debug`} />
+
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
+
+<FlyqlCode code={`status in [200, 201] and method not in ['DELETE', 'PUT']`} />
+
+<FlyqlCode code={`message has 'error' and tags not has 'debug'`} />
+
+## सामान्य नियम
+
+- **स्वतंत्र कुंजी** — बिना ऑपरेटर वाली कुंजी को truthy जाँच माना जाता है: <FlyqlCode code={`active`} inline />
+- **तुलनाएँ** — ऑपरेटर वाली कुंजी के साथ एक संगत मान होना आवश्यक है: <FlyqlCode code={`status = 200`} inline />
+- **व्हाइटस्पेस** — ऑपरेटर के आसपास स्पेस वैकल्पिक हैं: <FlyqlCode code={`status=200`} inline /> और <FlyqlCode code={`status = 200`} inline /> समतुल्य हैं
+- **ऑपरेटर प्राथमिकता** — <FlyqlToken type="operator">and</FlyqlToken> की बाइंडिंग <FlyqlToken type="operator">or</FlyqlToken> से मजबूत है: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> को <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline /> के रूप में पार्स किया जाता है
+- **कोष्ठक** — प्राथमिकता बदलने के लिए <FlyqlToken type="operator">( )</FlyqlToken> का उपयोग करें: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
+
+## सिंटैक्स अनुभाग
+
+- [ऑपरेटर](/hi/syntax/operators/) — तुलना ऑपरेटर (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
+- [बूलियन लॉजिक](/hi/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, प्राथमिकता, समूहीकरण
+- [पैटर्न मैचिंग](/hi/syntax/pattern-matching/) — रीजेक्स (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) और वाइल्डकार्ड (<FlyqlToken type="operator">{'*'}</FlyqlToken>) मैचिंग
+- [सूचियाँ](/hi/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> सूची मानों के साथ
+- [समाहित जाँच](/hi/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> और <FlyqlToken type="operator">not has</FlyqlToken> सबस्ट्रिंग, कुंजी अस्तित्व, और सदस्यता जाँच के लिए
+- [मान और अभिव्यक्तियाँ](/hi/syntax/values/) — Truthy/falsy, उद्धृत स्ट्रिंग, संख्याएँ
+- [नेस्टेड कुंजी](/hi/syntax/nested-keys/) — डॉट-विभाजित पथ और उद्धृत कुंजी खंड

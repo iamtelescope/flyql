@@ -1,0 +1,113 @@
+---
+title: Theming
+description: Personnaliser l'apparence de l'editeur FlyQL avec les proprietes personnalisees CSS
+---
+
+L'editeur FlyQL utilise des proprietes personnalisees CSS (variables) pour tout le style visuel. Surchargez n'importe quelle variable `--flyql-*` pour correspondre au design de votre application.
+
+## Proprietes personnalisees CSS
+
+### Couleurs
+
+| Variable | Defaut clair | Defaut sombre | Description |
+|----------|-------------|---------------|-------------|
+| `--flyql-bg` | `#ffffff` | `#1e1e1e` | Arriere-plan de l'editeur |
+| `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Couleur du texte |
+| `--flyql-border` | `#d4d4d4` | `#525252` | Couleur de la bordure |
+| `--flyql-border-focus` | `#075985` | `#0369a1` | Couleur de la bordure au focus |
+| `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Texte de remplacement |
+| `--flyql-error-color` | `#ff0000` | `#f48771` | Surbrillance d'erreur |
+
+### Coloration syntaxique
+
+| Variable | Defaut clair | Defaut sombre | Description |
+|----------|-------------|---------------|-------------|
+| `--flyql-key-color` | `#0451a5` | `#6e9fff` | Noms de colonnes/cles |
+| `--flyql-operator-color` | `#0089ab` | `#0089ab` | Operateurs (`=`, `!=`, `and`, etc.) |
+| `--flyql-value-color` | `#8b0000` | `#ce9178` | Valeurs de chaines |
+| `--flyql-number-color` | `#098658` | `#b5cea8` | Valeurs numeriques |
+
+### Panneau de suggestions
+
+| Variable | Defaut clair | Defaut sombre | Description |
+|----------|-------------|---------------|-------------|
+| `--flyql-dropdown-bg` | `#ffffff` | `#252526` | Arriere-plan du panneau |
+| `--flyql-dropdown-border` | `#d4d4d4` | `#454545` | Bordure du panneau |
+| `--flyql-dropdown-item-hover` | `#f7f7f7` | `#2e3132` | Element survole |
+| `--flyql-dropdown-item-active` | `#eef4fb` | `#1a2a3a` | Element selectionne |
+
+### Typographie
+
+| Variable | Defaut | Description |
+|----------|--------|-------------|
+| `--flyql-font-family` | `'Open Sans', sans-serif` | Police de l'interface |
+| `--flyql-code-font-family` | `monospace` | Police du code/requete |
+| `--flyql-font-size` | `13px` | Taille de police de base |
+
+## Theme clair
+
+Le theme clair est le theme par defaut. Aucune classe supplementaire n'est necessaire :
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" />
+```
+
+## Theme sombre
+
+Utilisez la prop `dark` pour activer le theme sombre integre :
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="isDark" />
+<FlyqlColumns v-model="expr" :columns="columns" :dark="isDark" />
+```
+
+La prop `dark` applique la classe `flyql-dark` au panneau de suggestions, qui est teleporte vers `<body>` et ne peut pas heriter des conteneurs parents. Le champ de saisie de l'editeur continue d'heriter les variables CSS de ses ancetres normalement, donc les surcharges au niveau du conteneur fonctionnent toujours.
+
+Alternativement, vous pouvez appliquer la classe `flyql-dark` a `<html>` ou `<body>`, ce qui atteindra a la fois l'editeur et le panneau teleporte via l'heritage des variables CSS :
+
+```javascript
+document.documentElement.classList.toggle('flyql-dark', isDark)
+```
+
+## Theme personnalise
+
+Surchargez des variables specifiques dans votre CSS :
+
+```css
+/* Custom brand theme */
+:root {
+    --flyql-border-focus: #7c3aed;
+    --flyql-key-color: #7c3aed;
+    --flyql-operator-color: #059669;
+    --flyql-dropdown-item-active: #ede9fe;
+}
+
+/* Custom dark overrides */
+.flyql-dark {
+    --flyql-bg: #0f172a;
+    --flyql-text: #e2e8f0;
+    --flyql-border: #334155;
+    --flyql-key-color: #a78bfa;
+    --flyql-dropdown-bg: #1e293b;
+}
+```
+
+## Theming contextuel
+
+Appliquez un theme a une instance specifique de l'editeur en l'enveloppant dans un conteneur avec des surcharges :
+
+```html
+<div class="my-editor-theme">
+    <FlyqlEditor v-model="query" :columns="columns" />
+</div>
+
+<style>
+.my-editor-theme {
+    --flyql-font-size: 15px;
+    --flyql-border-focus: #2563eb;
+    --flyql-bg: #f8fafc;
+}
+</style>
+```
+
+Les proprietes personnalisees CSS se propagent en cascade, donc les surcharges sur n'importe quel ancetre s'appliquent a tous les composants FlyQL qu'il contient.

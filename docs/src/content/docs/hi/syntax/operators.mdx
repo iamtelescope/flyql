@@ -1,0 +1,93 @@
+---
+title: तुलना ऑपरेटर
+description: डेटा फ़िल्टरिंग के लिए FlyQL तुलना ऑपरेटर
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL निम्नलिखित तुलना ऑपरेटर का समर्थन करता है:
+
+## समानता
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">=</FlyqlToken> | बराबर | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | बराबर नहीं | <FlyqlCode code={`env != prod`} inline /> |
+
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`service != "api-gateway"`} />
+
+ऑपरेटर के दोनों तरफ आवश्यक हैं — एक <FlyqlToken type="key">कुंजी</FlyqlToken> और एक <FlyqlToken type="value">मान</FlyqlToken>।
+
+## संख्यात्मक तुलना
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | से बड़ा | <FlyqlCode code={`status > 399`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | बड़ा या बराबर | <FlyqlCode code={`status >= 400`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | से छोटा | <FlyqlCode code={`duration < 1000`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | छोटा या बराबर | <FlyqlCode code={`duration <= 500`} inline /> |
+
+<FlyqlCode code={`status >= 400 and duration < 5000`} />
+<FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
+
+संख्यात्मक तुलना ऑपरेटर संख्यात्मक मानों पर काम करते हैं। स्ट्रिंग मानों के साथ उपयोग करने पर लेक्सिकोग्राफ़िक तुलना लागू होती है।
+
+## रीजेक्स मैचिंग
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | रीजेक्स मैच | <FlyqlCode code={`message ~ "error.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | रीजेक्स मैच नहीं | <FlyqlCode code={`path !~ "^/health"`} inline /> |
+
+<FlyqlCode code={`message ~ "timeout|connection refused"`} />
+<FlyqlCode code={`host !~ "^test-.*"`} />
+
+रीजेक्स पैटर्न लक्ष्य डेटाबेस या रनटाइम के सिंटैक्स का पालन करते हैं। रीजेक्स फ़्लैग और विवरण के लिए [पैटर्न मैचिंग](/hi/syntax/pattern-matching/) देखें।
+
+## सूची सदस्यता
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">in</FlyqlToken> | सूची में | <FlyqlCode code={`status in [200, 201]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | सूची में नहीं | <FlyqlCode code={`env not in ['dev', 'test']`} inline /> |
+
+विस्तृत सूची सिंटैक्स नियमों के लिए [सूचियाँ](/hi/syntax/lists/) पृष्ठ देखें।
+
+## समाहित जाँच
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">has</FlyqlToken> | शामिल है | <FlyqlCode code={`message has 'error'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | शामिल नहीं है | <FlyqlCode code={`message not has 'test'`} inline /> |
+
+<FlyqlCode code={`message has 'timeout'`} />
+<FlyqlCode code={`tags not has 'deprecated'`} />
+
+<FlyqlToken type="operator">has</FlyqlToken> ऑपरेटर प्रकार-निर्भर समाहित जाँच करता है:
+
+- **स्ट्रिंग** — सबस्ट्रिंग मैच: <FlyqlCode code={`message has 'error'`} inline /> तब सत्य है जब <FlyqlToken type="key">message</FlyqlToken> में <FlyqlToken type="string">"error"</FlyqlToken> शामिल हो
+- **मैप** — कुंजी अस्तित्व: <FlyqlCode code={`metadata has 'region'`} inline /> तब सत्य है जब मैप में <FlyqlToken type="string">"region"</FlyqlToken> कुंजी हो
+- **ऐरे/सूची** — आइटम सदस्यता: <FlyqlCode code={`tags has 'web'`} inline /> तब सत्य है जब ऐरे में <FlyqlToken type="string">"web"</FlyqlToken> शामिल हो
+- **JSON** — कुंजी अस्तित्व: <FlyqlCode code={`data has 'name'`} inline /> तब सत्य है जब JSON ऑब्जेक्ट में <FlyqlToken type="string">"name"</FlyqlToken> कुंजी हो
+- **Null/खाली** — <FlyqlToken type="operator">has</FlyqlToken> के लिए सदैव false, <FlyqlToken type="operator">not has</FlyqlToken> के लिए सदैव true
+
+<FlyqlToken type="operator">has</FlyqlToken> एक अकेला मान लेता है (सूची नहीं)। मानों के समूह में सदस्यता जाँचने के लिए <FlyqlToken type="operator">in</FlyqlToken> का उपयोग करें।
+
+## ऑपरेटर सारांश
+
+| ऑपरेटर | नाम | उदाहरण |
+|----------|------|---------|
+| <FlyqlToken type="operator">=</FlyqlToken> | बराबर | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | बराबर नहीं | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | से बड़ा | <FlyqlCode code={`count > 10`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | बड़ा या बराबर | <FlyqlCode code={`count >= 10`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | से छोटा | <FlyqlCode code={`count < 100`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | छोटा या बराबर | <FlyqlCode code={`count <= 100`} inline /> |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | रीजेक्स मैच | <FlyqlCode code={`msg ~ "err.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | रीजेक्स मैच नहीं | <FlyqlCode code={`msg !~ "^ok"`} inline /> |
+| <FlyqlToken type="operator">in</FlyqlToken> | सूची में | <FlyqlCode code={`s in [1, 2]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | सूची में नहीं | <FlyqlCode code={`s not in [3]`} inline /> |
+| <FlyqlToken type="operator">has</FlyqlToken> | शामिल है | <FlyqlCode code={`msg has 'err'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | शामिल नहीं है | <FlyqlCode code={`msg not has 'ok'`} inline /> |

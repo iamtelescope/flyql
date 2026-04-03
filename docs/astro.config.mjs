@@ -7,6 +7,11 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "FlyQL",
+      favicon: "/icons/flyql.svg",
+      logo: {
+        src: "./public/icons/flyql.svg",
+        replacesTitle: false,
+      },
       customCss: [
         "./src/styles/tables.css",
       ],
@@ -21,6 +26,34 @@ export default defineConfig({
           label: "中文",
           lang: "zh-CN",
         },
+        hi: {
+          label: "हिन्दी",
+          lang: "hi",
+        },
+        es: {
+          label: "Español",
+          lang: "es",
+        },
+        fr: {
+          label: "Français",
+          lang: "fr",
+        },
+        pt: {
+          label: "Português",
+          lang: "pt",
+        },
+        "pt-br": {
+          label: "Português (Brasil)",
+          lang: "pt-BR",
+        },
+        ru: {
+          label: "Русский",
+          lang: "ru",
+        },
+        de: {
+          label: "Deutsch",
+          lang: "de",
+        },
         ja: {
           label: "日本語",
           lang: "ja",
@@ -28,30 +61,6 @@ export default defineConfig({
         ko: {
           label: "한국어",
           lang: "ko",
-        },
-        es: {
-          label: "Español",
-          lang: "es",
-        },
-        pt: {
-          label: "Português",
-          lang: "pt",
-        },
-        fr: {
-          label: "Français",
-          lang: "fr",
-        },
-        de: {
-          label: "Deutsch",
-          lang: "de",
-        },
-        ru: {
-          label: "Русский",
-          lang: "ru",
-        },
-        "pt-br": {
-          label: "Português (Brasil)",
-          lang: "pt-BR",
         },
       },
       defaultLocale: "root",
@@ -67,11 +76,27 @@ export default defineConfig({
         maxHeadingLevel: 4,
       },
       sidebar: [
-        "index",
+        {
+          label: "Introduction",
+          slug: "index",
+          translations: {
+            "zh-CN": "介绍",
+            hi: "परिचय",
+            ja: "はじめに",
+            ko: "소개",
+            es: "Introducción",
+            pt: "Introdução",
+            fr: "Introduction",
+            de: "Einführung",
+            ru: "Введение",
+            "pt-BR": "Introdução",
+          },
+        },
         {
           label: "Syntax Reference",
           translations: {
             "zh-CN": "语法参考",
+            hi: "सिंटैक्स संदर्भ",
             ja: "構文リファレンス",
             ko: "구문 참조",
             es: "Referencia de sintaxis",
@@ -96,6 +121,7 @@ export default defineConfig({
           label: "Editor",
           translations: {
             "zh-CN": "编辑器",
+            hi: "संपादक",
             ja: "エディター",
             ko: "에디터",
             es: "Editor",
@@ -116,6 +142,7 @@ export default defineConfig({
           label: "Getting Started",
           translations: {
             "zh-CN": "快速开始",
+            hi: "शुरू करें",
             ja: "はじめに",
             ko: "빠른 시작",
             es: "Primeros pasos",
@@ -136,6 +163,7 @@ export default defineConfig({
           label: "Advanced",
           translations: {
             "zh-CN": "高级",
+            hi: "उन्नत",
             ja: "応用",
             ko: "고급",
             es: "Avanzado",
@@ -154,6 +182,7 @@ export default defineConfig({
           label: "SQL Dialects",
           translations: {
             "zh-CN": "SQL 方言",
+            hi: "SQL बोलियाँ",
             ja: "SQL 方言",
             ko: "SQL 방언",
             es: "Dialectos SQL",

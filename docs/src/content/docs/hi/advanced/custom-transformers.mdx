@@ -1,0 +1,200 @@
+---
+title: कस्टम ट्रांसफ़ॉर्मर
+description: डोमेन-विशिष्ट ट्रांसफ़ॉर्मर पंजीकृत करें ताकि FlyQL को कस्टम वैल्यू ट्रांसफ़ॉर्मेशन से विस्तारित कर सकें
+---
+
+FlyQL का ट्रांसफ़ॉर्मर सिस्टम विस्तारणीय है। आप कस्टम ट्रांसफ़ॉर्मर पंजीकृत कर सकते हैं जो अंतर्निहित (`upper`, `lower`, `len`) की तरह पार्सर, SQL जनरेटर, इन-मेमोरी मैचर, और एडिटर ऑटोकम्प्लीट में समान रूप से काम करते हैं।
+
+## ट्रांसफ़ॉर्मर इंटरफ़ेस
+
+प्रत्येक ट्रांसफ़ॉर्मर 5 सदस्य लागू करता है:
+
+| सदस्य | प्रकार | विवरण |
+|--------|------|-------------|
+| `name` | string | अद्वितीय लोअरकेस आइडेंटिफ़ायर (जैसे, `"firstoctet"`) |
+| `inputType` | TransformerType | अपेक्षित इनपुट प्रकार (`string`, `int`, `float`) |
+| `outputType` | TransformerType | ट्रांसफ़ॉर्मेशन के बाद आउटपुट प्रकार |
+| `sql(dialect, columnRef)` | string | कॉलम संदर्भ को लपेटते हुए बोली-विशिष्ट SQL उत्पन्न करें |
+| `apply(value)` | any | रनटाइम मान को इन-मेमोरी ट्रांसफ़ॉर्म करें |
+
+`sql()` विधि SQL बोली नाम (`"clickhouse"`, `"postgresql"`, `"starrocks"`) और एक कॉलम संदर्भ स्ट्रिंग प्राप्त करती है। यह उस संदर्भ को लपेटते हुए एक SQL एक्सप्रेशन लौटाती है। `apply()` विधि एक रनटाइम मान प्राप्त करती है और ट्रांसफ़ॉर्म किया गया मान लौटाती है।
+
+## रजिस्ट्री API
+
+| विधि | विवरण |
+|--------|-------------|
+| `defaultRegistry()` | अंतर्निहित ट्रांसफ़ॉर्मर से पूर्व-लोडेड एक नई रजिस्ट्री लौटाता है |
+| `registry.register(transformer)` | एक कस्टम ट्रांसफ़ॉर्मर जोड़ें (यदि नाम पहले से पंजीकृत है तो त्रुटि उत्पन्न करता है) |
+| `registry.get(name)` | नाम से ट्रांसफ़ॉर्मर खोजें (नहीं मिलने पर null/None/nil लौटाता है) |
+| `registry.names()` | सभी पंजीकृत ट्रांसफ़ॉर्मर नामों की सूची |
+
+पैटर्न: एक डिफ़ॉल्ट रजिस्ट्री प्राप्त करें, अपने कस्टम ट्रांसफ़ॉर्मर पंजीकृत करें, रजिस्ट्री को जनरेटर और मैचर को पास करें।
+
+## Python
+
+`Transformer` को सबक्लास करके एक कस्टम ट्रांसफ़ॉर्मर परिभाषित करें:
+
+```python
+from flyql.transformers import Transformer, TransformerType, default_registry
+
+class FirstOctetTransformer(Transformer):
+    @property
+    def name(self): return "firstoctet"
+    @property
+    def input_type(self): return TransformerType.STRING
+    @property
+    def output_type(self): return TransformerType.INT
+    def sql(self, dialect, column_ref):
+        if dialect == "clickhouse":
+            return f"toUInt8(splitByChar('.', {column_ref})[1])"
+        return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
+    def apply(self, value):
+        return int(str(value).split('.')[0])
+```
+
+पंजीकरण और उपयोग:
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.postgresql.generator import to_sql, Column
+
+registry = default_registry()
+registry.register(FirstOctetTransformer())
+
+result = parse("src_ip|firstoctet > 192")
+columns = {"src_ip": Column("src_ip", "text")}
+sql = to_sql(result.root, columns, registry=registry)
+# CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+इन-मेमोरी मैचिंग के लिए:
+
+```python
+from flyql.matcher.evaluator import Evaluator
+from flyql.matcher.record import Record
+
+evaluator = Evaluator(registry=registry)
+record = Record({"src_ip": "193.0.0.1"})
+evaluator.evaluate(result.root, record)  # True (193 > 192)
+```
+
+## JavaScript
+
+`Transformer` को एक्सटेंड करके एक कस्टम ट्रांसफ़ॉर्मर परिभाषित करें:
+
+```javascript
+import { Transformer, TransformerType, defaultRegistry } from 'flyql/transformers'
+
+class FirstOctetTransformer extends Transformer {
+    get name() { return 'firstoctet' }
+    get inputType() { return TransformerType.STRING }
+    get outputType() { return TransformerType.INT }
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
+        return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
+    }
+    apply(value) { return parseInt(String(value).split('.')[0], 10) }
+}
+```
+
+पंजीकरण और उपयोग:
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+
+const registry = defaultRegistry()
+registry.register(new FirstOctetTransformer())
+
+const result = parse("src_ip|firstoctet > 192")
+const columns = { src_ip: newColumn('src_ip', false, 'text') }
+const sql = generateWhere(result.root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+इन-मेमोरी मैचिंग के लिए:
+
+```javascript
+import { match } from 'flyql/matcher'
+
+match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
+```
+
+एडिटर ऑटोकम्प्लीट के लिए — कस्टम ट्रांसफ़ॉर्मर अंतर्निहित के साथ दिखाई देते हैं:
+
+```javascript
+import { EditorEngine } from 'flyql/editor'
+
+const engine = new EditorEngine(columns, { registry })
+// After typing "src_ip|", suggestions include "firstoctet", "upper", "lower", "len"
+```
+
+## Go
+
+`Transformer` इंटरफ़ेस लागू करके एक कस्टम ट्रांसफ़ॉर्मर परिभाषित करें:
+
+```go
+package main
+
+import (
+    "fmt"
+    "strconv"
+    "strings"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type FirstOctet struct{}
+
+func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
+func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f FirstOctet) SQL(dialect, colRef string) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
+    }
+    return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
+}
+func (f FirstOctet) Apply(value interface{}) interface{} {
+    parts := strings.SplitN(fmt.Sprint(value), ".", 2)
+    n, _ := strconv.Atoi(parts[0])
+    return n
+}
+```
+
+पंजीकरण और उपयोग:
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    postgresqlgen "github.com/iamtelescope/flyql/golang/generators/postgresql"
+)
+
+registry := transformers.DefaultRegistry()
+registry.Register(FirstOctet{})
+
+result, _ := flyql.Parse("src_ip|firstoctet > 192")
+columns := map[string]*postgresqlgen.Column{
+    "src_ip": postgresqlgen.NewColumn("src_ip", "text", nil),
+}
+sql, _ := postgresqlgen.ToSQLWhere(result.Root, columns, registry)
+// CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
+```
+
+इन-मेमोरी मैचिंग के लिए:
+
+```go
+import "github.com/iamtelescope/flyql/golang/matcher"
+
+matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": "193.0.0.1"}, registry)
+// matched == true
+```
+
+## प्रकार संगतता
+
+कस्टम ट्रांसफ़ॉर्मर अंतर्निहित के समान प्रकार श्रृंखला मान्यकरण में भाग लेते हैं। यदि आप `field|firstoctet|upper` चेन करते हैं, तो सिस्टम पता लगाता है कि `firstoctet` `int` आउटपुट करता है लेकिन `upper` को `string` की आवश्यकता है, और जनरेशन समय पर प्रकार त्रुटि उत्पन्न करता है।
+
+उपलब्ध प्रकार: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`।
+
+## सुरक्षा
+
+कस्टम ट्रांसफ़ॉर्मर की `sql()` विधियाँ केवल कॉलम संदर्भ (स्कीमा से) प्राप्त करती हैं, कभी भी उपयोगकर्ता-प्रदत्त मान नहीं। उपयोगकर्ता मान जनरेटर द्वारा एस्केप/पैरामीटराइज़ किए जाते हैं। यह FlyQL की इंजेक्शन-प्रूफ़ गारंटी को बनाए रखता है — कस्टम SQL कॉलम नामों को लपेटता है, उपयोगकर्ता इनपुट को नहीं।

@@ -1,0 +1,178 @@
+---
+title: एडिटर कम्पोनेंट
+description: अपने Vue 3 एप्लिकेशन में FlyQL क्वेरी एडिटर को एकीकृत करें
+---
+
+FlyQL एडिटर एक Vue 3 कम्पोनेंट है जो ऑटोकम्प्लीट, सिंटैक्स हाइलाइटिंग, और कीबोर्ड नेविगेशन के साथ स्कीमा-संचालित क्वेरी इनपुट प्रदान करता है।
+
+## त्वरित सेटअप
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    status: { type: 'number', suggest: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
+    service: { type: 'string', suggest: true, autocomplete: true },
+    host: { type: 'string', suggest: true },
+}
+
+function onSubmit() {
+    console.log('Query submitted:', query.value)
+}
+
+function onParseError(error) {
+    console.log('Parse error:', error)
+}
+</script>
+
+<template>
+    <FlyqlEditor
+        v-model="query"
+        :columns="columns"
+        placeholder="Type a FlyQL query..."
+        @submit="onSubmit"
+        @parse-error="onParseError"
+    />
+</template>
+```
+
+यह कॉलम, प्रकार-जागरूक ऑपरेटर, और बूलियन ऑपरेटर के लिए ऑटोकम्प्लीट सुझावों के साथ एक टेक्स्ट इनपुट रेंडर करता है — सब कुछ `columns` स्कीमा द्वारा संचालित।
+
+## इंस्टॉलेशन
+
+```bash
+npm install flyql
+```
+
+एडिटर को पीयर डिपेंडेंसी के रूप में Vue 3 की आवश्यकता है:
+
+```bash
+npm install vue
+```
+
+`flyql/editor` सबपाथ से इम्पोर्ट करें:
+
+```javascript
+import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+```
+
+दोनों कम्पोनेंट आंतरिक रूप से `flyql.css` इम्पोर्ट करते हैं, जो थीम वेरिएबल, सुझाव पैनल स्टाइल, और टोकन हाइलाइटिंग प्रदान करता है। मानक बंडलर (Vite, webpack, आदि) के साथ यह स्वचालित रूप से काम करता है।
+
+यदि आपका सेटअप JS से CSS इम्पोर्ट प्रोसेस नहीं करता, तो स्टाइलशीट को मैन्युअल रूप से इम्पोर्ट करें:
+
+```javascript
+import 'flyql/editor/flyql.css'
+```
+
+## Props
+
+| Prop | प्रकार | डिफ़ॉल्ट | विवरण |
+|------|------|---------|-------------|
+| `modelValue` | `String` | `''` | क्वेरी टेक्स्ट (v-model) |
+| `columns` | `Object` | `{}` | कॉलम [स्कीमा](/hi/editor/schema/) |
+| `onAutocomplete` | `Function` | `null` | एसिंक वैल्यू कॉलबैक |
+| `onKeyDiscovery` | `Function` | `null` | रिमोट कुंजी खोज कॉलबैक |
+| `placeholder` | `String` | `''` | प्लेसहोल्डर टेक्स्ट |
+| `autofocus` | `Boolean` | `false` | माउंट पर ऑटो-फ़ोकस |
+| `debug` | `Boolean` | `false` | डीबग लॉगिंग |
+| `debounceMs` | `Number` | `300` | एसिंक ऑटोकम्प्लीट कॉल के लिए डिबाउंस विलंब (ms)। अक्षम करने के लिए `0` सेट करें |
+| `dark` | `Boolean` | `false` | डार्क थीम सक्षम करें ([थीमिंग देखें](/hi/editor/theming/)) |
+
+**कॉलबैक हस्ताक्षर:**
+- `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` लौटाता है
+- `onKeyDiscovery(columnName, segments)` — `Promise<Array<{ name, type?, hasChildren? }>>` लौटाता है
+
+जब रिस्पॉन्स में `incomplete` `true` हो, तो एडिटर जानता है कि लौटाई गई सूची आंशिक है और अगले कीस्ट्रोक पर फिर से फ़ेच करेगा। एसिंक कॉल डिबाउंस्ड (डिफ़ॉल्ट 150ms) होती हैं और इन-फ़्लाइट रिक्वेस्ट नई शुरू होने पर स्वचालित रूप से रद्द हो जाती हैं।
+
+## इवेंट
+
+| इवेंट | पेलोड | विवरण |
+|-------|---------|-------------|
+| `update:modelValue` | `string` | क्वेरी टेक्स्ट बदला (v-model) |
+| `submit` | — | उपयोगकर्ता ने Shift+Enter दबाया |
+| `parse-error` | `string` | क्वेरी अमान्य होने पर पार्स त्रुटि संदेश |
+| `focus` | — | एडिटर ने फ़ोकस प्राप्त किया |
+| `blur` | — | एडिटर ने फ़ोकस खोया |
+
+## एक्सपोज़्ड विधियाँ
+
+टेम्पलेट ref के माध्यम से एक्सेस करें:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const editorRef = ref(null)
+
+function checkStatus() {
+    const status = editorRef.value.getQueryStatus()
+    console.log(status.valid, status.message)
+}
+</script>
+
+<template>
+    <FlyqlEditor ref="editorRef" v-model="query" :columns="columns" />
+    <button @click="checkStatus">Check</button>
+</template>
+```
+
+| विधि | रिटर्न | विवरण |
+|--------|---------|-------------|
+| `focus()` | — | एडिटर इनपुट को फ़ोकस करें |
+| `blur()` | — | एडिटर इनपुट को ब्लर करें |
+| `getQueryStatus()` | `{ valid: boolean, message: string }` | वर्तमान क्वेरी को मान्य करें |
+
+## एसिंक वैल्यू ऑटोकम्प्लीट
+
+अपने API से वैल्यू सुझाव फ़ेच करने के लिए `onAutocomplete` कॉलबैक प्रदान करें:
+
+```vue
+<script setup>
+import { ref } from 'vue'
+import { FlyqlEditor } from 'flyql/editor'
+
+const query = ref('')
+const columns = {
+    service: { type: 'string', suggest: true, autocomplete: true },
+    level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
+}
+
+async function onAutocomplete(key, value) {
+    const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}`)
+    const data = await resp.json()
+    return { items: data.values }
+}
+</script>
+
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" :on-autocomplete="onAutocomplete" />
+</template>
+```
+
+कॉलबैक कॉलम `key` और वर्तमान `value` प्रीफ़िक्स प्राप्त करता है। `{ items: string[], incomplete?: boolean }` लौटाएँ। 200ms के बाद स्वचालित रूप से एक लोडिंग इंडिकेटर दिखाई देता है।
+
+### स्टेटफ़ुल ऑटोकम्प्लीट फ़्लो
+
+एडिटर एक स्टेटफ़ुल ऑटोकम्प्लीट फ़्लो का उपयोग करता है जो सर्वर कॉल को न्यूनतम करता है:
+
+- **प्रारंभिक लोड** — वैल्यू संदर्भ में प्रवेश करते समय (जैसे, `service=`), एडिटर बिना डिबाउंस के तुरंत फ़ेच करता है। परिणाम आने तक पूर्ण स्पिनर दिखाया जाता है।
+- **पूर्ण सूची** (`incomplete: false`) — एडिटर लौटाए गए आइटम संग्रहीत करता है और क्लाइंट-साइड फ़िल्टरिंग पर स्विच करता है। बाद के कीस्ट्रोक सर्वर कॉल के बिना तुरंत फ़िल्टर करते हैं, जब तक उपयोगकर्ता किसी अलग कॉलम पर नहीं जाता।
+- **अपूर्ण सूची** (`incomplete: true`) — एडिटर वर्तमान सुझाव दिखाता रहता है जबकि पृष्ठभूमि में डिबाउंस्ड रि-फ़ेच चलता है। हेडर में एक इनलाइन स्पिनर दिखाई देता है। जब नए परिणाम आते हैं, वे वर्तमान सुझावों को बदल देते हैं।
+
+यदि सर्वर 0 आइटम लौटाता है, तो एडिटर "कोई मिलान मान नहीं" दिखाता है। पूर्ण सूची की क्लाइंट-साइड फ़िल्टरिंग के लिए, खाली परिणाम बस कोई सुझाव नहीं दिखाता (उपयोगकर्ता अधिक देखने के लिए बैकस्पेस कर सकता है)।
+
+`autocomplete: true` और स्थैतिक `values` वाले कॉलम कॉलबैक को कॉल किए बिना सीधे उन मानों का उपयोग करते हैं। `autocomplete: true` लेकिन बिना `values` वाले कॉलम कॉलबैक को ट्रिगर करते हैं।
+
+## कीबोर्ड शॉर्टकट
+
+| कुंजी | क्रिया |
+|-----|--------|
+| Arrow Up/Down | सुझावों में नेविगेट करें |
+| Enter / Tab | चयनित सुझाव स्वीकार करें |
+| Escape | सुझाव बंद करें |
+| Shift+Enter | क्वेरी सबमिट करें (`submit` इवेंट उत्सर्जित करता है) |

@@ -1,0 +1,112 @@
+---
+title: Correspondance de motifs
+description: Correspondance par regex et joker dans FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Correspondance par regex
+
+Utilisez <FlyqlToken type="operator">{'~'}</FlyqlToken> pour faire correspondre une valeur a une expression reguliere, et <FlyqlToken type="operator">{'!~'}</FlyqlToken> pour inverser la correspondance :
+
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+
+| Operateur | Signification |
+|-----------|---------------|
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | La valeur correspond au motif regex |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | La valeur ne correspond pas au motif regex |
+
+### Syntaxe des motifs regex
+
+La syntaxe regex depend du backend cible :
+
+- **ClickHouse** — utilise la fonction `match()` (syntaxe RE2)
+- **PostgreSQL** — utilise les operateurs <FlyqlToken type="operator">{'~'}</FlyqlToken> et <FlyqlToken type="operator">{'!~'}</FlyqlToken> (regex POSIX)
+- **StarRocks** — utilise la fonction `regexp`
+- **Evaluateur en memoire** — utilise le moteur regex du langage hote (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Mettez le motif entre guillemets lorsqu'il contient des espaces ou des caracteres speciaux :
+
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
+
+### Drapeaux regex
+
+Vous pouvez modifier le comportement des regex en utilisant des drapeaux en ligne au debut de votre motif avec la syntaxe `(?...)`. FlyQL prend en charge trois drapeaux qui fonctionnent sur tous les backends :
+
+#### `(?i)` — Insensible a la casse
+
+Rend le motif correspondant independamment de la casse des lettres :
+
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
+
+`(?i)error` correspond a "Error", "ERROR", "error", etc.
+
+#### `(?m)` — Multiligne
+
+Change `^` et `$` pour correspondre au debut et a la fin de chaque **ligne** au lieu de la chaine entiere :
+
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
+
+Sans `(?m)`, `^ERROR` ne correspond que si la chaine entiere commence par "ERROR". Avec `(?m)`, cela correspond egalement a "INFO first\nERROR second" car "ERROR" apparait au debut d'une ligne.
+
+#### `(?s)` — Dotall
+
+Fait correspondre `.` a **n'importe quel** caractere, y compris les sauts de ligne. Par defaut, `.` ne correspond pas a `\n` :
+
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
+
+Sans `(?s)`, `start.*end` ne correspond pas a "start\nend" car `.` ne franchit pas le saut de ligne. Avec `(?s)`, cela correspond.
+
+#### Combiner les drapeaux
+
+Les drapeaux peuvent etre combines dans un seul groupe :
+
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
+
+#### Prise en charge par backend
+
+Les trois drapeaux fonctionnent sur tous les backends FlyQL :
+
+| Backend | `(?i)` | `(?m)` | `(?s)` |
+|---------|--------|--------|--------|
+| **ClickHouse** | Oui | Oui | Oui |
+| **PostgreSQL** | Oui | Oui | Oui |
+| **StarRocks** | Oui | Oui | Oui |
+| **Go matcher** | Oui | Oui | Oui |
+| **Python matcher** | Oui | Oui | Oui |
+| **JavaScript matcher** | Oui | Oui | Oui |
+
+Combinez la correspondance insensible a la casse avec la negation pour exclure des motifs independamment de la casse :
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+## Correspondance par joker
+
+Utilisez <FlyqlToken type="operator">{'*'}</FlyqlToken> a la fin d'une valeur non quotee pour une correspondance de prefixe de type glob :
+
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
+
+Cela correspond a toute valeur commencant par le prefixe donne. Les jokers ne sont pris en charge qu'a la fin d'une valeur — `*prod` ou `pr*od` ne sont pas pris en charge.
+
+### Joker vs. Regex
+
+| Motif | Syntaxe | Exemple |
+|-------|---------|---------|
+| Joker (prefixe) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex (complet) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Utilisez les jokers pour une simple correspondance de prefixe. Utilisez les regex lorsque vous avez besoin de motifs plus complexes.
+
+## Exemples
+
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

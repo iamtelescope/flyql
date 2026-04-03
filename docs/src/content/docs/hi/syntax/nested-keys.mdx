@@ -1,0 +1,65 @@
+---
+title: नेस्टेड कुंजी
+description: FlyQL में डॉट-विभाजित पथ ट्रैवर्सल और उद्धृत कुंजी खंड
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## डॉट नोटेशन
+
+JSON, Map, या संरचित डेटा में नेस्टेड फ़ील्ड एक्सेस करने के लिए डॉट-विभाजित पथ का उपयोग करें:
+
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
+
+प्रत्येक डॉट-विभाजित खंड नेस्टेड संरचना में एक स्तर गहरा जाता है। SQL जनरेटर इन पथों को प्रत्येक डेटाबेस डायलेक्ट के लिए सही सिंटैक्स में अनुवादित करते हैं (JSON पथ एक्सेस, Map लुकअप, आदि)।
+
+## उद्धृत कुंजी खंड
+
+जब कोई कुंजी खंड स्वयं एक डॉट रखता हो, तो उसे उद्धरण चिह्नों में लपेटें ताकि डॉट को विभाजक न माना जाए:
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+
+यहाँ:
+- `"foo.bar"` एक ही कुंजी खंड है (डॉट शाब्दिक है)
+- <FlyqlToken type="key">baz</FlyqlToken> `"foo.bar"` का चाइल्ड है
+
+उद्धरण चिह्नों के बिना, <FlyqlToken type="key">foo.bar.baz</FlyqlToken> तीन खंड होंगे: <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>।
+
+### उद्धरण नियम
+
+कुंजी खंडों के लिए सिंगल और डबल दोनों उद्धरण चिह्न काम करते हैं:
+
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
+
+केवल डॉट वाले खंडों को उद्धृत करना आवश्यक है:
+
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
+
+## पथ गहराई
+
+नेस्टिंग गहराई पर कोई सीमा नहीं है:
+
+<FlyqlCode code={`a.b.c.d.e = value`} />
+
+SQL जनरेट करते या इन-मेमोरी मूल्यांकन करते समय प्रत्येक खंड क्रम से ट्रैवर्स किया जाता है।
+
+## ऑपरेटर के साथ संयोजन
+
+नेस्टेड कुंजी सभी ऑपरेटर के साथ काम करती हैं:
+
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
+
+## उदाहरण
+
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

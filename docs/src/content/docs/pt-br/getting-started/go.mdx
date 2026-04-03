@@ -1,0 +1,161 @@
+---
+title: Início Rápido com Go
+description: Instale e use o FlyQL em um projeto Go
+---
+
+## Instalação
+
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+## Parsear uma Consulta
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	result, err := flyql.Parse("status = 200 and active")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Parsed: %+v\n", result.Root)
+}
+```
+
+`Parse` retorna um `*ParseResult` com um nó `Root` representando a AST.
+
+## Gerar SQL
+
+Use um gerador para transformar a AST em uma cláusula WHERE parametrizada. Cada dialeto de banco de dados tem seu próprio gerador com tipos de colunas específicos do dialeto.
+
+### ClickHouse
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, err := flyql.Parse("status >= 400 and host = prod*")
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQL(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+Os geradores para PostgreSQL e StarRocks seguem o mesmo padrão — importe de `generators/postgresql` ou `generators/starrocks`.
+
+## Matching em Memória
+
+Avalie uma consulta contra um registro de dados sem gerar SQL:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/matcher"
+)
+
+func main() {
+	data := map[string]any{
+		"status": 200,
+		"active": true,
+		"host":   "prod-api-01",
+	}
+
+	matches, err := matcher.Match("status = 200 and active", data)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Matches: %v\n", matches) // true
+}
+```
+
+## Parsear Expressões de Colunas
+
+Parseie uma expressão de colunas em dados estruturados com segmentos, transformadores e aliases.
+O segundo argumento é uma struct `Capabilities` que controla quais funcionalidades estão habilitadas.
+Transformadores são desabilitados por padrão.
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/iamtelescope/flyql/golang/columns"
+)
+
+func main() {
+	// Parsear colunas básicas (transformadores desabilitados por padrão)
+	parsed, err := columns.Parse("message, status", columns.Capabilities{})
+	if err != nil {
+		panic(err)
+	}
+	for _, col := range parsed {
+		fmt.Printf("%s (display: %q, segments: %v)\n", col.Name, col.DisplayName, col.Segments)
+	}
+
+	// Habilitar transformadores via capabilities
+	caps := columns.Capabilities{Transformers: true}
+	withTransforms, err := columns.Parse("message|chars(25) as msg, status", caps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(withTransforms[0].Transformers)
+
+	// Ou serialize diretamente para JSON para respostas de API
+	jsonBytes, _ := columns.ParseToJSON("message, status|upper", caps)
+	fmt.Println(string(jsonBytes))
+}
+```
+
+## Transformadores em Consultas
+
+Parseie uma consulta com transformadores e gere SQL:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	clickhousegen "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	result, _ := flyql.Parse("message|upper = 'ERROR'")
+	columns := map[string]*clickhousegen.Column{
+		"message": clickhousegen.NewColumn("message", false, "String", nil),
+	}
+	sql, _ := clickhousegen.ToSQL(result.Root, columns)
+	fmt.Println(sql) // equals(upper(message), 'ERROR')
+}
+```
+
+Veja [Transformadores](/pt-br/syntax/transformers/) para a referência completa de sintaxe.
+
+## Próximos Passos
+
+- [Referência de Sintaxe](/pt-br/syntax/) — todos os operadores, lógica booleana, padrões e mais

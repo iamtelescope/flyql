@@ -1,0 +1,112 @@
+---
+title: Correspondencia de Padroes
+description: Correspondencia por regex e wildcards no FlyQL
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+## Correspondencia Regex
+
+Use <FlyqlToken type="operator">{'~'}</FlyqlToken> para verificar se um valor corresponde a uma expressao regular, e <FlyqlToken type="operator">{'!~'}</FlyqlToken> para negar a correspondencia:
+
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+
+| Operador | Significado |
+|----------|-------------|
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | O valor corresponde ao padrao regex |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | O valor nao corresponde ao padrao regex |
+
+### Sintaxe de Padroes Regex
+
+A sintaxe regex depende do backend de destino:
+
+- **ClickHouse** — utiliza a funcao `match()` (sintaxe RE2)
+- **PostgreSQL** — utiliza os operadores <FlyqlToken type="operator">{'~'}</FlyqlToken> e <FlyqlToken type="operator">{'!~'}</FlyqlToken> (regex POSIX)
+- **StarRocks** — utiliza a funcao `regexp`
+- **Matcher em memoria** — utiliza o motor de regex da linguagem anfitria (Go `regexp`, Python `re2`, JS `RegExp`)
+
+Coloque o padrao entre aspas quando contiver espacos ou caracteres especiais:
+
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
+
+### Flags Regex
+
+Pode modificar o comportamento da regex utilizando flags inline no inicio do padrao com a sintaxe `(?...)`. O FlyQL suporta tres flags que funcionam em todos os backends:
+
+#### `(?i)` — Insensivel a Maiusculas/Minusculas
+
+Faz com que o padrao corresponda independentemente das maiusculas e minusculas:
+
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
+
+`(?i)error` corresponde a "Error", "ERROR", "error", etc.
+
+#### `(?m)` — Multilinha
+
+Altera `^` e `$` para corresponder ao inicio e fim de cada **linha** em vez da string inteira:
+
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
+
+Sem `(?m)`, `^ERROR` so corresponde se a string inteira comecar com "ERROR". Com `(?m)`, tambem corresponde a "INFO first\nERROR second" porque "ERROR" aparece no inicio de uma linha.
+
+#### `(?s)` — Dotall
+
+Faz com que `.` corresponda a **qualquer** caractere, incluindo quebras de linha. Por defeito, `.` nao corresponde a `\n`:
+
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
+
+Sem `(?s)`, `start.*end` nao corresponde a "start\nend" porque `.` nao atravessa a quebra de linha. Com `(?s)`, corresponde.
+
+#### Combinar Flags
+
+As flags podem ser combinadas num unico grupo:
+
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
+
+#### Suporte por Backend
+
+As tres flags funcionam em todos os backends do FlyQL:
+
+| Backend | `(?i)` | `(?m)` | `(?s)` |
+|---------|--------|--------|--------|
+| **ClickHouse** | Sim | Sim | Sim |
+| **PostgreSQL** | Sim | Sim | Sim |
+| **StarRocks** | Sim | Sim | Sim |
+| **Go matcher** | Sim | Sim | Sim |
+| **Python matcher** | Sim | Sim | Sim |
+| **JavaScript matcher** | Sim | Sim | Sim |
+
+Combine correspondencia insensivel a maiusculas/minusculas com negacao para excluir padroes independentemente das maiusculas:
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+## Correspondencia por Wildcards
+
+Use <FlyqlToken type="operator">{'*'}</FlyqlToken> no final de um valor sem aspas para correspondencia de prefixo estilo glob:
+
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
+
+Isto corresponde a qualquer valor que comece com o prefixo indicado. Os wildcards so sao suportados no final de um valor — `*prod` ou `pr*od` nao sao suportados.
+
+### Wildcard vs. Regex
+
+| Padrao | Sintaxe | Exemplo |
+|--------|---------|---------|
+| Wildcard (prefixo) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex (completo) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Use wildcards para correspondencia simples de prefixo. Use regex quando necessitar de padroes mais complexos.
+
+## Exemplos
+
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

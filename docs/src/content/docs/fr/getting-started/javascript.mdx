@@ -1,0 +1,142 @@
+---
+title: Demarrage rapide JavaScript
+description: Installer et utiliser FlyQL dans un projet JavaScript
+---
+
+## Installation
+
+```bash
+npm install flyql
+```
+
+**Prerequis :** Node.js 16+. Tous les imports utilisent les modules ES.
+
+## Analyser une requete
+
+```javascript
+import { parse } from 'flyql'
+
+const result = parse("status = 200 and active")
+console.log(result.root)
+```
+
+`parse()` retourne un objet `Parser` avec un noeud `root` representant l'AST. Elle leve une `ParserError` en cas d'entree invalide :
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    const result = parse("status = 200 and active")
+    console.log(result.root)
+} catch (err) {
+    if (err instanceof ParserError) {
+        console.error(`Parse error: ${err.message}`)
+    }
+}
+```
+
+## Generer du SQL
+
+Utilisez un generateur pour transformer l'AST en clause WHERE parametree. Chaque dialecte de base de donnees est un import de sous-chemin separe.
+
+### ClickHouse
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status >= 400 and host = prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+### Autres dialectes
+
+Les generateurs PostgreSQL et StarRocks suivent le meme modele :
+
+```javascript
+import { generateWhere, newColumn } from 'flyql/generators/postgresql'
+import { generateWhere, newColumn } from 'flyql/generators/starrocks'
+```
+
+Note : le `newColumn` de PostgreSQL a une signature differente — `newColumn(name, type, values)` (pas de parametre `jsonString`).
+
+## Matching en memoire
+
+Evaluez une requete par rapport a un enregistrement de donnees sans generer de SQL :
+
+```javascript
+import { match } from 'flyql/matcher'
+
+const data = {
+    status: 200,
+    active: true,
+    host: "prod-api-01",
+}
+
+const matches = match("status = 200 and active", data)
+console.log(`Matches: ${matches}`) // true
+```
+
+## Analyser les expressions de colonnes
+
+Analysez une expression de colonnes en donnees structurees avec segments, transformateurs et alias :
+
+```javascript
+import { parse, parseToJson } from 'flyql/columns'
+
+// Parse basic columns (transformers disabled by default)
+const parsed = parse("message, status")
+for (const col of parsed) {
+    console.log(`${col.name} (display: ${JSON.stringify(col.displayName)}, segments: ${col.segments})`)
+}
+
+// Enable transformers via capabilities
+const withTransforms = parse("message|chars(25) as msg, status", { transformers: true })
+
+// Or serialize directly to JSON for API responses
+const json = parseToJson("message, status|upper", { transformers: true })
+console.log(json)
+```
+
+## Transformateurs dans les requetes
+
+Analysez une requete avec des transformateurs et generez du SQL :
+
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// Parse a transformer query
+const result = parse("message|upper = 'ERROR'")
+
+// Generate SQL for ClickHouse
+const columns = { message: newColumn('message', false, 'String') }
+const sql = generateWhere(result.root, columns)
+console.log(sql) // equals(upper(message), 'ERROR')
+```
+
+Voir [Transformateurs](/fr/syntax/transformers/) pour la reference complete de la syntaxe.
+
+## Imports de sous-chemins disponibles
+
+| Chemin d'import | Contenu |
+|-----------------|---------|
+| `flyql` | Parseur principal (`parse`, `ParserError`, operateurs, constantes) |
+| `flyql/core` | Module parseur principal directement |
+| `flyql/columns` | Parseur d'expressions de colonnes |
+| `flyql/generators/clickhouse` | Generateur SQL ClickHouse |
+| `flyql/generators/postgresql` | Generateur SQL PostgreSQL |
+| `flyql/generators/starrocks` | Generateur SQL StarRocks |
+| `flyql/matcher` | Matcher d'enregistrements en memoire |
+| `flyql/editor` | Composant editeur web (necessite Vue 3) |
+
+## Et ensuite
+
+- [Reference de la syntaxe](/fr/syntax/) — tous les operateurs, la logique booleenne, les motifs et plus encore

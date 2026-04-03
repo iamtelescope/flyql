@@ -1,0 +1,128 @@
+---
+title: StarRocks
+description: Exemplos de SQL gerado para StarRocks
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+O SQL do StarRocks utiliza identificadores entre crases, `regexp()` para regex e `->` com chaves JSON-stringified para acesso a JSON.
+
+## Exemplos Básicos
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`message = 'hello'`} inline /> | `` `message` = 'hello' `` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `` `message` != 'hello' `` |
+| <FlyqlCode code={`count > 10`} inline /> | `` `count` > 10 `` |
+| <FlyqlCode code={`count <= 100`} inline /> | `` `count` <= 100 `` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `` regexp(`message`, 'error.*') `` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `` not regexp(`message`, 'test.*') `` |
+| <FlyqlCode code={`host = prod*`} inline /> | `` `host` LIKE 'prod%' `` |
+
+## Operadores Booleanos
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `` (`a` = '1' and `b` > 10) `` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `` (`a` = '1' or `b` = '2') `` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `` not (`a` = '1') `` |
+
+## Pertença a Listas
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `` `status` IN (200, 201) `` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `` `env` NOT IN ('dev', 'test') `` |
+| <FlyqlCode code={`status in []`} inline /> | `0` |
+| <FlyqlCode code={`status not in []`} inline /> | `1` |
+
+## Contenção (`has` / `not has`)
+
+O operador <FlyqlToken type="operator">has</FlyqlToken> gera SQL diferente dependendo do tipo de coluna:
+
+| Tipo de Coluna | FlyQL | SQL Gerado |
+|-------------|-------|--------------|
+| String | <FlyqlCode code={`message has 'error'`} inline /> | `` INSTR(`message`, 'error') > 0 `` |
+| String (negado) | <FlyqlCode code={`message not has 'error'`} inline /> | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `` array_contains(`tags`, 'web') `` |
+| Array (negado) | <FlyqlCode code={`tags not has 'web'`} inline /> | `` NOT array_contains(`tags`, 'web') `` |
+| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map (negado) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| JSON Nativo | <FlyqlCode code={`data has 'key'`} inline /> | `` json_exists(`data`, concat('$.', 'key')) `` |
+
+## Colunas JSON
+
+O StarRocks suporta dois tipos de colunas JSON com saída SQL diferente.
+
+### Tipo JSON Nativo
+
+As colunas JSON nativas utilizam o operador `->` com chaves JSON-stringified:
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` `data`->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+
+### Tipo JSON String
+
+As colunas que armazenam JSON como string requerem `parse_json()` antes da travessia:
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Colunas Map
+
+As colunas Map utilizam notação de colchetes com comparação direta:
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `` `metadata`['key1'] = 'value1' `` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `` `metadata`['key1'] != 'value1' `` |
+| <FlyqlCode code={`metadata.nested.key = 'value'`} inline /> | `` `metadata`['nested']['key'] = 'value' `` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `` `metadata`['pattern'] regexp 'test.*' `` |
+
+## Colunas Array
+
+As colunas Array utilizam indexação de colchetes baseada em 0:
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+
+### Configuração de Colunas
+
+O parâmetro `jsonString` controla qual modo é utilizado (igual ao ClickHouse):
+
+```go
+// Go
+columns := map[string]*starrocks.Column{
+    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
+    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // JSON nativo
+    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+}
+```
+
+```javascript
+// JavaScript
+const columns = {
+    message: newColumn("message", false, "VARCHAR(255)", null),
+    data:    newColumn("data", false, "JSON", null),      // JSON nativo
+    log:     newColumn("log", true, "STRING", null),       // JSON string
+}
+```
+
+## Transformadores
+
+Os transformadores geram chamadas de funções padrão do StarRocks com nomes de colunas entre crases:
+
+| FlyQL | SQL Gerado |
+|-------|--------------|
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `` UPPER(`status`) = 'ERROR' `` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `` LOWER(`status`) = 'info' `` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `` LENGTH(`message`) > 100 `` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `` LENGTH(LOWER(`message`)) > 100 `` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

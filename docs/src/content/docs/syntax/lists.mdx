@@ -3,62 +3,58 @@ title: Lists
 description: List membership operators in FlyQL (in, not in)
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
 ## List Membership
 
-Use `in` to check if a value is in a list, and `not in` to check it is not:
+Use <FlyqlToken type="operator">in</FlyqlToken> to check if a value is in a list, and <FlyqlToken type="operator">not in</FlyqlToken> to check it is not:
 
-```
-status in [200, 201, 204]
-env not in ['prod', 'staging']
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
 
 ## Syntax Rules
 
-- Values are enclosed in square brackets `[ ]` and separated by commas
+- Values are enclosed in square brackets <FlyqlToken type="operator">[ ]</FlyqlToken> and separated by commas
 - All values in a list must be the same type (all strings or all numbers)
-- String values must be quoted: `['a', 'b', 'c']`
-- Numeric values are unquoted: `[1, 2, 3]`
+- String values must be quoted: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- Numeric values are unquoted: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Spaces around commas and brackets are allowed
 
 ### String Lists
 
-```
-method in ['GET', 'POST', 'PUT']
-env not in ['dev', 'test', 'local']
-```
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
 
 Both single and double quotes work for string values.
 
 ### Numeric Lists
 
-```
-status in [200, 201, 204]
-port not in [80, 443]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
 
 ### Empty Lists
 
 Empty lists are allowed:
 
-```
-status in []        # always false — nothing matches an empty list
-status not in []    # always true — everything is "not in" an empty list
-```
+<FlyqlCode code={`status in []`} />
+
+An empty <FlyqlToken type="operator">in</FlyqlToken> list is always false — nothing matches an empty list.
+
+<FlyqlCode code={`status not in []`} />
+
+An empty <FlyqlToken type="operator">not in</FlyqlToken> list is always true — everything is "not in" an empty list.
 
 ## Type Consistency
 
 Lists **must** contain values of a uniform type — all strings or all numbers. Mixing types within a single list causes a parse error:
 
-```
-# Valid — all numbers
-status in [200, 201, 204]
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
 
-# Valid — all strings
-env in ['prod', 'staging']
+The following is invalid (mixed types — parse error):
 
-# Invalid — mixed types (parse error)
-values in [200, 'ok']
-```
+<FlyqlCode code={`values in [200, 'ok']`} />
 
 The parser tracks the type of the first value in the list and rejects any subsequent value of a different type. This is enforced at parse time, before the query reaches any generator or matcher.
 
@@ -70,21 +66,12 @@ The `valuesType` field on the parsed expression indicates whether the list conta
 
 List operators combine with boolean operators like any other condition:
 
-```
-status in [200, 201] and method in ['GET', 'POST']
-level = error or status not in [200, 201, 204]
-(status in [500, 502, 503] or level = critical) and env=prod
-```
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
 
 ## Examples
 
-```
-# HTTP success codes
-status in [200, 201, 204]
-
-# Exclude test environments
-env not in ['dev', 'test', 'staging']
-
-# Multiple list conditions
-method in ['GET', 'POST'] and status not in [401, 403, 404]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

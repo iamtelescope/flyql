@@ -3,27 +3,26 @@ title: Transformers
 description: Transforma valores de columnas con funciones encadenadas por tuberías antes de compararlos
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Los transformers modifican los valores de las columnas antes de compararlos en las consultas o de emitirlos en SQL. Usan la sintaxis de tubería (`|`) y se aplican de izquierda a derecha.
 
 ## Sintaxis de tubería
 
 Aplica un transformer a una columna con `|`:
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-Esto transforma el valor de `message` con `upper` antes de compararlo con `"ERROR"`.
+Esto transforma el valor de <FlyqlToken type="key">message</FlyqlToken> con <FlyqlToken type="transformer">upper</FlyqlToken> antes de compararlo con `"ERROR"`.
 
 ## Encadenamiento
 
 Encadena varios transformers con tuberías adicionales:
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-Los transformers se aplican de izquierda a derecha: primero se ejecuta `lower` (de string a string) y luego `len` (de string a int). El resultado se compara con `> 100`.
+Los transformers se aplican de izquierda a derecha: primero se ejecuta <FlyqlToken type="transformer">lower</FlyqlToken> (de string a string) y luego <FlyqlToken type="transformer">len</FlyqlToken> (de string a int). El resultado se compara con `> 100`.
 
 ## Sistema de tipos
 
@@ -34,22 +33,22 @@ Cada transformer declara un tipo de entrada y un tipo de salida. Los transformer
 | `string` | Valores de texto |
 | `int` | Números enteros |
 | `float` | Números de coma flotante |
-| `array` | Array de valores, normalmente usado con `has` |
+| `array` | Array de valores, normalmente usado con <FlyqlToken type="operator">has</FlyqlToken> |
 
 ## Transformers integrados
 
 | Transformer | Entrada | Salida | Descripción |
 |-------------|---------|--------|-------------|
-| `upper` | string | string | Convierte a mayúsculas |
-| `lower` | string | string | Convierte a minúsculas |
-| `len` | string | int | Obtiene la longitud del string |
-| `split` | string | array | Divide por delimitador: `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | Convierte a mayúsculas |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | Convierte a minúsculas |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | Obtiene la longitud del string |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | Divide por delimitador: `split(".")` |
 
 ## Salida SQL por dialecto
 
 Los transformers generan llamadas a funciones SQL específicas de cada dialecto. Los transformers encadenados producen llamadas anidadas, de dentro hacia fuera:
 
-**Transformer único:** `status|upper = "ERROR"`
+**Transformer único:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | Dialecto | SQL generado |
 |---------|--------------|
@@ -57,7 +56,7 @@ Los transformers generan llamadas a funciones SQL específicas de cada dialecto.
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**Transformers encadenados:** `message|lower|len > 100`
+**Transformers encadenados:** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | Dialecto | SQL generado |
 |---------|--------------|
@@ -65,7 +64,7 @@ Los transformers generan llamadas a funciones SQL específicas de cada dialecto.
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**Split con has:** `message|split(" ") has "hello"`
+**Split con has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | Dialecto | SQL generado |
 |---------|--------------|
@@ -77,18 +76,14 @@ Los transformers generan llamadas a funciones SQL específicas de cada dialecto.
 
 Si una cadena de transformers tiene tipos incompatibles, el editor muestra un error:
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-Esto falla porque `len` devuelve `int`, pero `upper` requiere una entrada `string`. El editor muestra: "len outputs int, upper requires string input".
+Esto falla porque <FlyqlToken type="transformer">len</FlyqlToken> devuelve `int`, pero <FlyqlToken type="transformer">upper</FlyqlToken> requiere una entrada `string`. El editor muestra: "len outputs int, upper requires string input".
 
 ## Ejemplos
 
-```
-status|upper = "ERROR"           # Comparación en mayúsculas
-message|lower|len > 100          # Cadena: primero minúsculas, luego longitud
-host|lower != "localhost"        # Distinto sin distinguir mayúsculas y minúsculas
-path|len > 0                     # Comprobación de valor no vacío
-tags|split(",") has "urgent"     # Dividir y comprobar pertenencia
-```
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

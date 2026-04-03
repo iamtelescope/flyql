@@ -3,38 +3,35 @@ title: Boolean Logic
 description: Boolean operators, precedence, and parenthesized grouping in FlyQL
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
 ## Boolean Operators
 
 FlyQL uses three boolean operators to combine conditions:
 
 | Operator | Meaning | Example |
 |----------|---------|---------|
-| `and` | Both conditions must be true | `status = 200 and active` |
-| `or` | Either condition can be true | `level = error or level = critical` |
-| `not` | Negates an expression | `not archived` |
+| <FlyqlToken type="operator">and</FlyqlToken> | Both conditions must be true | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | Either condition can be true | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Negates an expression | <FlyqlCode code={`not archived`} inline /> |
 
 ### Combined Negation
 
-`not` can be combined with `and` and `or`:
+<FlyqlToken type="operator">not</FlyqlToken> can be combined with <FlyqlToken type="operator">and</FlyqlToken> and <FlyqlToken type="operator">or</FlyqlToken>:
 
-```
-active and not archived
-level = error or not healthy
-```
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
 
 ## Operator Precedence
 
-`and` binds tighter than `or`. This means:
+<FlyqlToken type="operator">and</FlyqlToken> binds tighter than <FlyqlToken type="operator">or</FlyqlToken>. This means:
 
-```
-a = 1 or b = 2 and c = 3
-```
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 is parsed as:
 
-```
-a = 1 or (b = 2 and c = 3)
-```
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
 To override precedence, use parentheses explicitly.
 
@@ -42,63 +39,45 @@ To override precedence, use parentheses explicitly.
 
 Use parentheses to control evaluation order:
 
-```
-(status >= 400 or level = error) and service = api
-```
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
 
-Without parentheses, `and` would bind tighter:
+Without parentheses, <FlyqlToken type="operator">and</FlyqlToken> would bind tighter:
 
-```
-status >= 400 or level = error and service = api
-→ status >= 400 or (level = error and service = api)
-```
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+is equivalent to:
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
 
 ### Nested Grouping
 
 Parentheses can be nested:
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
 ### Negating Groups
 
-`not` applies to the entire group:
+<FlyqlToken type="operator">not</FlyqlToken> applies to the entire group:
 
-```
-not (status = 200 and healthy)
-```
+<FlyqlCode code={`not (status = 200 and healthy)`} />
 
-This negates the combined condition — true only when either `status` is not 200 or `healthy` is false.
+This negates the combined condition — true only when either <FlyqlToken type="key">status</FlyqlToken> is not 200 or <FlyqlToken type="key">healthy</FlyqlToken> is false.
 
 ## Negation
 
-`not` negates any expression — a truthy check, a comparison, or a group:
+<FlyqlToken type="operator">not</FlyqlToken> negates any expression — a truthy check, a comparison, or a group:
 
-```
-not active                  # field is falsy
-not status = 200              # status is not 200
-not (a = 1 and b = 2)           # negates the group
-active and not archived     # combined with other conditions
-```
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
 
-Double negation cancels out: `not not active` is equivalent to `active`.
+Double negation cancels out: <FlyqlCode code={`not not active`} inline /> is equivalent to <FlyqlCode code={`active`} inline />.
 
 ## Examples
 
-```
-# Simple AND
-status = 200 and service = api
-
-# Simple OR
-level = error or level = critical
-
-# Mixed with precedence
-status >= 400 or level = error and service = api
-
-# Explicit grouping
-(status >= 400 or level = error) and service = api
-
-# Complex query with negation and grouping
-(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
-```
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

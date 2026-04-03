@@ -3,6 +3,9 @@ title: 値と型
 description: FlyQL の値型、型付きリテラル、式
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL は 7 つの値型をサポートします。**Integer**、**BigInt**、**Float**、**String**、**Boolean**、**Null**、**Array** です。AST 内の各値には明示的な `value_type` フィールドが付きます。
 
 ## 値型
@@ -11,11 +14,9 @@ FlyQL は 7 つの値型をサポートします。**Integer**、**BigInt**、**
 
 int64 の範囲内に収まる整数です。
 
-```
-count = 42
-status != 200
-age >= 18
-```
+<FlyqlCode code={`count = 42`} />
+<FlyqlCode code={`status != 200`} />
+<FlyqlCode code={`age >= 18`} />
 
 AST: `value_type: "integer"`
 
@@ -23,9 +24,7 @@ AST: `value_type: "integer"`
 
 int64 の範囲（Go/Python）または `MAX_SAFE_INTEGER`（JavaScript）を超える整数です。
 
-```
-id = 18446744073709551615
-```
+<FlyqlCode code={`id = 18446744073709551615`} />
 
 AST: `value_type: "bigint"`
 
@@ -33,11 +32,9 @@ AST: `value_type: "bigint"`
 
 小数点を含む数値です。
 
-```
-price > 9.99
-ratio = 3.14
-temperature<=-0.5
-```
+<FlyqlCode code={`price > 9.99`} />
+<FlyqlCode code={`ratio = 3.14`} />
+<FlyqlCode code={`temperature<=-0.5`} />
 
 AST: `value_type: "float"`
 
@@ -45,12 +42,10 @@ AST: `value_type: "float"`
 
 クォート付きまたはクォートなしのテキスト値です。
 
-```
-level = error              # unquoted string
-user = "John Doe"          # double-quoted (spaces)
-message = 'hello world'    # single-quoted (spaces)
-count = '42'               # quoted number is a string
-```
+<FlyqlCode code={`level = error`} />
+<FlyqlCode code={`user = "John Doe"`} />
+<FlyqlCode code={`message = 'hello world'`} />
+<FlyqlCode code={`count = '42'`} />
 
 AST: `value_type: "string"`
 
@@ -63,51 +58,48 @@ message="said \"hello\""
 
 ### Boolean
 
-`true` と `false` という小文字のキーワードです。大文字小文字は区別されます。
+<FlyqlToken type="boolean">true</FlyqlToken> と <FlyqlToken type="boolean">false</FlyqlToken> という小文字のキーワードです。大文字小文字は区別されます。
 
-```
-active = true
-debug = false
-active != true
-```
+<FlyqlCode code={`active = true`} />
+<FlyqlCode code={`debug = false`} />
+<FlyqlCode code={`active != true`} />
 
 AST: `value_type: "boolean"`。値はネイティブ boolean です。
 
 先頭が大文字のバリエーション（`True`、`FALSE`）は文字列として扱われます。
 
 **SQL 生成:**
-| 方言 | `field=true` | `field=false` |
-|------|--------------|---------------|
-| ClickHouse | `field = true` | `field = false` |
-| PostgreSQL | `field = TRUE` | `field = FALSE` |
-| StarRocks | `field = true` | `field = false` |
+| 方言 | FlyQL | 生成される SQL |
+|------|-------|---------------|
+| ClickHouse | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| ClickHouse | <FlyqlCode code={`field = false`} inline /> | `field = false` |
+| PostgreSQL | <FlyqlCode code={`field = true`} inline /> | `field = TRUE` |
+| PostgreSQL | <FlyqlCode code={`field = false`} inline /> | `field = FALSE` |
+| StarRocks | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| StarRocks | <FlyqlCode code={`field = false`} inline /> | `field = false` |
 
 ### Null
 
-`null` という小文字のキーワードです。大文字小文字は区別されます。
+<FlyqlToken type="null">null</FlyqlToken> という小文字のキーワードです。大文字小文字は区別されます。
 
-```
-field = null
-field != null
-```
+<FlyqlCode code={`field = null`} />
+<FlyqlCode code={`field != null`} />
 
 AST: `value_type: "null"`。値はネイティブ null です。
 
 先頭が大文字のバリエーション（`Null`、`NULL`）は文字列として扱われます。
 
-**制約:** null と組み合わせて使えるのは `=` と `!=` のみです。`>`, `<`, `>=`, `<=`, `~`, `!~` を null と使うと parse error になります。
+**制約:** null と組み合わせて使えるのは <FlyqlToken type="operator">=</FlyqlToken> と <FlyqlToken type="operator">!=</FlyqlToken> のみです。<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>、<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken> を null と使うと parse error になります。
 
-**SQL 生成:** `field = null` は `field IS NULL`、`field != null` は `field IS NOT NULL` を生成します。全方言で共通です。
+**SQL 生成:** <FlyqlCode code={`field = null`} inline /> は `field IS NULL`、<FlyqlCode code={`field != null`} inline /> は `field IS NOT NULL` を生成します。全方言で共通です。
 
 ### Array
 
-Array は `in` と `not in` で使います。要素には異なる型を混在できます。
+Array は <FlyqlToken type="operator">in</FlyqlToken> と <FlyqlToken type="operator">not in</FlyqlToken> で使います。要素には異なる型を混在できます。
 
-```
-status in [200, 201, 202]
-name in ['alice', 'bob']
-field in [1, "hello", true, null]
-```
+<FlyqlCode code={`status in [200, 201, 202]`} />
+<FlyqlCode code={`name in ['alice', 'bob']`} />
+<FlyqlCode code={`field in [1, "hello", true, null]`} />
 
 各要素は `values_types` 配列にそれぞれの型を持ちます。
 
@@ -115,37 +107,30 @@ field in [1, "hello", true, null]
 
 演算子を持たない単独のキーは、そのフィールドが truthy な値を持つかどうかをチェックします。
 
-```
-active
-message and status
-```
+<FlyqlCode code={`active`} />
+<FlyqlCode code={`message and status`} />
 
 次の値は **falsy** とみなされます。
 - `null` / `None` / 未存在
 - 空文字列 `""`
 - 0
-- boolean `false`
+- boolean <FlyqlToken type="boolean">false</FlyqlToken>
 
 それ以外は **truthy** です。
 
-falsy をチェックするには `not` を使います。
+falsy をチェックするには <FlyqlToken type="operator">not</FlyqlToken> を使います。
 
-```
-not archived
-active and not debug
-```
+<FlyqlCode code={`not archived`} />
+<FlyqlCode code={`active and not debug`} />
 
-truthy/falsy チェックは null 比較とは異なります。`not field` は、フィールドが null、空、または 0 の場合に一致します。`field = null` は、フィールドが明示的に null の場合にのみ一致します。
+truthy/falsy チェックは null 比較とは異なります。<FlyqlCode code={`not field`} inline /> は、フィールドが null、空、または 0 の場合に一致します。<FlyqlCode code={`field = null`} inline /> は、フィールドが明示的に null の場合にのみ一致します。
 
 ## 空白
 
 FlyQL は空白に寛容です。演算子の前後のスペースは省略できます。
 
-```
-status = 200
-status = 200
-status =200
-```
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`status =200`} />
 
 上記はすべて同じ意味です。
 
@@ -181,6 +166,6 @@ import { ValueType } from 'flyql/types'
 - **Breaking:** Go の `ValueTypeString` / `ValueTypeNumber` は削除され、7 値の `types.ValueType` に置き換えられました
 - **Breaking:** AST の `value_type` フィールドは `"string"` / `"number"` から `"integer"` / `"float"` / `"bigint"` / `"string"` / `"boolean"` / `"null"` に変更されました
 - **Breaking:** 混在型リストの制約が削除され、異種型の array が有効になりました
-- **New:** `true`、`false`、`null` は文字列ではなく型付きリテラルとして parse されます
+- **New:** <FlyqlToken type="boolean">true</FlyqlToken>、<FlyqlToken type="boolean">false</FlyqlToken>、<FlyqlToken type="null">null</FlyqlToken> は文字列ではなく型付きリテラルとして parse されます
 - **New:** IN リスト式の `values_types` 配列で、要素ごとの型を参照できます
 - **New:** `flyql.types` モジュールから標準の型定数を export します

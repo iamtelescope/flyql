@@ -3,15 +3,16 @@ title: Claves anidadas
 description: Recorrido de rutas separadas por puntos y segmentos de clave entre comillas en FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Notación por puntos
 
 Usa rutas separadas por puntos para acceder a campos anidados en JSON, Map o datos estructurados:
 
-```
-request.url = "/api/users"
-response.headers.content_type = "application/json"
-metadata.labels.env = prod
-```
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
 
 Cada segmento separado por puntos recorre un nivel dentro de la estructura anidada. Los generadores SQL traducen estas rutas a la sintaxis correcta para cada dialecto de base de datos: acceso a rutas JSON, búsquedas en Map, etc.
 
@@ -19,38 +20,30 @@ Cada segmento separado por puntos recorre un nivel dentro de la estructura anida
 
 Cuando un segmento de clave contiene un punto, enciérralo entre comillas para que ese punto no se interprete como separador:
 
-```
-"foo.bar".baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
 
 Aquí:
 - `"foo.bar"` es un único segmento de clave, el punto es literal
-- `baz` es un hijo de `"foo.bar"`
+- <FlyqlToken type="key">baz</FlyqlToken> es un hijo de `"foo.bar"`
 
-Sin comillas, `foo.bar.baz` serían tres segmentos: `foo` → `bar` → `baz`.
+Sin comillas, <FlyqlToken type="key">foo.bar.baz</FlyqlToken> serían tres segmentos: <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>.
 
 ### Reglas de comillas
 
 Se pueden usar comillas simples o dobles para los segmentos de clave:
 
-```
-"foo.bar".baz = value
-'foo.bar'.baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
 
 Solo hay que entrecomillar los segmentos que contienen puntos:
 
-```
-metadata."dotted.key".value = 123
-```
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
 ## Profundidad de ruta
 
 No hay límite de profundidad de anidación:
 
-```
-a.b.c.d.e = value
-```
+<FlyqlCode code={`a.b.c.d.e = value`} />
 
 Cada segmento se recorre en orden al generar SQL o al evaluar en memoria.
 
@@ -58,26 +51,15 @@ Cada segmento se recorre en orden al generar SQL o al evaluar en memoria.
 
 Las claves anidadas funcionan con todos los operadores:
 
-```
-request.status >= 400
-response.body ~ "error.*"
-metadata.tags in ['prod', 'staging']
-request.headers.content_type != "text/html"
-not request.authenticated
-```
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
 
 ## Ejemplos
 
-```
-# Acceso anidado simple
-request.method = GET
-
-# Anidación profunda
-response.headers.content_type = "application/json"
-
-# Segmento entre comillas con punto literal
-"app.config".debug = true
-
-# Combinado con lógica booleana
-request.status >= 400 and response.body ~ "error" and not request.internal
-```
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

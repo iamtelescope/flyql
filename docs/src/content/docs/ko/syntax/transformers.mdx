@@ -3,27 +3,26 @@ title: Transformers
 description: 비교 전에 파이프로 연결된 함수로 컬럼 값을 변환합니다
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Transformers는 쿼리에서 비교되거나 SQL로 출력되기 전에 컬럼 값을 변경합니다. 파이프(`|`) 문법을 사용하며, 왼쪽에서 오른쪽 순서로 적용됩니다.
 
 ## 파이프 문법
 
 컬럼에 transformer를 적용하려면 `|`를 사용합니다.
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-이렇게 하면 `message` 값에 먼저 `upper`를 적용한 뒤 `"ERROR"`와 비교합니다.
+이렇게 하면 <FlyqlToken type="key">message</FlyqlToken> 값에 먼저 <FlyqlToken type="transformer">upper</FlyqlToken>를 적용한 뒤 `"ERROR"`와 비교합니다.
 
 ## 체이닝
 
 추가 파이프를 사용해 여러 transformer를 연결할 수 있습니다.
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-Transformer는 왼쪽에서 오른쪽으로 적용됩니다. 먼저 `lower`(string → string), 다음으로 `len`(string → int)이 실행됩니다. 그 결과를 `> 100`과 비교합니다.
+Transformer는 왼쪽에서 오른쪽으로 적용됩니다. 먼저 <FlyqlToken type="transformer">lower</FlyqlToken>(string → string), 다음으로 <FlyqlToken type="transformer">len</FlyqlToken>(string → int)이 실행됩니다. 그 결과를 `> 100`과 비교합니다.
 
 ## 타입 시스템
 
@@ -34,22 +33,22 @@ Transformer는 왼쪽에서 오른쪽으로 적용됩니다. 먼저 `lower`(stri
 | `string` | 텍스트 값 |
 | `int` | 정수 |
 | `float` | 부동소수점 수 |
-| `array` | 값 배열 (포함 여부는 `has` 연산자로 확인) |
+| `array` | 값 배열 (포함 여부는 <FlyqlToken type="operator">has</FlyqlToken> 연산자로 확인) |
 
 ## 내장 Transformers
 
 | Transformer | 입력 | 출력 | 설명 |
 |-------------|------|------|------|
-| `upper` | string | string | 대문자로 변환 |
-| `lower` | string | string | 소문자로 변환 |
-| `len` | string | int | 문자열 길이 반환 |
-| `split` | string | array | 구분자로 분할: `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | 대문자로 변환 |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | 소문자로 변환 |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | 문자열 길이 반환 |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | 구분자로 분할: `split(".")` |
 
 ## 방언별 SQL 출력
 
 Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transformer는 중첩 함수 호출로 생성되며, 가장 안쪽부터 평가됩니다.
 
-**단일 transformer:** `status|upper = "ERROR"`
+**단일 transformer:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | 방언 | 생성되는 SQL |
 |------|---------------|
@@ -57,7 +56,7 @@ Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transfo
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**체인된 transformer:** `message|lower|len > 100`
+**체인된 transformer:** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | 방언 | 생성되는 SQL |
 |------|---------------|
@@ -65,7 +64,7 @@ Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transfo
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**Split와 has 조합:** `message|split(" ") has "hello"`
+**Split와 has 조합:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | 방언 | 생성되는 SQL |
 |------|---------------|
@@ -77,18 +76,14 @@ Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transfo
 
 체인에 타입이 맞지 않는 transformer가 있으면 editor가 오류를 표시합니다.
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-이는 `len`이 `int`를 출력하지만, `upper`는 `string` 입력을 요구하므로 실패합니다. Editor에는 "len outputs int, upper requires string input" 이 표시됩니다.
+이는 <FlyqlToken type="transformer">len</FlyqlToken>이 `int`를 출력하지만, <FlyqlToken type="transformer">upper</FlyqlToken>는 `string` 입력을 요구하므로 실패합니다. Editor에는 "len outputs int, upper requires string input" 이 표시됩니다.
 
 ## 예제
 
-```
-status|upper = "ERROR"           # 대문자 기준 비교
-message|lower|len > 100          # 체인: 소문자 변환 후 길이 계산
-host|lower != "localhost"        # 대소문자 구분 없는 불일치 비교
-path|len > 0                     # 비어 있지 않은지 확인
-tags|split(",") has "urgent"     # 분할 후 포함 여부 확인
-```
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

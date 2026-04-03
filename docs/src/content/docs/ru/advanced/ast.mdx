@@ -3,6 +3,9 @@ title: AST и пользовательские генераторы
 description: Как устроено абстрактное синтаксическое дерево FlyQL и как строить собственные генераторы кода для любого целевого языка или структуры данных
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Парсер FlyQL создаёт **абстрактное синтаксическое дерево (AST)** — структурированное представление запроса, которое можно обходить для генерации вывода в любой целевой формат. Встроенные SQL-генераторы (ClickHouse, PostgreSQL, StarRocks) реализованы обходом этого же AST. Вы можете создать собственный генератор для запросов Elasticsearch, фильтров MongoDB, селекторов Prometheus, команд grep по логам или любого другого формата.
 
 ## Типы узлов AST
@@ -15,11 +18,11 @@ AST состоит из трёх типов: **Node** (древовидная с
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `boolOperator` | `string` | `"and"` или `"or"` — способ объединения `left` и `right`. Пустая строка для листовых узлов. |
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> или <FlyqlToken type="operator">or</FlyqlToken> — способ объединения `left` и `right`. Пустая строка для листовых узлов. |
 | `expression` | `Expression` или `null` | Условие, если это листовой узел. `null` для узлов-ветвей. |
 | `left` | `Node` или `null` | Левое поддерево. `null` для листовых узлов. |
 | `right` | `Node` или `null` | Правое поддерево. `null` для листовых узлов. |
-| `negated` | `boolean` | `true`, если узел обёрнут в `not`. |
+| `negated` | `boolean` | `true`, если узел обёрнут в <FlyqlToken type="operator">not</FlyqlToken>. |
 
 Узел является **либо** листом (`expression` задано, `left`/`right` равны null), **либо** ветвью (`left`/`right` заданы, `expression` равно null). Никогда и тем, и другим одновременно.
 
@@ -29,11 +32,11 @@ AST состоит из трёх типов: **Node** (древовидная с
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `key` | `Key` | Поле, которое проверяется (например, `status`, `user.metadata.role`). |
-| `operator` | `string` | Один из: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has`. |
-| `value` | `any` | Значение для сравнения. Строка, число, Boolean или Null для скалярных операторов. Пустое для `in` и `not in`. |
-| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` или `"null"`. `null` для `in`/`not in`. |
-| `values` | `array` или `null` | Список значений для операторов `in` и `not in`. Может быть гетерогенным. `null` для остальных операторов. |
+| `key` | `Key` | Поле, которое проверяется (например, <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
+| `operator` | `string` | Один из: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
+| `value` | `any` | Значение для сравнения. Строка, число, Boolean или Null для скалярных операторов. Пустое для <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` или `"null"`. `null` для <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `values` | `array` или `null` | Список значений для операторов <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. Может быть гетерогенным. `null` для остальных операторов. |
 | `valuesTypes` | `string[]` или `null` | Массив типов для каждого элемента, параллельный `values`. Каждый элемент — одна из констант типов. `null`, если `values` не используется. |
 
 ### Key
@@ -120,7 +123,7 @@ BoolOperator.OR       # "or"
 
 ### Простое условие
 
-Запрос: `status = 200`
+Запрос: <FlyqlCode code="status = 200" inline />
 
 ```
 Node (leaf)
@@ -132,7 +135,7 @@ Node (leaf)
 
 ### Логическое объединение
 
-Запрос: `status = 200 and method = "GET"`
+Запрос: <FlyqlCode code='status = 200 and method = "GET"' inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +153,7 @@ Node (branch, boolOperator: "and")
 
 ### Отрицание
 
-Запрос: `not status = 500`
+Запрос: <FlyqlCode code="not status = 500" inline />
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +165,7 @@ Node (leaf, negated: true)
 
 ### Вложенная логика со скобками
 
-Запрос: `env=prod and (status=500 or level = error)`
+Запрос: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -186,7 +189,7 @@ Node (branch, boolOperator: "and")
 
 ### Проверка принадлежности к списку
 
-Запрос: `status in [200, 201, 204]`
+Запрос: <FlyqlCode code="status in [200, 201, 204]" inline />
 
 ```
 Node (leaf)
@@ -200,7 +203,7 @@ Node (leaf)
 
 ### Проверка truthy
 
-Запрос: `active`
+Запрос: <FlyqlCode code="active" inline />
 
 ```
 Node (leaf)
@@ -212,7 +215,7 @@ Node (leaf)
 
 ### Вложенный ключ
 
-Запрос: `user.metadata.role = "admin"`
+Запрос: <FlyqlCode code='user.metadata.role = "admin"' inline />
 
 ```
 Node (leaf)

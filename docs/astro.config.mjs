@@ -7,6 +7,9 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "FlyQL",
+      customCss: [
+        "./src/styles/tables.css",
+      ],
       description:
         "A lightweight, injection-proof query language for multi-dialect SQL generation",
       locales: {

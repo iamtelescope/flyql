@@ -3,6 +3,9 @@ title: Dialectos SQL
 description: Cómo genera FlyQL SQL para ClickHouse, PostgreSQL y StarRocks
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Los generadores de FlyQL producen un fragmento de cláusula WHERE como una cadena SQL plana con todos los valores embebidos y escapados. La misma consulta FlyQL genera SQL distinto según el dialecto de destino.
 
 ## Dialectos compatibles
@@ -22,16 +25,16 @@ Los generadores de FlyQL producen un fragmento de cláusula WHERE como una caden
 | Operadores booleanos | `and` / `or` | `AND` / `OR` | `and` / `or` |
 | `IN []` vacío | `0` | `FALSE` | `0` |
 | `NOT IN []` vacío | `1` | `TRUE` | `1` |
-| `has` sobre string | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
-| `has` sobre array | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
-| `has` sobre map | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
-| `has` sobre JSON | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+| <FlyqlToken type="operator">has</FlyqlToken> sobre string | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| <FlyqlToken type="operator">has</FlyqlToken> sobre array | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| <FlyqlToken type="operator">has</FlyqlToken> sobre map | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| <FlyqlToken type="operator">has</FlyqlToken> sobre JSON | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## Acceso a JSON: la mayor diferencia
 
 Cada dialecto maneja las columnas JSON anidadas de forma muy distinta.
 
-**Entrada FlyQL:** `data.user.name = 'john'`
+**Entrada FlyQL:** <FlyqlCode code={`data.user.name = 'john'`} inline />
 
 **ClickHouse** con columna JSON nativa:
 ```sql
@@ -59,7 +62,7 @@ Consulta la página de cada dialecto para ver ejemplos completos.
 
 ## Acceso a Map
 
-**Entrada FlyQL:** `metadata.key1 = 'value1'`
+**Entrada FlyQL:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
 
 | Dialecto | SQL generado |
 |----------|--------------|
@@ -71,7 +74,7 @@ ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. Postg
 
 ## Acceso a Array
 
-**Entrada FlyQL:** `tags.0 = 'first'` con índice base 0 en FlyQL
+**Entrada FlyQL:** <FlyqlCode code={`tags.0 = 'first'`} inline /> con índice base 0 en FlyQL
 
 | Dialecto | SQL generado | Indexación |
 |----------|--------------|------------|

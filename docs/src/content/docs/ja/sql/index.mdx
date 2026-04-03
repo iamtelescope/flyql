@@ -3,6 +3,9 @@ title: SQL 方言
 description: FlyQL が ClickHouse、PostgreSQL、StarRocks 向けに SQL を生成する方法
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL の generator は、すべての値を埋め込み済みかつエスケープ済みのプレーンな SQL 文字列として WHERE 句断片を生成します。同じ FlyQL クエリでも、ターゲット方言によって生成される SQL は異なります。
 
 ## 対応方言
@@ -22,16 +25,16 @@ FlyQL の generator は、すべての値を埋め込み済みかつエスケー
 | ブール演算子 | `and` / `or` | `AND` / `OR` | `and` / `or` |
 | 空の `IN []` | `0` | `FALSE` | `0` |
 | 空の `NOT IN []` | `1` | `TRUE` | `1` |
-| String に対する `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
-| Array に対する `has` | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
-| Map に対する `has` | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
-| JSON に対する `has` | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+| String に対する <FlyqlToken type="operator">has</FlyqlToken> | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| Array に対する <FlyqlToken type="operator">has</FlyqlToken> | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| Map に対する <FlyqlToken type="operator">has</FlyqlToken> | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON に対する <FlyqlToken type="operator">has</FlyqlToken> | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## JSON アクセス: 最も大きな違い
 
 ネストした JSON カラムの扱いは、方言ごとに大きく異なります。
 
-**FlyQL 入力:** `data.user.name = 'john'`
+**FlyQL 入力:** <FlyqlCode code={`data.user.name = 'john'`} inline />
 
 **ClickHouse**（ネイティブ JSON カラム）:
 ```sql
@@ -59,7 +62,7 @@ multiIf(JSONType(data, 'user', 'name') = 'String',
 
 ## Map アクセス
 
-**FlyQL 入力:** `metadata.key1 = 'value1'`
+**FlyQL 入力:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
 
 | 方言 | 生成される SQL |
 |------|-----------------|
@@ -71,7 +74,7 @@ ClickHouse は Map アクセスに `equals()` / `notEquals()` を使います。
 
 ## Array アクセス
 
-**FlyQL 入力:** `tags.0 = 'first'`（FlyQL では 0 始まり）
+**FlyQL 入力:** <FlyqlCode code={`tags.0 = 'first'`} inline />（FlyQL では 0 始まり）
 
 | 方言 | 生成される SQL | 添字 |
 |------|-----------------|------|

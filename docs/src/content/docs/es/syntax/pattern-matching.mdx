@@ -3,35 +3,34 @@ title: Coincidencia de patrones
 description: Coincidencia regex y con comodines en FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Coincidencia regex
 
-Usa `~` para comparar un valor con una expresión regular y `!~` para negar la coincidencia:
+Usa <FlyqlToken type="operator">{'~'}</FlyqlToken> para comparar un valor con una expresión regular y <FlyqlToken type="operator">{'!~'}</FlyqlToken> para negar la coincidencia:
 
-```
-message ~ "error.*timeout"
-path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
 
 | Operador | Significado |
 |----------|-------------|
-| `~` | El valor coincide con el patrón regex |
-| `!~` | El valor no coincide con el patrón regex |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | El valor coincide con el patrón regex |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | El valor no coincide con el patrón regex |
 
 ### Sintaxis de patrones regex
 
 La sintaxis regex depende del backend de destino:
 
 - **ClickHouse**: usa la función `match()` (sintaxis RE2)
-- **PostgreSQL**: usa los operadores `~` y `!~` (regex POSIX)
+- **PostgreSQL**: usa los operadores <FlyqlToken type="operator">{'~'}</FlyqlToken> y <FlyqlToken type="operator">{'!~'}</FlyqlToken> (regex POSIX)
 - **StarRocks**: usa la función `regexp`
 - **Matcher en memoria**: usa el motor regex del lenguaje host (Go `regexp`, Python `re2`, JS `RegExp`)
 
 Pon el patrón entre comillas cuando contenga espacios o caracteres especiales:
 
-```
-message ~ "connection (refused|reset)"
-host ~ "^prod-[0-9]+"
-```
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
 
 ### Flags de regex
 
@@ -41,10 +40,8 @@ Puedes modificar el comportamiento de la regex usando flags inline al inicio del
 
 Hace que el patrón coincida sin importar las mayúsculas o minúsculas:
 
-```
-message ~ "(?i)error"
-level ~ "(?i)^(warn|error|fatal)$"
-```
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
 
 `(?i)error` coincide con "Error", "ERROR", "error", etc.
 
@@ -52,9 +49,7 @@ level ~ "(?i)^(warn|error|fatal)$"
 
 Cambia `^` y `$` para que coincidan con el inicio y el final de cada **línea** en lugar de toda la cadena:
 
-```
-log ~ "(?m)^ERROR"
-```
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
 
 Sin `(?m)`, `^ERROR` solo coincide si la cadena completa empieza con "ERROR". Con `(?m)`, también coincide con "INFO first\nERROR second" porque "ERROR" aparece al inicio de una línea.
 
@@ -62,9 +57,7 @@ Sin `(?m)`, `^ERROR` solo coincide si la cadena completa empieza con "ERROR". Co
 
 Hace que `.` coincida con **cualquier** carácter, incluidos los saltos de línea. Por defecto, `.` no coincide con `\n`:
 
-```
-log ~ "(?s)start.*end"
-```
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
 
 Sin `(?s)`, `start.*end` no coincide con "start\nend" porque `.` no cruza el salto de línea. Con `(?s)`, sí coincide.
 
@@ -72,10 +65,8 @@ Sin `(?s)`, `start.*end` no coincide con "start\nend" porque `.` no cruza el sal
 
 Los flags se pueden combinar en un solo grupo:
 
-```
-log ~ "(?im)^ERROR"
-log ~ "(?ims)^START.*END$"
-```
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
 
 #### Compatibilidad con backends
 
@@ -92,18 +83,14 @@ Los tres flags funcionan en todos los backends de FlyQL:
 
 Combina la coincidencia sin distinción de mayúsculas con negación para excluir patrones sin importar el caso:
 
-```
-message ~ "(?i)error" and message !~ "(?i)warning"
-```
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
 ## Coincidencia con comodines
 
-Usa `*` al final de un valor sin comillas para hacer coincidencia por prefijo:
+Usa <FlyqlToken type="operator">{'*'}</FlyqlToken> al final de un valor sin comillas para hacer coincidencia por prefijo:
 
-```
-host = prod*
-service = api-*
-```
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
 
 Esto coincide con cualquier valor que empiece por el prefijo dado. Los comodines solo se admiten al final del valor; `*prod` y `pr*od` no están soportados.
 
@@ -111,26 +98,15 @@ Esto coincide con cualquier valor que empiece por el prefijo dado. Los comodines
 
 | Patrón | Sintaxis | Ejemplo |
 |--------|----------|---------|
-| Comodín por prefijo | `key = value*` | `host = prod*` |
-| Regex completa | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
+| Comodín por prefijo | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex completa | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
 Usa comodines para coincidencias simples por prefijo. Usa regex cuando necesites patrones más complejos.
 
 ## Ejemplos
 
-```
-# Regex: mensajes que contienen "error" o "fail"
-message ~ "error|fail"
-
-# Regex: rutas que empiezan por /api/v2
-path ~ "^/api/v2"
-
-# Regex negada: excluir rutas de health check
-path !~ "^/health"
-
-# Comodín: hosts que empiezan por "prod"
-host = prod*
-
-# Combinado
-host = prod* and message ~ "timeout.*" and path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

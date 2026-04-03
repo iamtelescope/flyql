@@ -3,27 +3,26 @@ title: Transformers
 description: 比較前にパイプで連結した関数でカラム値を変換する
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Transformers は、クエリで比較する前、または SQL として出力する前にカラム値を変換します。パイプ構文（`|`）を使い、左から右へ適用されます。
 
 ## パイプ構文
 
 カラムに transformer を適用するには `|` を使います。
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-これは `message` の値に `upper` を適用してから `"ERROR"` と比較します。
+これは <FlyqlToken type="key">message</FlyqlToken> の値に <FlyqlToken type="transformer">upper</FlyqlToken> を適用してから `"ERROR"` と比較します。
 
 ## チェーン
 
 複数の transformer はパイプを追加して連結できます。
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-transformer は左から右へ適用されます。まず `lower`（string → string）、次に `len`（string → int）が実行され、その結果を `> 100` で比較します。
+transformer は左から右へ適用されます。まず <FlyqlToken type="transformer">lower</FlyqlToken>（string → string）、次に <FlyqlToken type="transformer">len</FlyqlToken>（string → int）が実行され、その結果を `> 100` で比較します。
 
 ## 型システム
 
@@ -34,22 +33,22 @@ transformer は左から右へ適用されます。まず `lower`（string → s
 | `string` | テキスト値 |
 | `int` | 整数 |
 | `float` | 浮動小数点数 |
-| `array` | 値の配列。所属チェックには `has` を使います |
+| `array` | 値の配列。所属チェックには <FlyqlToken type="operator">has</FlyqlToken> を使います |
 
 ## 組み込み Transformers
 
 | Transformer | 入力 | 出力 | 説明 |
 |-------------|------|------|------|
-| `upper` | string | string | 大文字に変換 |
-| `lower` | string | string | 小文字に変換 |
-| `len` | string | int | 文字列長を取得 |
-| `split` | string | array | 区切り文字で分割: `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | 大文字に変換 |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | 小文字に変換 |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | 文字列長を取得 |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | 区切り文字で分割: `split(".")` |
 
 ## 方言ごとの SQL 出力
 
 transformer は方言ごとの SQL 関数呼び出しを生成します。チェーンされた transformer はネストした呼び出しになり、最も内側から評価されます。
 
-**単一 transformer:** `status|upper = "ERROR"`
+**単一 transformer:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | 方言 | 生成される SQL |
 |------|-----------------|
@@ -57,7 +56,7 @@ transformer は方言ごとの SQL 関数呼び出しを生成します。チェ
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**チェーンされた transformer:** `message|lower|len > 100`
+**チェーンされた transformer:** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | 方言 | 生成される SQL |
 |------|-----------------|
@@ -65,7 +64,7 @@ transformer は方言ごとの SQL 関数呼び出しを生成します。チェ
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**Split と has:** `message|split(" ") has "hello"`
+**Split と has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | 方言 | 生成される SQL |
 |------|-----------------|
@@ -77,18 +76,14 @@ transformer は方言ごとの SQL 関数呼び出しを生成します。チェ
 
 チェーン内に型互換のない transformer がある場合、editor はエラーを表示します。
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-これは `len` が `int` を返す一方、`upper` が `string` 入力を必要とするため失敗します。editor には "len outputs int, upper requires string input" と表示されます。
+これは <FlyqlToken type="transformer">len</FlyqlToken> が `int` を返す一方、<FlyqlToken type="transformer">upper</FlyqlToken> が `string` 入力を必要とするため失敗します。editor には "len outputs int, upper requires string input" と表示されます。
 
 ## 例
 
-```
-status|upper = "ERROR"           # 大文字での比較
-message|lower|len > 100          # チェーン: 小文字変換後に文字列長を取得
-host|lower != "localhost"        # 大文字小文字を区別しない不等比較
-path|len > 0                     # 空でないことのチェック
-tags|split(",") has "urgent"     # 分割して所属をチェック
-```
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

@@ -1,0 +1,11 @@
+/* Prevent wrapping in table cells that contain code (props, types, defaults, operators) */
+.sl-markdown-content table td code,
+.sl-markdown-content table th code {
+  white-space: nowrap;
+}
+
+/* Allow tables to use full available width */
+.sl-markdown-content table {
+  width: 100%;
+  table-layout: auto;
+}

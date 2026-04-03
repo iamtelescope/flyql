@@ -3,35 +3,34 @@ title: Операторы сравнения
 description: Операторы FlyQL для фильтрации данных
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL поддерживает следующие операторы сравнения:
 
 ## Равенство
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `=` | равно | `status = 200` |
-| `!=` | не равно | `env != prod` |
+| <FlyqlToken type="operator">=</FlyqlToken> | равно | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | не равно | <FlyqlCode code={`env != prod`} inline /> |
 
-```
-status = 200
-service != "api-gateway"
-```
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`service != "api-gateway"`} />
 
-Обе стороны оператора обязательны — ключ и значение.
+Обе стороны оператора обязательны — <FlyqlToken type="key">ключ</FlyqlToken> и <FlyqlToken type="value">значение</FlyqlToken>.
 
 ## Числовые сравнения
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `>` | больше | `status > 399` |
-| `>=` | больше или равно | `status >= 400` |
-| `<` | меньше | `duration < 1000` |
-| `<=` | меньше или равно | `duration <= 500` |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | больше | <FlyqlCode code={`status > 399`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | больше или равно | <FlyqlCode code={`status >= 400`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | меньше | <FlyqlCode code={`duration < 1000`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | меньше или равно | <FlyqlCode code={`duration <= 500`} inline /> |
 
-```
-status >= 400 and duration < 5000
-response_time > 100 and response_time <= 2000
-```
+<FlyqlCode code={`status >= 400 and duration < 5000`} />
+<FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
 Операторы числового сравнения работают с числовыми значениями. При использовании со строками применяется лексикографическое сравнение.
 
@@ -39,22 +38,20 @@ response_time > 100 and response_time <= 2000
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `~` | совпадение по регулярному выражению | `message ~ "error.*"` |
-| `!~` | несовпадение по регулярному выражению | `path !~ "^/health"` |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | совпадение по регулярному выражению | <FlyqlCode code={`message ~ "error.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | несовпадение по регулярному выражению | <FlyqlCode code={`path !~ "^/health"`} inline /> |
 
-```
-message ~ "timeout|connection refused"
-host !~ "^test-.*"
-```
+<FlyqlCode code={`message ~ "timeout|connection refused"`} />
+<FlyqlCode code={`host !~ "^test-.*"`} />
 
-Синтаксис регулярных выражений определяется целевой базой данных или средой выполнения.
+Синтаксис регулярных выражений определяется целевой базой данных или средой выполнения. Подробности — в разделе [Сопоставление с образцом](/ru/syntax/pattern-matching/).
 
 ## Проверка принадлежности списку
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `in` | входит в список | `status in [200, 201]` |
-| `not in` | не входит в список | `env not in ['dev', 'test']` |
+| <FlyqlToken type="operator">in</FlyqlToken> | входит в список | <FlyqlCode code={`status in [200, 201]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | не входит в список | <FlyqlCode code={`env not in ['dev', 'test']`} inline /> |
 
 Подробности — в разделе [Списки](/ru/syntax/lists/).
 
@@ -62,37 +59,35 @@ host !~ "^test-.*"
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `has` | содержит | `message has 'error'` |
-| `not has` | не содержит | `message not has 'test'` |
+| <FlyqlToken type="operator">has</FlyqlToken> | содержит | <FlyqlCode code={`message has 'error'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | не содержит | <FlyqlCode code={`message not has 'test'`} inline /> |
 
-```
-message has 'timeout'
-tags not has 'deprecated'
-```
+<FlyqlCode code={`message has 'timeout'`} />
+<FlyqlCode code={`tags not has 'deprecated'`} />
 
-Оператор `has` выполняет проверку вхождения в зависимости от типа:
+Оператор <FlyqlToken type="operator">has</FlyqlToken> выполняет проверку вхождения в зависимости от типа:
 
-- **String** — поиск подстроки: `message has 'error'` истинно, если `message` содержит `"error"`
-- **Map** — наличие ключа: `metadata has 'region'` истинно, если в карте есть ключ `"region"`
-- **Array/List** — наличие элемента: `tags has 'web'` истинно, если массив содержит `"web"`
-- **JSON** — наличие ключа: `data has 'name'` истинно, если JSON-объект имеет ключ `"name"`
-- **Null/пусто** — всегда false для `has`, всегда true для `not has`
+- **String** — поиск подстроки: <FlyqlCode code={`message has 'error'`} inline /> истинно, если <FlyqlToken type="key">message</FlyqlToken> содержит <FlyqlToken type="string">"error"</FlyqlToken>
+- **Map** — наличие ключа: <FlyqlCode code={`metadata has 'region'`} inline /> истинно, если в карте есть ключ <FlyqlToken type="string">"region"</FlyqlToken>
+- **Array/List** — наличие элемента: <FlyqlCode code={`tags has 'web'`} inline /> истинно, если массив содержит <FlyqlToken type="string">"web"</FlyqlToken>
+- **JSON** — наличие ключа: <FlyqlCode code={`data has 'name'`} inline /> истинно, если JSON-объект имеет ключ <FlyqlToken type="string">"name"</FlyqlToken>
+- **Null/пусто** — всегда false для <FlyqlToken type="operator">has</FlyqlToken>, всегда true для <FlyqlToken type="operator">not has</FlyqlToken>
 
-`has` принимает одно значение (не список). Для проверки принадлежности к множеству значений используйте `in`.
+<FlyqlToken type="operator">has</FlyqlToken> принимает одно значение (не список). Для проверки принадлежности к множеству значений используйте <FlyqlToken type="operator">in</FlyqlToken>.
 
 ## Сводка операторов
 
 | Оператор | Название | Пример |
 |----------|----------|--------|
-| `=` | равно | `status = 200` |
-| `!=` | не равно | `env != prod` |
-| `>` | больше | `count > 10` |
-| `>=` | больше или равно | `count >= 10` |
-| `<` | меньше | `count < 100` |
-| `<=` | меньше или равно | `count <= 100` |
-| `~` | совпадение по регулярному выражению | `msg ~ "err.*"` |
-| `!~` | несовпадение по регулярному выражению | `msg !~ "^ok"` |
-| `in` | в списке | `s in [1, 2]` |
-| `not in` | не в списке | `s not in [3]` |
-| `has` | содержит | `msg has 'err'` |
-| `not has` | не содержит | `msg not has 'ok'` |
+| <FlyqlToken type="operator">=</FlyqlToken> | равно | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | не равно | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | больше | <FlyqlCode code={`count > 10`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | больше или равно | <FlyqlCode code={`count >= 10`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | меньше | <FlyqlCode code={`count < 100`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | меньше или равно | <FlyqlCode code={`count <= 100`} inline /> |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | совпадение по регулярному выражению | <FlyqlCode code={`msg ~ "err.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | несовпадение по регулярному выражению | <FlyqlCode code={`msg !~ "^ok"`} inline /> |
+| <FlyqlToken type="operator">in</FlyqlToken> | в списке | <FlyqlCode code={`s in [1, 2]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | не в списке | <FlyqlCode code={`s not in [3]`} inline /> |
+| <FlyqlToken type="operator">has</FlyqlToken> | содержит | <FlyqlCode code={`msg has 'err'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | не содержит | <FlyqlCode code={`msg not has 'ok'`} inline /> |

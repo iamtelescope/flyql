@@ -3,35 +3,34 @@ title: Сопоставление по шаблону
 description: Регулярные выражения и сопоставление по шаблону в FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Регулярные выражения
 
-Используйте `~` для проверки соответствия регулярному выражению и `!~` для отрицания:
+Используйте <FlyqlToken type="operator">{'~'}</FlyqlToken> для проверки соответствия регулярному выражению и <FlyqlToken type="operator">{'!~'}</FlyqlToken> для отрицания:
 
-```
-message ~ "error.*timeout"
-path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
 
 | Оператор | Значение |
 |----------|----------|
-| `~` | Значение соответствует регулярному выражению |
-| `!~` | Значение не соответствует регулярному выражению |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | Значение соответствует регулярному выражению |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | Значение не соответствует регулярному выражению |
 
 ### Синтаксис регулярных выражений
 
 Синтаксис зависит от целевого бэкенда:
 
 - **ClickHouse** — функция `match()` (синтаксис RE2)
-- **PostgreSQL** — операторы `~` и `!~` (POSIX-регулярные выражения)
+- **PostgreSQL** — операторы <FlyqlToken type="operator">{'~'}</FlyqlToken> и <FlyqlToken type="operator">{'!~'}</FlyqlToken> (POSIX-регулярные выражения)
 - **StarRocks** — функция `regexp`
 - **Сопоставление в памяти** — движок регулярных выражений языка выполнения (Go `regexp`, Python `re2`, JS `RegExp`)
 
 Заключайте шаблон в кавычки, если он содержит пробелы или специальные символы:
 
-```
-message ~ "connection (refused|reset)"
-host ~ "^prod-[0-9]+"
-```
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
 
 ### Флаги регулярных выражений
 
@@ -41,10 +40,8 @@ host ~ "^prod-[0-9]+"
 
 Шаблон сопоставляется без учёта регистра:
 
-```
-message ~ "(?i)error"
-level ~ "(?i)^(warn|error|fatal)$"
-```
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
 
 `(?i)error` совпадает с «Error», «ERROR», «error» и т. д.
 
@@ -52,9 +49,7 @@ level ~ "(?i)^(warn|error|fatal)$"
 
 Изменяет поведение `^` и `$` так, что они совпадают с началом и концом каждой **строки**, а не всей строки целиком:
 
-```
-log ~ "(?m)^ERROR"
-```
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
 
 Без `(?m)` выражение `^ERROR` совпадает только если вся строка начинается с «ERROR». С `(?m)` оно также совпадает с «INFO first\nERROR second», потому что «ERROR» находится в начале строки.
 
@@ -62,9 +57,7 @@ log ~ "(?m)^ERROR"
 
 Делает так, что `.` совпадает с **любым** символом, включая перевод строки. По умолчанию `.` не совпадает с `\n`:
 
-```
-log ~ "(?s)start.*end"
-```
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
 
 Без `(?s)` выражение `start.*end` не совпадает со «start\nend», так как `.` не пересекает перевод строки. С `(?s)` — совпадает.
 
@@ -72,10 +65,8 @@ log ~ "(?s)start.*end"
 
 Флаги можно комбинировать в одной группе:
 
-```
-log ~ "(?im)^ERROR"
-log ~ "(?ims)^START.*END$"
-```
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
 
 #### Поддержка бэкендов
 
@@ -92,18 +83,14 @@ log ~ "(?ims)^START.*END$"
 
 Регистронезависимый поиск можно сочетать с отрицанием, чтобы исключать шаблоны независимо от регистра:
 
-```
-message ~ "(?i)error" and message !~ "(?i)warning"
-```
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
 ## Подстановочный шаблон
 
-Используйте `*` в конце некавыченного значения для сопоставления по префиксу:
+Используйте <FlyqlToken type="operator">{'*'}</FlyqlToken> в конце некавыченного значения для сопоставления по префиксу:
 
-```
-host = prod*
-service = api-*
-```
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
 
 Совпадает с любым значением, начинающимся с указанного префикса. Подстановочные знаки поддерживаются только в конце значения — `*prod` или `pr*od` не поддерживаются.
 
@@ -111,26 +98,15 @@ service = api-*
 
 | Шаблон | Синтаксис | Пример |
 |--------|-----------|--------|
-| Подстановочный (префикс) | `key = value*` | `host = prod*` |
-| Регулярное выражение | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
+| Подстановочный (префикс) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Регулярное выражение | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
 Используйте подстановочные шаблоны для простого сопоставления по префиксу. Используйте регулярные выражения, когда нужны более сложные шаблоны.
 
 ## Примеры
 
-```
-# Regex: сообщения, содержащие «error» или «fail»
-message ~ "error|fail"
-
-# Regex: пути, начинающиеся с /api/v2
-path ~ "^/api/v2"
-
-# Отрицание: исключить пути health-check
-path !~ "^/health"
-
-# Подстановочный шаблон: хосты, начинающиеся с «prod»
-host = prod*
-
-# Комбинированный запрос
-host = prod* and message ~ "timeout.*" and path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

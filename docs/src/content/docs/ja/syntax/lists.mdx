@@ -1,64 +1,60 @@
 ---
 title: リスト
-description: FlyQL のリスト所属演算子（`in`, `not in`）
+description: FlyQL のリスト所属演算子（in, not in）
 ---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 ## リスト所属
 
-`in` は値がリストに含まれるかを、`not in` は含まれないかを判定します。
+<FlyqlToken type="operator">in</FlyqlToken> は値がリストに含まれるかを、<FlyqlToken type="operator">not in</FlyqlToken> は含まれないかを判定します。
 
-```
-status in [200, 201, 204]
-env not in ['prod', 'staging']
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
 
 ## 構文ルール
 
-- 値は角括弧 `[ ]` で囲み、カンマ区切りで記述します
+- 値は角括弧 <FlyqlToken type="operator">[ ]</FlyqlToken> で囲み、カンマ区切りで記述します
 - リスト内の値はすべて同じ型である必要があります（文字列のみ、または数値のみ）
-- 文字列はクォートが必要です: `['a', 'b', 'c']`
-- 数値はクォートしません: `[1, 2, 3]`
+- 文字列はクォートが必要です: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- 数値はクォートしません: <FlyqlCode code={`[1, 2, 3]`} inline />
 - カンマや角括弧の前後のスペースは任意です
 
 ### 文字列リスト
 
-```
-method in ['GET', 'POST', 'PUT']
-env not in ['dev', 'test', 'local']
-```
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
 
 文字列値にはシングルクォートとダブルクォートのどちらも使えます。
 
 ### 数値リスト
 
-```
-status in [200, 201, 204]
-port not in [80, 443]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
 
 ### 空リスト
 
 空リストも使用できます。
 
-```
-status in []        # always false — nothing matches an empty list
-status not in []    # always true — everything is "not in" an empty list
-```
+<FlyqlCode code={`status in []`} />
+
+空の <FlyqlToken type="operator">in</FlyqlToken> リストは常に false です。空リストに一致するものはありません。
+
+<FlyqlCode code={`status not in []`} />
+
+空の <FlyqlToken type="operator">not in</FlyqlToken> リストは常に true です。すべてが空リストに「not in」です。
 
 ## 型の整合性
 
 リストには **同一型の値だけ** を含める必要があります。1 つのリストに型の異なる値を混在させると parse error になります。
 
-```
-# Valid — all numbers
-status in [200, 201, 204]
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
 
-# Valid — all strings
-env in ['prod', 'staging']
+以下は無効です（型の混在 — parse error）:
 
-# Invalid — mixed types (parse error)
-values in [200, 'ok']
-```
+<FlyqlCode code={`values in [200, 'ok']`} />
 
 parser はリストの先頭要素の型を記録し、以降に異なる型の値が現れた場合は拒否します。この検証は parse 時点で行われ、generator や matcher に到達する前にチェックされます。
 
@@ -70,21 +66,12 @@ parse 済み expression の `valuesType` フィールドは、そのリストが
 
 リスト演算子は、他の条件と同様にブール演算子と組み合わせて使えます。
 
-```
-status in [200, 201] and method in ['GET', 'POST']
-level = error or status not in [200, 201, 204]
-(status in [500, 502, 503] or level = critical) and env=prod
-```
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
 
 ## 例
 
-```
-# HTTP 成功コード
-status in [200, 201, 204]
-
-# テスト環境を除外
-env not in ['dev', 'test', 'staging']
-
-# 複数のリスト条件
-method in ['GET', 'POST'] and status not in [401, 403, 404]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

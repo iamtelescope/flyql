@@ -3,38 +3,35 @@ title: Lógica booleana
 description: Operadores booleanos, precedencia y agrupación con paréntesis en FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Operadores booleanos
 
 FlyQL usa tres operadores booleanos para combinar condiciones:
 
 | Operador | Significado | Ejemplo |
 |----------|-------------|---------|
-| `and` | Ambas condiciones deben ser true | `status = 200 and active` |
-| `or` | Cualquiera de las dos condiciones puede ser true | `level = error or level = critical` |
-| `not` | Niega una expresión | `not archived` |
+| <FlyqlToken type="operator">and</FlyqlToken> | Ambas condiciones deben ser true | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | Cualquiera de las dos condiciones puede ser true | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Niega una expresión | <FlyqlCode code={`not archived`} inline /> |
 
 ### Negación combinada
 
-`not` puede combinarse con `and` y `or`:
+<FlyqlToken type="operator">not</FlyqlToken> puede combinarse con <FlyqlToken type="operator">and</FlyqlToken> y <FlyqlToken type="operator">or</FlyqlToken>:
 
-```
-active and not archived
-level = error or not healthy
-```
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
 
 ## Precedencia de operadores
 
-`and` tiene mayor precedencia que `or`. Esto significa que:
+<FlyqlToken type="operator">and</FlyqlToken> tiene mayor precedencia que <FlyqlToken type="operator">or</FlyqlToken>. Esto significa que:
 
-```
-a = 1 or b = 2 and c = 3
-```
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 se parsea como:
 
-```
-a = 1 or (b = 2 and c = 3)
-```
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
 Para cambiar la precedencia, usa paréntesis de forma explícita.
 
@@ -42,63 +39,45 @@ Para cambiar la precedencia, usa paréntesis de forma explícita.
 
 Usa paréntesis para controlar el orden de evaluación:
 
-```
-(status >= 400 or level = error) and service = api
-```
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
 
-Sin paréntesis, `and` tendría mayor precedencia:
+Sin paréntesis, <FlyqlToken type="operator">and</FlyqlToken> tendría mayor precedencia:
 
-```
-status >= 400 or level = error and service = api
-→ status >= 400 or (level = error and service = api)
-```
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+es equivalente a:
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
 
 ### Agrupación anidada
 
 Los paréntesis pueden anidarse:
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
 ### Negar grupos
 
-`not` se aplica a todo el grupo:
+<FlyqlToken type="operator">not</FlyqlToken> se aplica a todo el grupo:
 
-```
-not (status = 200 and healthy)
-```
+<FlyqlCode code={`not (status = 200 and healthy)`} />
 
-Esto niega la condición combinada: solo es true cuando `status` no es 200 o `healthy` es false.
+Esto niega la condición combinada — solo es true cuando <FlyqlToken type="key">status</FlyqlToken> no es 200 o <FlyqlToken type="key">healthy</FlyqlToken> es false.
 
 ## Negación
 
-`not` niega cualquier expresión: una comprobación truthy, una comparación o un grupo:
+<FlyqlToken type="operator">not</FlyqlToken> niega cualquier expresión — una comprobación truthy, una comparación o un grupo:
 
-```
-not active                  # field is falsy
-not status = 200              # status is not 200
-not (a = 1 and b = 2)           # negates the group
-active and not archived     # combined with other conditions
-```
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
 
-La doble negación se cancela: `not not active` es equivalente a `active`.
+La doble negación se cancela: <FlyqlCode code={`not not active`} inline /> es equivalente a <FlyqlCode code={`active`} inline />.
 
 ## Ejemplos
 
-```
-# AND simple
-status = 200 and service = api
-
-# OR simple
-level = error or level = critical
-
-# Mezclado con precedencia
-status >= 400 or level = error and service = api
-
-# Agrupación explícita
-(status >= 400 or level = error) and service = api
-
-# Consulta compleja con negación y agrupación
-(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
-```
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

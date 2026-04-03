@@ -3,38 +3,35 @@ title: Булева логика
 description: Булевы операторы, приоритет и группировка скобками в FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Булевы операторы
 
 FlyQL использует три булевых оператора для комбинирования условий:
 
 | Оператор | Значение | Пример |
 |----------|----------|--------|
-| `and` | оба условия должны быть истинны | `status = 200 and active` |
-| `or` | достаточно истинности одного условия | `level = error or level = critical` |
-| `not` | отрицает выражение | `not archived` |
+| <FlyqlToken type="operator">and</FlyqlToken> | оба условия должны быть истинны | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | достаточно истинности одного условия | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | отрицает выражение | <FlyqlCode code={`not archived`} inline /> |
 
 ### Комбинированное отрицание
 
-`not` можно комбинировать с `and` и `or`:
+<FlyqlToken type="operator">not</FlyqlToken> можно комбинировать с <FlyqlToken type="operator">and</FlyqlToken> и <FlyqlToken type="operator">or</FlyqlToken>:
 
-```
-active and not archived
-level = error or not healthy
-```
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
 
 ## Приоритет операторов
 
-`and` имеет более высокий приоритет, чем `or`. Это означает:
+<FlyqlToken type="operator">and</FlyqlToken> имеет более высокий приоритет, чем <FlyqlToken type="operator">or</FlyqlToken>. Это означает:
 
-```
-a = 1 or b = 2 and c = 3
-```
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 будет разобрано как:
 
-```
-a = 1 or (b = 2 and c = 3)
-```
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
 Чтобы переопределить приоритет, используйте скобки явно.
 
@@ -42,63 +39,45 @@ a = 1 or (b = 2 and c = 3)
 
 Используйте скобки для управления порядком вычисления:
 
-```
-(status >= 400 or level = error) and service = api
-```
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
 
-Без скобок `and` связывается сильнее:
+Без скобок <FlyqlToken type="operator">and</FlyqlToken> связывается сильнее:
 
-```
-status >= 400 or level = error and service = api
-→ status >= 400 or (level = error and service = api)
-```
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+эквивалентно:
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
 
 ### Вложенная группировка
 
 Скобки могут быть вложенными:
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
 ### Отрицание групп
 
-`not` применяется ко всей группе:
+<FlyqlToken type="operator">not</FlyqlToken> применяется ко всей группе:
 
-```
-not (status = 200 and healthy)
-```
+<FlyqlCode code={`not (status = 200 and healthy)`} />
 
-Это отрицает составное условие — истинно только когда `status` не равен 200 или `healthy` ложно.
+Это отрицает составное условие — истинно только когда <FlyqlToken type="key">status</FlyqlToken> не равен 200 или <FlyqlToken type="key">healthy</FlyqlToken> ложно.
 
 ## Отрицание
 
-`not` отрицает любое выражение — проверку на истинность, сравнение или группу:
+<FlyqlToken type="operator">not</FlyqlToken> отрицает любое выражение — проверку на истинность, сравнение или группу:
 
-```
-not active                  # поле ложно
-not status = 200              # status не равен 200
-not (a = 1 and b = 2)           # отрицание группы
-active and not archived     # комбинация с другими условиями
-```
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
 
-Двойное отрицание взаимоуничтожается: `not not active` эквивалентно `active`.
+Двойное отрицание взаимоуничтожается: <FlyqlCode code={`not not active`} inline /> эквивалентно <FlyqlCode code={`active`} inline />.
 
 ## Примеры
 
-```
-# Простое AND
-status = 200 and service = api
-
-# Простое OR
-level = error or level = critical
-
-# Смешанное с учётом приоритета
-status >= 400 or level = error and service = api
-
-# Явная группировка
-(status >= 400 or level = error) and service = api
-
-# Сложный запрос с отрицанием и группировкой
-(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
-```
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

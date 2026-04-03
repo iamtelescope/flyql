@@ -3,6 +3,9 @@ title: AST とカスタム Generator
 description: FlyQL の抽象構文木を理解し、任意のターゲット言語やデータ構造向けのカスタムコード generator を構築する
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL の parser は **抽象構文木（AST）** を生成します。これはクエリを構造化して表現したもので、これをたどることで任意のターゲット向けに出力を生成できます。組み込みの SQL generator（ClickHouse、PostgreSQL、StarRocks）はすべて、この同じ AST を走査して実装されています。Elasticsearch クエリ、MongoDB フィルタ、Prometheus セレクタ、ログ検索用 `grep` コマンドなど、任意のターゲット向けに独自 generator を構築できます。
 
 ## AST ノード型
@@ -15,11 +18,11 @@ AST は 3 種類の型で構成されます。**Node**（木構造）、**Expres
 
 | フィールド | 型 | 説明 |
 |------------|----|------|
-| `boolOperator` | `string` | `"and"` または `"or"`。`left` と `right` の結合方法を示します。leaf ノードでは空です |
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> または <FlyqlToken type="operator">or</FlyqlToken>。`left` と `right` の結合方法を示します。leaf ノードでは空です |
 | `expression` | `Expression` or `null` | leaf ノードの場合の条件です。branch ノードでは `null` です |
 | `left` | `Node` or `null` | 左側の子部分木。leaf ノードでは `null` です |
 | `right` | `Node` or `null` | 右側の子部分木。leaf ノードでは `null` です |
-| `negated` | `boolean` | このノードが `not` で包まれている場合は `true` |
+| `negated` | `boolean` | このノードが <FlyqlToken type="operator">not</FlyqlToken> で包まれている場合は `true` |
 
 ノードは、`expression` が設定され `left` / `right` が `null` の **leaf** か、`left` / `right` が設定され `expression` が `null` の **branch** のどちらかです。両方になることはありません。
 
@@ -29,11 +32,11 @@ AST は 3 種類の型で構成されます。**Node**（木構造）、**Expres
 
 | フィールド | 型 | 説明 |
 |------------|----|------|
-| `key` | `Key` | 評価対象のフィールド。例: `status`、`user.metadata.role` |
-| `operator` | `string` | `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has` のいずれか |
-| `value` | `any` | 比較値。スカラー演算子では string、number、boolean、null のいずれかです。`in` と `not in` では空です |
-| `valueType` | `string` or `null` | `value` の明示的な型。`"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"` のいずれか。`in` / `not in` では `null` |
-| `values` | `array` or `null` | `in` / `not in` 用の値リスト。異種型も可。他の演算子では `null` |
+| `key` | `Key` | 評価対象のフィールド。例: <FlyqlToken type="key">status</FlyqlToken>、<FlyqlToken type="key">user.metadata.role</FlyqlToken> |
+| `operator` | `string` | <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken> のいずれか |
+| `value` | `any` | 比較値。スカラー演算子では string、number、boolean、null のいずれかです。<FlyqlToken type="operator">in</FlyqlToken> と <FlyqlToken type="operator">not in</FlyqlToken> では空です |
+| `valueType` | `string` or `null` | `value` の明示的な型。`"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"` のいずれか。<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> では `null` |
+| `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> 用の値リスト。異種型も可。他の演算子では `null` |
 | `valuesTypes` | `string[]` or `null` | `values` と対応する要素ごとの型配列。`values` を使わない場合は `null` |
 
 ### Key
@@ -120,7 +123,7 @@ BoolOperator.OR       # "or"
 
 ### 単純な条件
 
-クエリ: `status = 200`
+クエリ: <FlyqlCode code="status = 200" inline />
 
 ```
 Node (leaf)
@@ -132,7 +135,7 @@ Node (leaf)
 
 ### ブール結合
 
-クエリ: `status = 200 and method = "GET"`
+クエリ: <FlyqlCode code='status = 200 and method = "GET"' inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +153,7 @@ Node (branch, boolOperator: "and")
 
 ### 否定
 
-クエリ: `not status = 500`
+クエリ: <FlyqlCode code="not status = 500" inline />
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +165,7 @@ Node (leaf, negated: true)
 
 ### 括弧付きのネストしたブール式
 
-クエリ: `env=prod and (status=500 or level = error)`
+クエリ: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -186,7 +189,7 @@ Node (branch, boolOperator: "and")
 
 ### リスト所属
 
-クエリ: `status in [200, 201, 204]`
+クエリ: <FlyqlCode code="status in [200, 201, 204]" inline />
 
 ```
 Node (leaf)
@@ -200,7 +203,7 @@ Node (leaf)
 
 ### Truthy チェック
 
-クエリ: `active`
+クエリ: <FlyqlCode code="active" inline />
 
 ```
 Node (leaf)
@@ -212,7 +215,7 @@ Node (leaf)
 
 ### ネストしたキー
 
-クエリ: `user.metadata.role = "admin"`
+クエリ: <FlyqlCode code='user.metadata.role = "admin"' inline />
 
 ```
 Node (leaf)

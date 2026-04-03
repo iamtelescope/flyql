@@ -3,51 +3,54 @@ title: ClickHouse
 description: Ejemplos de SQL generado para ClickHouse
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 El SQL de ClickHouse usa nombres de columna sin comillas, `match()` para regex y `LIKE` para comodines.
 
 ## Ejemplos básicos
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `message = 'hello'` | `message = 'hello'` |
-| `message != 'hello'` | `message != 'hello'` |
-| `count > 10` | `count > 10` |
-| `count <= 100` | `count <= 100` |
-| `message ~ 'error.*'` | `match(message, 'error.*')` |
-| `message !~ 'test.*'` | `not match(message, 'test.*')` |
-| `host = prod*` | `host LIKE 'prod%'` |
+| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
+| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
+| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
+| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
 
 ## Operadores booleanos
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
-| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
-| `not a = '1'` | `not (a = '1')` |
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
 
 ## Pertenencia a listas
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `status in [200, 201]` | `status IN (200, 201)` |
-| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
-| `status in []` | `0` |
-| `status not in []` | `1` |
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
+| <FlyqlCode code={`status in []`} inline /> | `0` |
+| <FlyqlCode code={`status not in []`} inline /> | `1` |
 
 ## Contención (`has` / `not has`)
 
-El operador `has` genera SQL distinto según el tipo de columna:
+El operador <FlyqlToken type="operator">has</FlyqlToken> genera SQL distinto según el tipo de columna:
 
 | Tipo de columna | FlyQL | SQL generado |
 |-----------------|-------|--------------|
-| String | `message has 'error'` | `position(message, 'error') > 0` |
-| String con negación | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | `tags has 'web'` | `has(tags, 'web')` |
-| Array con negación | `tags not has 'web'` | `NOT has(tags, 'web')` |
-| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
-| Map con negación | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
-| JSON nativo | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON string | `data has 'key'` | `JSONHas(data, 'key')` |
+| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
+| String con negación | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
+| Array con negación | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
+| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
+| Map con negación | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
+| JSON nativo | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON string | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
 
 ## Columnas JSON
 
@@ -59,9 +62,9 @@ Las columnas declaradas como `JSON` usan notación por puntos con segmentos entr
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `data.name = 'test'` | `` data.`name` = 'test' `` |
-| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
-| `data.age = 25` | `` data.`age` = 25 `` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
+| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
 
 ### Tipo JSON string
 
@@ -69,8 +72,8 @@ Las columnas que almacenan JSON como string, por ejemplo un `String` con conteni
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
 
 ## Columnas Map
 
@@ -78,9 +81,9 @@ Las columnas Map usan notación de corchetes con las funciones `equals()` y `not
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
-| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
-| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
 
 ## Columnas Array
 
@@ -88,9 +91,9 @@ Las columnas Array usan indexación base 0 con corchetes y `equals()`:
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
-| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
-| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
 
 ### Configuración de columnas
 
@@ -120,8 +123,8 @@ Los transformers generan llamadas a funciones específicas de ClickHouse:
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
-| `status\|lower = "info"` | `equals(lower(status), 'info')` |
-| `message\|len > 100` | `length(message) > 100` |
-| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
-| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |

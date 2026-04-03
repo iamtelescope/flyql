@@ -3,27 +3,26 @@ title: 转换器
 description: 在比较之前使用管道函数转换列值
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 转换器会在比较执行前对列值进行转换，并在生成 SQL 时输出对应的函数调用。转换器使用管道符 `|`，从左到右依次应用。
 
 ## 管道语法
 
 通过 `|` 把转换器作用到列上：
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-这表示先对 `message` 执行 `upper`，然后再与 `"ERROR"` 比较。
+这表示先对 <FlyqlToken type="key">message</FlyqlToken> 执行 <FlyqlToken type="transformer">upper</FlyqlToken>，然后再与 `"ERROR"` 比较。
 
 ## 链式调用
 
 可以通过多个管道连续应用多个转换器：
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-转换顺序是从左到右：先 `lower`，再 `len`。
+转换顺序是从左到右：先 <FlyqlToken type="transformer">lower</FlyqlToken>，再 <FlyqlToken type="transformer">len</FlyqlToken>。
 
 ## 类型系统
 
@@ -34,22 +33,22 @@ message|lower|len > 100
 | `string` | 文本 |
 | `int` | 整数 |
 | `float` | 浮点数 |
-| `array` | 数组（通常结合 `has` 使用） |
+| `array` | 数组（通常结合 <FlyqlToken type="operator">has</FlyqlToken> 使用） |
 
 ## 内置转换器
 
 | 转换器 | 输入 | 输出 | 说明 |
 |--------|------|------|------|
-| `upper` | string | string | 转为大写 |
-| `lower` | string | string | 转为小写 |
-| `len` | string | int | 获取字符串长度 |
-| `split` | string | array | 按分隔符拆分，例如 `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | 转为大写 |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | 转为小写 |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | 获取字符串长度 |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | 按分隔符拆分，例如 `split(".")` |
 
 ## 各数据库生成结果
 
 转换器会生成各方言对应的 SQL 函数调用。链式转换会嵌套输出。
 
-**单个转换器：** `status|upper = "ERROR"`
+**单个转换器：** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | 方言 | 生成 SQL |
 |------|----------|
@@ -57,7 +56,7 @@ message|lower|len > 100
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**链式转换：** `message|lower|len > 100`
+**链式转换：** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | 方言 | 生成 SQL |
 |------|----------|
@@ -65,7 +64,7 @@ message|lower|len > 100
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**与 `has` 配合：** `message|split(" ") has "hello"`
+**与 <FlyqlToken type="operator">has</FlyqlToken> 配合：** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | 方言 | 生成 SQL |
 |------|----------|
@@ -77,19 +76,14 @@ message|lower|len > 100
 
 如果链式调用的类型不兼容，编辑器会提示错误：
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-这里 `len` 输出 `int`，而 `upper` 需要 `string` 输入，因此会报错。
+这里 <FlyqlToken type="transformer">len</FlyqlToken> 输出 `int`，而 <FlyqlToken type="transformer">upper</FlyqlToken> 需要 `string` 输入，因此会报错。
 
 ## 示例
 
-```
-status|upper = "ERROR"
-message|lower|len > 100
-host|lower != "localhost"
-path|len > 0
-tags|split(",") has "urgent"
-```
-
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

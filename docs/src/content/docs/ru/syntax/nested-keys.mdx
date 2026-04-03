@@ -3,15 +3,16 @@ title: Вложенные ключи
 description: Доступ по путям через точку и сегменты ключей в кавычках в FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Точечная нотация
 
 Используйте пути через точку для доступа к вложенным полям в JSON, Map или структурированных данных:
 
-```
-request.url = "/api/users"
-response.headers.content_type = "application/json"
-metadata.labels.env = prod
-```
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
 
 Каждый сегмент после точки означает переход на один уровень глубже во вложенную структуру. SQL-генераторы преобразуют эти пути в корректный синтаксис для каждого диалекта базы данных (доступ по JSON-пути, поиск в Map и т. д.).
 
@@ -19,38 +20,30 @@ metadata.labels.env = prod
 
 Если сам сегмент ключа содержит точку, оберните его в кавычки, чтобы точка не интерпретировалась как разделитель:
 
-```
-"foo.bar".baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
 
 Здесь:
 - `"foo.bar"` — это один сегмент ключа (точка является литералом)
-- `baz` — дочерний элемент `"foo.bar"`
+- <FlyqlToken type="key">baz</FlyqlToken> — дочерний элемент `"foo.bar"`
 
-Без кавычек `foo.bar.baz` будет интерпретировано как три сегмента: `foo` → `bar` → `baz`.
+Без кавычек <FlyqlToken type="key">foo.bar.baz</FlyqlToken> будет интерпретировано как три сегмента: <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>.
 
 ### Правила использования кавычек
 
 Для сегментов ключей можно использовать как одинарные, так и двойные кавычки:
 
-```
-"foo.bar".baz = value
-'foo.bar'.baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
 
 Оборачивать в кавычки нужно только сегменты, содержащие точки:
 
-```
-metadata."dotted.key".value = 123
-```
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
 ## Глубина пути
 
 Ограничений на глубину вложенности нет:
 
-```
-a.b.c.d.e = value
-```
+<FlyqlCode code={`a.b.c.d.e = value`} />
 
 Каждый сегмент обрабатывается последовательно при генерации SQL или вычислении в памяти.
 
@@ -58,26 +51,15 @@ a.b.c.d.e = value
 
 Вложенные ключи работают со всеми операторами:
 
-```
-request.status >= 400
-response.body ~ "error.*"
-metadata.tags in ['prod', 'staging']
-request.headers.content_type != "text/html"
-not request.authenticated
-```
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
 
 ## Примеры
 
-```
-# Простой доступ к вложенному полю
-request.method = GET
-
-# Глубокая вложенность
-response.headers.content_type = "application/json"
-
-# Сегмент в кавычках с литеральной точкой
-"app.config".debug = true
-
-# Комбинация с булевой логикой
-request.status >= 400 and response.body ~ "error" and not request.internal
-```
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

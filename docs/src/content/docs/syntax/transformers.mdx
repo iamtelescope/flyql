@@ -3,27 +3,26 @@ title: Transformers
 description: Transform column values with pipe-chained functions before comparison
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
 Transformers modify column values before they are compared in queries or emitted in SQL. They use the pipe (`|`) syntax, applied left-to-right.
 
 ## Pipe Syntax
 
 Apply a transformer to a column with `|`:
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-This transforms the value of `message` using `upper` before comparing with `"ERROR"`.
+This transforms the value of <FlyqlToken type="key">message</FlyqlToken> using <FlyqlToken type="transformer">upper</FlyqlToken> before comparing with `"ERROR"`.
 
 ## Chaining
 
 Chain multiple transformers with additional pipes:
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-Transformers apply left-to-right: `lower` runs first (string to string), then `len` (string to int). The result is compared with `> 100`.
+Transformers apply left-to-right: <FlyqlToken type="transformer">lower</FlyqlToken> runs first (string to string), then <FlyqlToken type="transformer">len</FlyqlToken> (string to int). The result is compared with `> 100`.
 
 ## Type System
 
@@ -34,22 +33,22 @@ Each transformer declares an input type and output type. Chained transformers mu
 | `string` | Text values |
 | `int` | Integer numbers |
 | `float` | Floating-point numbers |
-| `array` | Array of values (use `has` operator to check membership) |
+| `array` | Array of values (use <FlyqlToken type="operator">has</FlyqlToken> operator to check membership) |
 
 ## Built-in Transformers
 
 | Transformer | Input | Output | Description |
 |-------------|-------|--------|-------------|
-| `upper` | string | string | Convert to uppercase |
-| `lower` | string | string | Convert to lowercase |
-| `len` | string | int | Get string length |
-| `split` | string | array | Split by delimiter: `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | Convert to uppercase |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | Convert to lowercase |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | Get string length |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | Split by delimiter: `split(".")` |
 
 ## SQL Output by Dialect
 
 Transformers generate dialect-specific SQL function calls. Chained transformers produce nested calls (innermost first):
 
-**Single transformer:** `status|upper = "ERROR"`
+**Single transformer:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | Dialect | Generated SQL |
 |---------|---------------|
@@ -57,7 +56,7 @@ Transformers generate dialect-specific SQL function calls. Chained transformers 
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**Chained transformers:** `message|lower|len > 100`
+**Chained transformers:** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | Dialect | Generated SQL |
 |---------|---------------|
@@ -65,7 +64,7 @@ Transformers generate dialect-specific SQL function calls. Chained transformers 
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**Split with has:** `message|split(" ") has "hello"`
+**Split with has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | Dialect | Generated SQL |
 |---------|---------------|
@@ -77,18 +76,14 @@ Transformers generate dialect-specific SQL function calls. Chained transformers 
 
 If a chain has incompatible types, the editor shows an error:
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-This fails because `len` outputs `int`, but `upper` requires `string` input. The editor displays: "len outputs int, upper requires string input".
+This fails because <FlyqlToken type="transformer">len</FlyqlToken> outputs `int`, but <FlyqlToken type="transformer">upper</FlyqlToken> requires `string` input. The editor displays: "len outputs int, upper requires string input".
 
 ## Examples
 
-```
-status|upper = "ERROR"           # Uppercase comparison
-message|lower|len > 100          # Chain: lowercase then length
-host|lower != "localhost"        # Case-insensitive not-equals
-path|len > 0                     # Non-empty check
-tags|split(",") has "urgent"     # Split and check membership
-```
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

@@ -1,0 +1,12 @@
+---
+import '../styles/flyql-code.css'
+
+interface Props {
+  type: 'key' | 'operator' | 'value' | 'string' | 'number' | 'boolean' | 'null' | 'transformer'
+}
+
+const { type } = Astro.props
+const className = `flyql-${type}`
+---
+
+<code class="flyql-inline"><span class={className}><slot /></span></code>

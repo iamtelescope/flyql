@@ -3,27 +3,26 @@ title: Преобразователи
 description: Преобразование значений колонок перед сравнением с помощью функций, объединённых через `|`
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Преобразователи изменяют значения колонок перед сравнением в запросах или генерацией SQL. Они используют синтаксис пайпа (`|`) и применяются слева направо.
 
 ## Синтаксис пайпа
 
 Примените преобразователь к колонке с помощью `|`:
 
-```
-message|upper = "ERROR"
-```
+<FlyqlCode code={`message|upper = "ERROR"`} />
 
-Это преобразует значение `message` с помощью `upper` перед сравнением с `"ERROR"`.
+Это преобразует значение <FlyqlToken type="key">message</FlyqlToken> с помощью <FlyqlToken type="transformer">upper</FlyqlToken> перед сравнением с `"ERROR"`.
 
 ## Цепочки
 
 Объединяйте несколько преобразователей дополнительными пайпами:
 
-```
-message|lower|len > 100
-```
+<FlyqlCode code={`message|lower|len > 100`} />
 
-Преобразователи применяются слева направо: сначала выполняется `lower` (строка в строку), затем `len` (строка в int). Результат сравнивается с `> 100`.
+Преобразователи применяются слева направо: сначала выполняется <FlyqlToken type="transformer">lower</FlyqlToken> (строка в строку), затем <FlyqlToken type="transformer">len</FlyqlToken> (строка в int). Результат сравнивается с `> 100`.
 
 ## Система типов
 
@@ -34,22 +33,22 @@ message|lower|len > 100
 | `string` | Текстовые значения |
 | `int` | Целые числа |
 | `float` | Числа с плавающей точкой |
-| `array` | Массив значений (используйте оператор `has` для проверки принадлежности) |
+| `array` | Массив значений (используйте оператор <FlyqlToken type="operator">has</FlyqlToken> для проверки принадлежности) |
 
 ## Встроенные преобразователи
 
 | Преобразователь | Вход | Выход | Описание |
 |-----------------|------|-------|----------|
-| `upper` | string | string | Перевод в верхний регистр |
-| `lower` | string | string | Перевод в нижний регистр |
-| `len` | string | int | Длина строки |
-| `split` | string | array | Разделение по разделителю: `split(".")` |
+| <FlyqlToken type="transformer">upper</FlyqlToken> | string | string | Перевод в верхний регистр |
+| <FlyqlToken type="transformer">lower</FlyqlToken> | string | string | Перевод в нижний регистр |
+| <FlyqlToken type="transformer">len</FlyqlToken> | string | int | Длина строки |
+| <FlyqlToken type="transformer">split</FlyqlToken> | string | array | Разделение по разделителю: `split(".")` |
 
 ## SQL-вывод по диалектам
 
 Преобразователи генерируют вызовы функций, специфичные для каждого диалекта SQL. Цепочки преобразователей создают вложенные вызовы (самый внутренний выполняется первым):
 
-**Один преобразователь:** `status|upper = "ERROR"`
+**Один преобразователь:** <FlyqlCode code={`status|upper = "ERROR"`} inline />
 
 | Диалект | Сгенерированный SQL |
 |---------|---------------------|
@@ -57,7 +56,7 @@ message|lower|len > 100
 | PostgreSQL | `UPPER(status) = 'ERROR'` |
 | StarRocks | `UPPER(\`status\`) = 'ERROR'` |
 
-**Цепочка преобразователей:** `message|lower|len > 100`
+**Цепочка преобразователей:** <FlyqlCode code={`message|lower|len > 100`} inline />
 
 | Диалект | Сгенерированный SQL |
 |---------|---------------------|
@@ -65,7 +64,7 @@ message|lower|len > 100
 | PostgreSQL | `LENGTH(LOWER(message)) > 100` |
 | StarRocks | `LENGTH(LOWER(\`message\`)) > 100` |
 
-**Split с has:** `message|split(" ") has "hello"`
+**Split с has:** <FlyqlCode code={`message|split(" ") has "hello"`} inline />
 
 | Диалект | Сгенерированный SQL |
 |---------|---------------------|
@@ -77,18 +76,14 @@ message|lower|len > 100
 
 Если цепочка содержит несовместимые типы, редактор выводит ошибку:
 
-```
-message|len|upper
-```
+<FlyqlCode code={`message|len|upper`} />
 
-Это вызовет ошибку, потому что `len` возвращает `int`, а `upper` требует `string` на входе. Редактор покажет: "len outputs int, upper requires string input".
+Это вызовет ошибку, потому что <FlyqlToken type="transformer">len</FlyqlToken> возвращает `int`, а <FlyqlToken type="transformer">upper</FlyqlToken> требует `string` на входе. Редактор покажет: "len outputs int, upper requires string input".
 
 ## Примеры
 
-```
-status|upper = "ERROR"           # Сравнение в верхнем регистре
-message|lower|len > 100          # Цепочка: нижний регистр, затем длина
-host|lower != "localhost"        # Регистронезависимое неравенство
-path|len > 0                     # Проверка на непустоту
-tags|split(",") has "urgent"     # Разделить и проверить принадлежность
-```
+<FlyqlCode code={`status|upper = "ERROR"`} />
+<FlyqlCode code={`message|lower|len > 100`} />
+<FlyqlCode code={`host|lower != "localhost"`} />
+<FlyqlCode code={`path|len > 0`} />
+<FlyqlCode code={`tags|split(",") has "urgent"`} />

@@ -3,6 +3,9 @@ title: SQL Dialects
 description: How FlyQL generates SQL for ClickHouse, PostgreSQL, and StarRocks
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
 FlyQL generators produce a WHERE clause fragment as a plain SQL string with all values embedded (escaped). The same FlyQL query generates different SQL depending on the target dialect.
 
 ## Supported Dialects
@@ -22,16 +25,16 @@ FlyQL generators produce a WHERE clause fragment as a plain SQL string with all 
 | Boolean ops | `and` / `or` | `AND` / `OR` | `and` / `or` |
 | Empty `IN []` | `0` | `FALSE` | `0` |
 | Empty `NOT IN []` | `1` | `TRUE` | `1` |
-| String `has` | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
-| Array `has` | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
-| Map `has` | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
-| JSON `has` | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+| String <FlyqlToken type="operator">has</FlyqlToken> | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
+| Array <FlyqlToken type="operator">has</FlyqlToken> | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
+| Map <FlyqlToken type="operator">has</FlyqlToken> | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
+| JSON <FlyqlToken type="operator">has</FlyqlToken> | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## JSON Access — The Biggest Difference
 
 Each dialect handles nested JSON columns very differently:
 
-**FlyQL input:** `data.user.name = 'john'`
+**FlyQL input:** <FlyqlCode code={`data.user.name = 'john'`} inline />
 
 **ClickHouse** (native JSON column):
 ```sql
@@ -59,7 +62,7 @@ See each dialect page for complete examples.
 
 ## Map Access
 
-**FlyQL input:** `metadata.key1 = 'value1'`
+**FlyQL input:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
 
 | Dialect | Generated SQL |
 |---------|--------------|
@@ -71,7 +74,7 @@ ClickHouse uses `equals()`/`notEquals()` functions for Map access. PostgreSQL us
 
 ## Array Access
 
-**FlyQL input:** `tags.0 = 'first'` (0-based index in FlyQL)
+**FlyQL input:** <FlyqlCode code={`tags.0 = 'first'`} inline /> (0-based index in FlyQL)
 
 | Dialect | Generated SQL | Indexing |
 |---------|--------------|----------|

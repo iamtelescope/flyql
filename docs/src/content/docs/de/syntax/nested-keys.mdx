@@ -3,15 +3,16 @@ title: Verschachtelte Schlüssel
 description: Punktgetrennte Pfade und Schlüssel-Segmente in Anführungszeichen in FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Punktnotation
 
 Verwende punktgetrennte Pfade, um auf verschachtelte Felder in JSON, Map oder strukturierten Daten zuzugreifen:
 
-```
-request.url = "/api/users"
-response.headers.content_type = "application/json"
-metadata.labels.env = prod
-```
+<FlyqlCode code={`request.url = "/api/users"`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`metadata.labels.env = prod`} />
 
 Jedes punktgetrennte Segment traversiert eine Ebene in der verschachtelten Struktur. Die SQL-Generatoren übersetzen diese Pfade in die korrekte Syntax für jeden Datenbankdialekt (JSON-Pfad-Zugriff, Map-Lookups usw.).
 
@@ -19,38 +20,30 @@ Jedes punktgetrennte Segment traversiert eine Ebene in der verschachtelten Struk
 
 Wenn ein Schlüssel-Segment selbst einen Punkt enthält, setze es in Anführungszeichen, damit der Punkt nicht als Trenner behandelt wird:
 
-```
-"foo.bar".baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
 
 Hier gilt:
 - `"foo.bar"` ist ein einzelnes Schlüssel-Segment (der Punkt ist wörtlich)
-- `baz` ist ein Kind von `"foo.bar"`
+- <FlyqlToken type="key">baz</FlyqlToken> ist ein Kind von `"foo.bar"`
 
-Ohne Anführungszeichen wäre `foo.bar.baz` in drei Segmente aufgeteilt: `foo` → `bar` → `baz`.
+Ohne Anführungszeichen wäre <FlyqlToken type="key">foo.bar.baz</FlyqlToken> in drei Segmente aufgeteilt: <FlyqlToken type="key">foo</FlyqlToken> → <FlyqlToken type="key">bar</FlyqlToken> → <FlyqlToken type="key">baz</FlyqlToken>.
 
 ### Regeln für Anführungszeichen
 
 Für Schlüssel-Segmente funktionieren sowohl einfache als auch doppelte Anführungszeichen:
 
-```
-"foo.bar".baz = value
-'foo.bar'.baz = value
-```
+<FlyqlCode code={`"foo.bar".baz = value`} />
+<FlyqlCode code={`'foo.bar'.baz = value`} />
 
 Nur die Segmente mit Punkten müssen in Anführungszeichen stehen:
 
-```
-metadata."dotted.key".value = 123
-```
+<FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
 ## Pfadtiefe
 
 Die Verschachtelungstiefe ist unbegrenzt:
 
-```
-a.b.c.d.e = value
-```
+<FlyqlCode code={`a.b.c.d.e = value`} />
 
 Jedes Segment wird in der angegebenen Reihenfolge traversiert, wenn SQL generiert oder im Speicher ausgewertet wird.
 
@@ -58,26 +51,15 @@ Jedes Segment wird in der angegebenen Reihenfolge traversiert, wenn SQL generier
 
 Verschachtelte Schlüssel funktionieren mit allen Operatoren:
 
-```
-request.status >= 400
-response.body ~ "error.*"
-metadata.tags in ['prod', 'staging']
-request.headers.content_type != "text/html"
-not request.authenticated
-```
+<FlyqlCode code={`request.status >= 400`} />
+<FlyqlCode code={`response.body ~ "error.*"`} />
+<FlyqlCode code={`metadata.tags in ['prod', 'staging']`} />
+<FlyqlCode code={`request.headers.content_type != "text/html"`} />
+<FlyqlCode code={`not request.authenticated`} />
 
 ## Beispiele
 
-```
-# Einfacher verschachtelter Zugriff
-request.method = GET
-
-# Tiefe Verschachtelung
-response.headers.content_type = "application/json"
-
-# Quotiertes Segment mit literalem Punkt
-"app.config".debug = true
-
-# Mit boolescher Logik kombiniert
-request.status >= 400 and response.body ~ "error" and not request.internal
-```
+<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`response.headers.content_type = "application/json"`} />
+<FlyqlCode code={`"app.config".debug = true`} />
+<FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

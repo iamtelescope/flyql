@@ -3,6 +3,9 @@ title: AST 与自定义生成器
 description: 理解 FlyQL 抽象语法树，并为任意目标语言或数据结构构建自定义代码生成器
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL 解析器会生成一棵 **抽象语法树（AST）** —— 查询的结构化表示，你可以遍历它来为任意目标生成输出。内置的 SQL 生成器（ClickHouse、PostgreSQL、StarRocks）都是通过遍历同一棵 AST 实现的。你可以构建自己的生成器，用于 Elasticsearch 查询、MongoDB 过滤器、Prometheus 选择器、日志 grep 命令或任何其他目标。
 
 ## AST 节点类型
@@ -15,11 +18,11 @@ AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `boolOperator` | `string` | `"and"` 或 `"or"` —— `left` 和 `right` 的组合方式。叶子节点上为空。 |
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> 或 <FlyqlToken type="operator">or</FlyqlToken> —— `left` 和 `right` 的组合方式。叶子节点上为空。 |
 | `expression` | `Expression` or `null` | 条件表达式（叶子节点）。分支节点上为 `null`。 |
 | `left` | `Node` or `null` | 左子树。叶子节点上为 `null`。 |
 | `right` | `Node` or `null` | 右子树。叶子节点上为 `null`。 |
-| `negated` | `boolean` | 如果该节点被 `not` 包裹，则为 `true`。 |
+| `negated` | `boolean` | 如果该节点被 <FlyqlToken type="operator">not</FlyqlToken> 包裹，则为 `true`。 |
 
 节点**要么**是叶子（`expression` 已设置，`left`/`right` 为 null），**要么**是分支（`left`/`right` 已设置，`expression` 为 null）。不会两者兼有。
 
@@ -29,11 +32,11 @@ AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `key` | `Key` | 被测试的字段（例如 `status`、`user.metadata.role`）。 |
-| `operator` | `string` | 以下之一：`=`、`!=`、`~`、`!~`、`>`、`<`、`>=`、`<=`、`truthy`、`in`、`not in`、`has`、`not has`。 |
-| `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean 或 Null。对于 `in` 和 `not in` 为空。 |
-| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"` 或 `"null"`。`in`/`not in` 时为 `null`。 |
-| `values` | `array` or `null` | `in` 和 `not in` 操作符的值列表。可以是异构的。其他操作符时为 `null`。 |
+| `key` | `Key` | 被测试的字段（例如 <FlyqlToken type="key">status</FlyqlToken>、<FlyqlToken type="key">user.metadata.role</FlyqlToken>）。 |
+| `operator` | `string` | 以下之一：<FlyqlToken type="operator">=</FlyqlToken>、<FlyqlToken type="operator">!=</FlyqlToken>、<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>、<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>、<FlyqlToken type="operator">truthy</FlyqlToken>、<FlyqlToken type="operator">in</FlyqlToken>、<FlyqlToken type="operator">not in</FlyqlToken>、<FlyqlToken type="operator">has</FlyqlToken>、<FlyqlToken type="operator">not has</FlyqlToken>。 |
+| `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean 或 Null。对于 <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 为空。 |
+| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"` 或 `"null"`。<FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> 时为 `null`。 |
+| `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 操作符的值列表。可以是异构的。其他操作符时为 `null`。 |
 | `valuesTypes` | `string[]` or `null` | 与 `values` 平行的逐元素类型数组。每个元素是类型常量之一。未使用 `values` 时为 `null`。 |
 
 ### Key
@@ -120,7 +123,7 @@ BoolOperator.OR       # "or"
 
 ### 简单条件
 
-查询：`status = 200`
+查询：<FlyqlCode code="status = 200" inline />
 
 ```
 Node (leaf)
@@ -132,7 +135,7 @@ Node (leaf)
 
 ### 布尔组合
 
-查询：`status = 200 and method = "GET"`
+查询：<FlyqlCode code='status = 200 and method = "GET"' inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +153,7 @@ Node (branch, boolOperator: "and")
 
 ### 否定
 
-查询：`not status = 500`
+查询：<FlyqlCode code="not status = 500" inline />
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +165,7 @@ Node (leaf, negated: true)
 
 ### 带括号的嵌套布尔
 
-查询：`env=prod and (status=500 or level = error)`
+查询：<FlyqlCode code="env=prod and (status=500 or level = error)" inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -186,7 +189,7 @@ Node (branch, boolOperator: "and")
 
 ### 列表成员判断
 
-查询：`status in [200, 201, 204]`
+查询：<FlyqlCode code="status in [200, 201, 204]" inline />
 
 ```
 Node (leaf)
@@ -200,7 +203,7 @@ Node (leaf)
 
 ### Truthy 检查
 
-查询：`active`
+查询：<FlyqlCode code="active" inline />
 
 ```
 Node (leaf)
@@ -212,7 +215,7 @@ Node (leaf)
 
 ### 嵌套键
 
-查询：`user.metadata.role = "admin"`
+查询：<FlyqlCode code='user.metadata.role = "admin"' inline />
 
 ```
 Node (leaf)

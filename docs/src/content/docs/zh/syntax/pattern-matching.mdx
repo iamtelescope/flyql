@@ -3,35 +3,34 @@ title: 模式匹配
 description: FlyQL 中的正则与通配匹配
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## 正则匹配
 
-使用 `~` 将值与正则表达式匹配，使用 `!~` 表示不匹配：
+使用 <FlyqlToken type="operator">{'~'}</FlyqlToken> 将值与正则表达式匹配，使用 <FlyqlToken type="operator">{'!~'}</FlyqlToken> 表示不匹配：
 
-```
-message ~ "error.*timeout"
-path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
 
 | 操作符 | 含义 |
 |--------|------|
-| `~` | 值匹配正则 |
-| `!~` | 值不匹配正则 |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | 值匹配正则 |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | 值不匹配正则 |
 
 ### 正则语法
 
 正则语法依赖具体后端：
 
 - **ClickHouse**：使用 `match()`，采用 RE2 语法
-- **PostgreSQL**：使用 `~` 和 `!~`，采用 POSIX 正则
+- **PostgreSQL**：使用 <FlyqlToken type="operator">{'~'}</FlyqlToken> 和 <FlyqlToken type="operator">{'!~'}</FlyqlToken>，采用 POSIX 正则
 - **StarRocks**：使用 `regexp` 函数
 - **内存匹配器**：使用宿主语言的正则引擎（Go `regexp`、Python `re2`、JS `RegExp`）
 
 当正则中包含空格或特殊字符时，应使用引号：
 
-```
-message ~ "connection (refused|reset)"
-host ~ "^prod-[0-9]+"
-```
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
 
 ### 正则标志
 
@@ -41,10 +40,8 @@ host ~ "^prod-[0-9]+"
 
 让模式匹配时不区分大小写：
 
-```
-message ~ "(?i)error"
-level ~ "(?i)^(warn|error|fatal)$"
-```
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
 
 `(?i)error` 会匹配 "Error"、"ERROR"、"error" 等。
 
@@ -52,9 +49,7 @@ level ~ "(?i)^(warn|error|fatal)$"
 
 使 `^` 和 `$` 匹配每一**行**的开头和结尾，而不是整个字符串的开头和结尾：
 
-```
-log ~ "(?m)^ERROR"
-```
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
 
 不使用 `(?m)` 时，`^ERROR` 仅在整个字符串以 "ERROR" 开头时匹配。使用 `(?m)` 后，"INFO first\nERROR second" 也会匹配，因为 "ERROR" 出现在某一行的开头。
 
@@ -62,9 +57,7 @@ log ~ "(?m)^ERROR"
 
 使 `.` 匹配**任意**字符，包括换行符。默认情况下 `.` 不匹配 `\n`：
 
-```
-log ~ "(?s)start.*end"
-```
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
 
 不使用 `(?s)` 时，`start.*end` 不会匹配 "start\nend"（因为 `.` 无法跨越换行）。使用 `(?s)` 后则可以匹配。
 
@@ -72,10 +65,8 @@ log ~ "(?s)start.*end"
 
 标志可以在一个分组中组合使用：
 
-```
-log ~ "(?im)^ERROR"
-log ~ "(?ims)^START.*END$"
-```
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
 
 #### 后端支持情况
 
@@ -92,18 +83,14 @@ log ~ "(?ims)^START.*END$"
 
 可以将忽略大小写与否定结合使用，以不区分大小写地排除特定模式：
 
-```
-message ~ "(?i)error" and message !~ "(?i)warning"
-```
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
 ## 通配匹配
 
-对于简单的前缀匹配，可以在未加引号的值末尾使用 `*`：
+对于简单的前缀匹配，可以在未加引号的值末尾使用 <FlyqlToken type="operator">{'*'}</FlyqlToken>：
 
-```
-host = prod*
-service = api-*
-```
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
 
 这表示匹配所有以指定前缀开头的值。通配符只支持出现在末尾，像 `*prod` 或 `pr*od` 这样的写法不受支持。
 
@@ -111,26 +98,15 @@ service = api-*
 
 | 模式 | 语法 | 示例 |
 |------|------|------|
-| 通配前缀 | `key = value*` | `host = prod*` |
-| 完整正则 | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
+| 通配前缀 | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| 完整正则 | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
 简单前缀匹配用通配符，更复杂的模式请使用正则。
 
 ## 示例
 
-```
-# 匹配包含 "error" 或 "fail" 的消息
-message ~ "error|fail"
-
-# 匹配以 /api/v2 开头的路径
-path ~ "^/api/v2"
-
-# 排除健康检查路径
-path !~ "^/health"
-
-# 主机名前缀匹配
-host = prod*
-
-# 组合示例
-host = prod* and message ~ "timeout.*" and path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

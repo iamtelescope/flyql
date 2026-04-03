@@ -3,35 +3,34 @@ title: 패턴 매칭
 description: FlyQL의 regex 및 와일드카드 매칭
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Regex 매칭
 
-값을 정규식과 비교하려면 `~`를, 매칭을 부정하려면 `!~`를 사용합니다.
+값을 정규식과 비교하려면 <FlyqlToken type="operator">{'~'}</FlyqlToken>를, 매칭을 부정하려면 <FlyqlToken type="operator">{'!~'}</FlyqlToken>를 사용합니다.
 
-```
-message ~ "error.*timeout"
-path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
 
 | 연산자 | 의미 |
 |--------|------|
-| `~` | 값이 regex 패턴과 일치함 |
-| `!~` | 값이 regex 패턴과 일치하지 않음 |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | 값이 regex 패턴과 일치함 |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | 값이 regex 패턴과 일치하지 않음 |
 
 ### Regex 패턴 문법
 
 Regex 문법은 대상 백엔드에 따라 달라집니다.
 
 - **ClickHouse** — `match()` 함수 사용 (RE2 문법)
-- **PostgreSQL** — `~`, `!~` 연산자 사용 (POSIX regex)
+- **PostgreSQL** — <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken> 연산자 사용 (POSIX regex)
 - **StarRocks** — `regexp` 함수 사용
 - **In-memory matcher** — 호스트 언어의 regex 엔진 사용 (Go `regexp`, Python `re2`, JS `RegExp`)
 
 패턴에 공백이나 특수 문자가 포함되면 따옴표로 감싸세요.
 
-```
-message ~ "connection (refused|reset)"
-host ~ "^prod-[0-9]+"
-```
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
 
 ### Regex 플래그
 
@@ -41,10 +40,8 @@ host ~ "^prod-[0-9]+"
 
 대소문자에 관계없이 패턴을 매칭합니다:
 
-```
-message ~ "(?i)error"
-level ~ "(?i)^(warn|error|fatal)$"
-```
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
 
 `(?i)error`는 "Error", "ERROR", "error" 등과 일치합니다.
 
@@ -52,9 +49,7 @@ level ~ "(?i)^(warn|error|fatal)$"
 
 `^`와 `$`가 전체 문자열이 아닌 각 **줄**의 시작과 끝에 일치하도록 변경합니다:
 
-```
-log ~ "(?m)^ERROR"
-```
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
 
 `(?m)` 없이 `^ERROR`는 전체 문자열이 "ERROR"로 시작할 때만 일치합니다. `(?m)`을 사용하면 "INFO first\nERROR second"에서도 일치합니다. "ERROR"가 줄의 시작에 나타나기 때문입니다.
 
@@ -62,9 +57,7 @@ log ~ "(?m)^ERROR"
 
 `.`이 줄바꿈을 포함한 **모든** 문자와 일치하도록 합니다. 기본적으로 `.`은 `\n`과 일치하지 않습니다:
 
-```
-log ~ "(?s)start.*end"
-```
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
 
 `(?s)` 없이 `start.*end`는 "start\nend"와 일치하지 않습니다(`.`이 줄바꿈을 넘지 못하기 때문). `(?s)`를 사용하면 일치합니다.
 
@@ -72,10 +65,8 @@ log ~ "(?s)start.*end"
 
 플래그는 하나의 그룹에서 조합할 수 있습니다:
 
-```
-log ~ "(?im)^ERROR"
-log ~ "(?ims)^START.*END$"
-```
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
 
 #### 백엔드 지원 현황
 
@@ -92,18 +83,14 @@ log ~ "(?ims)^START.*END$"
 
 대소문자 구분 없는 매칭과 부정을 결합하면 대소문자에 상관없이 특정 패턴을 제외할 수 있습니다:
 
-```
-message ~ "(?i)error" and message !~ "(?i)warning"
-```
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
 ## 와일드카드 매칭
 
-따옴표로 감싸지 않은 값의 끝에 `*`를 붙이면 글롭 스타일 접두사 매칭을 할 수 있습니다.
+따옴표로 감싸지 않은 값의 끝에 <FlyqlToken type="operator">{'*'}</FlyqlToken>를 붙이면 글롭 스타일 접두사 매칭을 할 수 있습니다.
 
-```
-host = prod*
-service = api-*
-```
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
 
 이는 주어진 접두사로 시작하는 모든 값과 일치합니다. 와일드카드는 값의 끝에서만 지원되며, `*prod` 또는 `pr*od`는 지원되지 않습니다.
 
@@ -111,26 +98,15 @@ service = api-*
 
 | 패턴 | 문법 | 예제 |
 |------|------|------|
-| 와일드카드(접두사) | `key = value*` | `host = prod*` |
-| Regex(전체) | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
+| 와일드카드(접두사) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex(전체) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
 단순한 접두사 매칭에는 와일드카드를 사용하고, 더 복잡한 패턴이 필요하면 regex를 사용하세요.
 
 ## 예제
 
-```
-# Regex: "error" 또는 "fail"이 포함된 메시지
-message ~ "error|fail"
-
-# Regex: /api/v2로 시작하는 경로
-path ~ "^/api/v2"
-
-# 부정된 regex: health check 경로 제외
-path !~ "^/health"
-
-# 와일드카드: "prod"로 시작하는 host
-host = prod*
-
-# 조합 예제
-host = prod* and message ~ "timeout.*" and path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

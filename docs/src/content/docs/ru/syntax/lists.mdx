@@ -1,64 +1,60 @@
 ---
 title: Списки
-description: Операторы работы со списками в FlyQL (`in`, `not in`)
+description: Операторы работы со списками в FlyQL (in, not in)
 ---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 ## Принадлежность списку
 
-Используйте `in`, чтобы проверить, входит ли значение в список, и `not in`, чтобы проверить обратное:
+Используйте <FlyqlToken type="operator">in</FlyqlToken>, чтобы проверить, входит ли значение в список, и <FlyqlToken type="operator">not in</FlyqlToken>, чтобы проверить обратное:
 
-```
-status in [200, 201, 204]
-env not in ['prod', 'staging']
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
 
 ## Правила синтаксиса
 
-- Значения заключаются в квадратные скобки `[ ]` и разделяются запятыми
+- Значения заключаются в квадратные скобки <FlyqlToken type="operator">[ ]</FlyqlToken> и разделяются запятыми
 - Все значения в списке должны быть одного типа (все строки или все числа)
-- Строковые значения должны быть в кавычках: `['a', 'b', 'c']`
-- Числовые значения пишутся без кавычек: `[1, 2, 3]`
+- Строковые значения должны быть в кавычках: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- Числовые значения пишутся без кавычек: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Пробелы вокруг запятых и скобок допустимы
 
 ### Списки строк
 
-```
-method in ['GET', 'POST', 'PUT']
-env not in ['dev', 'test', 'local']
-```
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
 
 Для строковых значений можно использовать как одинарные, так и двойные кавычки.
 
 ### Списки чисел
 
-```
-status in [200, 201, 204]
-port not in [80, 443]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
 
 ### Пустые списки
 
 Пустые списки допустимы:
 
-```
-status in []        # всегда false — ничто не совпадает с пустым списком
-status not in []    # всегда true — всё «не входит» в пустой список
-```
+<FlyqlCode code={`status in []`} />
+
+Пустой список <FlyqlToken type="operator">in</FlyqlToken> всегда false — ничто не совпадает с пустым списком.
+
+<FlyqlCode code={`status not in []`} />
+
+Пустой список <FlyqlToken type="operator">not in</FlyqlToken> всегда true — всё «не входит» в пустой список.
 
 ## Согласованность типов
 
 Списки **должны** содержать значения одного типа — только строки или только числа. Смешивание типов в одном списке вызывает ошибку парсинга:
 
-```
-# Допустимо — все числа
-status in [200, 201, 204]
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
 
-# Допустимо — все строки
-env in ['prod', 'staging']
+Следующий пример недопустим (смешанные типы — ошибка парсинга):
 
-# Недопустимо — смешанные типы (ошибка парсинга)
-values in [200, 'ok']
-```
+<FlyqlCode code={`values in [200, 'ok']`} />
 
 Парсер отслеживает тип первого значения в списке и отклоняет все последующие значения другого типа. Это проверяется на этапе парсинга, до того как запрос попадёт в генератор или обработчик совпадений.
 
@@ -70,21 +66,12 @@ values in [200, 'ok']
 
 Операторы работы со списками можно комбинировать с булевыми операторами, как и любые другие условия:
 
-```
-status in [200, 201] and method in ['GET', 'POST']
-level = error or status not in [200, 201, 204]
-(status in [500, 502, 503] or level = critical) and env=prod
-```
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
 
 ## Примеры
 
-```
-# HTTP-коды успешных ответов
-status in [200, 201, 204]
-
-# Исключить тестовые окружения
-env not in ['dev', 'test', 'staging']
-
-# Несколько условий со списками
-method in ['GET', 'POST'] and status not in [401, 403, 404]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

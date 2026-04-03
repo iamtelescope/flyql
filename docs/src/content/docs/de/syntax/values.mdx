@@ -3,6 +3,9 @@ title: Werte und Typen
 description: Werttypen, typisierte Literale und Ausdrücke in FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL unterstützt 7 Werttypen: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** und **Array**. Jeder Wert im AST trägt ein explizites Feld `value_type`.
 
 ## Werttypen
@@ -11,11 +14,9 @@ FlyQL unterstützt 7 Werttypen: **Integer**, **BigInt**, **Float**, **String**, 
 
 Ganzzahlen innerhalb des int64-Bereichs:
 
-```
-count = 42
-status != 200
-age >= 18
-```
+<FlyqlCode code={`count = 42`} />
+<FlyqlCode code={`status != 200`} />
+<FlyqlCode code={`age >= 18`} />
 
 AST: `value_type: "integer"`
 
@@ -23,9 +24,7 @@ AST: `value_type: "integer"`
 
 Ganzzahlen, die den int64-Bereich (Go/Python) oder `MAX_SAFE_INTEGER` (JavaScript) überschreiten:
 
-```
-id = 18446744073709551615
-```
+<FlyqlCode code={`id = 18446744073709551615`} />
 
 AST: `value_type: "bigint"`
 
@@ -33,11 +32,9 @@ AST: `value_type: "bigint"`
 
 Zahlen mit Dezimalpunkt:
 
-```
-price > 9.99
-ratio = 3.14
-temperature<=-0.5
-```
+<FlyqlCode code={`price > 9.99`} />
+<FlyqlCode code={`ratio = 3.14`} />
+<FlyqlCode code={`temperature<=-0.5`} />
 
 AST: `value_type: "float"`
 
@@ -45,69 +42,64 @@ AST: `value_type: "float"`
 
 Textwerte, mit oder ohne Anführungszeichen:
 
-```
-level = error              # Zeichenkette ohne Anführungszeichen
-user = "John Doe"          # in doppelten Anführungszeichen (Leerzeichen)
-message = 'hello world'    # in einfachen Anführungszeichen (Leerzeichen)
-count = '42'               # Zahl in Anführungszeichen ist eine Zeichenkette
-```
+<FlyqlCode code={`level = error`} />
+<FlyqlCode code={`user = "John Doe"`} />
+<FlyqlCode code={`message = 'hello world'`} />
+<FlyqlCode code={`count = '42'`} />
 
 AST: `value_type: "string"`
 
 Anführungszeichen lassen sich mit Backslash escapen:
 
 ```
-user = 'John's account'
+user = 'John
 message="said \"hello\""
 ```
 
 ### Boolean
 
-Die Schlüsselwörter `true` und `false` (kleingeschrieben, case-sensitive):
+Die Schlüsselwörter <FlyqlToken type="boolean">true</FlyqlToken> und <FlyqlToken type="boolean">false</FlyqlToken> (kleingeschrieben, case-sensitive):
 
-```
-active = true
-debug = false
-active != true
-```
+<FlyqlCode code={`active = true`} />
+<FlyqlCode code={`debug = false`} />
+<FlyqlCode code={`active != true`} />
 
 AST: `value_type: "boolean"`, der Wert ist ein nativer Boolean.
 
 Großgeschriebene Varianten (`True`, `FALSE`) werden als Zeichenketten behandelt.
 
 **SQL-Generierung:**
-| Dialekt | `field=true` | `field=false` |
-|---------|--------------|---------------|
-| ClickHouse | `field = true` | `field = false` |
-| PostgreSQL | `field = TRUE` | `field = FALSE` |
-| StarRocks | `field = true` | `field = false` |
+| Dialekt | FlyQL | Generiertes SQL |
+|---------|-------|---------------|
+| ClickHouse | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| ClickHouse | <FlyqlCode code={`field = false`} inline /> | `field = false` |
+| PostgreSQL | <FlyqlCode code={`field = true`} inline /> | `field = TRUE` |
+| PostgreSQL | <FlyqlCode code={`field = false`} inline /> | `field = FALSE` |
+| StarRocks | <FlyqlCode code={`field = true`} inline /> | `field = true` |
+| StarRocks | <FlyqlCode code={`field = false`} inline /> | `field = false` |
 
 ### Null
 
-Das Schlüsselwort `null` (kleingeschrieben, case-sensitive):
+Das Schlüsselwort <FlyqlToken type="null">null</FlyqlToken> (kleingeschrieben, case-sensitive):
 
-```
-field = null
-field != null
-```
+<FlyqlCode code={`field = null`} />
+<FlyqlCode code={`field != null`} />
 
 AST: `value_type: "null"`, der Wert ist natives null.
 
 Großgeschriebene Varianten (`Null`, `NULL`) werden als Zeichenketten behandelt.
 
-**Einschränkungen:** Mit null sind nur die Operatoren `=` und `!=` gültig. Die Verwendung von `>`, `<`, `>=`, `<=`, `~` oder `!~` mit null erzeugt einen Parse-Fehler.
+**Einschränkungen:** Mit null sind nur die Operatoren <FlyqlToken type="operator">=</FlyqlToken> und <FlyqlToken type="operator">!=</FlyqlToken> gültig. Die Verwendung von <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken> oder <FlyqlToken type="operator">{'!~'}</FlyqlToken> mit null erzeugt einen Parse-Fehler.
 
-**SQL-Generierung:** `field = null` erzeugt `field IS NULL`, `field != null` erzeugt `field IS NOT NULL` (in allen Dialekten).
+**SQL-Generierung:** <FlyqlCode code={`field = null`} inline /> erzeugt `field IS NULL`, <FlyqlCode code={`field != null`} inline /> erzeugt `field IS NOT NULL` (in allen Dialekten).
 
 ### Array
 
-Arrays werden mit den Operatoren `in` und `not in` verwendet. Elemente dürfen gemischte Typen haben (heterogen):
+Arrays werden mit den Operatoren <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> verwendet. Elemente dürfen gemischte Typen haben (heterogen):
 
-```
-status in [200, 201, 202]
-name in ['alice', 'bob']
-field in [1, "hello", true, null]
-```
+<FlyqlCode code={`status in [200, 201, 202]`} />
+<FlyqlCode code={`name in ['alice', 'bob']`} />
+<FlyqlCode code={`field in [1, "hello", true, null]`} />
 
 Jedes Element trägt seinen eigenen Typ im Array `values_types`.
 
@@ -115,39 +107,32 @@ Jedes Element trägt seinen eigenen Typ im Array `values_types`.
 
 Ein einzelner Schlüssel ohne Operator prüft, ob das Feld einen truthy Wert hat:
 
-```
-active
-message and status
-```
+<FlyqlCode code={`active`} />
+<FlyqlCode code={`message and status`} />
 
 Ein Wert gilt als **falsy**, wenn er:
 - `null` / `None` / nicht vorhanden ist
 - eine leere Zeichenkette `""` ist
 - Null `0` ist
-- der Boolean `false` ist
+- der Boolean <FlyqlToken type="boolean">false</FlyqlToken> ist
 
 Alles andere ist **truthy**.
 
-Verwende `not`, um auf falsy Werte zu prüfen:
+Verwende <FlyqlToken type="operator">not</FlyqlToken>, um auf falsy Werte zu prüfen:
 
-```
-not archived
-active and not debug
-```
+<FlyqlCode code={`not archived`} />
+<FlyqlCode code={`active and not debug`} />
 
-Truthy/Falsy-Prüfungen unterscheiden sich von Null-Vergleichen: `not field` trifft zu, wenn das Feld null, leer oder Null ist. `field = null` trifft nur dann zu, wenn das Feld explizit null ist.
+Truthy/Falsy-Prüfungen unterscheiden sich von Null-Vergleichen: <FlyqlCode code={`not field`} inline /> trifft zu, wenn das Feld null, leer oder Null ist. <FlyqlCode code={`field = null`} inline /> trifft nur dann zu, wenn das Feld explizit null ist.
 
 ## Leerzeichen
 
 FlyQL ist tolerant gegenüber Leerzeichen. Leerzeichen um Operatoren sind optional:
 
-```
-status = 200
-status = 200
-status =200
-```
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`status =200`} />
 
-Alle drei Varianten sind äquivalent.
+Alle Varianten sind äquivalent.
 
 ## Typkonstanten-Modul
 
@@ -181,6 +166,6 @@ Beim Upgrade von einer früheren FlyQL-Version:
 - **Breaking:** Go `ValueTypeString` / `ValueTypeNumber` wurden entfernt und durch `types.ValueType` mit 7 Werten ersetzt
 - **Breaking:** Das AST-Feld `value_type` wurde von `"string"` / `"number"` auf `"integer"` / `"float"` / `"bigint"` / `"string"` / `"boolean"` / `"null"` geändert
 - **Breaking:** Die Erzwingung homogener Listen wurde entfernt -- heterogene Arrays sind jetzt gültig
-- **Neu:** `true`, `false`, `null` werden als typisierte Literale geparst (nicht als Zeichenketten)
+- **Neu:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> werden als typisierte Literale geparst (nicht als Zeichenketten)
 - **Neu:** Das Array `values_types` bei IN-Listen-Ausdrücken stellt Typen pro Element bereit
 - **Neu:** Das Modul `flyql.types` exportiert die kanonischen Typkonstanten

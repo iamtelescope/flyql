@@ -1,64 +1,60 @@
 ---
 title: Listas
-description: Operadores de pertenencia a listas en FlyQL (`in`, `not in`)
+description: Operadores de pertenencia a listas en FlyQL (in, not in)
 ---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 ## Pertenencia a listas
 
-Usa `in` para comprobar si un valor está en una lista y `not in` para comprobar que no lo está:
+Usa <FlyqlToken type="operator">in</FlyqlToken> para comprobar si un valor está en una lista y <FlyqlToken type="operator">not in</FlyqlToken> para comprobar que no lo está:
 
-```
-status in [200, 201, 204]
-env not in ['prod', 'staging']
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['prod', 'staging']`} />
 
 ## Reglas de sintaxis
 
-- Los valores van entre corchetes `[ ]` y se separan con comas
+- Los valores van entre corchetes <FlyqlToken type="operator">[ ]</FlyqlToken> y se separan con comas
 - Todos los valores de una lista deben ser del mismo tipo: todos strings o todos números
-- Los strings deben ir entre comillas: `['a', 'b', 'c']`
-- Los valores numéricos no llevan comillas: `[1, 2, 3]`
+- Los strings deben ir entre comillas: <FlyqlCode code={`['a', 'b', 'c']`} inline />
+- Los valores numéricos no llevan comillas: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Se permiten espacios alrededor de comas y corchetes
 
 ### Listas de strings
 
-```
-method in ['GET', 'POST', 'PUT']
-env not in ['dev', 'test', 'local']
-```
+<FlyqlCode code={`method in ['GET', 'POST', 'PUT']`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'local']`} />
 
 Se pueden usar comillas simples o dobles para los strings.
 
 ### Listas numéricas
 
-```
-status in [200, 201, 204]
-port not in [80, 443]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`port not in [80, 443]`} />
 
 ### Listas vacías
 
 Se permiten listas vacías:
 
-```
-status in []        # always false — nothing matches an empty list
-status not in []    # always true — everything is "not in" an empty list
-```
+<FlyqlCode code={`status in []`} />
+
+Una lista <FlyqlToken type="operator">in</FlyqlToken> vacía es siempre false — nada coincide con una lista vacía.
+
+<FlyqlCode code={`status not in []`} />
+
+Una lista <FlyqlToken type="operator">not in</FlyqlToken> vacía es siempre true — todo está "not in" en una lista vacía.
 
 ## Consistencia de tipos
 
 Las listas **deben** contener valores de un tipo uniforme: todos strings o todos números. Mezclar tipos dentro de una misma lista produce un error de parseo:
 
-```
-# Valid — all numbers
-status in [200, 201, 204]
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env in ['prod', 'staging']`} />
 
-# Valid — all strings
-env in ['prod', 'staging']
+Lo siguiente es inválido (tipos mezclados — error de parseo):
 
-# Invalid — mixed types (parse error)
-values in [200, 'ok']
-```
+<FlyqlCode code={`values in [200, 'ok']`} />
 
 El parser rastrea el tipo del primer valor de la lista y rechaza cualquier valor posterior de un tipo distinto. Esto se valida en tiempo de parseo, antes de que la consulta llegue a cualquier generador o matcher.
 
@@ -70,21 +66,12 @@ El campo `valuesType` de la expresión parseada indica si la lista contiene valo
 
 Los operadores de lista se combinan con los operadores booleanos como cualquier otra condición:
 
-```
-status in [200, 201] and method in ['GET', 'POST']
-level = error or status not in [200, 201, 204]
-(status in [500, 502, 503] or level = critical) and env=prod
-```
+<FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
+<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
 
 ## Ejemplos
 
-```
-# Códigos HTTP de éxito
-status in [200, 201, 204]
-
-# Excluir entornos de prueba
-env not in ['dev', 'test', 'staging']
-
-# Varias condiciones de lista
-method in ['GET', 'POST'] and status not in [401, 403, 404]
-```
+<FlyqlCode code={`status in [200, 201, 204]`} />
+<FlyqlCode code={`env not in ['dev', 'test', 'staging']`} />
+<FlyqlCode code={`method in ['GET', 'POST'] and status not in [401, 403, 404]`} />

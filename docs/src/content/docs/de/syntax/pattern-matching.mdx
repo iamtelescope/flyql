@@ -3,35 +3,34 @@ title: Pattern Matching
 description: Regex- und Wildcard-Matching in FlyQL
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## Regex-Matching
 
-Verwende `~`, um einen Wert gegen einen regulären Ausdruck zu prüfen, und `!~`, um das Matching zu negieren:
+Verwende <FlyqlToken type="operator">{'~'}</FlyqlToken>, um einen Wert gegen einen regulären Ausdruck zu prüfen, und <FlyqlToken type="operator">{'!~'}</FlyqlToken>, um das Matching zu negieren:
 
-```
-message ~ "error.*timeout"
-path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error.*timeout"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
 
 | Operator | Bedeutung |
 |----------|-----------|
-| `~` | Wert passt auf das Regex-Muster |
-| `!~` | Wert passt nicht auf das Regex-Muster |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | Wert passt auf das Regex-Muster |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | Wert passt nicht auf das Regex-Muster |
 
 ### Syntax von Regex-Mustern
 
 Die Regex-Syntax hängt vom Ziel-Backend ab:
 
 - **ClickHouse** – verwendet die Funktion `match()` (RE2-Syntax)
-- **PostgreSQL** – verwendet die Operatoren `~` und `!~` (POSIX-Regex)
+- **PostgreSQL** – verwendet die Operatoren <FlyqlToken type="operator">{'~'}</FlyqlToken> und <FlyqlToken type="operator">{'!~'}</FlyqlToken> (POSIX-Regex)
 - **StarRocks** – verwendet die Funktion `regexp`
 - **In-Memory-Matcher** – verwendet die Regex-Engine der Host-Sprache (Go `regexp`, Python `re2`, JS `RegExp`)
 
 Setze das Muster in Anführungszeichen, wenn es Leerzeichen oder Sonderzeichen enthält:
 
-```
-message ~ "connection (refused|reset)"
-host ~ "^prod-[0-9]+"
-```
+<FlyqlCode code={`message ~ "connection (refused|reset)"`} />
+<FlyqlCode code={`host ~ "^prod-[0-9]+"`} />
 
 ### Regex-Flags
 
@@ -41,10 +40,8 @@ Du kannst das Verhalten von Regex-Mustern mit Inline-Flags am Anfang des Musters
 
 Das Muster gleicht unabhängig von Groß- und Kleinschreibung ab:
 
-```
-message ~ "(?i)error"
-level ~ "(?i)^(warn|error|fatal)$"
-```
+<FlyqlCode code={`message ~ "(?i)error"`} />
+<FlyqlCode code={`level ~ "(?i)^(warn|error|fatal)$"`} />
 
 `(?i)error` passt auf „Error", „ERROR", „error" usw.
 
@@ -52,19 +49,15 @@ level ~ "(?i)^(warn|error|fatal)$"
 
 Ändert das Verhalten von `^` und `$`, sodass sie den Anfang und das Ende jeder **Zeile** abgleichen statt den Anfang und das Ende der gesamten Zeichenkette:
 
-```
-log ~ "(?m)^ERROR"
-```
+<FlyqlCode code={`log ~ "(?m)^ERROR"`} />
 
-Ohne `(?m)` greift `^ERROR` nur, wenn die gesamte Zeichenkette mit „ERROR" beginnt. Mit `(?m)` wird auch „INFO first\nERROR second" gefunden, weil „ERROR" am Anfang einer Zeile steht.
+Ohne `(?m)`, `^ERROR` greift nur, wenn die gesamte Zeichenkette mit „ERROR" beginnt. Mit `(?m)` wird auch „INFO first\nERROR second" gefunden, weil „ERROR" am Anfang einer Zeile steht.
 
 #### `(?s)` — Dotall
 
 Lässt `.` **jedes** Zeichen einschließlich Zeilenumbrüche abgleichen. Standardmäßig gleicht `.` kein `\n` ab:
 
-```
-log ~ "(?s)start.*end"
-```
+<FlyqlCode code={`log ~ "(?s)start.*end"`} />
 
 Ohne `(?s)` matcht `start.*end` nicht auf „start\nend", da `.` den Zeilenumbruch nicht überquert. Mit `(?s)` wird es gefunden.
 
@@ -72,10 +65,8 @@ Ohne `(?s)` matcht `start.*end` nicht auf „start\nend", da `.` den Zeilenumbru
 
 Flags können in einer Gruppe kombiniert werden:
 
-```
-log ~ "(?im)^ERROR"
-log ~ "(?ims)^START.*END$"
-```
+<FlyqlCode code={`log ~ "(?im)^ERROR"`} />
+<FlyqlCode code={`log ~ "(?ims)^START.*END$"`} />
 
 #### Backend-Unterstützung
 
@@ -92,18 +83,14 @@ Alle drei Flags funktionieren in jedem FlyQL-Backend:
 
 Case-insensitives Matching kann mit Negation kombiniert werden, um Muster unabhängig von der Groß-/Kleinschreibung auszuschließen:
 
-```
-message ~ "(?i)error" and message !~ "(?i)warning"
-```
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
 ## Wildcard-Matching
 
-Verwende `*` am Ende eines nicht in Anführungszeichen gesetzten Werts für glob-artiges Prefix-Matching:
+Verwende <FlyqlToken type="operator">{'*'}</FlyqlToken> am Ende eines nicht in Anführungszeichen gesetzten Werts für glob-artiges Prefix-Matching:
 
-```
-host = prod*
-service = api-*
-```
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`service = api-*`} />
 
 Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden nur am Ende eines Werts unterstützt – `*prod` oder `pr*od` sind nicht zulässig.
 
@@ -111,26 +98,15 @@ Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden
 
 | Muster | Syntax | Beispiel |
 |--------|--------|----------|
-| Wildcard (Präfix) | `key = value*` | `host = prod*` |
-| Regex (vollständig) | `key ~ "pattern"` | `host ~ "^prod-[0-9]+"` |
+| Wildcard (Präfix) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
+| Regex (vollständig) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
 Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komplexere Muster brauchst.
 
 ## Beispiele
 
-```
-# Regex: Meldungen mit „error" oder „fail"
-message ~ "error|fail"
-
-# Regex: Pfade, die mit /api/v2 beginnen
-path ~ "^/api/v2"
-
-# Negiertes Regex: Health-Check-Pfade ausschließen
-path !~ "^/health"
-
-# Wildcard: Hosts, die mit „prod" beginnen
-host = prod*
-
-# Kombiniert
-host = prod* and message ~ "timeout.*" and path !~ "^/health"
-```
+<FlyqlCode code={`message ~ "error|fail"`} />
+<FlyqlCode code={`path ~ "^/api/v2"`} />
+<FlyqlCode code={`path !~ "^/health"`} />
+<FlyqlCode code={`host = prod*`} />
+<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />

@@ -3,38 +3,35 @@ title: ブールロジック
 description: FlyQL におけるブール演算子、優先順位、括弧によるグループ化
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ## ブール演算子
 
 FlyQL では、条件を組み合わせるために 3 つのブール演算子を使います。
 
 | 演算子 | 意味 | 例 |
 |--------|------|----|
-| `and` | 両方の条件が true である必要がある | `status = 200 and active` |
-| `or` | どちらか一方が true であればよい | `level = error or level = critical` |
-| `not` | 式を否定する | `not archived` |
+| <FlyqlToken type="operator">and</FlyqlToken> | 両方の条件が true である必要がある | <FlyqlCode code={`status = 200 and active`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | どちらか一方が true であればよい | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | 式を否定する | <FlyqlCode code={`not archived`} inline /> |
 
 ### 組み合わせた否定
 
-`not` は `and` や `or` と組み合わせて使えます。
+<FlyqlToken type="operator">not</FlyqlToken> は <FlyqlToken type="operator">and</FlyqlToken> や <FlyqlToken type="operator">or</FlyqlToken> と組み合わせて使えます。
 
-```
-active and not archived
-level = error or not healthy
-```
+<FlyqlCode code={`active and not archived`} />
+<FlyqlCode code={`level = error or not healthy`} />
 
 ## 演算子の優先順位
 
-`and` は `or` より優先されます。つまり、
+<FlyqlToken type="operator">and</FlyqlToken> は <FlyqlToken type="operator">or</FlyqlToken> より優先されます。つまり、
 
-```
-a = 1 or b = 2 and c = 3
-```
+<FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 は次のように parse されます。
 
-```
-a = 1 or (b = 2 and c = 3)
-```
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
 優先順位を変えたい場合は、括弧を明示的に使ってください。
 
@@ -42,63 +39,45 @@ a = 1 or (b = 2 and c = 3)
 
 括弧を使うと評価順序を制御できます。
 
-```
-(status >= 400 or level = error) and service = api
-```
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
 
-括弧がない場合、`and` のほうが優先されます。
+括弧がない場合、<FlyqlToken type="operator">and</FlyqlToken> のほうが優先されます。
 
-```
-status >= 400 or level = error and service = api
-→ status >= 400 or (level = error and service = api)
-```
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+
+は次と同等です。
+
+<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
 
 ### ネストしたグループ化
 
 括弧はネストできます。
 
-```
-(a = 1 or b = 2) and not (c = 3 and d = 4)
-```
+<FlyqlCode code={`(a = 1 or b = 2) and not (c = 3 and d = 4)`} />
 
 ### グループの否定
 
-`not` はグループ全体に適用されます。
+<FlyqlToken type="operator">not</FlyqlToken> はグループ全体に適用されます。
 
-```
-not (status = 200 and healthy)
-```
+<FlyqlCode code={`not (status = 200 and healthy)`} />
 
-これは複合条件全体を否定します。`status` が 200 ではないか、`healthy` が false のときにのみ true になります。
+これは複合条件全体を否定します — <FlyqlToken type="key">status</FlyqlToken> が 200 ではないか、<FlyqlToken type="key">healthy</FlyqlToken> が false のときにのみ true になります。
 
 ## 否定
 
-`not` は、truthy チェック、比較式、グループなど、あらゆる式を否定できます。
+<FlyqlToken type="operator">not</FlyqlToken> は、truthy チェック、比較式、グループなど、あらゆる式を否定できます。
 
-```
-not active                  # field is falsy
-not status = 200              # status is not 200
-not (a = 1 and b = 2)           # negates the group
-active and not archived     # combined with other conditions
-```
+<FlyqlCode code={`not active`} />
+<FlyqlCode code={`not status = 200`} />
+<FlyqlCode code={`not (a = 1 and b = 2)`} />
+<FlyqlCode code={`active and not archived`} />
 
-二重否定は打ち消し合います。`not not active` は `active` と同じ意味です。
+二重否定は打ち消し合います: <FlyqlCode code={`not not active`} inline /> は <FlyqlCode code={`active`} inline /> と同じ意味です。
 
 ## 例
 
-```
-# 単純な AND
-status = 200 and service = api
-
-# 単純な OR
-level = error or level = critical
-
-# 優先順位を含む混合
-status >= 400 or level = error and service = api
-
-# 明示的なグループ化
-(status >= 400 or level = error) and service = api
-
-# 否定とグループ化を含む複雑なクエリ
-(status >= 500 and host = prod*) or (level = error and not service = healthcheck)
-```
+<FlyqlCode code={`status = 200 and service = api`} />
+<FlyqlCode code={`level = error or level = critical`} />
+<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />

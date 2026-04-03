@@ -3,35 +3,34 @@ title: 比较操作符
 description: FlyQL 中用于数据过滤的比较操作符
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL 支持以下比较操作符：
 
 ## 相等比较
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `=` | 等于 | `status = 200` |
-| `!=` | 不等于 | `env != prod` |
+| <FlyqlToken type="operator">=</FlyqlToken> | 等于 | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != prod`} inline /> |
 
-```
-status = 200
-service != "api-gateway"
-```
+<FlyqlCode code={`status = 200`} />
+<FlyqlCode code={`service != "api-gateway"`} />
 
-操作符两侧都必须存在内容，也就是字段和值都必须提供。
+操作符两侧都必须存在——<FlyqlToken type="key">字段</FlyqlToken>和<FlyqlToken type="value">值</FlyqlToken>。
 
 ## 数值比较
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `>` | 大于 | `status > 399` |
-| `>=` | 大于等于 | `status >= 400` |
-| `<` | 小于 | `duration < 1000` |
-| `<=` | 小于等于 | `duration <= 500` |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | 大于 | <FlyqlCode code={`status > 399`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | 大于等于 | <FlyqlCode code={`status >= 400`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | 小于 | <FlyqlCode code={`duration < 1000`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | 小于等于 | <FlyqlCode code={`duration <= 500`} inline /> |
 
-```
-status >= 400 and duration < 5000
-response_time > 100 and response_time <= 2000
-```
+<FlyqlCode code={`status >= 400 and duration < 5000`} />
+<FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
 数值比较通常用于数字值。如果用于字符串，则会执行字典序比较。
 
@@ -39,22 +38,20 @@ response_time > 100 and response_time <= 2000
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `~` | 正则匹配 | `message ~ "error.*"` |
-| `!~` | 不匹配正则 | `path !~ "^/health"` |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | 正则匹配 | <FlyqlCode code={`message ~ "error.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | 不匹配正则 | <FlyqlCode code={`path !~ "^/health"`} inline /> |
 
-```
-message ~ "timeout|connection refused"
-host !~ "^test-.*"
-```
+<FlyqlCode code={`message ~ "timeout|connection refused"`} />
+<FlyqlCode code={`host !~ "^test-.*"`} />
 
-正则语法依赖目标数据库或运行时环境。
+正则语法依赖目标数据库或运行时环境。详见[模式匹配](/zh/syntax/pattern-matching/)。
 
 ## 列表成员检查
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `in` | 在列表中 | `status in [200, 201]` |
-| `not in` | 不在列表中 | `env not in ['dev', 'test']` |
+| <FlyqlToken type="operator">in</FlyqlToken> | 在列表中 | <FlyqlCode code={`status in [200, 201]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | 不在列表中 | <FlyqlCode code={`env not in ['dev', 'test']`} inline /> |
 
 列表语法的详细规则请查看[列表](/zh/syntax/lists/)。
 
@@ -62,38 +59,35 @@ host !~ "^test-.*"
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `has` | 包含 | `message has 'error'` |
-| `not has` | 不包含 | `message not has 'test'` |
+| <FlyqlToken type="operator">has</FlyqlToken> | 包含 | <FlyqlCode code={`message has 'error'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | 不包含 | <FlyqlCode code={`message not has 'test'`} inline /> |
 
-```
-message has 'timeout'
-tags not has 'deprecated'
-```
+<FlyqlCode code={`message has 'timeout'`} />
+<FlyqlCode code={`tags not has 'deprecated'`} />
 
-`has` 会根据字段类型执行不同的检查：
+<FlyqlToken type="operator">has</FlyqlToken> 会根据字段类型执行不同的检查：
 
-- **字符串**：子串匹配，例如 `message has 'error'`
-- **Map**：键是否存在，例如 `metadata has 'region'`
-- **数组/列表**：元素是否存在，例如 `tags has 'web'`
-- **JSON**：对象是否包含某个键，例如 `data has 'name'`
-- **空值/空内容**：对 `has` 来说恒为假，对 `not has` 来说恒为真
+- **字符串** — 子串匹配：<FlyqlCode code={`message has 'error'`} inline /> 当 <FlyqlToken type="key">message</FlyqlToken> 包含 <FlyqlToken type="string">"error"</FlyqlToken> 时为 true
+- **Map** — 键是否存在：<FlyqlCode code={`metadata has 'region'`} inline /> 当 map 有 <FlyqlToken type="string">"region"</FlyqlToken> 键时为 true
+- **数组/列表** — 元素是否存在：<FlyqlCode code={`tags has 'web'`} inline /> 当数组包含 <FlyqlToken type="string">"web"</FlyqlToken> 时为 true
+- **JSON** — 对象是否包含某个键：<FlyqlCode code={`data has 'name'`} inline /> 当 JSON 对象有 <FlyqlToken type="string">"name"</FlyqlToken> 键时为 true
+- **空值/空内容** — 对 <FlyqlToken type="operator">has</FlyqlToken> 来说恒为假，对 <FlyqlToken type="operator">not has</FlyqlToken> 来说恒为真
 
-`has` 接收的是单个值，而不是列表。若需要判断某值是否属于多个候选值，请使用 `in`。
+<FlyqlToken type="operator">has</FlyqlToken> 接收的是单个值，而不是列表。若需要判断某值是否属于多个候选值，请使用 <FlyqlToken type="operator">in</FlyqlToken>。
 
 ## 操作符汇总
 
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
-| `=` | 等于 | `status = 200` |
-| `!=` | 不等于 | `env != prod` |
-| `>` | 大于 | `count > 10` |
-| `>=` | 大于等于 | `count >= 10` |
-| `<` | 小于 | `count < 100` |
-| `<=` | 小于等于 | `count <= 100` |
-| `~` | 正则匹配 | `msg ~ "err.*"` |
-| `!~` | 非正则匹配 | `msg !~ "^ok"` |
-| `in` | 在列表中 | `s in [1, 2]` |
-| `not in` | 不在列表中 | `s not in [3]` |
-| `has` | 包含 | `msg has 'err'` |
-| `not has` | 不包含 | `msg not has 'ok'` |
-
+| <FlyqlToken type="operator">=</FlyqlToken> | 等于 | <FlyqlCode code={`status = 200`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">{'>'}</FlyqlToken> | 大于 | <FlyqlCode code={`count > 10`} inline /> |
+| <FlyqlToken type="operator">{'>='}</FlyqlToken> | 大于等于 | <FlyqlCode code={`count >= 10`} inline /> |
+| <FlyqlToken type="operator">{'<'}</FlyqlToken> | 小于 | <FlyqlCode code={`count < 100`} inline /> |
+| <FlyqlToken type="operator">{'<='}</FlyqlToken> | 小于等于 | <FlyqlCode code={`count <= 100`} inline /> |
+| <FlyqlToken type="operator">{'~'}</FlyqlToken> | 正则匹配 | <FlyqlCode code={`msg ~ "err.*"`} inline /> |
+| <FlyqlToken type="operator">{'!~'}</FlyqlToken> | 非正则匹配 | <FlyqlCode code={`msg !~ "^ok"`} inline /> |
+| <FlyqlToken type="operator">in</FlyqlToken> | 在列表中 | <FlyqlCode code={`s in [1, 2]`} inline /> |
+| <FlyqlToken type="operator">not in</FlyqlToken> | 不在列表中 | <FlyqlCode code={`s not in [3]`} inline /> |
+| <FlyqlToken type="operator">has</FlyqlToken> | 包含 | <FlyqlCode code={`msg has 'err'`} inline /> |
+| <FlyqlToken type="operator">not has</FlyqlToken> | 不包含 | <FlyqlCode code={`msg not has 'ok'`} inline /> |

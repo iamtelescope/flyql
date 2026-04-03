@@ -3,6 +3,9 @@ title: AST und benutzerdefinierte Generatoren
 description: Verstehe den FlyQL Abstract Syntax Tree und erstelle benutzerdefinierte Code-Generatoren für jede Zielsprache oder Datenstruktur
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 Der Parser von FlyQL erzeugt einen **Abstract Syntax Tree (AST)** – eine strukturierte Darstellung der Abfrage, die du traversieren kannst, um Ausgaben für beliebige Ziele zu generieren. Die eingebauten SQL-Generatoren für ClickHouse, PostgreSQL und StarRocks sind alle implementiert, indem derselbe AST durchlaufen wird. Du kannst eigene Generatoren für Elasticsearch-Abfragen, MongoDB-Filter, Prometheus-Selektoren, Log-Grep-Befehle oder beliebige andere Ziele bauen.
 
 ## AST-Knotentypen
@@ -15,11 +18,11 @@ Ein `Node` ist entweder ein **branch** (kombiniert zwei Teilbäume mit einem boo
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| `boolOperator` | `string` | `"and"` oder `"or"` – bestimmt, wie `left` und `right` kombiniert werden. Bei leaf-Knoten leer |
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> oder <FlyqlToken type="operator">or</FlyqlToken> – bestimmt, wie `left` und `right` kombiniert werden. Bei leaf-Knoten leer |
 | `expression` | `Expression` oder `null` | Die Bedingung, wenn dies ein leaf-Knoten ist. `null` bei branch-Knoten |
 | `left` | `Node` oder `null` | Linker Kindbaum. `null` bei leaf-Knoten |
 | `right` | `Node` oder `null` | Rechter Kindbaum. `null` bei leaf-Knoten |
-| `negated` | `boolean` | `true`, wenn dieser Knoten in `not` eingeschlossen ist |
+| `negated` | `boolean` | `true`, wenn dieser Knoten in <FlyqlToken type="operator">not</FlyqlToken> eingeschlossen ist |
 
 Ein Knoten ist **entweder** ein leaf (`expression` ist gesetzt, `left`/`right` sind null) **oder** ein branch (`left`/`right` sind gesetzt, `expression` ist null). Niemals beides gleichzeitig.
 
@@ -29,11 +32,11 @@ Eine `Expression` repräsentiert eine einzelne Bedingung – einen Schlüssel, e
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| `key` | `Key` | Das geprüfte Feld (z. B. `status`, `user.metadata.role`) |
-| `operator` | `string` | Einer von: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has` |
-| `value` | `any` | Der Vergleichswert. Ein String, eine Zahl, ein Boolean oder null für skalare Operatoren. Leer bei `in` und `not in` |
-| `valueType` | `string` oder `null` | Der explizite Typ von `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` oder `"null"`. `null` für `in`/`not in` |
-| `values` | `array` oder `null` | Werteliste für `in` und `not in`. Kann heterogen sein. `null` bei anderen Operatoren |
+| `key` | `Key` | Das geprüfte Feld (z. B. <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>) |
+| `operator` | `string` | Einer von: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken> |
+| `value` | `any` | Der Vergleichswert. Ein String, eine Zahl, ein Boolean oder null für skalare Operatoren. Leer bei <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> |
+| `valueType` | `string` oder `null` | Der explizite Typ von `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` oder `"null"`. `null` für <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> |
+| `values` | `array` oder `null` | Werteliste für <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken>. Kann heterogen sein. `null` bei anderen Operatoren |
 | `valuesTypes` | `string[]` oder `null` | Typ-Array pro Element parallel zu `values`. Jedes Element ist eine der Typkonstanten. `null`, wenn `values` nicht verwendet wird |
 
 ### Key
@@ -120,7 +123,7 @@ BoolOperator.OR       # "or"
 
 ### Einfache Bedingung
 
-Abfrage: `status = 200`
+Abfrage: <FlyqlCode code="status = 200" inline />
 
 ```
 Node (leaf)
@@ -132,7 +135,7 @@ Node (leaf)
 
 ### Boolesche Kombination
 
-Abfrage: `status = 200 and method = "GET"`
+Abfrage: <FlyqlCode code='status = 200 and method = "GET"' inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +153,7 @@ Node (branch, boolOperator: "and")
 
 ### Negation
 
-Abfrage: `not status = 500`
+Abfrage: <FlyqlCode code="not status = 500" inline />
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +165,7 @@ Node (leaf, negated: true)
 
 ### Verschachtelte boolesche Ausdrücke mit Klammern
 
-Abfrage: `env=prod and (status=500 or level = error)`
+Abfrage: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -186,7 +189,7 @@ Node (branch, boolOperator: "and")
 
 ### Listenzugehörigkeit
 
-Abfrage: `status in [200, 201, 204]`
+Abfrage: <FlyqlCode code="status in [200, 201, 204]" inline />
 
 ```
 Node (leaf)
@@ -200,7 +203,7 @@ Node (leaf)
 
 ### Truthy-Prüfung
 
-Abfrage: `active`
+Abfrage: <FlyqlCode code="active" inline />
 
 ```
 Node (leaf)
@@ -212,7 +215,7 @@ Node (leaf)
 
 ### Verschachtelter Schlüssel
 
-Abfrage: `user.metadata.role = "admin"`
+Abfrage: <FlyqlCode code='user.metadata.role = "admin"' inline />
 
 ```
 Node (leaf)

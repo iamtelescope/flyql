@@ -3,50 +3,53 @@ title: StarRocks
 description: Generated SQL examples for StarRocks
 ---
 
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
 StarRocks SQL uses backtick-quoted identifiers, `regexp()` for regex, and `->` with JSON-stringified keys for JSON access.
 
 ## Basic Examples
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `message = 'hello'` | `` `message` = 'hello' `` |
-| `message != 'hello'` | `` `message` != 'hello' `` |
-| `count > 10` | `` `count` > 10 `` |
-| `count <= 100` | `` `count` <= 100 `` |
-| `message ~ 'error.*'` | `` regexp(`message`, 'error.*') `` |
-| `message !~ 'test.*'` | `` not regexp(`message`, 'test.*') `` |
-| `host = prod*` | `` `host` LIKE 'prod%' `` |
+| <FlyqlCode code={`message = 'hello'`} inline /> | `` `message` = 'hello' `` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `` `message` != 'hello' `` |
+| <FlyqlCode code={`count > 10`} inline /> | `` `count` > 10 `` |
+| <FlyqlCode code={`count <= 100`} inline /> | `` `count` <= 100 `` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `` regexp(`message`, 'error.*') `` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `` not regexp(`message`, 'test.*') `` |
+| <FlyqlCode code={`host = prod*`} inline /> | `` `host` LIKE 'prod%' `` |
 
 ## Boolean Operators
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `a = '1' and b > 10` | `` (`a` = '1' and `b` > 10) `` |
-| `a = '1' or b = '2'` | `` (`a` = '1' or `b` = '2') `` |
-| `not a = '1'` | `` not (`a` = '1') `` |
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `` (`a` = '1' and `b` > 10) `` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `` (`a` = '1' or `b` = '2') `` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `` not (`a` = '1') `` |
 
 ## List Membership
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `status in [200, 201]` | `` `status` IN (200, 201) `` |
-| `env not in ['dev', 'test']` | `` `env` NOT IN ('dev', 'test') `` |
-| `status in []` | `0` |
-| `status not in []` | `1` |
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `` `status` IN (200, 201) `` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `` `env` NOT IN ('dev', 'test') `` |
+| <FlyqlCode code={`status in []`} inline /> | `0` |
+| <FlyqlCode code={`status not in []`} inline /> | `1` |
 
 ## Containment (`has` / `not has`)
 
-The `has` operator generates different SQL depending on the column type:
+The <FlyqlToken type="operator">has</FlyqlToken> operator generates different SQL depending on the column type:
 
 | Column Type | FlyQL | Generated SQL |
 |-------------|-------|--------------|
-| String | `message has 'error'` | `` INSTR(`message`, 'error') > 0 `` |
-| String (negated) | `message not has 'error'` | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
-| Array | `tags has 'web'` | `` array_contains(`tags`, 'web') `` |
-| Array (negated) | `tags not has 'web'` | `` NOT array_contains(`tags`, 'web') `` |
-| Map | `metadata has 'key'` | `` array_contains(map_keys(`metadata`), 'key') `` |
-| Map (negated) | `metadata not has 'key'` | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
-| Native JSON | `data has 'key'` | `` json_exists(`data`, concat('$.', 'key')) `` |
+| String | <FlyqlCode code={`message has 'error'`} inline /> | `` INSTR(`message`, 'error') > 0 `` |
+| String (negated) | <FlyqlCode code={`message not has 'error'`} inline /> | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
+| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `` array_contains(`tags`, 'web') `` |
+| Array (negated) | <FlyqlCode code={`tags not has 'web'`} inline /> | `` NOT array_contains(`tags`, 'web') `` |
+| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `` array_contains(map_keys(`metadata`), 'key') `` |
+| Map (negated) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
+| Native JSON | <FlyqlCode code={`data has 'key'`} inline /> | `` json_exists(`data`, concat('$.', 'key')) `` |
 
 ## JSON Columns
 
@@ -58,8 +61,8 @@ Native JSON columns use the `->` operator with JSON-stringified keys:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name = 'test'` | `` `data`->'\"name\"' = 'test' `` |
-| `data.user.name = 'john'` | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` `data`->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
 
 ### JSON String Type
 
@@ -67,8 +70,8 @@ Columns storing JSON as a string require `parse_json()` before traversal:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `data.name = 'test'` | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| `data.user.name = 'john'` | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
 ## Map Columns
 
@@ -76,10 +79,10 @@ Map columns use bracket notation with direct comparison:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `metadata.key1 = 'value1'` | `` `metadata`['key1'] = 'value1' `` |
-| `metadata.key1 != 'value1'` | `` `metadata`['key1'] != 'value1' `` |
-| `metadata.nested.key = 'value'` | `` `metadata`['nested']['key'] = 'value' `` |
-| `metadata.pattern ~ 'test.*'` | `` `metadata`['pattern'] regexp 'test.*' `` |
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `` `metadata`['key1'] = 'value1' `` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `` `metadata`['key1'] != 'value1' `` |
+| <FlyqlCode code={`metadata.nested.key = 'value'`} inline /> | `` `metadata`['nested']['key'] = 'value' `` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `` `metadata`['pattern'] regexp 'test.*' `` |
 
 ## Array Columns
 
@@ -87,8 +90,8 @@ Array columns use 0-based bracket indexing:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `tags.0 = 'first'` | `` `tags`[0] = 'first' `` |
-| `tags.1 = 'second'` | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
 
 ### Column Setup
 
@@ -118,8 +121,8 @@ Transformers generate StarRocks-standard function calls with backtick-quoted col
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| `status\|upper = "ERROR"` | `` UPPER(`status`) = 'ERROR' `` |
-| `status\|lower = "info"` | `` LOWER(`status`) = 'info' `` |
-| `message\|len > 100` | `` LENGTH(`message`) > 100 `` |
-| `message\|lower\|len > 100` | `` LENGTH(LOWER(`message`)) > 100 `` |
-| `tags\|split(",") has "urgent"` | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `` UPPER(`status`) = 'ERROR' `` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `` LOWER(`status`) = 'info' `` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `` LENGTH(`message`) > 100 `` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `` LENGTH(LOWER(`message`)) > 100 `` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |

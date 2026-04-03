@@ -3,6 +3,9 @@ title: AST와 사용자 정의 Generator
 description: FlyQL Abstract Syntax Tree를 이해하고 원하는 대상 언어나 데이터 구조를 위한 사용자 정의 코드 generator를 만듭니다
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 FlyQL parser는 **Abstract Syntax Tree (AST)** 를 생성합니다. AST는 쿼리를 구조화해 표현한 것으로, 어떤 대상이든 출력 생성을 위해 순회할 수 있습니다. 내장 SQL generator(ClickHouse, PostgreSQL, StarRocks)는 모두 이 동일한 AST를 순회하며 구현됩니다. Elasticsearch 쿼리, MongoDB filter, Prometheus selector, 로그 grep 명령, 또는 다른 어떤 대상이든 직접 generator를 만들 수 있습니다.
 
 ## AST 노드 타입
@@ -15,11 +18,11 @@ AST는 세 가지 타입으로 구성됩니다: **Node**(트리 구조), **Expre
 
 | 필드 | 타입 | 설명 |
 |-------|------|-------------|
-| `boolOperator` | `string` | `"and"` 또는 `"or"`입니다. `left`와 `right`를 어떻게 결합할지 나타냅니다. leaf 노드에서는 비어 있습니다. |
+| `boolOperator` | `string` | <FlyqlToken type="operator">and</FlyqlToken> 또는 <FlyqlToken type="operator">or</FlyqlToken>입니다. `left`와 `right`를 어떻게 결합할지 나타냅니다. leaf 노드에서는 비어 있습니다. |
 | `expression` | `Expression` 또는 `null` | leaf 노드인 경우 조건입니다. branch 노드에서는 `null`입니다. |
 | `left` | `Node` 또는 `null` | 왼쪽 자식 서브트리입니다. leaf 노드에서는 `null`입니다. |
 | `right` | `Node` 또는 `null` | 오른쪽 자식 서브트리입니다. leaf 노드에서는 `null`입니다. |
-| `negated` | `boolean` | 이 노드가 `not`으로 감싸져 있으면 `true`입니다. |
+| `negated` | `boolean` | 이 노드가 <FlyqlToken type="operator">not</FlyqlToken>으로 감싸져 있으면 `true`입니다. |
 
 노드는 **leaf**(`expression`이 설정되고 `left`/`right`는 `null`)이거나 **branch**(`left`/`right`가 설정되고 `expression`은 `null`) 중 **하나만** 될 수 있습니다. 둘 다인 경우는 없습니다.
 
@@ -29,11 +32,11 @@ AST는 세 가지 타입으로 구성됩니다: **Node**(트리 구조), **Expre
 
 | 필드 | 타입 | 설명 |
 |-------|------|-------------|
-| `key` | `Key` | 검사할 필드입니다. 예: `status`, `user.metadata.role` |
-| `operator` | `string` | 다음 중 하나입니다: `=`, `!=`, `~`, `!~`, `>`, `<`, `>=`, `<=`, `truthy`, `in`, `not in`, `has`, `not has`. |
-| `value` | `any` | 비교 값입니다. 스칼라 연산자에서는 문자열, 숫자, boolean 또는 null입니다. `in`, `not in`에서는 비어 있습니다. |
-| `valueType` | `string` 또는 `null` | `value`의 명시적 타입입니다: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`. `in`/`not in`에서는 `null`입니다. |
-| `values` | `array` 또는 `null` | `in`, `not in` 연산자용 값 목록입니다. 서로 다른 타입이 섞일 수 있습니다. 다른 연산자에서는 `null`입니다. |
+| `key` | `Key` | 검사할 필드입니다. 예: <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken> |
+| `operator` | `string` | 다음 중 하나입니다: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
+| `value` | `any` | 비교 값입니다. 스칼라 연산자에서는 문자열, 숫자, boolean 또는 null입니다. <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>에서는 비어 있습니다. |
+| `valueType` | `string` 또는 `null` | `value`의 명시적 타입입니다: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`. <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>에서는 `null`입니다. |
+| `values` | `array` 또는 `null` | <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken> 연산자용 값 목록입니다. 서로 다른 타입이 섞일 수 있습니다. 다른 연산자에서는 `null`입니다. |
 | `valuesTypes` | `string[]` 또는 `null` | `values`와 병렬인 요소별 타입 배열입니다. 각 요소는 타입 상수 중 하나입니다. `values`를 사용하지 않을 때는 `null`입니다. |
 
 ### Key
@@ -120,7 +123,7 @@ BoolOperator.OR       # "or"
 
 ### 단순 조건
 
-Query: `status = 200`
+Query: <FlyqlCode code="status = 200" inline />
 
 ```
 Node (leaf)
@@ -132,7 +135,7 @@ Node (leaf)
 
 ### 불리언 조합
 
-Query: `status = 200 and method = "GET"`
+Query: <FlyqlCode code='status = 200 and method = "GET"' inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -150,7 +153,7 @@ Node (branch, boolOperator: "and")
 
 ### 부정
 
-Query: `not status = 500`
+Query: <FlyqlCode code="not status = 500" inline />
 
 ```
 Node (leaf, negated: true)
@@ -162,7 +165,7 @@ Node (leaf, negated: true)
 
 ### 괄호가 있는 중첩 불리언
 
-Query: `env=prod and (status=500 or level = error)`
+Query: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
 
 ```
 Node (branch, boolOperator: "and")
@@ -186,7 +189,7 @@ Node (branch, boolOperator: "and")
 
 ### 리스트 멤버십
 
-Query: `status in [200, 201, 204]`
+Query: <FlyqlCode code="status in [200, 201, 204]" inline />
 
 ```
 Node (leaf)
@@ -200,7 +203,7 @@ Node (leaf)
 
 ### Truthy 검사
 
-Query: `active`
+Query: <FlyqlCode code="active" inline />
 
 ```
 Node (leaf)
@@ -212,7 +215,7 @@ Node (leaf)
 
 ### 중첩 키
 
-Query: `user.metadata.role = "admin"`
+Query: <FlyqlCode code='user.metadata.role = "admin"' inline />
 
 ```
 Node (leaf)

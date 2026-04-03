@@ -3,49 +3,54 @@ title: ClickHouse
 description: ClickHouse 的 SQL 生成示例
 ---
 
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
 ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，通配匹配使用 `LIKE`。
 
 ## 基础示例
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `message = 'hello'` | `message = 'hello'` |
-| `message != 'hello'` | `message != 'hello'` |
-| `count > 10` | `count > 10` |
-| `count <= 100` | `count <= 100` |
-| `message ~ 'error.*'` | `match(message, 'error.*')` |
-| `message !~ 'test.*'` | `not match(message, 'test.*')` |
-| `host = prod*` | `host LIKE 'prod%'` |
+| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
+| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
+| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
+| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
+| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
+| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
+| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
 
 ## 布尔操作符
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `a = '1' and b > 10` | `(a = '1' and b > 10)` |
-| `a = '1' or b = '2'` | `(a = '1' or b = '2')` |
-| `not a = '1'` | `not (a = '1')` |
+| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
+| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
+| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
 
 ## 列表成员
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `status in [200, 201]` | `status IN (200, 201)` |
-| `env not in ['dev', 'test']` | `env NOT IN ('dev', 'test')` |
-| `status in []` | `0` |
-| `status not in []` | `1` |
+| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
+| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
+| <FlyqlCode code={`status in []`} inline /> | `0` |
+| <FlyqlCode code={`status not in []`} inline /> | `1` |
 
 ## 包含检查
 
+<FlyqlToken type="operator">has</FlyqlToken> 操作符根据列类型生成不同 SQL：
+
 | 列类型 | FlyQL | 生成 SQL |
 |--------|-------|----------|
-| String | `message has 'error'` | `position(message, 'error') > 0` |
-| String（取反） | `message not has 'error'` | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | `tags has 'web'` | `has(tags, 'web')` |
-| Array（取反） | `tags not has 'web'` | `NOT has(tags, 'web')` |
-| Map | `metadata has 'key'` | `mapContains(metadata, 'key')` |
-| Map（取反） | `metadata not has 'key'` | `NOT mapContains(metadata, 'key')` |
-| Native JSON | `data has 'key'` | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON String | `data has 'key'` | `JSONHas(data, 'key')` |
+| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
+| String（取反） | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
+| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
+| Array（取反） | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
+| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
+| Map（取反） | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
+| Native JSON | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
+| JSON String | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
 
 ## JSON 列
 
@@ -55,32 +60,32 @@ ClickHouse 支持两种 JSON 形式。
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name = 'test'` | `` data.`name` = 'test' `` |
-| `data.user.name = 'john'` | `` data.`user`.`name` = 'john' `` |
-| `data.age = 25` | `` data.`age` = 25 `` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
+| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
 
 ### 字符串形式 JSON
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `data.name = 'test'` | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| `data.user.name = 'john'` | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
+| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
 
 ## Map 列
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `metadata.key1 = 'value1'` | `equals(metadata['key1'], 'value1')` |
-| `metadata.key1 != 'value1'` | `notEquals(metadata['key1'], 'value1')` |
-| `metadata.pattern ~ 'test.*'` | `match(metadata['pattern'], 'test.*')` |
+| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
+| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
+| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
 
 ## 数组列
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `tags.0 = 'first'` | `equals(tags[0], 'first')` |
-| `tags.1 = 'second'` | `equals(tags[1], 'second')` |
-| `tags.0 ~ 'tag.*'` | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
 
 ## 列定义示例
 
@@ -106,9 +111,8 @@ const columns = {
 
 | FlyQL | 生成 SQL |
 |-------|----------|
-| `status\|upper = "ERROR"` | `equals(upper(status), 'ERROR')` |
-| `status\|lower = "info"` | `equals(lower(status), 'info')` |
-| `message\|len > 100` | `length(message) > 100` |
-| `message\|lower\|len > 100` | `length(lower(message)) > 100` |
-| `tags\|split(",") has "urgent"` | `has(splitByChar(',', tags), 'urgent')` |
-
+| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
+| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
+| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
+| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
+| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |

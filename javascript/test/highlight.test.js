@@ -12,7 +12,7 @@ describe('highlight', () => {
         const html = highlight('status=200')
         expect(html).toContain('flyql-key')
         expect(html).toContain('flyql-operator')
-        expect(html).toContain('flyql-value')
+        expect(html).toContain('flyql-number')
         expect(html).toContain('status')
         expect(html).toContain('200')
     })

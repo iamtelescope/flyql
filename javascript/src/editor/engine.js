@@ -4,7 +4,7 @@
  * One instance per editor component.
  */
 
-import { Parser, CharType, State, VALID_KEY_VALUE_OPERATORS } from '../core/index.js'
+import { Parser, CharType, State, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
 import { EditorState } from './state.js'
 import {
     updateSuggestions,
@@ -403,6 +403,8 @@ export class EditorEngine {
                     spanType = CharType.BOOLEAN
                 } else if (currentText === 'null') {
                     spanType = CharType.NULL
+                } else if (isNumeric(currentText)) {
+                    spanType = CharType.NUMBER
                 }
             }
             html += wrapSpan(spanType, currentText)

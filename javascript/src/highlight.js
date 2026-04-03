@@ -14,7 +14,7 @@
  *   highlight("id, message, meta_str.region as region", { mode: 'columns' })
  */
 
-import { Parser as QueryParser, CharType as QueryCharType, State as QueryState } from './core/index.js'
+import { Parser as QueryParser, CharType as QueryCharType, State as QueryState, isNumeric } from './core/index.js'
 import { Parser as ColumnsParser, CharType as ColumnsCharType } from './columns/index.js'
 
 const QUERY_CLASS = {
@@ -111,6 +111,7 @@ export function highlight(text, options) {
         if (type === QueryCharType.VALUE) {
             if (val === 'true' || val === 'false') return QueryCharType.BOOLEAN
             if (val === 'null') return QueryCharType.NULL
+            if (isNumeric(val)) return QueryCharType.NUMBER
         }
         return type
     }

@@ -249,7 +249,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import MultiSelect from 'primevue/multiselect'
@@ -358,6 +358,16 @@ const filters = ref({
     flyql: { value: null, matchMode: 'contains' },
     sql: { value: null, matchMode: 'contains' },
 })
+
+watch(
+    () => props.results,
+    (results) => {
+        if (results.length && results.some((r) => !r.passed)) {
+            filters.value.passed.value = [false]
+        }
+    },
+    { immediate: true },
+)
 
 const statusOptions = [
     { label: 'Passed', value: true },

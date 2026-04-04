@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "description": "LIKE/ILIKE operator ClickHouse generator test cases",
+  "test_suite": "like",
+  "tests": [
+    {
+      "name": "like_suffix",
+      "input": "message like 'hello%'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE 'hello%'"
+    },
+    {
+      "name": "like_prefix",
+      "input": "message like '%world'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE '%world'"
+    },
+    {
+      "name": "like_both",
+      "input": "message like '%hello%'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE '%hello%'"
+    },
+    {
+      "name": "like_underscore",
+      "input": "message like 'test_value'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE 'test_value'"
+    },
+    {
+      "name": "ilike",
+      "input": "message ilike 'Hello%'",
+      "expected_result": "success",
+      "expected_sql": "message ILIKE 'Hello%'"
+    },
+    {
+      "name": "not_like",
+      "input": "message not like 'hello%'",
+      "expected_result": "success",
+      "expected_sql": "message NOT LIKE 'hello%'"
+    },
+    {
+      "name": "not_ilike",
+      "input": "message not ilike 'Hello%'",
+      "expected_result": "success",
+      "expected_sql": "message NOT ILIKE 'Hello%'"
+    },
+    {
+      "name": "like_escaped_percent",
+      "input": "message like 'hello\\%world'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE 'hello\\\\%world'"
+    },
+    {
+      "name": "like_escaped_underscore",
+      "input": "message like 'test\\_value'",
+      "expected_result": "success",
+      "expected_sql": "message LIKE 'test\\\\_value'"
+    },
+    {
+      "name": "like_lone_backslash_escaped",
+      "input": "message like \\",
+      "expected_result": "success",
+      "expected_sql": "message LIKE '\\\\\\\\'"
+    }
+  ]
+}

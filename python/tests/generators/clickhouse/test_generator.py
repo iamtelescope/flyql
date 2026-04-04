@@ -3,7 +3,6 @@ from flyql.core.exceptions import FlyqlError
 from flyql.generators.clickhouse.generator import (
     escape_param,
     is_number,
-    prepare_like_pattern_value,
 )
 
 
@@ -49,31 +48,3 @@ class TestIsNumber:
     def test_is_number_other_types(self):
         assert is_number(None) is False
         assert is_number([]) is False
-
-
-class TestPrepareLikePattern:
-
-    def test_no_pattern(self):
-        pattern_found, result = prepare_like_pattern_value("hello")
-        assert pattern_found is False
-        assert result == "hello"
-
-    def test_star_pattern(self):
-        pattern_found, result = prepare_like_pattern_value("hello*")
-        assert pattern_found is True
-        assert result == "hello%"
-
-    def test_multiple_stars(self):
-        pattern_found, result = prepare_like_pattern_value("*hello*world*")
-        assert pattern_found is True
-        assert result == "%hello%world%"
-
-    def test_escaped_star(self):
-        pattern_found, result = prepare_like_pattern_value("hello\\*world")
-        assert pattern_found is False
-        assert result == "hello\\*world"
-
-    def test_percent_escaping(self):
-        pattern_found, result = prepare_like_pattern_value("hello%world")
-        assert pattern_found is True
-        assert result == "hello\\%world"

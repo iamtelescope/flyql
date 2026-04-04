@@ -161,6 +161,30 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 			return false, err
 		}
 		return !regex.MatchString(toString(value)), nil
+	case flyql.OpLike:
+		regex, err := e.getRegex(likeToRegex(toString(expr.Value)))
+		if err != nil {
+			return false, err
+		}
+		return regex.MatchString(toString(value)), nil
+	case flyql.OpNotLike:
+		regex, err := e.getRegex(likeToRegex(toString(expr.Value)))
+		if err != nil {
+			return false, err
+		}
+		return !regex.MatchString(toString(value)), nil
+	case flyql.OpILike:
+		regex, err := e.getRegex("(?i)" + likeToRegex(toString(expr.Value)))
+		if err != nil {
+			return false, err
+		}
+		return regex.MatchString(toString(value)), nil
+	case flyql.OpNotILike:
+		regex, err := e.getRegex("(?i)" + likeToRegex(toString(expr.Value)))
+		if err != nil {
+			return false, err
+		}
+		return !regex.MatchString(toString(value)), nil
 	case flyql.OpGreater:
 		return compareGreater(value, expr.Value), nil
 	case flyql.OpLess:
@@ -189,6 +213,37 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 	default:
 		return false, fmt.Errorf("unknown expression operator: %s", expr.Operator)
 	}
+}
+
+func likeToRegex(pattern string) string {
+	var result strings.Builder
+	result.WriteByte('^')
+	runes := []rune(pattern)
+	for i := 0; i < len(runes); i++ {
+		ch := runes[i]
+		if ch == '\\' && i+1 < len(runes) {
+			next := runes[i+1]
+			if next == '%' || next == '_' {
+				// Escaped wildcard: literal character
+				result.WriteRune(next)
+				i++
+				continue
+			}
+		}
+		switch ch {
+		case '%':
+			result.WriteString(".*")
+		case '_':
+			result.WriteByte('.')
+		case '.', '[', ']', '{', '(', ')', '*', '+', '?', '^', '$', '|', '\\':
+			result.WriteByte('\\')
+			result.WriteRune(ch)
+		default:
+			result.WriteRune(ch)
+		}
+	}
+	result.WriteByte('$')
+	return result.String()
 }
 
 func toString(v any) string {

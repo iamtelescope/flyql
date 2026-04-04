@@ -20,6 +20,35 @@ RegexEngine = Literal["re2", "python-std"]  # Must match constants above
 
 REGEX_OPERATORS = {Operator.REGEX.value, Operator.NOT_REGEX.value}
 
+_REGEX_META = frozenset(r".[{()*+?^$|\\")
+
+
+def _like_to_regex(pattern: str) -> str:
+    """Convert a SQL LIKE pattern to an anchored Python regex string."""
+    parts: list[str] = []
+    i = 0
+    n = len(pattern)
+    while i < n:
+        ch = pattern[i]
+        if ch == "\\" and i + 1 < n:
+            next_ch = pattern[i + 1]
+            if next_ch == "%":
+                parts.append(re.escape("%"))
+            elif next_ch == "_":
+                parts.append(re.escape("_"))
+            else:
+                parts.append(re.escape(next_ch))
+            i += 2
+            continue
+        if ch == "%":
+            parts.append(".*")
+        elif ch == "_":
+            parts.append(".")
+        else:
+            parts.append(re.escape(ch))
+        i += 1
+    return "^" + "".join(parts) + "$"
+
 
 def is_falsy(value: Any) -> bool:
     """Check if a value is falsy (Python-style)."""
@@ -155,6 +184,22 @@ class Evaluator:
         elif expression.operator == Operator.NOT_REGEX.value:
             if regex is None:
                 return True
+            return not bool(regex.search(str(value)))
+        elif expression.operator == Operator.LIKE.value:
+            like_regex = _like_to_regex(str(expression.value))
+            regex = self._get_regex(like_regex)
+            return bool(regex.search(str(value)))
+        elif expression.operator == Operator.NOT_LIKE.value:
+            like_regex = _like_to_regex(str(expression.value))
+            regex = self._get_regex(like_regex)
+            return not bool(regex.search(str(value)))
+        elif expression.operator == Operator.ILIKE.value:
+            like_regex = "(?i)" + _like_to_regex(str(expression.value))
+            regex = self._get_regex(like_regex)
+            return bool(regex.search(str(value)))
+        elif expression.operator == Operator.NOT_ILIKE.value:
+            like_regex = "(?i)" + _like_to_regex(str(expression.value))
+            regex = self._get_regex(like_regex)
             return not bool(regex.search(str(value)))
         elif expression.operator == Operator.GREATER_THAN.value:
             try:

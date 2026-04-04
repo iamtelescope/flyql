@@ -102,6 +102,11 @@ def test_types_parsing(test_case):
     run_test_case(test_case)
 
 
+@pytest.mark.parametrize("test_case", load_test_data("like.json")["tests"])
+def test_like_parsing(test_case):
+    run_test_case(test_case)
+
+
 @pytest.mark.parametrize("test_case", load_test_data("null_errors.json")["tests"])
 def test_null_errors_parsing(test_case):
     run_test_case(test_case)

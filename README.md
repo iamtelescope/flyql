@@ -37,6 +37,10 @@ FlyQL supports the following comparison operators:
 - **Lower or equals than** - `<=`
 - **In list** - `in`
 - **Not in list** - `not in`
+- **Like pattern** - `like`
+- **Not like pattern** - `not like`
+- **Case-insensitive like** - `ilike`
+- **Case-insensitive not like** - `not ilike`
 
 ### List Operators
 
@@ -53,6 +57,23 @@ Rules:
 - String values must be quoted: `['a', 'b']`
 - Number values are unquoted: `[1, 2, 3]`
 - Empty list `[]` is allowed (`in []` is always false, `not in []` is always true)
+
+### Like Operators
+
+Use `like` and `ilike` for SQL-style pattern matching:
+
+```
+message like 'error%'         # starts with "error"
+host like '%prod%'            # contains "prod"
+path like '/api/_/status'     # _ matches any single character
+message ilike '%Error%'       # case-insensitive
+host not like 'test%'         # negated
+```
+
+Wildcards:
+- `%` matches any sequence of characters (including empty)
+- `_` matches exactly one character
+- `\%` and `\_` match literal `%` and `_`
 
 ### Truthy Checks
 

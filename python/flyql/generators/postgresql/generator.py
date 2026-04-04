@@ -38,8 +38,6 @@ BOOL_OP_TO_SQL = {
     "or": "OR",
 }
 
-LIKE_PATTERN_CHAR = "*"
-SQL_LIKE_PATTERN_CHAR = "%"
 JSON_KEY_PATTERN = re.compile(r"^[a-zA-Z_][.a-zA-Z0-9_-]*$")
 
 ESCAPE_CHARS_MAP = {
@@ -81,6 +79,25 @@ def validate_bool_operator(op: str) -> None:
         raise FlyqlError(f"invalid bool operator: {op}")
 
 
+def _escape_like_param(value: str) -> str:
+    s = str(value)
+    like_escaped = ""
+    i = 0
+    while i < len(s):
+        c = s[i]
+        if c == "\\":
+            if i + 1 < len(s) and s[i + 1] in ("%", "_"):
+                like_escaped += c + s[i + 1]
+                i += 2
+                continue
+            else:
+                like_escaped += "\\\\"
+        else:
+            like_escaped += c
+        i += 1
+    return escape_param(like_escaped)
+
+
 def escape_param(item: Any) -> str:
     if item is None:
         return "NULL"
@@ -107,30 +124,6 @@ def get_identifier(column: Column) -> str:
     if column.raw_identifier:
         return column.raw_identifier
     return escape_identifier(column.name)
-
-
-def prepare_like_pattern_value(value: str) -> Tuple[bool, str]:
-    pattern_found = False
-    new_value = ""
-    i = 0
-    while i < len(value):
-        char = value[i]
-        if char == LIKE_PATTERN_CHAR:
-            if i > 0 and value[i - 1] == "\\":
-                new_value += LIKE_PATTERN_CHAR
-            else:
-                new_value += SQL_LIKE_PATTERN_CHAR
-                pattern_found = True
-        elif char == SQL_LIKE_PATTERN_CHAR:
-            pattern_found = True
-            new_value += "\\"
-            new_value += SQL_LIKE_PATTERN_CHAR
-        elif char == "\\" and i + 1 < len(value) and value[i + 1] == LIKE_PATTERN_CHAR:
-            new_value += "\\"
-        else:
-            new_value += char
-        i += 1
-    return pattern_found, new_value
 
 
 def _build_jsonb_path(
@@ -208,6 +201,18 @@ def expression_to_sql_simple(
     elif expression.operator == Operator.NOT_REGEX.value:
         value = escape_param(str(expression.value))
         return f"{identifier} !~ {value}"
+    elif expression.operator == Operator.LIKE.value:
+        value = _escape_like_param(expression.value)
+        return f"{identifier} LIKE {value}"
+    elif expression.operator == Operator.NOT_LIKE.value:
+        value = _escape_like_param(expression.value)
+        return f"{identifier} NOT LIKE {value}"
+    elif expression.operator == Operator.ILIKE.value:
+        value = _escape_like_param(expression.value)
+        return f"{identifier} ILIKE {value}"
+    elif expression.operator == Operator.NOT_ILIKE.value:
+        value = _escape_like_param(expression.value)
+        return f"{identifier} NOT ILIKE {value}"
     elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
         if expression.value_type == ValueType.NULL:
             return (
@@ -219,17 +224,8 @@ def expression_to_sql_simple(
             bool_literal = "TRUE" if expression.value else "FALSE"
             return f"{identifier} {expression.operator} {bool_literal}"
         else:
-            operator = expression.operator
-            value_str = str(expression.value)
-            is_like_pattern, processed = prepare_like_pattern_value(value_str)
-            escaped_value = escape_param(processed)
-            if is_like_pattern:
-                operator = (
-                    "LIKE"
-                    if expression.operator == Operator.EQUALS.value
-                    else "NOT LIKE"
-                )
-            return f"{identifier} {operator} {escaped_value}"
+            value = escape_param(str(expression.value))
+            return f"{identifier} {expression.operator} {value}"
     else:
         value = escape_param(expression.value)
         return f"{identifier} {expression.operator} {value}"

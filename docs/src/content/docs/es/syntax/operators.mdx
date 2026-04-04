@@ -55,6 +55,28 @@ Los patrones regex siguen la sintaxis del runtime o la base de datos de destino.
 
 Consulta la página de [Listas](/es/syntax/lists/) para ver las reglas detalladas de sintaxis de listas.
 
+## Coincidencia de patrones (LIKE)
+
+| Operador | Nombre | Ejemplo |
+|----------|--------|---------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Patrón like | <FlyqlCode code={`message like 'error%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | No coincide con patrón like | <FlyqlCode code={`host not like 'test%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like sin distinción de mayúsculas | <FlyqlCode code={`message ilike 'Error%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Not like sin distinción de mayúsculas | <FlyqlCode code={`host not ilike 'TEST%'`} inline /> |
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host not like '%-staging'`} />
+<FlyqlCode code={`path ilike '/API/%'`} />
+
+Coincidencia de patrones estilo SQL con dos comodines:
+
+- <FlyqlToken type="operator">%</FlyqlToken> — coincide con cualquier secuencia de caracteres (incluido vacío)
+- <FlyqlToken type="operator">_</FlyqlToken> — coincide con exactamente un carácter
+
+Escapa los comodines con una barra invertida para buscarlos de forma literal: `\%` coincide con un `%` literal, `\_` coincide con un `_` literal.
+
+Consulta [Coincidencia de patrones](/es/syntax/pattern-matching/) para más detalles y ejemplos.
+
 ## Comprobación de contención
 
 | Operador | Nombre | Ejemplo |
@@ -91,3 +113,7 @@ El operador <FlyqlToken type="operator">has</FlyqlToken> realiza una comprobaci�
 | <FlyqlToken type="operator">not in</FlyqlToken> | No está en la lista | <FlyqlCode code={`s not in [3]`} inline /> |
 | <FlyqlToken type="operator">has</FlyqlToken> | Contiene | <FlyqlCode code={`msg has 'err'`} inline /> |
 | <FlyqlToken type="operator">not has</FlyqlToken> | No contiene | <FlyqlCode code={`msg not has 'ok'`} inline /> |
+| <FlyqlToken type="operator">like</FlyqlToken> | Patrón like | <FlyqlCode code={`msg like 'err%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | No like | <FlyqlCode code={`msg not like 'ok%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like (sin distinción de mayúsculas) | <FlyqlCode code={`msg ilike 'Err%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | No like (sin distinción de mayúsculas) | <FlyqlCode code={`msg not ilike 'Ok%'`} inline /> |

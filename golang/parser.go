@@ -20,6 +20,10 @@ var validKeyValueOperators = map[string]bool{
 	OpNotIn:           true,
 	OpHas:             true,
 	OpNotHas:          true,
+	OpLike:            true,
+	OpNotLike:         true,
+	OpILike:           true,
+	OpNotILike:        true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -62,6 +66,8 @@ type Parser struct {
 	inListValuesTypes          []types.ValueType
 	isNotIn                    bool
 	isNotHas                   bool
+	isNotLike                  bool
+	isNotIlike                 bool
 	valueQuoteChar             rune
 	inListQuoteChar            rune
 	pipeSeenInKey              bool
@@ -114,6 +120,8 @@ func (p *Parser) resetInListData() {
 	p.inListValuesTypes = nil
 	p.isNotIn = false
 	p.isNotHas = false
+	p.isNotLike = false
+	p.isNotIlike = false
 }
 
 func (p *Parser) extendInListCurrentValue() {
@@ -489,6 +497,71 @@ func (p *Parser) inStateKeyValueOperator() {
 		return
 	}
 
+	if p.keyValueOperator == "l" && p.char.value == 'i' {
+		p.keyValueOperator = "li"
+		return
+	} else if p.keyValueOperator == "li" && p.char.value == 'k' {
+		p.keyValueOperator = "lik"
+		return
+	} else if p.keyValueOperator == "lik" && p.char.value == 'e' {
+		p.keyValueOperator = LikeKeyword
+		return
+	} else if p.keyValueOperator == LikeKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpLike
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpLike
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpLike
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpLike
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'like'", 50)
+		}
+		return
+	}
+
+	if p.keyValueOperator == "i" && p.char.value == 'l' {
+		p.keyValueOperator = "il"
+		return
+	} else if p.keyValueOperator == "il" && p.char.value == 'i' {
+		p.keyValueOperator = "ili"
+		return
+	} else if p.keyValueOperator == "ili" && p.char.value == 'k' {
+		p.keyValueOperator = "ilik"
+		return
+	} else if p.keyValueOperator == "ilik" && p.char.value == 'e' {
+		p.keyValueOperator = ILikeKeyword
+		return
+	} else if p.keyValueOperator == ILikeKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpILike
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpILike
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpILike
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpILike
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'ilike'", 50)
+		}
+		return
+	}
+
 	if p.keyValueOperator == "i" && p.char.value == 'n' {
 		p.keyValueOperator = "in"
 		return
@@ -782,6 +855,9 @@ func (p *Parser) inStateKeyOrBoolOp() {
 	} else if p.char.value == 'h' {
 		p.keyValueOperator = "h"
 		p.state = stateKeyValueOperator
+	} else if p.char.value == 'l' {
+		p.keyValueOperator = "l"
+		p.state = stateKeyValueOperator
 	} else if p.char.value == 'n' {
 		p.keyValueOperator = "n"
 		p.state = stateExpectInKeyword
@@ -876,6 +952,14 @@ func (p *Parser) inStateExpectListStart() {
 		p.isNotIn = false
 		p.isNotHas = true
 		p.state = stateExpectHasKeyword
+	} else if p.char.value == 'l' && p.isNotIn {
+		p.keyValueOperator = "l"
+		p.isNotIn = false
+		p.isNotLike = true
+		p.state = stateExpectLikeKeyword
+	} else if p.char.value == 'i' && p.isNotIn {
+		p.keyValueOperator = "i"
+		p.state = stateExpectLikeKeyword
 	} else if p.char.value == 'i' {
 		p.keyValueOperator = "i"
 	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
@@ -917,6 +1001,75 @@ func (p *Parser) inStateExpectHasKeyword() {
 		}
 	} else {
 		p.setErrorState("expected 'has' keyword", 50)
+	}
+}
+
+func (p *Parser) inStateExpectLikeKeyword() {
+	if p.char == nil {
+		return
+	}
+
+	// Path A: building "like" for "not like"
+	if p.keyValueOperator == "l" && p.char.value == 'i' {
+		p.keyValueOperator = "li"
+	} else if p.keyValueOperator == "li" && p.char.value == 'k' {
+		p.keyValueOperator = "lik"
+	} else if p.keyValueOperator == "lik" && p.char.value == 'e' {
+		p.keyValueOperator = LikeKeyword
+	} else if p.keyValueOperator == LikeKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpNotLike
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpNotLike
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpNotLike
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpNotLike
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'not like'", 50)
+		}
+		// Path B: disambiguate "i" -> "in" vs "ilike"
+	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
+		p.keyValueOperator = ""
+		p.isNotIn = true
+		p.state = stateExpectListStart
+	} else if p.keyValueOperator == "i" && p.char.value == 'l' {
+		p.keyValueOperator = "il"
+		p.isNotIlike = true
+	} else if p.keyValueOperator == "il" && p.char.value == 'i' {
+		p.keyValueOperator = "ili"
+	} else if p.keyValueOperator == "ili" && p.char.value == 'k' {
+		p.keyValueOperator = "ilik"
+	} else if p.keyValueOperator == "ilik" && p.char.value == 'e' {
+		p.keyValueOperator = ILikeKeyword
+	} else if p.keyValueOperator == ILikeKeyword {
+		if p.char.isDelimiter() {
+			p.keyValueOperator = OpNotILike
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpNotILike
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpNotILike
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpNotILike
+			p.state = stateValue
+			p.extendValue()
+		} else {
+			p.setErrorState("expected value after 'not ilike'", 50)
+		}
+	} else {
+		p.setErrorState("expected 'like' or 'ilike' keyword", 50)
 	}
 }
 
@@ -1046,6 +1199,7 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateExpectNotTarget ||
 		p.state == stateExpectInKeyword ||
 		p.state == stateExpectHasKeyword ||
+		p.state == stateExpectLikeKeyword ||
 		p.state == stateExpectListStart ||
 		p.state == stateExpectListValue ||
 		p.state == stateInListValue ||
@@ -1142,6 +1296,8 @@ func (p *Parser) Parse(text string) error {
 			p.inStateExpectHasKeyword()
 		case stateExpectListStart:
 			p.inStateExpectListStart()
+		case stateExpectLikeKeyword:
+			p.inStateExpectLikeKeyword()
 		case stateExpectListValue:
 			p.inStateExpectListValue()
 		case stateInListValue:

@@ -85,28 +85,74 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## Подстановочный шаблон
+## Сопоставление LIKE
 
-Используйте <FlyqlToken type="operator">{'*'}</FlyqlToken> в конце некавыченного значения для сопоставления по префиксу:
+Используйте <FlyqlToken type="operator">like</FlyqlToken> и <FlyqlToken type="operator">ilike</FlyqlToken> для SQL-подобного сопоставления по шаблону с подстановочными знаками:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-Совпадает с любым значением, начинающимся с указанного префикса. Подстановочные знаки поддерживаются только в конце значения — `*prod` или `pr*od` не поддерживаются.
+| Оператор | Значение |
+|----------|----------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Значение соответствует шаблону (с учётом регистра) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Значение не соответствует шаблону |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Значение соответствует шаблону (без учёта регистра) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Значение не соответствует шаблону (без учёта регистра) |
 
-### Подстановочный шаблон и регулярные выражения
+### Подстановочные знаки
 
-| Шаблон | Синтаксис | Пример |
-|--------|-----------|--------|
-| Подстановочный (префикс) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Регулярное выражение | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+В шаблонах <FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken> доступны два подстановочных знака:
 
-Используйте подстановочные шаблоны для простого сопоставления по префиксу. Используйте регулярные выражения, когда нужны более сложные шаблоны.
+| Знак | Значение | Пример | Совпадает с |
+|------|----------|--------|-------------|
+| `%` | Любая последовательность символов (включая пустую) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | Ровно один символ | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, но не `E1` и не `Error` |
+
+Подстановочные знаки могут располагаться в любом месте шаблона — в начале, середине, конце или в комбинации:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### Экранирование подстановочных знаков
+
+Для литерального совпадения с `%` или `_` экранируйте их обратной косой чертой:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` совпадает с литеральной строкой «100%», а не с «100» и далее произвольным текстом.
+
+### Регистронезависимое сопоставление
+
+Используйте <FlyqlToken type="operator">ilike</FlyqlToken> для сопоставления без учёта регистра:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE и регулярные выражения
+
+| Сценарий | Синтаксис | Пример |
+|----------|-----------|--------|
+| Совпадение по префиксу | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| Содержит | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| Сложный шаблон | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Используйте <FlyqlToken type="operator">like</FlyqlToken> для простого сопоставления с подстановочными знаками. Используйте регулярные выражения (<FlyqlToken type="operator">{'~'}</FlyqlToken>), когда нужны классы символов, чередование или другие сложные шаблоны.
+
+### Поддержка бэкендов
+
+Все SQL-бэкенды (ClickHouse, PostgreSQL, StarRocks) генерируют нативные SQL-операторы `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE`. Matcher в памяти внутренне конвертирует шаблон в регулярное выражение.
+
+:::note
+StarRocks `ILIKE` требует версию 2.5 или выше.
+:::
 
 ## Примеры
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

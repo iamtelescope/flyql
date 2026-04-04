@@ -16,6 +16,8 @@ const OPERATOR_NAMES = {
     [Operator.LOWER_OR_EQUALS_THAN]: 'lower or equals',
     [Operator.IN]: 'in list',
     [Operator.HAS]: 'has value',
+    [Operator.LIKE]: 'like pattern',
+    [Operator.ILIKE]: 'case-insensitive like',
 }
 
 export const STATE_LABELS = {
@@ -229,9 +231,23 @@ export function getOperatorSuggestions(columns, fieldName, registry = null) {
         { label: Operator.LOWER_OR_EQUALS_THAN, insertText: Operator.LOWER_OR_EQUALS_THAN, sortText: 'h' },
         { label: Operator.IN, insertText: ' ' + Operator.IN + ' ', sortText: 'i' },
         { label: Operator.HAS, insertText: ' ' + Operator.HAS + ' ', sortText: 'j' },
+        { label: Operator.LIKE, insertText: ' ' + Operator.LIKE + ' ', sortText: 'k' },
+        { label: Operator.ILIKE, insertText: ' ' + Operator.ILIKE + ' ', sortText: 'l' },
     ]
     if (col && col.type === 'number') {
-        ops.pop() // remove HAS — not supported for number columns
+        // remove HAS, LIKE, ILIKE — not supported for number columns
+        ops.splice(
+            ops.findIndex((o) => o.label === Operator.HAS),
+            1,
+        )
+        ops.splice(
+            ops.findIndex((o) => o.label === Operator.LIKE),
+            1,
+        )
+        ops.splice(
+            ops.findIndex((o) => o.label === Operator.ILIKE),
+            1,
+        )
     }
     if (!col || (col.type !== 'enum' && col.type !== 'number')) {
         ops.push({ label: Operator.REGEX, insertText: Operator.REGEX, sortText: 'c' })

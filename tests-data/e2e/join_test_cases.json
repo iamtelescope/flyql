@@ -76,7 +76,7 @@
     },
     {
       "name": "join_filter_related_label_pattern",
-      "flyql": "r_label=al*",
+      "flyql": "r_label like 'al%'",
       "expected_ids": [1, 5],
       "databases": ["postgresql", "clickhouse", "starrocks"]
     },

@@ -26,6 +26,7 @@ const CHAR_TYPE_CLASS = {
     [CharType.PIPE]: 'flyql-transformer',
     [CharType.TRANSFORMER]: 'flyql-transformer',
     [CharType.ARGUMENT]: 'flyql-argument',
+    [CharType.WILDCARD]: 'flyql-wildcard',
 }
 
 function escapeHtml(str) {
@@ -207,6 +208,8 @@ export class EditorEngine {
         } else if (parser.state === State.EXPECT_IN_KEYWORD) {
             ctx.expecting = 'none'
         } else if (parser.state === State.EXPECT_HAS_KEYWORD) {
+            ctx.expecting = 'none'
+        } else if (parser.state === State.EXPECT_LIKE_KEYWORD) {
             ctx.expecting = 'none'
         }
 

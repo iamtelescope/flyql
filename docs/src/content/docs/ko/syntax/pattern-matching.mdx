@@ -85,28 +85,74 @@ Regex 문법은 대상 백엔드에 따라 달라집니다.
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## 와일드카드 매칭
+## LIKE 매칭
 
-따옴표로 감싸지 않은 값의 끝에 <FlyqlToken type="operator">{'*'}</FlyqlToken>를 붙이면 글롭 스타일 접두사 매칭을 할 수 있습니다.
+SQL 스타일 와일드카드 패턴 매칭을 위해 <FlyqlToken type="operator">like</FlyqlToken>와 <FlyqlToken type="operator">ilike</FlyqlToken>를 사용합니다:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-이는 주어진 접두사로 시작하는 모든 값과 일치합니다. 와일드카드는 값의 끝에서만 지원되며, `*prod` 또는 `pr*od`는 지원되지 않습니다.
+| 연산자 | 의미 |
+|--------|------|
+| <FlyqlToken type="operator">like</FlyqlToken> | 값이 패턴과 일치함 (대소문자 구분) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | 값이 패턴과 일치하지 않음 |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | 값이 패턴과 일치함 (대소문자 구분 없음) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | 값이 패턴과 일치하지 않음 (대소문자 구분 없음) |
 
-### 와일드카드 vs. Regex
+### 와일드카드
 
-| 패턴 | 문법 | 예제 |
-|------|------|------|
-| 와일드카드(접두사) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Regex(전체) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+<FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken> 패턴에서 두 가지 와일드카드 문자를 사용할 수 있습니다:
 
-단순한 접두사 매칭에는 와일드카드를 사용하고, 더 복잡한 패턴이 필요하면 regex를 사용하세요.
+| 와일드카드 | 의미 | 예제 | 일치하는 값 |
+|----------|------|------|-----------|
+| `%` | 임의의 문자열 (빈 문자열 포함) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | 정확히 한 문자 | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, 하지만 `E1`이나 `Error`는 아님 |
+
+와일드카드는 패턴의 어디에든 올 수 있습니다 -- 시작, 중간, 끝 또는 조합:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### 와일드카드 이스케이프
+
+리터럴 `%` 또는 `_`와 매칭하려면 백슬래시로 이스케이프하세요:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%`는 리터럴 문자열 "100%"와 일치하며, "100" 뒤에 아무거나 오는 것과는 일치하지 않습니다.
+
+### 대소문자 구분 없는 매칭
+
+대소문자 구분 없는 패턴 매칭에는 <FlyqlToken type="operator">ilike</FlyqlToken>를 사용하세요:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE vs. Regex
+
+| 사용 사례 | 문법 | 예제 |
+|----------|------|------|
+| 접두사 매칭 | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| 포함 | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| 복잡한 패턴 | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+단순 와일드카드 매칭에는 <FlyqlToken type="operator">like</FlyqlToken>를 사용하세요. 문자 클래스, 선택, 또는 기타 고급 패턴이 필요하면 regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>)를 사용하세요.
+
+### 백엔드 지원 현황
+
+모든 SQL 백엔드 (ClickHouse, PostgreSQL, StarRocks)는 네이티브 `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE` SQL 연산자를 생성합니다. In-memory matcher는 패턴을 내부적으로 regex로 변환합니다.
+
+:::note
+StarRocks `ILIKE`는 버전 2.5 이상이 필요합니다.
+:::
 
 ## 예제
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

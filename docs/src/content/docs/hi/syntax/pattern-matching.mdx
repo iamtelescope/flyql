@@ -85,28 +85,74 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## वाइल्डकार्ड मैचिंग
+## LIKE मैचिंग
 
-ग्लोब-शैली प्रीफ़िक्स मैचिंग के लिए अनउद्धृत मान के अंत में <FlyqlToken type="operator">{'*'}</FlyqlToken> का उपयोग करें:
+SQL-शैली वाइल्डकार्ड पैटर्न मैचिंग के लिए <FlyqlToken type="operator">like</FlyqlToken> और <FlyqlToken type="operator">ilike</FlyqlToken> का उपयोग करें:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-यह दिए गए प्रीफ़िक्स से शुरू होने वाले किसी भी मान से मैच करता है। वाइल्डकार्ड केवल मान के अंत में समर्थित हैं — `*prod` या `pr*od` समर्थित नहीं हैं।
+| ऑपरेटर | अर्थ |
+|----------|---------|
+| <FlyqlToken type="operator">like</FlyqlToken> | मान पैटर्न से मेल खाता है (केस-संवेदनशील) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | मान पैटर्न से मेल नहीं खाता |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | मान पैटर्न से मेल खाता है (केस-असंवेदनशील) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | मान पैटर्न से मेल नहीं खाता (केस-असंवेदनशील) |
 
-### वाइल्डकार्ड बनाम रीजेक्स
+### वाइल्डकार्ड
 
-| पैटर्न | सिंटैक्स | उदाहरण |
-|---------|--------|---------|
-| वाइल्डकार्ड (प्रीफ़िक्स) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| रीजेक्स (पूर्ण) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+<FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken> पैटर्न में दो वाइल्डकार्ड वर्ण उपलब्ध हैं:
 
-सरल प्रीफ़िक्स मैचिंग के लिए वाइल्डकार्ड का उपयोग करें। अधिक जटिल पैटर्न के लिए रीजेक्स का उपयोग करें।
+| वाइल्डकार्ड | अर्थ | उदाहरण | मैच करता है |
+|----------|---------|---------|---------|
+| `%` | किसी भी वर्ण अनुक्रम से (खाली सहित) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | ठीक एक वर्ण | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, लेकिन `E1` या `Error` नहीं |
+
+वाइल्डकार्ड पैटर्न में कहीं भी आ सकते हैं — शुरुआत, मध्य, अंत या संयोजित:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### वाइल्डकार्ड एस्केप करना
+
+शाब्दिक `%` या `_` से मैच करने के लिए बैकस्लैश से एस्केप करें:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` शाब्दिक स्ट्रिंग "100%" से मैच करता है, "100" के बाद कुछ भी नहीं।
+
+### केस-असंवेदनशील मैचिंग
+
+केस-असंवेदनशील पैटर्न मैचिंग के लिए <FlyqlToken type="operator">ilike</FlyqlToken> का उपयोग करें:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE बनाम रीजेक्स
+
+| उपयोग | सिंटैक्स | उदाहरण |
+|--------|--------|---------|
+| प्रीफ़िक्स मैच | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| शामिल है | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| जटिल पैटर्न | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+सरल वाइल्डकार्ड मैचिंग के लिए <FlyqlToken type="operator">like</FlyqlToken> का उपयोग करें। जब आपको वर्ण वर्ग, विकल्प या अन्य उन्नत पैटर्न चाहिए तो रीजेक्स (<FlyqlToken type="operator">{'~'}</FlyqlToken>) का उपयोग करें।
+
+### बैकएंड समर्थन
+
+सभी SQL बैकएंड (ClickHouse, PostgreSQL, StarRocks) नेटिव `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE` SQL ऑपरेटर उत्पन्न करते हैं। इन-मेमोरी मैचर पैटर्न को आंतरिक रूप से रीजेक्स में बदलता है।
+
+:::note
+StarRocks `ILIKE` के लिए संस्करण 2.5 या बाद का आवश्यक है।
+:::
 
 ## उदाहरण
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

@@ -85,28 +85,74 @@ Combine correspondencia insensivel a maiusculas/minusculas com negacao para excl
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## Correspondencia por Wildcards
+## Correspondencia LIKE
 
-Use <FlyqlToken type="operator">{'*'}</FlyqlToken> no final de um valor sem aspas para correspondencia de prefixo estilo glob:
+Use <FlyqlToken type="operator">like</FlyqlToken> e <FlyqlToken type="operator">ilike</FlyqlToken> para correspondencia de padroes estilo SQL com wildcards:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-Isto corresponde a qualquer valor que comece com o prefixo indicado. Os wildcards so sao suportados no final de um valor — `*prod` ou `pr*od` nao sao suportados.
+| Operador | Significado |
+|----------|-------------|
+| <FlyqlToken type="operator">like</FlyqlToken> | O valor corresponde ao padrao (sensivel a maiusculas) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | O valor nao corresponde ao padrao |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | O valor corresponde ao padrao (insensivel a maiusculas) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | O valor nao corresponde ao padrao (insensivel a maiusculas) |
 
-### Wildcard vs. Regex
+### Wildcards
 
-| Padrao | Sintaxe | Exemplo |
-|--------|---------|---------|
-| Wildcard (prefixo) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Regex (completo) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+Dois caracteres wildcard estao disponiveis nos padroes <FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken>:
 
-Use wildcards para correspondencia simples de prefixo. Use regex quando necessitar de padroes mais complexos.
+| Wildcard | Significado | Exemplo | Corresponde a |
+|----------|-------------|---------|---------------|
+| `%` | Qualquer sequencia de caracteres (incluindo vazio) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | Exactamente um caractere | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, mas nao `E1` ou `Error` |
+
+Os wildcards podem aparecer em qualquer posicao do padrao — inicio, meio, fim ou combinados:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### Escapar Wildcards
+
+Para corresponder a um `%` ou `_` literal, escape com uma barra invertida:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` corresponde a cadeia literal "100%", nao a "100" seguido de qualquer coisa.
+
+### Correspondencia Insensivel a Maiusculas
+
+Use <FlyqlToken type="operator">ilike</FlyqlToken> para correspondencia de padroes insensivel a maiusculas:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE vs. Regex
+
+| Caso de uso | Sintaxe | Exemplo |
+|-------------|---------|---------|
+| Correspondencia por prefixo | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| Contem | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| Padrao complexo | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Use <FlyqlToken type="operator">like</FlyqlToken> para correspondencia simples com wildcards. Use regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>) quando necessitar de classes de caracteres, alternacao ou outros padroes avancados.
+
+### Suporte por Backend
+
+Todos os backends SQL (ClickHouse, PostgreSQL, StarRocks) emitem operadores SQL nativos `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE`. O matcher em memoria converte o padrao em regex internamente.
+
+:::note
+StarRocks `ILIKE` requer a versao 2.5 ou posterior.
+:::
 
 ## Exemplos
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

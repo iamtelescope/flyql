@@ -55,6 +55,28 @@ Os padrões regex seguem a sintaxe do banco de dados ou runtime de destino. Veja
 
 Veja a página de [Listas](/pt-br/syntax/lists/) para regras detalhadas de sintaxe de listas.
 
+## Correspondência de Padrões (LIKE)
+
+| Operador | Nome | Exemplo |
+|----------|------|---------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Padrão like | <FlyqlCode code={`message like 'error%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Não corresponde ao like | <FlyqlCode code={`host not like 'test%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like insensível a maiúsculas | <FlyqlCode code={`message ilike 'Error%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Not like insensível a maiúsculas | <FlyqlCode code={`host not ilike 'TEST%'`} inline /> |
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host not like '%-staging'`} />
+<FlyqlCode code={`path ilike '/API/%'`} />
+
+Correspondência de padrões estilo SQL com dois curingas:
+
+- <FlyqlToken type="operator">%</FlyqlToken> — corresponde a qualquer sequência de caracteres (incluindo vazio)
+- <FlyqlToken type="operator">_</FlyqlToken> — corresponde a exatamente um caractere
+
+Escape os curingas com uma barra invertida para corresponder literalmente: `\%` corresponde a um `%` literal, `\_` corresponde a um `_` literal.
+
+Veja [Correspondência de Padrões](/pt-br/syntax/pattern-matching/) para mais detalhes e exemplos.
+
 ## Verificação de Contenção
 
 | Operador | Nome | Exemplo |
@@ -91,3 +113,7 @@ O operador <FlyqlToken type="operator">has</FlyqlToken> realiza uma verificaçã
 | <FlyqlToken type="operator">not in</FlyqlToken> | Fora da lista | <FlyqlCode code={`s not in [3]`} inline /> |
 | <FlyqlToken type="operator">has</FlyqlToken> | Contém | <FlyqlCode code={`msg has 'err'`} inline /> |
 | <FlyqlToken type="operator">not has</FlyqlToken> | Não contém | <FlyqlCode code={`msg not has 'ok'`} inline /> |
+| <FlyqlToken type="operator">like</FlyqlToken> | Padrão like | <FlyqlCode code={`msg like 'err%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Not like | <FlyqlCode code={`msg not like 'ok%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like (insensível a maiúsculas) | <FlyqlCode code={`msg ilike 'Err%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Not like (insensível a maiúsculas) | <FlyqlCode code={`msg not ilike 'Ok%'`} inline /> |

@@ -13,6 +13,8 @@ from flyql.core.constants import CharType
 from flyql.core.constants import NOT_KEYWORD
 from flyql.core.constants import IN_KEYWORD
 from flyql.core.constants import HAS_KEYWORD
+from flyql.core.constants import LIKE_KEYWORD
+from flyql.core.constants import ILIKE_KEYWORD
 from flyql.core.constants import Operator
 from flyql.core.key import parse_key
 
@@ -60,6 +62,8 @@ class Parser:
         self.in_list_values_types: List[ValueType] = []
         self.is_not_in: bool = False
         self.is_not_has: bool = False
+        self.is_not_like: bool = False
+        self.is_not_ilike: bool = False
         self.value_quote_char: str = ""
         self.in_list_quote_char: str = ""
 
@@ -121,6 +125,8 @@ class Parser:
         self.in_list_values_types = []
         self.is_not_in = False
         self.is_not_has = False
+        self.is_not_like = False
+        self.is_not_ilike = False
 
     def extend_in_list_current_value(self) -> None:
         if self.char:
@@ -506,9 +512,83 @@ class Parser:
             else:
                 self.set_error_state("expected value after 'has'", 50)
             return
+        elif self.key_value_operator == "l" and self.char.value == "i":
+            self.key_value_operator = "li"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "li" and self.char.value == "k":
+            self.key_value_operator = "lik"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "lik" and self.char.value == "e":
+            self.key_value_operator = LIKE_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == LIKE_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.LIKE.value
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.LIKE.value
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.LIKE.value
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.LIKE.value
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'like'", 50)
+            return
         elif self.key_value_operator == "i" and self.char.value == "n":
             self.key_value_operator = "in"
             self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "i" and self.char.value == "l":
+            self.key_value_operator = "il"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "il" and self.char.value == "i":
+            self.key_value_operator = "ili"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "ili" and self.char.value == "k":
+            self.key_value_operator = "ilik"
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == "ilik" and self.char.value == "e":
+            self.key_value_operator = ILIKE_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+            return
+        elif self.key_value_operator == ILIKE_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.ILIKE.value
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.ILIKE.value
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.ILIKE.value
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.ILIKE.value
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'ilike'", 50)
+            return
         elif self.key_value_operator == "in":
             if self.char.is_delimiter():
                 self.store_typed_char(CharType.SPACE)
@@ -793,6 +873,10 @@ class Parser:
             self.key_value_operator = "i"
             self.set_state(State.KEY_VALUE_OPERATOR)
             self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "l":
+            self.key_value_operator = "l"
+            self.set_state(State.KEY_VALUE_OPERATOR)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.value == "h":
             self.key_value_operator = "h"
             self.set_state(State.KEY_VALUE_OPERATOR)
@@ -884,6 +968,16 @@ class Parser:
             self.is_not_has = True
             self.set_state(State.EXPECT_HAS_KEYWORD)
             self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "l" and self.is_not_in:
+            self.key_value_operator = "l"
+            self.is_not_in = False
+            self.is_not_like = True
+            self.set_state(State.EXPECT_LIKE_KEYWORD)
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.char.value == "i" and self.is_not_in:
+            self.key_value_operator = "i"
+            self.set_state(State.EXPECT_LIKE_KEYWORD)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.value == "i":
             self.key_value_operator = "i"
             self.store_typed_char(CharType.OPERATOR)
@@ -931,6 +1025,88 @@ class Parser:
                 self.set_error_state("expected value after 'not has'", 50)
         else:
             self.set_error_state("expected 'has' keyword", 50)
+
+    def in_state_expect_like_keyword(self) -> None:
+        """After 'not ' in the not-like/not-ilike path, build keyword char by char."""
+        if not self.char:
+            return
+
+        # Path A: building 'like' (from 'l')
+        if self.key_value_operator == "l" and self.char.value == "i":
+            self.key_value_operator = "li"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "li" and self.char.value == "k":
+            self.key_value_operator = "lik"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "lik" and self.char.value == "e":
+            self.key_value_operator = LIKE_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == LIKE_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.NOT_LIKE.value
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.NOT_LIKE.value
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.NOT_LIKE.value
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.NOT_LIKE.value
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'not like'", 50)
+        # Path B: disambiguate 'i' → 'in' (not in) vs 'il' (not ilike)
+        elif self.key_value_operator == "i" and self.char.value == "n":
+            self.key_value_operator = ""
+            self.is_not_in = True
+            self.store_typed_char(CharType.OPERATOR)
+            self.set_state(State.EXPECT_LIST_START)
+        elif self.key_value_operator == "i" and self.char.value == "l":
+            self.key_value_operator = "il"
+            self.is_not_in = False
+            self.is_not_ilike = True
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "il" and self.char.value == "i":
+            self.key_value_operator = "ili"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "ili" and self.char.value == "k":
+            self.key_value_operator = "ilik"
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == "ilik" and self.char.value == "e":
+            self.key_value_operator = ILIKE_KEYWORD
+            self.store_typed_char(CharType.OPERATOR)
+        elif self.key_value_operator == ILIKE_KEYWORD:
+            if self.char.is_delimiter():
+                self.store_typed_char(CharType.SPACE)
+                self.key_value_operator = Operator.NOT_ILIKE.value
+                self.set_state(State.EXPECT_VALUE)
+            elif self.char.is_single_quote():
+                self.key_value_operator = Operator.NOT_ILIKE.value
+                self.set_value_is_string()
+                self.set_state(State.SINGLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_double_quote():
+                self.key_value_operator = Operator.NOT_ILIKE.value
+                self.set_value_is_string()
+                self.set_state(State.DOUBLE_QUOTED_VALUE)
+                self.store_typed_char(CharType.VALUE)
+            elif self.char.is_value():
+                self.key_value_operator = Operator.NOT_ILIKE.value
+                self.set_state(State.VALUE)
+                self.extend_value()
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state("expected value after 'not ilike'", 50)
+        else:
+            self.set_error_state("expected 'like' or 'ilike' keyword", 50)
 
     def in_state_expect_list_value(self) -> None:
         """Inside list, expecting a value or ']'."""
@@ -1064,6 +1240,7 @@ class Parser:
             State.EXPECT_NOT_TARGET,
             State.EXPECT_IN_KEYWORD,
             State.EXPECT_HAS_KEYWORD,
+            State.EXPECT_LIKE_KEYWORD,
             State.EXPECT_LIST_START,
             State.EXPECT_LIST_VALUE,
             State.IN_LIST_VALUE,
@@ -1151,6 +1328,8 @@ class Parser:
                     self.in_state_expect_in_keyword()
                 case State.EXPECT_HAS_KEYWORD:
                     self.in_state_expect_has_keyword()
+                case State.EXPECT_LIKE_KEYWORD:
+                    self.in_state_expect_like_keyword()
                 case State.EXPECT_LIST_START:
                     self.in_state_expect_list_start()
                 case State.EXPECT_LIST_VALUE:

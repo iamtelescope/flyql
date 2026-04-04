@@ -85,28 +85,74 @@ Combinez la correspondance insensible a la casse avec la negation pour exclure d
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## Correspondance par joker
+## Correspondance LIKE
 
-Utilisez <FlyqlToken type="operator">{'*'}</FlyqlToken> a la fin d'une valeur non quotee pour une correspondance de prefixe de type glob :
+Utilisez <FlyqlToken type="operator">like</FlyqlToken> et <FlyqlToken type="operator">ilike</FlyqlToken> pour une correspondance de motifs de type SQL avec des jokers :
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-Cela correspond a toute valeur commencant par le prefixe donne. Les jokers ne sont pris en charge qu'a la fin d'une valeur — `*prod` ou `pr*od` ne sont pas pris en charge.
+| Operateur | Signification |
+|-----------|---------------|
+| <FlyqlToken type="operator">like</FlyqlToken> | La valeur correspond au motif (sensible a la casse) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | La valeur ne correspond pas au motif |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | La valeur correspond au motif (insensible a la casse) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | La valeur ne correspond pas au motif (insensible a la casse) |
 
-### Joker vs. Regex
+### Jokers
 
-| Motif | Syntaxe | Exemple |
-|-------|---------|---------|
-| Joker (prefixe) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Regex (complet) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+Deux caracteres joker sont disponibles dans les motifs <FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken> :
 
-Utilisez les jokers pour une simple correspondance de prefixe. Utilisez les regex lorsque vous avez besoin de motifs plus complexes.
+| Joker | Signification | Exemple | Correspond a |
+|-------|---------------|---------|--------------|
+| `%` | Toute sequence de caracteres (y compris vide) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | Exactement un caractere | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, mais pas `E1` ni `Error` |
+
+Les jokers peuvent apparaitre n'importe ou dans le motif — au debut, au milieu, a la fin ou combines :
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### Echapper les jokers
+
+Pour faire correspondre un `%` ou `_` litteral, echappez-le avec un antislash :
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` correspond a la chaine litterale "100%", pas a "100" suivi de n'importe quoi.
+
+### Correspondance insensible a la casse
+
+Utilisez <FlyqlToken type="operator">ilike</FlyqlToken> pour une correspondance de motifs insensible a la casse :
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE vs. Regex
+
+| Cas d'utilisation | Syntaxe | Exemple |
+|-------------------|---------|---------|
+| Correspondance par prefixe | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| Contient | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| Motif complexe | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Utilisez <FlyqlToken type="operator">like</FlyqlToken> pour une simple correspondance par joker. Utilisez les regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>) lorsque vous avez besoin de classes de caracteres, d'alternance ou d'autres motifs avances.
+
+### Prise en charge par backend
+
+Tous les backends SQL (ClickHouse, PostgreSQL, StarRocks) emettent des operateurs SQL natifs `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE`. L'evaluateur en memoire convertit le motif en regex en interne.
+
+:::note
+StarRocks `ILIKE` necessite la version 2.5 ou ulterieure.
+:::
 
 ## Exemples
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

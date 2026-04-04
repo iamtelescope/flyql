@@ -100,6 +100,33 @@ function valueInList(value, list) {
     return false
 }
 
+const REGEX_META = new Set('.[]{}()*+?^$|\\'.split(''))
+
+function likeToRegex(pattern) {
+    let result = '^'
+    let escaped = false
+    for (let i = 0; i < pattern.length; i++) {
+        const ch = pattern[i]
+        if (escaped) {
+            escaped = false
+            result += REGEX_META.has(ch) ? '\\' + ch : ch
+        } else if (ch === '\\') {
+            escaped = true
+        } else if (ch === '%') {
+            result += '.*'
+        } else if (ch === '_') {
+            result += '.'
+        } else {
+            result += REGEX_META.has(ch) ? '\\' + ch : ch
+        }
+    }
+    if (escaped) {
+        result += '\\\\'
+    }
+    result += '$'
+    return result
+}
+
 export class Evaluator {
     constructor(registry = null) {
         this.regexCache = new Map()
@@ -183,6 +210,22 @@ export class Evaluator {
             }
             case Operator.NOT_REGEX: {
                 const regex = this.getRegex(toString(expr.value))
+                return !regex.test(toString(value))
+            }
+            case Operator.LIKE: {
+                const regex = this.getRegex(likeToRegex(toString(expr.value)))
+                return regex.test(toString(value))
+            }
+            case Operator.NOT_LIKE: {
+                const regex = this.getRegex(likeToRegex(toString(expr.value)))
+                return !regex.test(toString(value))
+            }
+            case Operator.ILIKE: {
+                const regex = this.getRegex('(?i)' + likeToRegex(toString(expr.value)))
+                return regex.test(toString(value))
+            }
+            case Operator.NOT_ILIKE: {
+                const regex = this.getRegex('(?i)' + likeToRegex(toString(expr.value)))
                 return !regex.test(toString(value))
             }
             case Operator.GREATER_THAN:

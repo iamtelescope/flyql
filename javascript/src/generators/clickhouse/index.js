@@ -60,6 +60,26 @@ function validateJSONPathPart(part) {
     }
 }
 
+function escapeLikeParam(value) {
+    const str = String(value)
+    let likeEscaped = ''
+    for (let i = 0; i < str.length; i++) {
+        const c = str[i]
+        if (c === '\\') {
+            const next = str[i + 1]
+            if (next === '%' || next === '_') {
+                likeEscaped += c + next
+                i++
+            } else {
+                likeEscaped += '\\\\'
+            }
+        } else {
+            likeEscaped += c
+        }
+    }
+    return escapeParam(likeEscaped)
+}
+
 export function escapeParam(item) {
     if (item === null || item === undefined) {
         return 'NULL'
@@ -96,33 +116,6 @@ export function escapeParam(item) {
     throw new Error(`unsupported type for escapeParam: ${typeof item}`)
 }
 
-export function prepareLikePatternValue(value) {
-    let patternFound = false
-    let newValue = ''
-    const chars = [...value]
-
-    for (let i = 0; i < chars.length; i++) {
-        const char = chars[i]
-        if (char === '*') {
-            if (i > 0 && chars[i - 1] === '\\') {
-                newValue += '*'
-            } else {
-                newValue += '%'
-                patternFound = true
-            }
-        } else if (char === '%') {
-            patternFound = true
-            newValue += '\\%'
-        } else if (char === '\\' && i + 1 < chars.length && chars[i + 1] === '*') {
-            newValue += '\\'
-        } else {
-            newValue += char
-        }
-    }
-
-    return { patternFound, value: newValue }
-}
-
 function expressionToSQLSimple(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
@@ -156,6 +149,22 @@ function expressionToSQLSimple(expr, columns, registry = null) {
             const value = escapeParam(String(expr.value))
             return `not match(${colRef}, ${value})`
         }
+        case Operator.LIKE: {
+            const value = escapeLikeParam(expr.value)
+            return `${colRef} LIKE ${value}`
+        }
+        case Operator.NOT_LIKE: {
+            const value = escapeLikeParam(expr.value)
+            return `${colRef} NOT LIKE ${value}`
+        }
+        case Operator.ILIKE: {
+            const value = escapeLikeParam(expr.value)
+            return `${colRef} ILIKE ${value}`
+        }
+        case Operator.NOT_ILIKE: {
+            const value = escapeLikeParam(expr.value)
+            return `${colRef} NOT ILIKE ${value}`
+        }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
             if (expr.valueType === ValueType.NULL) {
@@ -165,14 +174,8 @@ function expressionToSQLSimple(expr, columns, registry = null) {
                 const boolLiteral = expr.value ? 'true' : 'false'
                 return `${colRef} ${expr.operator} ${boolLiteral}`
             }
-            let operator = expr.operator
-            const valueStr = String(expr.value)
-            const { patternFound, value: processedValue } = prepareLikePatternValue(valueStr)
-            const escapedValue = escapeParam(processedValue)
-            if (patternFound) {
-                operator = expr.operator === Operator.EQUALS ? 'LIKE' : 'NOT LIKE'
-            }
-            return `${colRef} ${operator} ${escapedValue}`
+            const escapedValue = escapeParam(String(expr.value))
+            return `${colRef} ${expr.operator} ${escapedValue}`
         }
         default: {
             const value = escapeParam(expr.value)

@@ -170,6 +170,10 @@ func TestTypes(t *testing.T) {
 	runTestCases(t, "types.json")
 }
 
+func TestLike(t *testing.T) {
+	runTestCases(t, "like.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -262,33 +266,6 @@ func TestIsNumber(t *testing.T) {
 			result := IsNumber(tc.input)
 			if result != tc.expected {
 				t.Errorf("got %v, want %v", result, tc.expected)
-			}
-		})
-	}
-}
-
-func TestPrepareLikePatternValue(t *testing.T) {
-	tests := []struct {
-		name            string
-		input           string
-		expectedPattern bool
-		expectedValue   string
-	}{
-		{"no_pattern", "hello", false, "hello"},
-		{"star_pattern", "hello*", true, "hello%"},
-		{"multiple_stars", "*hello*world*", true, "%hello%world%"},
-		{"escaped_star", "hello\\*world", false, "hello\\*world"},
-		{"percent_escaping", "hello%world", true, "hello\\%world"},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			pattern, value := PrepareLikePatternValue(tc.input)
-			if pattern != tc.expectedPattern {
-				t.Errorf("pattern: got %v, want %v", pattern, tc.expectedPattern)
-			}
-			if value != tc.expectedValue {
-				t.Errorf("value: got %q, want %q", value, tc.expectedValue)
 			}
 		})
 	}

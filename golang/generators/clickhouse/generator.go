@@ -36,6 +36,10 @@ var validOperators = map[string]bool{
 	flyql.OpNotIn:           true,
 	flyql.OpHas:             true,
 	flyql.OpNotHas:          true,
+	flyql.OpLike:            true,
+	flyql.OpNotLike:         true,
+	flyql.OpILike:           true,
+	flyql.OpNotILike:        true,
 }
 
 var validBoolOperators = map[string]bool{
@@ -56,11 +60,6 @@ func validateBoolOperator(op string) error {
 	}
 	return nil
 }
-
-const (
-	likePatternChar    = "*"
-	sqlLikePatternChar = "%"
-)
 
 var jsonKeyPattern = regexp.MustCompile(`^[a-zA-Z_][.a-zA-Z0-9_-]*$`)
 
@@ -85,6 +84,27 @@ func validateJSONPathPart(part string) error {
 		return fmt.Errorf("Invalid JSON path part")
 	}
 	return nil
+}
+
+func escapeLikeParam(value string) string {
+	runes := []rune(value)
+	var likeEscaped strings.Builder
+	for i := 0; i < len(runes); i++ {
+		c := runes[i]
+		if c == '\\' {
+			if i+1 < len(runes) && (runes[i+1] == '%' || runes[i+1] == '_') {
+				likeEscaped.WriteRune(c)
+				likeEscaped.WriteRune(runes[i+1])
+				i++
+			} else {
+				likeEscaped.WriteString("\\\\")
+			}
+		} else {
+			likeEscaped.WriteRune(c)
+		}
+	}
+	result, _ := EscapeParam(likeEscaped.String())
+	return result
 }
 
 func EscapeParam(item any) (string, error) {
@@ -142,34 +162,6 @@ func IsNumber(value any) bool {
 	default:
 		return false
 	}
-}
-
-func PrepareLikePatternValue(value string) (bool, string) {
-	patternFound := false
-	var newValue strings.Builder
-	runes := []rune(value)
-
-	for i := 0; i < len(runes); i++ {
-		char := runes[i]
-		if char == rune(likePatternChar[0]) {
-			if i > 0 && runes[i-1] == '\\' {
-				newValue.WriteRune(rune(likePatternChar[0]))
-			} else {
-				newValue.WriteRune(rune(sqlLikePatternChar[0]))
-				patternFound = true
-			}
-		} else if char == rune(sqlLikePatternChar[0]) {
-			patternFound = true
-			newValue.WriteRune('\\')
-			newValue.WriteRune(rune(sqlLikePatternChar[0]))
-		} else if char == '\\' && i+1 < len(runes) && runes[i+1] == rune(likePatternChar[0]) {
-			newValue.WriteRune('\\')
-		} else {
-			newValue.WriteRune(char)
-		}
-	}
-
-	return patternFound, newValue.String()
 }
 
 func getIdentifier(column *Column) string {
@@ -809,6 +801,18 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 		}
 		return fmt.Sprintf("not match(%s, %s)", colRef, value), nil
 
+	case flyql.OpLike:
+		return fmt.Sprintf("%s LIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
+
+	case flyql.OpNotLike:
+		return fmt.Sprintf("%s NOT LIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
+
+	case flyql.OpILike:
+		return fmt.Sprintf("%s ILIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
+
+	case flyql.OpNotILike:
+		return fmt.Sprintf("%s NOT ILIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
+
 	case flyql.OpEquals, flyql.OpNotEquals:
 		if expr.ValueType == types.Null {
 			if expr.Operator == flyql.OpEquals {
@@ -823,21 +827,12 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 			}
 			return fmt.Sprintf("%s %s %s", colRef, expr.Operator, boolLiteral), nil
 		}
-		operator := expr.Operator
 		valueStr := fmt.Sprintf("%v", expr.Value)
-		isLikePattern, processedValue := PrepareLikePatternValue(valueStr)
-		escapedValue, err := EscapeParam(processedValue)
+		escapedValue, err := EscapeParam(valueStr)
 		if err != nil {
 			return "", err
 		}
-		if isLikePattern {
-			if expr.Operator == flyql.OpEquals {
-				operator = "LIKE"
-			} else {
-				operator = "NOT LIKE"
-			}
-		}
-		return fmt.Sprintf("%s %s %s", colRef, operator, escapedValue), nil
+		return fmt.Sprintf("%s %s %s", colRef, expr.Operator, escapedValue), nil
 
 	default:
 		value, err := EscapeParam(expr.Value)

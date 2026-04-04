@@ -1,0 +1,163 @@
+{
+  "version": "1.0",
+  "description": "LIKE/ILIKE operator matcher test cases",
+  "test_suite": "like",
+  "tests": [
+    {
+      "name": "like_suffix_match",
+      "query": "msg like 'hello%'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "like_suffix_no_match",
+      "query": "msg like 'hello%'",
+      "data": {"msg": "hi world"},
+      "expected": false
+    },
+    {
+      "name": "like_prefix_match",
+      "query": "msg like '%world'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "like_contains_match",
+      "query": "msg like '%hello%'",
+      "data": {"msg": "say hello there"},
+      "expected": true
+    },
+    {
+      "name": "like_underscore_match",
+      "query": "msg like 'hello_world'",
+      "data": {"msg": "helloXworld"},
+      "expected": true
+    },
+    {
+      "name": "like_underscore_no_match_missing_char",
+      "query": "msg like 'hello_world'",
+      "data": {"msg": "helloworld"},
+      "expected": false
+    },
+    {
+      "name": "like_exact_match",
+      "query": "msg like 'test'",
+      "data": {"msg": "test"},
+      "expected": true
+    },
+    {
+      "name": "like_exact_no_match",
+      "query": "msg like 'test'",
+      "data": {"msg": "testing"},
+      "expected": false
+    },
+    {
+      "name": "ilike_case_insensitive_upper_pattern",
+      "query": "msg ilike 'HELLO%'",
+      "data": {"msg": "hello world"},
+      "expected": true
+    },
+    {
+      "name": "ilike_case_insensitive_lower_pattern",
+      "query": "msg ilike 'hello%'",
+      "data": {"msg": "HELLO WORLD"},
+      "expected": true
+    },
+    {
+      "name": "like_escaped_percent_match",
+      "query": "msg like 'hello\\%'",
+      "data": {"msg": "hello%"},
+      "expected": true
+    },
+    {
+      "name": "like_escaped_percent_no_match",
+      "query": "msg like 'hello\\%'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "like_escaped_underscore_match",
+      "query": "msg like 'test\\_x'",
+      "data": {"msg": "test_x"},
+      "expected": true
+    },
+    {
+      "name": "like_escaped_underscore_no_match",
+      "query": "msg like 'test\\_x'",
+      "data": {"msg": "testAx"},
+      "expected": false
+    },
+    {
+      "name": "like_mixed_wildcards",
+      "query": "msg like 'a%b_c'",
+      "data": {"msg": "aXXXbYc"},
+      "expected": true
+    },
+    {
+      "name": "like_dot_literal",
+      "query": "msg like 'a.b%'",
+      "data": {"msg": "a.bcd"},
+      "expected": true
+    },
+    {
+      "name": "like_parens_literal",
+      "query": "msg like 'a(b)%'",
+      "data": {"msg": "a(b)cd"},
+      "expected": true
+    },
+    {
+      "name": "like_empty_pattern_match",
+      "query": "msg like ''",
+      "data": {"msg": ""},
+      "expected": true
+    },
+    {
+      "name": "like_empty_pattern_no_match",
+      "query": "msg like ''",
+      "data": {"msg": "hello"},
+      "expected": false
+    },
+    {
+      "name": "like_match_all",
+      "query": "msg like '%'",
+      "data": {"msg": "anything at all"},
+      "expected": true
+    },
+    {
+      "name": "like_match_all_empty",
+      "query": "msg like '%'",
+      "data": {"msg": ""},
+      "expected": true
+    },
+    {
+      "name": "like_single_char_match",
+      "query": "msg like '_'",
+      "data": {"msg": "x"},
+      "expected": true
+    },
+    {
+      "name": "like_single_char_no_match",
+      "query": "msg like '_'",
+      "data": {"msg": "ab"},
+      "expected": false
+    },
+    {
+      "name": "like_brackets_literal",
+      "query": "msg like '[a]%'",
+      "data": {"msg": "[a]test"},
+      "expected": true
+    },
+    {
+      "name": "not_like_negated",
+      "query": "msg not like 'hello%'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    },
+    {
+      "name": "not_ilike_negated",
+      "query": "msg not ilike 'HELLO%'",
+      "data": {"msg": "hello world"},
+      "expected": false
+    }
+  ]
+}

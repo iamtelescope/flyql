@@ -85,28 +85,74 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## 通配匹配
+## LIKE 匹配
 
-对于简单的前缀匹配，可以在未加引号的值末尾使用 <FlyqlToken type="operator">{'*'}</FlyqlToken>：
+使用 <FlyqlToken type="operator">like</FlyqlToken> 和 <FlyqlToken type="operator">ilike</FlyqlToken> 进行 SQL 风格的通配符模式匹配：
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-这表示匹配所有以指定前缀开头的值。通配符只支持出现在末尾，像 `*prod` 或 `pr*od` 这样的写法不受支持。
+| 操作符 | 含义 |
+|--------|------|
+| <FlyqlToken type="operator">like</FlyqlToken> | 值匹配模式（区分大小写） |
+| <FlyqlToken type="operator">not like</FlyqlToken> | 值不匹配模式 |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | 值匹配模式（不区分大小写） |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | 值不匹配模式（不区分大小写） |
 
-### 通配符与正则的区别
+### 通配符
 
-| 模式 | 语法 | 示例 |
+<FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken> 模式中有两个通配符可用：
+
+| 通配符 | 含义 | 示例 | 匹配 |
+|--------|------|------|------|
+| `%` | 任意字符序列（包括空序列） | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`、`prod-1`、`production` |
+| `_` | 精确匹配一个字符 | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`、`Exx`，但不匹配 `E1` 或 `Error` |
+
+通配符可以出现在模式的任何位置——开头、中间、末尾或组合使用：
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### 转义通配符
+
+要匹配字面的 `%` 或 `_`，用反斜杠转义：
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` 匹配字面字符串 "100%"，而不是 "100" 后面跟任意内容。
+
+### 不区分大小写匹配
+
+使用 <FlyqlToken type="operator">ilike</FlyqlToken> 进行不区分大小写的模式匹配：
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE 与正则的区别
+
+| 用途 | 语法 | 示例 |
 |------|------|------|
-| 通配前缀 | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| 完整正则 | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+| 前缀匹配 | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| 包含 | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| 复杂模式 | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
 
-简单前缀匹配用通配符，更复杂的模式请使用正则。
+简单通配符匹配用 <FlyqlToken type="operator">like</FlyqlToken>。需要字符类、交替或其他高级模式时，使用正则 (<FlyqlToken type="operator">{'~'}</FlyqlToken>)。
+
+### 后端支持
+
+所有 SQL 后端（ClickHouse、PostgreSQL、StarRocks）均生成原生的 `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE` SQL 操作符。内存匹配器会在内部将模式转换为正则表达式。
+
+:::note
+StarRocks `ILIKE` 需要 2.5 或更高版本。
+:::
 
 ## 示例
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

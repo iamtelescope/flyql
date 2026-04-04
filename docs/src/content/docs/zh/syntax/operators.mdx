@@ -55,6 +55,28 @@ FlyQL 支持以下比较操作符：
 
 列表语法的详细规则请查看[列表](/zh/syntax/lists/)。
 
+## 模式匹配 (LIKE)
+
+| 操作符 | 名称 | 示例 |
+|--------|------|------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Like 模式 | <FlyqlCode code={`message like 'error%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Not like 模式 | <FlyqlCode code={`host not like 'test%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | 不区分大小写的 like | <FlyqlCode code={`message ilike 'Error%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | 不区分大小写的 not like | <FlyqlCode code={`host not ilike 'TEST%'`} inline /> |
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host not like '%-staging'`} />
+<FlyqlCode code={`path ilike '/API/%'`} />
+
+SQL 风格的模式匹配，支持两个通配符：
+
+- <FlyqlToken type="operator">%</FlyqlToken> — 匹配任意字符序列（包括空序列）
+- <FlyqlToken type="operator">_</FlyqlToken> — 精确匹配一个字符
+
+使用反斜杠转义通配符以进行字面匹配：`\%` 匹配字面 `%`，`\_` 匹配字面 `_`。
+
+详见[模式匹配](/zh/syntax/pattern-matching/)。
+
 ## 包含检查
 
 | 操作符 | 名称 | 示例 |
@@ -91,3 +113,7 @@ FlyQL 支持以下比较操作符：
 | <FlyqlToken type="operator">not in</FlyqlToken> | 不在列表中 | <FlyqlCode code={`s not in [3]`} inline /> |
 | <FlyqlToken type="operator">has</FlyqlToken> | 包含 | <FlyqlCode code={`msg has 'err'`} inline /> |
 | <FlyqlToken type="operator">not has</FlyqlToken> | 不包含 | <FlyqlCode code={`msg not has 'ok'`} inline /> |
+| <FlyqlToken type="operator">like</FlyqlToken> | Like 模式 | <FlyqlCode code={`msg like 'err%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Not like | <FlyqlCode code={`msg not like 'ok%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like（不区分大小写） | <FlyqlCode code={`msg ilike 'Err%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Not like（不区分大小写） | <FlyqlCode code={`msg not ilike 'Ok%'`} inline /> |

@@ -30,6 +30,7 @@ export const CharType = Object.freeze({
     PIPE: 'flyqlPipe',
     TRANSFORMER: 'flyqlTransformer',
     ARGUMENT: 'flyqlArgument',
+    WILDCARD: 'flyqlWildcard',
 })
 
 export const State = Object.freeze({
@@ -56,6 +57,7 @@ export const State = Object.freeze({
     IN_LIST_SINGLE_QUOTED_VALUE: 'InListSingleQuotedValue',
     IN_LIST_DOUBLE_QUOTED_VALUE: 'InListDoubleQuotedValue',
     EXPECT_LIST_COMMA_OR_END: 'ExpectListCommaOrEnd',
+    EXPECT_LIKE_KEYWORD: 'ExpectLikeKeyword',
 })
 
 export const BoolOperator = Object.freeze({
@@ -77,11 +79,17 @@ export const Operator = Object.freeze({
     NOT_IN: 'not in',
     HAS: 'has',
     NOT_HAS: 'not has',
+    LIKE: 'like',
+    NOT_LIKE: 'not like',
+    ILIKE: 'ilike',
+    NOT_ILIKE: 'not ilike',
 })
 
 export const NOT_KEYWORD = 'not'
 export const IN_KEYWORD = 'in'
 export const HAS_KEYWORD = 'has'
+export const LIKE_KEYWORD = 'like'
+export const ILIKE_KEYWORD = 'ilike'
 
 export const VALID_KEY_VALUE_OPERATORS = [
     Operator.EQUALS,
@@ -96,6 +104,10 @@ export const VALID_KEY_VALUE_OPERATORS = [
     Operator.NOT_IN,
     Operator.HAS,
     Operator.NOT_HAS,
+    Operator.LIKE,
+    Operator.NOT_LIKE,
+    Operator.ILIKE,
+    Operator.NOT_ILIKE,
 ]
 
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]

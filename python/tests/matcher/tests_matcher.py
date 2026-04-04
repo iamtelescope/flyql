@@ -226,6 +226,18 @@ def test_types_matcher(test_case: dict) -> None:
     )
 
 
+@pytest.mark.parametrize("test_case", load_matcher_test_data("like.json"))
+def test_like_matcher(test_case: dict) -> None:
+    root = parse(test_case["query"]).root
+    evaluator = Evaluator()
+    record = Record(data=test_case["data"])
+    result = evaluator.evaluate(root, record)
+    assert result is test_case["expected"], (
+        f"query={test_case['query']!r}, data={test_case['data']!r}: "
+        f"got {result}, want {test_case['expected']}"
+    )
+
+
 @pytest.mark.parametrize("test_case", load_matcher_test_data("regex.json"))
 def test_regex_matcher(test_case: dict) -> None:
     root = parse(test_case["query"]).root

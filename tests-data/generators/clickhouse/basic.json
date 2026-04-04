@@ -88,36 +88,6 @@
       "expected_sql": "created_at <= '2023-01-01'"
     },
     {
-      "name": "like_pattern_suffix",
-      "input": "message='hello*'",
-      "expected_result": "success",
-      "expected_sql": "message LIKE 'hello%'"
-    },
-    {
-      "name": "like_pattern_prefix",
-      "input": "message='*world'",
-      "expected_result": "success",
-      "expected_sql": "message LIKE '%world'"
-    },
-    {
-      "name": "like_pattern_both",
-      "input": "message='*hello*'",
-      "expected_result": "success",
-      "expected_sql": "message LIKE '%hello%'"
-    },
-    {
-      "name": "not_like_pattern",
-      "input": "message!='hello*'",
-      "expected_result": "success",
-      "expected_sql": "message NOT LIKE 'hello%'"
-    },
-    {
-      "name": "escaped_star_no_pattern",
-      "input": "message='hello\\*world'",
-      "expected_result": "success",
-      "expected_sql": "message = 'hello\\\\*world'"
-    },
-    {
       "name": "escape_single_quote",
       "input": "message='it\\'s test'",
       "expected_result": "success",

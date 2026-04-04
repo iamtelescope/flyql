@@ -29,6 +29,7 @@ const QUERY_CLASS = {
     [QueryCharType.PIPE]: 'flyql-transformer',
     [QueryCharType.TRANSFORMER]: 'flyql-transformer',
     [QueryCharType.ARGUMENT]: 'flyql-argument',
+    [QueryCharType.WILDCARD]: 'flyql-wildcard',
 }
 
 const COLUMNS_CLASS = {

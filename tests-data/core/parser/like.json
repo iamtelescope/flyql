@@ -1,0 +1,325 @@
+{
+  "version": "1.0",
+  "description": "LIKE/ILIKE operator parser test cases",
+  "test_suite": "like",
+  "tests": [
+    {
+      "name": "like_suffix_wildcard",
+      "input": "key like 'hello%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_prefix_wildcard",
+      "input": "key like '%world'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "%world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_both_wildcards",
+      "input": "key like '%hello%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "%hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_underscore_wildcard",
+      "input": "key like 'test_value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "test_value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_mixed_wildcards",
+      "input": "key like 'a%b_c'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "a%b_c",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ilike_suffix_wildcard",
+      "input": "key ilike 'Hello%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "ilike",
+          "value": "Hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ilike_prefix_wildcard",
+      "input": "key ilike '%World'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "ilike",
+          "value": "%World",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_like",
+      "input": "key not like 'hello%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "not like",
+          "value": "hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "not_ilike",
+      "input": "key not ilike 'Hello%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "not ilike",
+          "value": "Hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_unquoted_value",
+      "input": "key like hello%",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "hello%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_escaped_percent",
+      "input": "key like 'hello\\%world'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "hello\\%world",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_escaped_underscore",
+      "input": "key like 'test\\_value'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "test\\_value",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_and_combination",
+      "input": "key like 'a%' and other like 'b%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key",
+            "operator": "like",
+            "value": "a%",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "other",
+            "operator": "like",
+            "value": "b%",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "like_or_ilike_combination",
+      "input": "key like 'a%' or key ilike 'B%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key",
+            "operator": "like",
+            "value": "a%",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "key",
+            "operator": "ilike",
+            "value": "B%",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "like_empty_pattern",
+      "input": "key like ''",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_match_all",
+      "input": "key like '%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_single_char",
+      "input": "key like '_'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": "_",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "like_quoted_key",
+      "input": "\"my.key\" like 'pattern%'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "\"my.key\"",
+          "operator": "like",
+          "value": "pattern%",
+          "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    }
+  ]
+}

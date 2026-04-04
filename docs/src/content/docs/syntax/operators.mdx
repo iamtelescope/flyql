@@ -55,6 +55,28 @@ Regex patterns follow the syntax of the target database or runtime. See [Pattern
 
 See the [Lists](/syntax/lists/) page for detailed list syntax rules.
 
+## Pattern Matching (LIKE)
+
+| Operator | Name | Example |
+|----------|------|---------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Like pattern | <FlyqlCode code={`message like 'error%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Not like pattern | <FlyqlCode code={`host not like 'test%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Case-insensitive like | <FlyqlCode code={`message ilike 'Error%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Case-insensitive not like | <FlyqlCode code={`host not ilike 'TEST%'`} inline /> |
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host not like '%-staging'`} />
+<FlyqlCode code={`path ilike '/API/%'`} />
+
+SQL-style pattern matching with two wildcards:
+
+- <FlyqlToken type="operator">%</FlyqlToken> — matches any sequence of characters (including empty)
+- <FlyqlToken type="operator">_</FlyqlToken> — matches exactly one character
+
+Escape wildcards with a backslash to match them literally: `\%` matches a literal `%`, `\_` matches a literal `_`.
+
+See [Pattern Matching](/syntax/pattern-matching/) for more details and examples.
+
 ## Containment Check
 
 | Operator | Name | Example |
@@ -91,3 +113,7 @@ The <FlyqlToken type="operator">has</FlyqlToken> operator performs a type-depend
 | <FlyqlToken type="operator">not in</FlyqlToken> | Not in list | <FlyqlCode code={`s not in [3]`} inline /> |
 | <FlyqlToken type="operator">has</FlyqlToken> | Contains | <FlyqlCode code={`msg has 'err'`} inline /> |
 | <FlyqlToken type="operator">not has</FlyqlToken> | Not contains | <FlyqlCode code={`msg not has 'ok'`} inline /> |
+| <FlyqlToken type="operator">like</FlyqlToken> | Like pattern | <FlyqlCode code={`msg like 'err%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Not like | <FlyqlCode code={`msg not like 'ok%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like (case-insensitive) | <FlyqlCode code={`msg ilike 'Err%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Not like (case-insensitive) | <FlyqlCode code={`msg not ilike 'Ok%'`} inline /> |

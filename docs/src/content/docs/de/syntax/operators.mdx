@@ -55,6 +55,28 @@ Regex-Muster folgen der Syntax der Zieldatenbank oder der Laufzeitumgebung. Sieh
 
 Siehe die Seite [Listen](/de/syntax/lists/) für detaillierte Regeln zur Listensyntax.
 
+## Musterabgleich (LIKE)
+
+| Operator | Name | Beispiel |
+|----------|------|----------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Like-Muster | <FlyqlCode code={`message like 'error%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Kein Like-Muster | <FlyqlCode code={`host not like 'test%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Groß-/Kleinschreibung ignorierend | <FlyqlCode code={`message ilike 'Error%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Groß-/Kleinschreibung ignorierend, negiert | <FlyqlCode code={`host not ilike 'TEST%'`} inline /> |
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host not like '%-staging'`} />
+<FlyqlCode code={`path ilike '/API/%'`} />
+
+SQL-artiger Musterabgleich mit zwei Wildcards:
+
+- <FlyqlToken type="operator">%</FlyqlToken> — entspricht einer beliebigen Zeichenfolge (auch leer)
+- <FlyqlToken type="operator">_</FlyqlToken> — entspricht genau einem Zeichen
+
+Wildcards können mit einem Backslash escaped werden, um sie wörtlich zu verwenden: `\%` entspricht einem literalen `%`, `\_` entspricht einem literalen `_`.
+
+Siehe [Musterabgleich](/de/syntax/pattern-matching/) für weitere Details und Beispiele.
+
 ## Enthalten-Prüfung
 
 | Operator | Name | Beispiel |
@@ -91,3 +113,7 @@ Der <FlyqlToken type="operator">has</FlyqlToken> Operator führt eine typabhäng
 | <FlyqlToken type="operator">not in</FlyqlToken> | Nicht in Liste | <FlyqlCode code={`s not in [3]`} inline /> |
 | <FlyqlToken type="operator">has</FlyqlToken> | Enthält | <FlyqlCode code={`msg has 'err'`} inline /> |
 | <FlyqlToken type="operator">not has</FlyqlToken> | Enthält nicht | <FlyqlCode code={`msg not has 'ok'`} inline /> |
+| <FlyqlToken type="operator">like</FlyqlToken> | Like-Muster | <FlyqlCode code={`msg like 'err%'`} inline /> |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Kein Like-Muster | <FlyqlCode code={`msg not like 'ok%'`} inline /> |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Like (Groß-/Kleinschreibung ignorierend) | <FlyqlCode code={`msg ilike 'Err%'`} inline /> |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Kein Like (Groß-/Kleinschreibung ignorierend) | <FlyqlCode code={`msg not ilike 'Ok%'`} inline /> |

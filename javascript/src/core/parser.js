@@ -16,6 +16,8 @@ import {
     NOT_KEYWORD,
     IN_KEYWORD,
     HAS_KEYWORD,
+    LIKE_KEYWORD,
+    ILIKE_KEYWORD,
 } from './constants.js'
 
 export class Parser {
@@ -49,6 +51,8 @@ export class Parser {
         this.inListValuesTypes = []
         this.isNotIn = false
         this.isNotHas = false
+        this.isNotLike = false
+        this.isNotIlike = false
         this.valueQuoteChar = ''
         this.inListQuoteChar = ''
     }
@@ -121,6 +125,8 @@ export class Parser {
         this.inListValuesTypes = []
         this.isNotIn = false
         this.isNotHas = false
+        this.isNotLike = false
+        this.isNotIlike = false
     }
 
     extendInListCurrentValue() {
@@ -485,6 +491,10 @@ export class Parser {
             this.keyValueOperator = 'h'
             this.setState(State.KEY_VALUE_OPERATOR)
             this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === 'l') {
+            this.keyValueOperator = 'l'
+            this.setState(State.KEY_VALUE_OPERATOR)
+            this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.value === 'n') {
             this.keyValueOperator = 'n'
             this.setState(State.EXPECT_IN_KEYWORD)
@@ -590,6 +600,100 @@ export class Parser {
             return
         }
 
+        if (this.keyValueOperator === 'i' && this.char.value === 'l') {
+            this.keyValueOperator = 'il'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'il' && this.char.value === 'i') {
+            this.keyValueOperator = 'ili'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'ili' && this.char.value === 'k') {
+            this.keyValueOperator = 'ilik'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'ilik' && this.char.value === 'e') {
+            this.keyValueOperator = ILIKE_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === ILIKE_KEYWORD) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.ILIKE
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.ILIKE
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.ILIKE
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.ILIKE
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'ilike'", 50)
+            }
+            return
+        }
+
+        if (this.keyValueOperator === 'l' && this.char.value === 'i') {
+            this.keyValueOperator = 'li'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'li' && this.char.value === 'k') {
+            this.keyValueOperator = 'lik'
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === 'lik' && this.char.value === 'e') {
+            this.keyValueOperator = LIKE_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+            return
+        }
+
+        if (this.keyValueOperator === LIKE_KEYWORD) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.LIKE
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.LIKE
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.LIKE
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.LIKE
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'like'", 50)
+            }
+            return
+        }
+
         if (this.keyValueOperator === 'in') {
             if (this.char.isDelimiter()) {
                 this.storeTypedChar(CharType.SPACE)
@@ -671,6 +775,15 @@ export class Parser {
         }
     }
 
+    _isLikeOperator() {
+        return (
+            this.keyValueOperator === Operator.LIKE ||
+            this.keyValueOperator === Operator.NOT_LIKE ||
+            this.keyValueOperator === Operator.ILIKE ||
+            this.keyValueOperator === Operator.NOT_ILIKE
+        )
+    }
+
     inStateValue() {
         if (!this.char) {
             return
@@ -678,7 +791,16 @@ export class Parser {
 
         if (this.char.isValue()) {
             this.extendValue()
-            this.storeTypedChar(CharType.VALUE)
+            if (this._isLikeOperator() && (this.char.value === '%' || this.char.value === '_')) {
+                const prevPos = this.char.pos - 1
+                if (prevPos < 0 || this.text[prevPos] !== '\\') {
+                    this.storeTypedChar(CharType.WILDCARD)
+                } else {
+                    this.storeTypedChar(CharType.VALUE)
+                }
+            } else {
+                this.storeTypedChar(CharType.VALUE)
+            }
         } else if (this.char.isDelimiter()) {
             this.setState(State.EXPECT_BOOL_OP)
             this.extendTree()
@@ -713,7 +835,16 @@ export class Parser {
 
         if (this.char.isSingleQuotedValue()) {
             this.extendValue()
-            this.storeTypedChar(CharType.VALUE)
+            if (this._isLikeOperator() && (this.char.value === '%' || this.char.value === '_')) {
+                const prevPos = this.char.pos - 1
+                if (prevPos < 0 || this.text[prevPos] !== '\\') {
+                    this.storeTypedChar(CharType.WILDCARD)
+                } else {
+                    this.storeTypedChar(CharType.VALUE)
+                }
+            } else {
+                this.storeTypedChar(CharType.VALUE)
+            }
         } else if (this.char.isSingleQuote()) {
             this.storeTypedChar(CharType.VALUE)
             const prevPos = this.char.pos - 1
@@ -737,7 +868,16 @@ export class Parser {
 
         if (this.char.isDoubleQuotedValue()) {
             this.extendValue()
-            this.storeTypedChar(CharType.VALUE)
+            if (this._isLikeOperator() && (this.char.value === '%' || this.char.value === '_')) {
+                const prevPos = this.char.pos - 1
+                if (prevPos < 0 || this.text[prevPos] !== '\\') {
+                    this.storeTypedChar(CharType.WILDCARD)
+                } else {
+                    this.storeTypedChar(CharType.VALUE)
+                }
+            } else {
+                this.storeTypedChar(CharType.VALUE)
+            }
         } else if (this.char.isDoubleQuote()) {
             this.storeTypedChar(CharType.VALUE)
             const prevPos = this.char.pos - 1
@@ -938,9 +1078,21 @@ export class Parser {
             this.isNotHas = true
             this.setState(State.EXPECT_HAS_KEYWORD)
             this.storeTypedChar(CharType.OPERATOR)
-        } else if (this.char.value === 'i') {
-            this.keyValueOperator = 'i'
+        } else if (this.char.value === 'l' && this.isNotIn) {
+            this.keyValueOperator = 'l'
+            this.isNotIn = false
+            this.isNotLike = true
+            this.setState(State.EXPECT_LIKE_KEYWORD)
             this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === 'i') {
+            if (this.isNotIn) {
+                this.keyValueOperator = 'i'
+                this.setState(State.EXPECT_LIKE_KEYWORD)
+                this.storeTypedChar(CharType.OPERATOR)
+            } else {
+                this.keyValueOperator = 'i'
+                this.storeTypedChar(CharType.OPERATOR)
+            }
         } else if (this.keyValueOperator === 'i' && this.char.value === 'n') {
             this.keyValueOperator = ''
             this.storeTypedChar(CharType.OPERATOR)
@@ -988,6 +1140,94 @@ export class Parser {
             }
         } else {
             this.setErrorState("expected 'has' keyword", 50)
+        }
+    }
+
+    inStateExpectLikeKeyword() {
+        if (!this.char) {
+            return
+        }
+
+        // Path A: building "like" for "not like" (entered with keyValueOperator = 'l')
+        if (this.keyValueOperator === 'l' && this.char.value === 'i') {
+            this.keyValueOperator = 'li'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'li' && this.char.value === 'k') {
+            this.keyValueOperator = 'lik'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'lik' && this.char.value === 'e') {
+            this.keyValueOperator = LIKE_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === LIKE_KEYWORD && this.isNotLike) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.NOT_LIKE
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.NOT_LIKE
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.NOT_LIKE
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.NOT_LIKE
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'not like'", 50)
+            }
+            // Path B: disambiguating "not in" vs "not ilike" (entered with keyValueOperator = 'i')
+        } else if (this.keyValueOperator === 'i' && this.char.value === 'n') {
+            // "not in" path
+            this.keyValueOperator = ''
+            this.isNotIn = true
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_LIST_START)
+        } else if (this.keyValueOperator === 'i' && this.char.value === 'l') {
+            // "not ilike" path
+            this.keyValueOperator = 'il'
+            this.isNotIn = false
+            this.isNotIlike = true
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'il' && this.char.value === 'i') {
+            this.keyValueOperator = 'ili'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'ili' && this.char.value === 'k') {
+            this.keyValueOperator = 'ilik'
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === 'ilik' && this.char.value === 'e') {
+            this.keyValueOperator = ILIKE_KEYWORD
+            this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.keyValueOperator === ILIKE_KEYWORD && this.isNotIlike) {
+            if (this.char.isDelimiter()) {
+                this.storeTypedChar(CharType.SPACE)
+                this.keyValueOperator = Operator.NOT_ILIKE
+                this.setState(State.EXPECT_VALUE)
+            } else if (this.char.isSingleQuote()) {
+                this.keyValueOperator = Operator.NOT_ILIKE
+                this.setValueIsString()
+                this.setState(State.SINGLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isDoubleQuote()) {
+                this.keyValueOperator = Operator.NOT_ILIKE
+                this.setValueIsString()
+                this.setState(State.DOUBLE_QUOTED_VALUE)
+                this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.isValue()) {
+                this.keyValueOperator = Operator.NOT_ILIKE
+                this.setState(State.VALUE)
+                this.extendValue()
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState("expected value after 'not ilike'", 50)
+            }
+        } else {
+            this.setErrorState("expected 'like' or 'ilike' keyword", 50)
         }
     }
 
@@ -1140,6 +1380,7 @@ export class Parser {
             this.state === State.EXPECT_NOT_TARGET ||
             this.state === State.EXPECT_IN_KEYWORD ||
             this.state === State.EXPECT_HAS_KEYWORD ||
+            this.state === State.EXPECT_LIKE_KEYWORD ||
             this.state === State.EXPECT_LIST_START ||
             this.state === State.EXPECT_LIST_VALUE ||
             this.state === State.IN_LIST_VALUE ||
@@ -1240,6 +1481,9 @@ export class Parser {
                     break
                 case State.EXPECT_HAS_KEYWORD:
                     this.inStateExpectHasKeyword()
+                    break
+                case State.EXPECT_LIKE_KEYWORD:
+                    this.inStateExpectLikeKeyword()
                     break
                 case State.EXPECT_LIST_START:
                     this.inStateExpectListStart()

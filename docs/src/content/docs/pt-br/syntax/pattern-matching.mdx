@@ -85,28 +85,74 @@ Combine correspondência insensível a maiúsculas/minúsculas com negação par
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## Correspondência com Curinga
+## Correspondência LIKE
 
-Use <FlyqlToken type="operator">{'*'}</FlyqlToken> no final de um valor sem aspas para correspondência de prefixo estilo glob:
+Use <FlyqlToken type="operator">like</FlyqlToken> e <FlyqlToken type="operator">ilike</FlyqlToken> para correspondência de padrões estilo SQL com curingas:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-Isso corresponde a qualquer valor que comece com o prefixo fornecido. Curingas são suportados apenas no final do valor — `*prod` ou `pr*od` não são suportados.
+| Operador | Significado |
+|----------|-------------|
+| <FlyqlToken type="operator">like</FlyqlToken> | O valor corresponde ao padrão (sensível a maiúsculas) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | O valor não corresponde ao padrão |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | O valor corresponde ao padrão (insensível a maiúsculas) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | O valor não corresponde ao padrão (insensível a maiúsculas) |
 
-### Curinga vs. Regex
+### Curingas
 
-| Padrão | Sintaxe | Exemplo |
-|--------|---------|---------|
-| Curinga (prefixo) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Regex (completo) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+Dois caracteres curinga estão disponíveis nos padrões <FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken>:
 
-Use curingas para correspondência simples de prefixo. Use regex quando precisar de padrões mais complexos.
+| Curinga | Significado | Exemplo | Corresponde a |
+|---------|-------------|---------|---------------|
+| `%` | Qualquer sequência de caracteres (incluindo vazio) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | Exatamente um caractere | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, mas não `E1` ou `Error` |
+
+Os curingas podem aparecer em qualquer posição do padrão — início, meio, final ou combinados:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### Escapando Curingas
+
+Para corresponder a um `%` ou `_` literal, escape com uma barra invertida:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` corresponde à string literal "100%", não a "100" seguido de qualquer coisa.
+
+### Correspondência Insensível a Maiúsculas
+
+Use <FlyqlToken type="operator">ilike</FlyqlToken> para correspondência de padrões insensível a maiúsculas:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE vs. Regex
+
+| Caso de uso | Sintaxe | Exemplo |
+|-------------|---------|---------|
+| Correspondência por prefixo | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| Contém | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| Padrão complexo | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Use <FlyqlToken type="operator">like</FlyqlToken> para correspondência simples com curingas. Use regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>) quando precisar de classes de caracteres, alternação ou outros padrões avançados.
+
+### Suporte por Backend
+
+Todos os backends SQL (ClickHouse, PostgreSQL, StarRocks) emitem operadores SQL nativos `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE`. O matcher em memória converte o padrão em regex internamente.
+
+:::note
+StarRocks `ILIKE` requer versão 2.5 ou posterior.
+:::
 
 ## Exemplos
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

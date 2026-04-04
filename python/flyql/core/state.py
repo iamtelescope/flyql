@@ -25,3 +25,4 @@ class State(Enum):
     IN_LIST_DOUBLE_QUOTED_VALUE = "InListDoubleQuotedValue"
     EXPECT_LIST_COMMA_OR_END = "ExpectListCommaOrEnd"
     EXPECT_LIST_VALUE = "ExpectListValue"
+    EXPECT_LIKE_KEYWORD = "ExpectLikeKeyword"

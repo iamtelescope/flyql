@@ -85,28 +85,74 @@ Case-insensitives Matching kann mit Negation kombiniert werden, um Muster unabh�
 
 <FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
 
-## Wildcard-Matching
+## LIKE-Matching
 
-Verwende <FlyqlToken type="operator">{'*'}</FlyqlToken> am Ende eines nicht in Anführungszeichen gesetzten Werts für glob-artiges Prefix-Matching:
+Verwende <FlyqlToken type="operator">like</FlyqlToken> und <FlyqlToken type="operator">ilike</FlyqlToken> für SQL-artiges Muster-Matching mit Wildcards:
 
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`service = api-*`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`service like 'api-%'`} />
+<FlyqlCode code={`message ilike '%Error%'`} />
 
-Das matcht jeden Wert, der mit dem angegebenen Präfix beginnt. Wildcards werden nur am Ende eines Werts unterstützt – `*prod` oder `pr*od` sind nicht zulässig.
+| Operator | Bedeutung |
+|----------|-----------|
+| <FlyqlToken type="operator">like</FlyqlToken> | Wert passt auf das Muster (Groß-/Kleinschreibung beachten) |
+| <FlyqlToken type="operator">not like</FlyqlToken> | Wert passt nicht auf das Muster |
+| <FlyqlToken type="operator">ilike</FlyqlToken> | Wert passt auf das Muster (Groß-/Kleinschreibung ignorieren) |
+| <FlyqlToken type="operator">not ilike</FlyqlToken> | Wert passt nicht auf das Muster (Groß-/Kleinschreibung ignorieren) |
 
-### Wildcard vs. Regex
+### Wildcards
 
-| Muster | Syntax | Beispiel |
-|--------|--------|----------|
-| Wildcard (Präfix) | <FlyqlCode code={`key = value*`} inline /> | <FlyqlCode code={`host = prod*`} inline /> |
-| Regex (vollständig) | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+Zwei Wildcard-Zeichen stehen in <FlyqlToken type="operator">like</FlyqlToken> / <FlyqlToken type="operator">ilike</FlyqlToken>-Mustern zur Verfügung:
 
-Verwende Wildcards für einfaches Präfix-Matching. Verwende Regex, wenn du komplexere Muster brauchst.
+| Wildcard | Bedeutung | Beispiel | Trifft zu |
+|----------|-----------|----------|-----------|
+| `%` | Beliebige Zeichenfolge (auch leer) | <FlyqlCode code={`host like 'prod%'`} inline /> | `prod`, `prod-1`, `production` |
+| `_` | Genau ein Zeichen | <FlyqlCode code={`code like 'E__'`} inline /> | `E01`, `Exx`, aber nicht `E1` oder `Error` |
+
+Wildcards können überall im Muster erscheinen — am Anfang, in der Mitte, am Ende oder kombiniert:
+
+<FlyqlCode code={`message like '%timeout%'`} />
+<FlyqlCode code={`host like 'web-_-prod'`} />
+<FlyqlCode code={`path like '/api/%/status'`} />
+
+### Wildcards escapen
+
+Um ein literales `%` oder `_` zu matchen, escape es mit einem Backslash:
+
+<FlyqlCode code={`value like '100\\%'`} />
+<FlyqlCode code={`col like 'foo\\_bar'`} />
+
+`100\%` matcht den literalen String „100%", nicht „100" gefolgt von beliebigem Text.
+
+### Groß-/Kleinschreibung ignorieren
+
+Verwende <FlyqlToken type="operator">ilike</FlyqlToken> für Muster-Matching ohne Berücksichtigung der Groß-/Kleinschreibung:
+
+<FlyqlCode code={`message ilike '%error%'`} />
+<FlyqlCode code={`host not ilike 'TEST%'`} />
+
+### LIKE vs. Regex
+
+| Anwendungsfall | Syntax | Beispiel |
+|----------------|--------|----------|
+| Präfix-Match | <FlyqlCode code={`key like 'prefix%'`} inline /> | <FlyqlCode code={`host like 'prod%'`} inline /> |
+| Enthält | <FlyqlCode code={`key like '%word%'`} inline /> | <FlyqlCode code={`msg like '%error%'`} inline /> |
+| Komplexes Muster | <FlyqlCode code={`key ~ "pattern"`} inline /> | <FlyqlCode code={`host ~ "^prod-[0-9]+"`} inline /> |
+
+Verwende <FlyqlToken type="operator">like</FlyqlToken> für einfaches Wildcard-Matching. Verwende Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>), wenn du Zeichenklassen, Alternation oder andere erweiterte Muster brauchst.
+
+### Backend-Unterstützung
+
+Alle SQL-Backends (ClickHouse, PostgreSQL, StarRocks) erzeugen native `LIKE` / `ILIKE` / `NOT LIKE` / `NOT ILIKE` SQL-Operatoren. Der In-Memory-Matcher konvertiert das Muster intern in eine Regex.
+
+:::note
+StarRocks `ILIKE` erfordert Version 2.5 oder höher.
+:::
 
 ## Beispiele
 
 <FlyqlCode code={`message ~ "error|fail"`} />
 <FlyqlCode code={`path ~ "^/api/v2"`} />
 <FlyqlCode code={`path !~ "^/health"`} />
-<FlyqlCode code={`host = prod*`} />
-<FlyqlCode code={`host = prod* and message ~ "timeout.*" and path !~ "^/health"`} />
+<FlyqlCode code={`host like 'prod%'`} />
+<FlyqlCode code={`host like 'prod%' and message ~ "timeout.*" and path !~ "^/health"`} />

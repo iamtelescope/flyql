@@ -24,6 +24,10 @@ class Operator(Enum):
     NOT_IN = "not in"
     HAS = "has"
     NOT_HAS = "not has"
+    LIKE = "like"
+    NOT_LIKE = "not like"
+    ILIKE = "ilike"
+    NOT_ILIKE = "not ilike"
 
 
 class BoolOperator(Enum):
@@ -45,10 +49,16 @@ VALID_KEY_VALUE_OPERATORS = (
     Operator.NOT_IN.value,
     Operator.HAS.value,
     Operator.NOT_HAS.value,
+    Operator.LIKE.value,
+    Operator.NOT_LIKE.value,
+    Operator.ILIKE.value,
+    Operator.NOT_ILIKE.value,
 )
 
 IN_KEYWORD = "in"
 HAS_KEYWORD = "has"
+LIKE_KEYWORD = "like"
+ILIKE_KEYWORD = "ilike"
 
 NOT_KEYWORD = "not"
 

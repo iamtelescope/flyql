@@ -199,3 +199,8 @@ func TestTypes(t *testing.T) {
 	columns := loadColumns(t)
 	runWhereTestSuite(t, columns, "types.json")
 }
+
+func TestLike(t *testing.T) {
+	columns := loadColumns(t)
+	runWhereTestSuite(t, columns, "like.json")
+}

@@ -19,8 +19,14 @@ const (
 	OpNotIn           = "not in"
 	OpHas             = "has"
 	OpNotHas          = "not has"
+	OpLike            = "like"
+	OpNotLike         = "not like"
+	OpILike           = "ilike"
+	OpNotILike        = "not ilike"
 )
 
 const NotKeyword = "not"
 const InKeyword = "in"
 const HasKeyword = "has"
+const LikeKeyword = "like"
+const ILikeKeyword = "ilike"

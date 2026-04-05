@@ -44,6 +44,126 @@
       "input": "field|split(\".\")",
       "expected_result": "success",
       "expected_sql": "(STRING_TO_ARRAY(\"field\", '.') IS NOT NULL AND STRING_TO_ARRAY(\"field\", '.') != '')"
+    },
+    {
+      "name": "jsonb_nested_upper_equals",
+      "input": "jsonb_column.user.name|upper = 'JOHN'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'user'->'name') = 'string' AND UPPER(\"jsonb_column\"->'user'->>'name') = 'JOHN')"
+    },
+    {
+      "name": "jsonb_nested_lower_not_equals",
+      "input": "jsonb_column.user.name|lower != 'alice'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'user'->'name') = 'string' AND LOWER(\"jsonb_column\"->'user'->>'name') != 'alice')"
+    },
+    {
+      "name": "jsonb_nested_regex_chained",
+      "input": "jsonb_column.user.name|upper|lower~'foo.*'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(UPPER(\"jsonb_column\"->'user'->>'name')) ~ 'foo.*'"
+    },
+    {
+      "name": "jsonb_nested_lower_in_list",
+      "input": "jsonb_column.user.name|lower in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "LOWER(\"jsonb_column\"->'user'->>'name') IN ('a', 'b')"
+    },
+    {
+      "name": "jsonb_array_nested_upper_equals",
+      "input": "details.items.0.name|upper = 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"details\"->'items'->0->'name') = 'string' AND UPPER(\"details\"->'items'->0->>'name') = 'FOO')"
+    },
+    {
+      "name": "jsonb_nested_len_greater",
+      "input": "jsonb_column.name|len > 5",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'number' AND (LENGTH(\"jsonb_column\"->>'name'))::numeric > 5)"
+    },
+    {
+      "name": "jsonstring_nested_lower_equals",
+      "input": "json_meta.user.name|lower = 'alice'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'user'->'name') = 'string' AND LOWER((\"json_meta\"::jsonb)->'user'->>'name') = 'alice')"
+    },
+    {
+      "name": "jsonstring_nested_upper_in",
+      "input": "json_meta.status|upper in ['ACTIVE', 'PENDING']",
+      "expected_result": "success",
+      "expected_sql": "UPPER((\"json_meta\"::jsonb)->>'status') IN ('ACTIVE', 'PENDING')"
+    },
+    {
+      "name": "hstore_lower_equals",
+      "input": "metadata.key|lower = 'x'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(\"metadata\"->'key') = 'x'"
+    },
+    {
+      "name": "hstore_lower_in",
+      "input": "metadata.key|lower in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "LOWER(\"metadata\"->'key') IN ('a', 'b')"
+    },
+    {
+      "name": "array_upper_equals",
+      "input": "tags.0|upper = 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(\"tags\"[1]) = 'FOO'"
+    },
+    {
+      "name": "array_upper_regex",
+      "input": "tags.0|upper~'BAR.*'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(\"tags\"[1]) ~ 'BAR.*'"
+    },
+    {
+      "name": "jsonb_nested_truthy_upper",
+      "input": "jsonb_column.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(UPPER(\"jsonb_column\"->'user'->>'name') IS NOT NULL AND UPPER(\"jsonb_column\"->'user'->>'name') != '')"
+    },
+    {
+      "name": "jsonb_nested_falsy_upper",
+      "input": "not jsonb_column.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(UPPER(\"jsonb_column\"->'user'->>'name') IS NULL OR UPPER(\"jsonb_column\"->'user'->>'name') = '')"
+    },
+    {
+      "name": "jsonb_nested_has_lower",
+      "input": "jsonb_column.user.name|lower has 'foo'",
+      "expected_result": "success",
+      "expected_sql": "position('foo' in LOWER(\"jsonb_column\"->'user'->>'name')) > 0"
+    },
+    {
+      "name": "hstore_truthy_lower",
+      "input": "metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(\"metadata\" ? 'key' AND LOWER(\"metadata\"->'key') != '')"
+    },
+    {
+      "name": "hstore_falsy_lower",
+      "input": "not metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(NOT (\"metadata\" ? 'key') OR LOWER(\"metadata\"->'key') = '')"
+    },
+    {
+      "name": "hstore_not_has_lower",
+      "input": "metadata.key|lower not has 'x'",
+      "expected_result": "success",
+      "expected_sql": "position('x' in LOWER(\"metadata\"->'key')) = 0"
+    },
+    {
+      "name": "array_truthy_upper",
+      "input": "tags.0|upper",
+      "expected_result": "success",
+      "expected_sql": "(array_length(\"tags\", 1) >= 1 AND UPPER(\"tags\"[1]) != '')"
+    },
+    {
+      "name": "array_has_upper",
+      "input": "tags.0|upper has 'F'",
+      "expected_result": "success",
+      "expected_sql": "position('F' in UPPER(\"tags\"[1])) > 0"
     }
   ]
 }

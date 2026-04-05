@@ -164,13 +164,26 @@ def truthy_expression_to_sql(
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return f"({col_id}->{json_path_str} IS NOT NULL)"
+            leaf_expr = f"{col_id}->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+                return f"({leaf_expr} IS NOT NULL AND {leaf_expr} != '')"
+            return f"({leaf_expr} IS NOT NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
+            leaf_expr = f"{col_id}[{escaped_map_key}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             return (
                 f"(element_at({col_id}, {escaped_map_key}) IS NOT NULL AND "
-                f"{col_id}[{escaped_map_key}] != '')"
+                f"{leaf_expr} != '')"
             )
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -180,23 +193,40 @@ def truthy_expression_to_sql(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
+            leaf_expr = f"{col_id}[{array_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             return (
-                f"(array_length({col_id}) >= {array_index} AND "
-                f"{col_id}[{array_index}] != '')"
+                f"(array_length({col_id}) >= {array_index} AND " f"{leaf_expr} != '')"
             )
         elif column.is_struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
-            return (
-                f"({col_id}.`{struct_column}` IS NOT NULL AND "
-                f"{col_id}.`{struct_column}` != '')"
-            )
+            leaf_expr = f"{col_id}.`{struct_column}`"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"({leaf_expr} IS NOT NULL AND " f"{leaf_expr} != '')"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
+            leaf_expr = f"parse_json({col_id})->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+                return (
+                    f"(json_exists(parse_json({col_id}), {json_path_str}) AND "
+                    f"{leaf_expr} != '')"
+                )
             return (
                 f"(json_exists(parse_json({col_id}), {json_path_str}) AND "
-                f"parse_json({col_id})->{json_path_str} != '')"
+                f"{leaf_expr} != '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -253,13 +283,26 @@ def falsy_expression_to_sql(
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return f"({col_id}->{json_path_str} IS NULL)"
+            leaf_expr = f"{col_id}->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+                return f"({leaf_expr} IS NULL OR {leaf_expr} = '')"
+            return f"({leaf_expr} IS NULL)"
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
+            leaf_expr = f"{col_id}[{escaped_map_key}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             return (
                 f"(element_at({col_id}, {escaped_map_key}) IS NULL OR "
-                f"{col_id}[{escaped_map_key}] = '')"
+                f"{leaf_expr} = '')"
             )
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -269,23 +312,38 @@ def falsy_expression_to_sql(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            return (
-                f"(array_length({col_id}) < {array_index} OR "
-                f"{col_id}[{array_index}] = '')"
-            )
+            leaf_expr = f"{col_id}[{array_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"(array_length({col_id}) < {array_index} OR " f"{leaf_expr} = '')"
         elif column.is_struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
-            return (
-                f"({col_id}.`{struct_column}` IS NULL OR "
-                f"{col_id}.`{struct_column}` = '')"
-            )
+            leaf_expr = f"{col_id}.`{struct_column}`"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"({leaf_expr} IS NULL OR " f"{leaf_expr} = '')"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
+            leaf_expr = f"parse_json({col_id})->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+                return (
+                    f"(NOT json_exists(parse_json({col_id}), '$.{json_path_str}') OR "
+                    f"{leaf_expr} = '')"
+                )
             return (
                 f"(NOT json_exists(parse_json({col_id}), '$.{json_path_str}') OR "
-                f"parse_json({col_id})->{json_path_str} = '')"
+                f"{leaf_expr} = '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -347,11 +405,23 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return f"{col_id}->{json_path_str} {sql_op} ({values_sql})"
+            leaf_expr = f"{col_id}->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         elif column.is_map:
             map_path = [escape_param(part) for part in expression.key.segments[1:]]
             map_key = "][".join(map_path)
-            return f"{col_id}[{map_key}] {sql_op} ({values_sql})"
+            leaf_expr = f"{col_id}[{map_key}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -360,15 +430,32 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            return f"{col_id}[{array_index}] {sql_op} ({values_sql})"
+            leaf_expr = f"{col_id}[{array_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         elif column.is_struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
-            return f"{col_id}.`{struct_column}` {sql_op} ({values_sql})"
+            leaf_expr = f"{col_id}.`{struct_column}`"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
-            return f"parse_json({col_id})->{json_path_str} {sql_op} ({values_sql})"
+            leaf_expr = f"parse_json({col_id})->{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"cast({leaf_expr} as string)",
+                    expression.key.transformers,
+                    "starrocks",
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
@@ -397,15 +484,23 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(quote_json_path_part(x) for x in json_path)
-            leaf_expr = f"{col_id}->{json_path_str}"
+            leaf_expr = f"cast({col_id}->{json_path_str} as string)"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             if is_not_has:
-                return f"INSTR(cast({leaf_expr} as string), {value}) = 0"
-            return f"INSTR(cast({leaf_expr} as string), {value}) > 0"
+                return f"INSTR({leaf_expr}, {value}) = 0"
+            return f"INSTR({leaf_expr}, {value}) > 0"
         elif column.is_map:
             map_path = expression.key.segments[1:]
             escaped_parts = [escape_param(part) for part in map_path]
             map_key = "][".join(escaped_parts)
             leaf_expr = f"{col_id}[{map_key}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
@@ -418,6 +513,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             leaf_expr = f"{col_id}[{array_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
@@ -425,6 +524,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             leaf_expr = f"{col_id}.`{struct_column}`"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
@@ -433,10 +536,14 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = "->".join(quote_json_path_part(x) for x in json_path)
-            leaf_expr = f"parse_json({col_id})->{json_path_str}"
+            leaf_expr = f"cast(parse_json({col_id})->{json_path_str} as string)"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "starrocks"
+                )
             if is_not_has:
-                return f"INSTR(cast({leaf_expr} as string), {value}) = 0"
-            return f"INSTR(cast({leaf_expr} as string), {value}) > 0"
+                return f"INSTR({leaf_expr}, {value}) = 0"
+            return f"INSTR({leaf_expr}, {value}) > 0"
         else:
             raise FlyqlError("path search for unsupported column type")
 
@@ -492,10 +599,6 @@ def expression_to_sql(
 
     # TODO: support arbitrary nesting for map, array, struct types
     if expression.key.is_segmented:
-        if expression.key.transformers:
-            raise FlyqlError(
-                "transformers on segmented (nested path) keys are not supported"
-            )
         reverse_operator = ""
         if expression.operator == Operator.NOT_REGEX.value:
             reverse_operator = "not "
@@ -505,7 +608,7 @@ def expression_to_sql(
             raise FlyqlError(f"unknown column: {column_name}")
         column = columns[column_name]
 
-        if column.normalized_type is not None:
+        if column.normalized_type is not None and not expression.key.transformers:
             validate_operation(
                 expression.value, column.normalized_type, expression.operator
             )
@@ -516,6 +619,11 @@ def expression_to_sql(
         # column to JSON again. Therefore, we only do jsonstring parsing for other
         # column types.
         col_id = get_identifier(column)
+
+        is_regex_op = expression.operator in (
+            Operator.REGEX.value,
+            Operator.NOT_REGEX.value,
+        )
 
         if column.is_json:
             # Although `parse_json` works on a JSON column, it is more efficient to not use it
@@ -528,18 +636,24 @@ def expression_to_sql(
 
             column_exp = f"{col_id}->{json_path_str}"
 
-            if (
-                expression.operator == Operator.REGEX.value
-                or expression.operator == Operator.NOT_REGEX.value
-            ):
+            if is_regex_op or expression.key.transformers:
                 column_exp = f"cast({column_exp} as string)"
+            if expression.key.transformers:
+                column_exp = apply_transformer_sql(
+                    column_exp, expression.key.transformers, "starrocks"
+                )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
         elif column.is_map:
             map_path = expression.key.segments[1:]
             map_path = [escape_param(part) for part in map_path]
             map_key = "][".join(map_path)
             value = escape_param(expression.value)
-            text = f"{col_id}[{map_key}] {reverse_operator}{operator} {value}"
+            column_exp = f"{col_id}[{map_key}]"
+            if expression.key.transformers:
+                column_exp = apply_transformer_sql(
+                    column_exp, expression.key.transformers, "starrocks"
+                )
+            text = f"{column_exp} {reverse_operator}{operator} {value}"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -549,12 +663,22 @@ def expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 )
             value = escape_param(expression.value)
-            text = f"{col_id}[{array_index}] {reverse_operator}{operator} {value}"
+            column_exp = f"{col_id}[{array_index}]"
+            if expression.key.transformers:
+                column_exp = apply_transformer_sql(
+                    column_exp, expression.key.transformers, "starrocks"
+                )
+            text = f"{column_exp} {reverse_operator}{operator} {value}"
         elif column.is_struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             value = escape_param(expression.value)
-            text = f"{col_id}.`{struct_column}` {reverse_operator}{operator} {value}"
+            column_exp = f"{col_id}.`{struct_column}`"
+            if expression.key.transformers:
+                column_exp = apply_transformer_sql(
+                    column_exp, expression.key.transformers, "starrocks"
+                )
+            text = f"{column_exp} {reverse_operator}{operator} {value}"
         elif column.jsonstring:
             json_path = expression.key.segments[1:]
             for part in json_path:
@@ -566,11 +690,12 @@ def expression_to_sql(
 
             column_exp = f"parse_json({col_id})->{json_path_str}"
 
-            if (
-                expression.operator == Operator.REGEX.value
-                or expression.operator == Operator.NOT_REGEX.value
-            ):
+            if is_regex_op or expression.key.transformers:
                 column_exp = f"cast({column_exp} as string)"
+            if expression.key.transformers:
+                column_exp = apply_transformer_sql(
+                    column_exp, expression.key.transformers, "starrocks"
+                )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
         else:
             raise FlyqlError("path search for unsupported column type")

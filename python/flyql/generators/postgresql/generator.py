@@ -234,17 +234,17 @@ def expression_to_sql_simple(
 def expression_to_sql_segmented(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
-    if expression.key.transformers:
-        raise FlyqlError(
-            "transformers on segmented (nested path) keys are not supported"
-        )
     column_name = expression.key.segments[0]
     if column_name not in columns:
         raise FlyqlError(f"unknown column: {column_name}")
 
     column = columns[column_name]
 
-    if column.normalized_type is not None and not column.jsonstring:
+    if (
+        column.normalized_type is not None
+        and not column.jsonstring
+        and not expression.key.transformers
+    ):
         validate_operation(
             expression.value, column.normalized_type, expression.operator
         )
@@ -261,6 +261,10 @@ def expression_to_sql_segmented(
             )
 
         path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
+        if expression.key.transformers:
+            path_expr = apply_transformer_sql(
+                path_expr, expression.key.transformers, "postgresql"
+            )
         value = escape_param(expression.value)
 
         if expression.operator == Operator.REGEX.value:
@@ -293,6 +297,10 @@ def expression_to_sql_segmented(
         escaped_map_key = escape_param(map_key)
         value = escape_param(expression.value)
         access_expr = f"{identifier}->{escaped_map_key}"
+        if expression.key.transformers:
+            access_expr = apply_transformer_sql(
+                access_expr, expression.key.transformers, "postgresql"
+            )
 
         if expression.operator == Operator.REGEX.value:
             return f"{access_expr} ~ {value}"
@@ -312,6 +320,10 @@ def expression_to_sql_segmented(
         value = escape_param(expression.value)
         pg_index = array_index + 1
         access_expr = f"{identifier}[{pg_index}]"
+        if expression.key.transformers:
+            access_expr = apply_transformer_sql(
+                access_expr, expression.key.transformers, "postgresql"
+            )
 
         if expression.operator == Operator.REGEX.value:
             return f"{access_expr} ~ {value}"
@@ -349,10 +361,6 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     values_sql = ", ".join(escape_param(v) for v in expression.values)
     sql_op = "NOT IN" if is_not_in else "IN"
     identifier = get_identifier(column)
-    if expression.key.transformers:
-        identifier = apply_transformer_sql(
-            identifier, expression.key.transformers, "postgresql"
-        )
 
     if expression.key.is_segmented:
         if column.is_jsonb or column.jsonstring:
@@ -366,11 +374,20 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
             path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
+            if expression.key.transformers:
+                path_expr = apply_transformer_sql(
+                    path_expr, expression.key.transformers, "postgresql"
+                )
             return f"{path_expr} {sql_op} ({values_sql})"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            return f"{identifier}->{escaped_map_key} {sql_op} ({values_sql})"
+            leaf_expr = f"{identifier}->{escaped_map_key}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -379,10 +396,19 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            return f"{identifier}[{array_index + 1}] {sql_op} ({values_sql})"
+            leaf_expr = f"{identifier}[{array_index + 1}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
+            return f"{leaf_expr} {sql_op} ({values_sql})"
         else:
             raise FlyqlError("path search for unsupported column type")
 
+    if expression.key.transformers:
+        identifier = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
     return f"{identifier} {sql_op} ({values_sql})"
 
 
@@ -408,14 +434,20 @@ def truthy_expression_to_sql(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
             path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
+            if expression.key.transformers:
+                path_expr = apply_transformer_sql(
+                    path_expr, expression.key.transformers, "postgresql"
+                )
             return f"({path_expr} IS NOT NULL AND {path_expr} != '')"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            return (
-                f"({identifier} ? {escaped_map_key} AND "
-                f"{identifier}->{escaped_map_key} != '')"
-            )
+            leaf_expr = f"{identifier}->{escaped_map_key}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
+            return f"({identifier} ? {escaped_map_key} AND " f"{leaf_expr} != '')"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -425,9 +457,14 @@ def truthy_expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             pg_index = array_index + 1
+            leaf_expr = f"{identifier}[{pg_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
             return (
                 f"(array_length({identifier}, 1) >= {pg_index} AND "
-                f"{identifier}[{pg_index}] != '')"
+                f"{leaf_expr} != '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -482,14 +519,20 @@ def falsy_expression_to_sql(
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
             path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
+            if expression.key.transformers:
+                path_expr = apply_transformer_sql(
+                    path_expr, expression.key.transformers, "postgresql"
+                )
             return f"({path_expr} IS NULL OR {path_expr} = '')"
         elif column.is_hstore:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            return (
-                f"(NOT ({identifier} ? {escaped_map_key}) OR "
-                f"{identifier}->{escaped_map_key} = '')"
-            )
+            leaf_expr = f"{identifier}->{escaped_map_key}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
+            return f"(NOT ({identifier} ? {escaped_map_key}) OR " f"{leaf_expr} = '')"
         elif column.is_array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -499,9 +542,13 @@ def falsy_expression_to_sql(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
             pg_index = array_index + 1
+            leaf_expr = f"{identifier}[{pg_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
             return (
-                f"(array_length({identifier}, 1) < {pg_index} OR "
-                f"{identifier}[{pg_index}] = '')"
+                f"(array_length({identifier}, 1) < {pg_index} OR " f"{leaf_expr} = '')"
             )
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -542,10 +589,6 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
     column = columns[column_name]
     is_not_has = expression.operator == Operator.NOT_HAS.value
     identifier = get_identifier(column)
-    if expression.key.transformers:
-        identifier = apply_transformer_sql(
-            identifier, expression.key.transformers, "postgresql"
-        )
     value = escape_param(expression.value)
 
     if expression.key.is_segmented:
@@ -560,6 +603,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
                     part, json_path_quoted[i] if i < len(json_path_quoted) else False
                 )
             path_expr = _build_jsonb_path(cast_identifier, json_path, json_path_quoted)
+            if expression.key.transformers:
+                path_expr = apply_transformer_sql(
+                    path_expr, expression.key.transformers, "postgresql"
+                )
             if is_not_has:
                 return f"position({value} in {path_expr}) = 0"
             return f"position({value} in {path_expr}) > 0"
@@ -567,6 +614,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{identifier}->{escaped_map_key}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
             if is_not_has:
                 return f"position({value} in {leaf_expr}) = 0"
             return f"position({value} in {leaf_expr}) > 0"
@@ -580,11 +631,20 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
                 ) from err
             pg_index = array_index + 1
             leaf_expr = f"{identifier}[{pg_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "postgresql"
+                )
             if is_not_has:
                 return f"position({value} in {leaf_expr}) = 0"
             return f"position({value} in {leaf_expr}) > 0"
         else:
             raise FlyqlError("path search for unsupported column type")
+
+    if expression.key.transformers:
+        identifier = apply_transformer_sql(
+            identifier, expression.key.transformers, "postgresql"
+        )
 
     is_array_result = column.is_array
     out_type = get_transformer_output_type(expression.key.transformers)

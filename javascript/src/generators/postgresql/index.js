@@ -266,20 +266,18 @@ function expressionToSQLSimple(expr, columns, registry = null) {
 }
 
 function expressionToSQLSegmented(expr, columns) {
-    if (expr.key.transformers.length) {
-        throw new Error('transformers on segmented (nested path) keys are not supported')
-    }
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (column.normalizedType && !column.jsonString) {
+    if (column.normalizedType && !column.jsonString && !expr.key.transformers.length) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
     const identifier = getIdentifier(column)
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (column.isJSONB || column.jsonString) {
         const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
@@ -290,7 +288,10 @@ function expressionToSQLSegmented(expr, columns) {
             validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
         }
 
-        const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+        let pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+        if (hasTransformers) {
+            pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
+        }
         const value = escapeParam(expr.value)
 
         switch (true) {
@@ -313,7 +314,10 @@ function expressionToSQLSegmented(expr, columns) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
         const value = escapeParam(expr.value)
-        const accessExpr = `${identifier}->${escapedMapKey}`
+        let accessExpr = `${identifier}->${escapedMapKey}`
+        if (hasTransformers) {
+            accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
+        }
 
         switch (expr.operator) {
             case Operator.REGEX:
@@ -331,7 +335,10 @@ function expressionToSQLSegmented(expr, columns) {
         }
         const value = escapeParam(expr.value)
         const pgIndex = arrayIndex + 1
-        const accessExpr = `${identifier}[${pgIndex}]`
+        let accessExpr = `${identifier}[${pgIndex}]`
+        if (hasTransformers) {
+            accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
+        }
 
         switch (expr.operator) {
             case Operator.REGEX:
@@ -371,6 +378,8 @@ function inExpressionToSQL(expr, columns) {
 
     let identifier = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSONB || column.jsonString) {
             const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
@@ -380,25 +389,36 @@ function inExpressionToSQL(expr, columns) {
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            let pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            if (hasTransformers) {
+                pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
+            }
             return `${pathExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `${identifier}->${escapedMapKey} ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${identifier}->${escapedMapKey}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `${identifier}[${arrayIndex + 1}] ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${identifier}[${arrayIndex + 1}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
     }
 
@@ -414,6 +434,8 @@ function truthyExpressionToSQL(expr, columns) {
 
     const identifier = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSONB || column.jsonString) {
             const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
@@ -423,12 +445,19 @@ function truthyExpressionToSQL(expr, columns) {
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            let pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            if (hasTransformers) {
+                pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
+            }
             return `(${pathExpr} IS NOT NULL AND ${pathExpr} != '')`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(${identifier} ? ${escapedMapKey} AND ${identifier}->${escapedMapKey} != '')`
+            let leafExpr = `${identifier}->${escapedMapKey}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `(${identifier} ? ${escapedMapKey} AND ${leafExpr} != '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -436,13 +465,17 @@ function truthyExpressionToSQL(expr, columns) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
             const pgIndex = arrayIndex + 1
-            return `(array_length(${identifier}, 1) >= ${pgIndex} AND ${identifier}[${pgIndex}] != '')`
+            let leafExpr = `${identifier}[${pgIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `(array_length(${identifier}, 1) >= ${pgIndex} AND ${leafExpr} != '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
@@ -475,6 +508,8 @@ function falsyExpressionToSQL(expr, columns) {
 
     const identifier = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSONB || column.jsonString) {
             const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
@@ -484,12 +519,19 @@ function falsyExpressionToSQL(expr, columns) {
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            let pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            if (hasTransformers) {
+                pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
+            }
             return `(${pathExpr} IS NULL OR ${pathExpr} = '')`
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(NOT (${identifier} ? ${escapedMapKey}) OR ${identifier}->${escapedMapKey} = '')`
+            let leafExpr = `${identifier}->${escapedMapKey}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `(NOT (${identifier} ? ${escapedMapKey}) OR ${leafExpr} = '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -497,13 +539,17 @@ function falsyExpressionToSQL(expr, columns) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
             const pgIndex = arrayIndex + 1
-            return `(array_length(${identifier}, 1) < ${pgIndex} OR ${identifier}[${pgIndex}] = '')`
+            let leafExpr = `${identifier}[${pgIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'postgresql')
+            }
+            return `(array_length(${identifier}, 1) < ${pgIndex} OR ${leafExpr} = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
@@ -538,6 +584,8 @@ function hasExpressionToSQL(expr, columns) {
     let identifier = getIdentifier(column)
     const value = escapeParam(expr.value)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSONB || column.jsonString) {
             const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
@@ -547,7 +595,10 @@ function hasExpressionToSQL(expr, columns) {
             for (let i = 0; i < jsonPath.length; i++) {
                 validateJSONPathPart(jsonPath[i], jsonPathQuoted[i])
             }
-            const pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            let pathExpr = buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+            if (hasTransformers) {
+                pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
+            }
             if (isNotHas) {
                 return `position(${value} in ${pathExpr}) = 0`
             }
@@ -555,7 +606,10 @@ function hasExpressionToSQL(expr, columns) {
         } else if (column.isHstore) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            const accessExpr = `${identifier}->${escapedMapKey}`
+            let accessExpr = `${identifier}->${escapedMapKey}`
+            if (hasTransformers) {
+                accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
+            }
             if (isNotHas) {
                 return `position(${value} in ${accessExpr}) = 0`
             }
@@ -567,7 +621,10 @@ function hasExpressionToSQL(expr, columns) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
             const pgIndex = arrayIndex + 1
-            const accessExpr = `${identifier}[${pgIndex}]`
+            let accessExpr = `${identifier}[${pgIndex}]`
+            if (hasTransformers) {
+                accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
+            }
             if (isNotHas) {
                 return `position(${value} in ${accessExpr}) = 0`
             }
@@ -577,7 +634,7 @@ function hasExpressionToSQL(expr, columns) {
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql')
     }
 

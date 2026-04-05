@@ -179,18 +179,18 @@ function expressionToSQLSimple(expr, columns, registry = null) {
 }
 
 function expressionToSQLSegmented(expr, columns) {
-    if (expr.key.transformers.length) {
-        throw new Error('transformers on segmented (nested path) keys are not supported')
-    }
     const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
     const operator = operatorToStarRocksOperator[expr.operator]
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
 
-    if (column.normalizedType) validateOperation(expr.value, column.normalizedType, expr.operator)
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
+    if (column.normalizedType && !hasTransformers) validateOperation(expr.value, column.normalizedType, expr.operator)
 
     const colId = getIdentifier(column)
+    const isRegexOp = expr.operator === Operator.REGEX || expr.operator === Operator.NOT_REGEX
 
     if (column.isJSON) {
         const jsonPath = expr.key.segments.slice(1)
@@ -198,34 +198,52 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
         const value = escapeParam(expr.value)
         let columnExp = `${colId}->${jsonPathStr}`
-        if (expr.operator === Operator.REGEX || expr.operator === Operator.NOT_REGEX) {
+        if (isRegexOp || hasTransformers) {
             columnExp = `cast(${columnExp} as string)`
+        }
+        if (hasTransformers) {
+            columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
         }
         return `${columnExp} ${reverseOperator}${operator} ${value}`
     } else if (column.isMap) {
         const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
         const mapKey = mapPath.join('][')
         const value = escapeParam(expr.value)
-        return `${colId}[${mapKey}] ${reverseOperator}${operator} ${value}`
+        let columnExp = `${colId}[${mapKey}]`
+        if (hasTransformers) {
+            columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
+        }
+        return `${columnExp} ${reverseOperator}${operator} ${value}`
     } else if (column.isArray) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
         if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         const value = escapeParam(expr.value)
-        return `${colId}[${arrayIndex}] ${reverseOperator}${operator} ${value}`
+        let columnExp = `${colId}[${arrayIndex}]`
+        if (hasTransformers) {
+            columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
+        }
+        return `${columnExp} ${reverseOperator}${operator} ${value}`
     } else if (column.isStruct) {
         const structPath = expr.key.segments.slice(1)
         const structColumn = structPath.join('`.`')
         const value = escapeParam(expr.value)
-        return `${colId}.\`${structColumn}\` ${reverseOperator}${operator} ${value}`
+        let columnExp = `${colId}.\`${structColumn}\``
+        if (hasTransformers) {
+            columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
+        }
+        return `${columnExp} ${reverseOperator}${operator} ${value}`
     } else if (column.jsonString) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) validateJSONPathPart(part)
         const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
         const value = escapeParam(expr.value)
         let columnExp = `parse_json(${colId})->${jsonPathStr}`
-        if (expr.operator === Operator.REGEX || expr.operator === Operator.NOT_REGEX) {
+        if (isRegexOp || hasTransformers) {
             columnExp = `cast(${columnExp} as string)`
+        }
+        if (hasTransformers) {
+            columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
         }
         return `${columnExp} ${reverseOperator}${operator} ${value}`
     } else {
@@ -251,35 +269,57 @@ function inExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `${colId}->${jsonPathStr} ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isMap) {
             const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
             const mapKey = mapPath.join('][')
-            return `${colId}[${mapKey}] ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}[${mapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
-            return `${colId}[${arrayIndex}] ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isStruct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
-            return `${colId}.\`${structColumn}\` ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}.\`${structColumn}\``
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `parse_json(${colId})->${jsonPathStr} ${sqlOp} (${valuesSQL})`
+            let leafExpr = `parse_json(${colId})->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
     let colRef = colId
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
     }
 
@@ -293,33 +333,57 @@ function truthyExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `(${colId}->${jsonPathStr} IS NOT NULL)`
+            let leafExpr = `${colId}->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+                return `(${leafExpr} IS NOT NULL AND ${leafExpr} != '')`
+            }
+            return `(${leafExpr} IS NOT NULL)`
         } else if (column.isMap) {
             const mapKey = escapeParam(expr.key.segments.slice(1).join('.'))
-            return `(element_at(${colId}, ${mapKey}) IS NOT NULL AND ${colId}[${mapKey}] != '')`
+            let leafExpr = `${colId}[${mapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(element_at(${colId}, ${mapKey}) IS NOT NULL AND ${leafExpr} != '')`
         } else if (column.isArray) {
             const arrayIndex = parseInt(expr.key.segments.slice(1).join('.'), 10)
             if (isNaN(arrayIndex))
                 throw new Error(`invalid array index, expected number: ${expr.key.segments.slice(1).join('.')}`)
-            return `(array_length(${colId}) >= ${arrayIndex} AND ${colId}[${arrayIndex}] != '')`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(array_length(${colId}) >= ${arrayIndex} AND ${leafExpr} != '')`
         } else if (column.isStruct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
-            return `(${colId}.\`${structColumn}\` IS NOT NULL AND ${colId}.\`${structColumn}\` != '')`
+            let leafExpr = `${colId}.\`${structColumn}\``
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(${leafExpr} IS NOT NULL AND ${leafExpr} != '')`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `(json_exists(parse_json(${colId}), ${jsonPathStr}) AND parse_json(${colId})->${jsonPathStr} != '')`
+            let leafExpr = `parse_json(${colId})->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+                return `(json_exists(parse_json(${colId}), ${jsonPathStr}) AND ${leafExpr} != '')`
+            }
+            return `(json_exists(parse_json(${colId}), ${jsonPathStr}) AND ${leafExpr} != '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
@@ -353,32 +417,56 @@ function falsyExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `(${colId}->${jsonPathStr} IS NULL)`
+            let leafExpr = `${colId}->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+                return `(${leafExpr} IS NULL OR ${leafExpr} = '')`
+            }
+            return `(${leafExpr} IS NULL)`
         } else if (column.isMap) {
             const mapKey = escapeParam(expr.key.segments.slice(1).join('.'))
-            return `(element_at(${colId}, ${mapKey}) IS NULL OR ${colId}[${mapKey}] = '')`
+            let leafExpr = `${colId}[${mapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(element_at(${colId}, ${mapKey}) IS NULL OR ${leafExpr} = '')`
         } else if (column.isArray) {
             const arrayIndex = parseInt(expr.key.segments.slice(1).join('.'), 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index`)
-            return `(array_length(${colId}) < ${arrayIndex} OR ${colId}[${arrayIndex}] = '')`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(array_length(${colId}) < ${arrayIndex} OR ${leafExpr} = '')`
         } else if (column.isStruct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
-            return `(${colId}.\`${structColumn}\` IS NULL OR ${colId}.\`${structColumn}\` = '')`
+            let leafExpr = `${colId}.\`${structColumn}\``
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `(${leafExpr} IS NULL OR ${leafExpr} = '')`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            return `(NOT json_exists(parse_json(${colId}), '$.${jsonPathStr}') OR parse_json(${colId})->${jsonPathStr} = '')`
+            let leafExpr = `parse_json(${colId})->${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
+                return `(NOT json_exists(parse_json(${colId}), '$.${jsonPathStr}') OR ${leafExpr} = '')`
+            }
+            return `(NOT json_exists(parse_json(${colId}), '$.${jsonPathStr}') OR ${leafExpr} = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(colId, expr.key.transformers, 'starrocks')
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
@@ -414,12 +502,17 @@ function hasExpressionToSQL(expr, columns) {
     const value = escapeParam(expr.value)
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            const columnExp = `cast(${colId}->${jsonPathStr} as string)`
+            let columnExp = `cast(${colId}->${jsonPathStr} as string)`
+            if (hasTransformers) {
+                columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
+            }
             if (isNotHas) {
                 return `INSTR(${columnExp}, ${value}) = 0`
             }
@@ -427,22 +520,33 @@ function hasExpressionToSQL(expr, columns) {
         } else if (column.isMap) {
             const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
             const mapKey = mapPath.join('][')
-            if (isNotHas) {
-                return `INSTR(${colId}[${mapKey}], ${value}) = 0`
+            let leafExpr = `${colId}[${mapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `INSTR(${colId}[${mapKey}], ${value}) > 0`
+            if (isNotHas) {
+                return `INSTR(${leafExpr}, ${value}) = 0`
+            }
+            return `INSTR(${leafExpr}, ${value}) > 0`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
-            if (isNotHas) {
-                return `INSTR(${colId}[${arrayIndex}], ${value}) = 0`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `INSTR(${colId}[${arrayIndex}], ${value}) > 0`
+            if (isNotHas) {
+                return `INSTR(${leafExpr}, ${value}) = 0`
+            }
+            return `INSTR(${leafExpr}, ${value}) > 0`
         } else if (column.isStruct) {
             const structPath = expr.key.segments.slice(1)
             const structColumn = structPath.join('`.`')
-            const leafExpr = `${colId}.\`${structColumn}\``
+            let leafExpr = `${colId}.\`${structColumn}\``
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
             if (isNotHas) {
                 return `INSTR(${leafExpr}, ${value}) = 0`
             }
@@ -451,7 +555,10 @@ function hasExpressionToSQL(expr, columns) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-            const columnExp = `cast(parse_json(${colId})->${jsonPathStr} as string)`
+            let columnExp = `cast(parse_json(${colId})->${jsonPathStr} as string)`
+            if (hasTransformers) {
+                columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
+            }
             if (isNotHas) {
                 return `INSTR(${columnExp}, ${value}) = 0`
             }
@@ -462,7 +569,7 @@ function hasExpressionToSQL(expr, columns) {
     }
 
     let colRef = colId
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks')
     }
 

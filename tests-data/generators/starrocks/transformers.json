@@ -44,6 +44,126 @@
       "input": "field|split(\".\")",
       "expected_result": "success",
       "expected_sql": "(SPLIT(`field`, '.') IS NOT NULL AND SPLIT(`field`, '.') != '')"
+    },
+    {
+      "name": "json_nested_upper_equals",
+      "input": "new_json.user.name|upper = 'JOHN'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) = 'JOHN'"
+    },
+    {
+      "name": "json_nested_regex_chained",
+      "input": "new_json.user.name|upper|lower~'foo.*'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string))) regexp 'foo.*'"
+    },
+    {
+      "name": "json_nested_lower_in",
+      "input": "new_json.user.name|lower in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "LOWER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) IN ('a', 'b')"
+    },
+    {
+      "name": "json_nested_truthy_upper",
+      "input": "new_json.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) IS NOT NULL AND UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) != '')"
+    },
+    {
+      "name": "json_nested_falsy_upper",
+      "input": "not new_json.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) IS NULL OR UPPER(cast(`new_json`->'\"user\"'->'\"name\"' as string)) = '')"
+    },
+    {
+      "name": "json_nested_has_lower",
+      "input": "new_json.user.name|lower has 'foo'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(LOWER(cast(`new_json`->'\"user\"'->'\"name\"' as string)), 'foo') > 0"
+    },
+    {
+      "name": "jsonstring_nested_lower_equals",
+      "input": "json_column.user.name|lower = 'alice'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(cast(parse_json(`json_column`)->'\"user\"'->'\"name\"' as string)) = 'alice'"
+    },
+    {
+      "name": "jsonstring_nested_upper_in",
+      "input": "json_column.status|upper in ['ACTIVE', 'PENDING']",
+      "expected_result": "success",
+      "expected_sql": "UPPER(cast(parse_json(`json_column`)->'\"status\"' as string)) IN ('ACTIVE', 'PENDING')"
+    },
+    {
+      "name": "jsonstring_nested_has_upper",
+      "input": "json_column.user.name|upper has 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(UPPER(cast(parse_json(`json_column`)->'\"user\"'->'\"name\"' as string)), 'FOO') > 0"
+    },
+    {
+      "name": "map_lower_equals",
+      "input": "metadata.key|lower = 'x'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(`metadata`['key']) = 'x'"
+    },
+    {
+      "name": "map_lower_in",
+      "input": "metadata.key|lower in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "LOWER(`metadata`['key']) IN ('a', 'b')"
+    },
+    {
+      "name": "map_truthy_lower",
+      "input": "metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(element_at(`metadata`, 'key') IS NOT NULL AND LOWER(`metadata`['key']) != '')"
+    },
+    {
+      "name": "map_falsy_lower",
+      "input": "not metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(element_at(`metadata`, 'key') IS NULL OR LOWER(`metadata`['key']) = '')"
+    },
+    {
+      "name": "map_has_lower",
+      "input": "metadata.key|lower has 'x'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(LOWER(`metadata`['key']), 'x') > 0"
+    },
+    {
+      "name": "array_upper_equals",
+      "input": "tags.0|upper = 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "UPPER(`tags`[0]) = 'FOO'"
+    },
+    {
+      "name": "array_upper_in",
+      "input": "tags.0|upper in ['A', 'B']",
+      "expected_result": "success",
+      "expected_sql": "UPPER(`tags`[0]) IN ('A', 'B')"
+    },
+    {
+      "name": "array_has_upper",
+      "input": "tags.0|upper has 'F'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(UPPER(`tags`[0]), 'F') > 0"
+    },
+    {
+      "name": "struct_field_lower_equals",
+      "input": "object.b|lower = 'x'",
+      "expected_result": "success",
+      "expected_sql": "LOWER(`object`.`b`) = 'x'"
+    },
+    {
+      "name": "struct_field_truthy_lower",
+      "input": "object.b|lower",
+      "expected_result": "success",
+      "expected_sql": "(LOWER(`object`.`b`) IS NOT NULL AND LOWER(`object`.`b`) != '')"
+    },
+    {
+      "name": "struct_field_has_upper",
+      "input": "object.b|upper has 'X'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(UPPER(`object`.`b`), 'X') > 0"
     }
   ]
 }

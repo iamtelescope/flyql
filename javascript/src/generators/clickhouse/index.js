@@ -187,9 +187,6 @@ function expressionToSQLSimple(expr, columns, registry = null) {
 const validAliasPattern = /^[a-zA-Z_][a-zA-Z0-9_.]*$/
 
 function expressionToSQLSegmented(expr, columns) {
-    if (expr.key.transformers.length) {
-        throw new Error('transformers on segmented (nested path) keys are not supported')
-    }
     const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
     const funcName = operatorToClickHouseFunc[expr.operator]
     if (!funcName) {
@@ -202,7 +199,9 @@ function expressionToSQLSegmented(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (column.normalizedType) {
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
+    if (column.normalizedType && !hasTransformers) {
         validateOperation(expr.value, column.normalizedType, expr.operator)
     }
 
@@ -214,6 +213,14 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPathStr = jsonPathParts.join(', ')
 
         const strValue = escapeParam(expr.value)
+        if (hasTransformers) {
+            const leafExpr = applyTransformerSQL(
+                `JSONExtractString(${colId}, ${jsonPathStr})`,
+                expr.key.transformers,
+                'clickhouse',
+            )
+            return `${reverseOperator}${funcName}(${leafExpr}, ${strValue})`
+        }
         const multiIf = [
             `JSONType(${colId}, ${jsonPathStr}) = 'String', ${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${strValue})`,
         ]
@@ -240,12 +247,20 @@ function expressionToSQLSegmented(expr, columns) {
         const pathParts = jsonPath.map((part) => '`' + part + '`')
         const jsonPathStr = pathParts.join('.')
         const value = escapeParam(expr.value)
-        return `${colId}.${jsonPathStr} ${expr.operator} ${value}`
+        let leafExpr = `${colId}.${jsonPathStr}`
+        if (hasTransformers) {
+            leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+        }
+        return `${leafExpr} ${expr.operator} ${value}`
     } else if (column.isMap) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
         const value = escapeParam(expr.value)
-        return `${reverseOperator}${funcName}(${colId}[${escapedMapKey}], ${value})`
+        let leafExpr = `${colId}[${escapedMapKey}]`
+        if (hasTransformers) {
+            leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+        }
+        return `${reverseOperator}${funcName}(${leafExpr}, ${value})`
     } else if (column.isArray) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -253,7 +268,11 @@ function expressionToSQLSegmented(expr, columns) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
         const value = escapeParam(expr.value)
-        return `${reverseOperator}${funcName}(${colId}[${arrayIndex}], ${value})`
+        let leafExpr = `${colId}[${arrayIndex}]`
+        if (hasTransformers) {
+            leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+        }
+        return `${reverseOperator}${funcName}(${leafExpr}, ${value})`
     } else {
         throw new Error('path search for unsupported column type')
     }
@@ -284,6 +303,8 @@ function inExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
@@ -292,30 +313,46 @@ function inExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => `$.${part}`)
             const jsonPathStr = pathParts.join('.')
-            return `JSON_VALUE(${colId}, '${jsonPathStr}') ${sqlOp} (${valuesSQL})`
+            let leafExpr = `JSON_VALUE(${colId}, '${jsonPathStr}')`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `JSONExtractString(${colId}, ${jsonPathStr}) ${sqlOp} (${valuesSQL})`
+            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `${colId}[${escapedMapKey}] ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}[${escapedMapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `${colId}[${arrayIndex}] ${sqlOp} (${valuesSQL})`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `${leafExpr} ${sqlOp} (${valuesSQL})`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
     let colRef = colId
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
 
@@ -331,12 +368,18 @@ function truthyExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `(JSONHas(${colId}, ${jsonPathStr}) AND JSONExtractString(${colId}, ${jsonPathStr}) != '')`
+            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(JSONHas(${colId}, ${jsonPathStr}) AND ${leafExpr} != '')`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
@@ -344,24 +387,37 @@ function truthyExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => '`' + part + '`')
             const jsonPathStr = pathParts.join('.')
-            return `(${colId}.${jsonPathStr} IS NOT NULL)`
+            let leafExpr = `${colId}.${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+                return `(${leafExpr} IS NOT NULL AND ${leafExpr} != '')`
+            }
+            return `(${leafExpr} IS NOT NULL)`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(mapContains(${colId}, ${escapedMapKey}) AND ${colId}[${escapedMapKey}] != '')`
+            let leafExpr = `${colId}[${escapedMapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(mapContains(${colId}, ${escapedMapKey}) AND ${leafExpr} != '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `(length(${colId}) >= ${arrayIndex} AND ${colId}[${arrayIndex}] != '')`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(length(${colId}) >= ${arrayIndex} AND ${leafExpr} != '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(colId, expr.key.transformers, 'clickhouse')
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
@@ -394,12 +450,18 @@ function falsyExpressionToSQL(expr, columns) {
 
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            return `(NOT JSONHas(${colId}, ${jsonPathStr}) OR JSONExtractString(${colId}, ${jsonPathStr}) = '')`
+            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(NOT JSONHas(${colId}, ${jsonPathStr}) OR ${leafExpr} = '')`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
@@ -407,24 +469,37 @@ function falsyExpressionToSQL(expr, columns) {
             }
             const pathParts = jsonPath.map((part) => '`' + part + '`')
             const jsonPathStr = pathParts.join('.')
-            return `(${colId}.${jsonPathStr} IS NULL)`
+            let leafExpr = `${colId}.${jsonPathStr}`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+                return `(${leafExpr} IS NULL OR ${leafExpr} = '')`
+            }
+            return `(${leafExpr} IS NULL)`
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            return `(NOT mapContains(${colId}, ${escapedMapKey}) OR ${colId}[${escapedMapKey}] = '')`
+            let leafExpr = `${colId}[${escapedMapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(NOT mapContains(${colId}, ${escapedMapKey}) OR ${leafExpr} = '')`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            return `(length(${colId}) < ${arrayIndex} OR ${colId}[${arrayIndex}] = '')`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `(length(${colId}) < ${arrayIndex} OR ${leafExpr} = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         const colRef = applyTransformerSQL(colId, expr.key.transformers, 'clickhouse')
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
@@ -459,22 +534,31 @@ function hasExpressionToSQL(expr, columns) {
     const value = escapeParam(expr.value)
     const colId = getIdentifier(column)
 
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
     if (expr.key.isSegmented) {
         if (column.jsonString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            if (isNotHas) {
-                return `position(JSONExtractString(${colId}, ${jsonPathStr}), ${value}) = 0`
+            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `position(JSONExtractString(${colId}, ${jsonPathStr}), ${value}) > 0`
+            if (isNotHas) {
+                return `position(${leafExpr}, ${value}) = 0`
+            }
+            return `position(${leafExpr}, ${value}) > 0`
         } else if (column.isJSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
             }
             const jsonPathStr = jsonPath.map((p) => p).join('.')
-            const leafExpr = `JSON_VALUE(${colId}, '$.${jsonPathStr}')`
+            let leafExpr = `JSON_VALUE(${colId}, '$.${jsonPathStr}')`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
             if (isNotHas) {
                 return `position(${leafExpr}, ${value}) = 0`
             }
@@ -482,27 +566,35 @@ function hasExpressionToSQL(expr, columns) {
         } else if (column.isMap) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
-            if (isNotHas) {
-                return `position(${colId}[${escapedMapKey}], ${value}) = 0`
+            let leafExpr = `${colId}[${escapedMapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `position(${colId}[${escapedMapKey}], ${value}) > 0`
+            if (isNotHas) {
+                return `position(${leafExpr}, ${value}) = 0`
+            }
+            return `position(${leafExpr}, ${value}) > 0`
         } else if (column.isArray) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            if (isNotHas) {
-                return `position(${colId}[${arrayIndex}], ${value}) = 0`
+            let leafExpr = `${colId}[${arrayIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `position(${colId}[${arrayIndex}], ${value}) > 0`
+            if (isNotHas) {
+                return `position(${leafExpr}, ${value}) = 0`
+            }
+            return `position(${leafExpr}, ${value}) > 0`
         } else {
             throw new Error('path search for unsupported column type')
         }
     }
 
     let colRef = colId
-    if (expr.key.transformers && expr.key.transformers.length) {
+    if (hasTransformers) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
 

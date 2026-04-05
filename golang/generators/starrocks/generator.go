@@ -315,9 +315,6 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 }
 
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
-	if len(expr.Key.Transformers) > 0 {
-		return "", fmt.Errorf("transformers on segmented (nested path) keys are not supported")
-	}
 	reverseOperator := ""
 	if expr.Operator == flyql.OpNotRegex {
 		reverseOperator = "not "
@@ -330,11 +327,14 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" {
+	if column.NormalizedType != "" && len(expr.Key.Transformers) == 0 {
 		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
 			return "", err
 		}
 	}
+
+	isRegexOp := expr.Operator == flyql.OpRegex || expr.Operator == flyql.OpNotRegex
+	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if column.IsJSON {
 		jsonPath := expr.Key.Segments[1:]
@@ -355,8 +355,15 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 
 		columnExp := fmt.Sprintf("%s->%s", getIdentifier(column), jsonPathStr)
-		if expr.Operator == flyql.OpRegex || expr.Operator == flyql.OpNotRegex {
+		if isRegexOp || hasTransformers {
 			columnExp = fmt.Sprintf("cast(%s as string)", columnExp)
+		}
+		if hasTransformers {
+			registry := transformers.DefaultRegistry()
+			columnExp, err = applyTransformerSQL(columnExp, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
 		}
 		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
@@ -376,7 +383,15 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s[%s] %s%s %s", getIdentifier(column), mapKey, reverseOperator, operator, value), nil
+		columnExp := fmt.Sprintf("%s[%s]", getIdentifier(column), mapKey)
+		if hasTransformers {
+			registry := transformers.DefaultRegistry()
+			columnExp, err = applyTransformerSQL(columnExp, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
 	} else if column.IsArray {
 		arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
@@ -389,7 +404,15 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s[%d] %s%s %s", getIdentifier(column), arrayIndex, reverseOperator, operator, value), nil
+		columnExp := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+		if hasTransformers {
+			registry := transformers.DefaultRegistry()
+			columnExp, err = applyTransformerSQL(columnExp, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
 	} else if column.IsStruct {
 		structPath := expr.Key.Segments[1:]
@@ -399,7 +422,15 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("%s.`%s` %s%s %s", getIdentifier(column), structColumn, reverseOperator, operator, value), nil
+		columnExp := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
+		if hasTransformers {
+			registry := transformers.DefaultRegistry()
+			columnExp, err = applyTransformerSQL(columnExp, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
 	} else if column.JSONString {
 		jsonPath := expr.Key.Segments[1:]
@@ -420,8 +451,15 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 
 		columnExp := fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), jsonPathStr)
-		if expr.Operator == flyql.OpRegex || expr.Operator == flyql.OpNotRegex {
+		if isRegexOp || hasTransformers {
 			columnExp = fmt.Sprintf("cast(%s as string)", columnExp)
+		}
+		if hasTransformers {
+			registry := transformers.DefaultRegistry()
+			columnExp, err = applyTransformerSQL(columnExp, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
 		}
 		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
@@ -461,19 +499,6 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		}
 	}
 
-	colRef := getIdentifier(column)
-	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
-		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
-			return "", err
-		}
-		var err error
-		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
-		if err != nil {
-			return "", err
-		}
-	}
-
 	valueParts := make([]string, len(expr.Values))
 	for i, v := range expr.Values {
 		escaped, err := EscapeParam(v)
@@ -489,6 +514,8 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		sqlOp = "NOT IN"
 	}
 
+	hasTransformers := len(expr.Key.Transformers) > 0
+
 	if expr.Key.IsSegmented() {
 		if column.IsJSON {
 			jsonPath := expr.Key.Segments[1:]
@@ -502,7 +529,16 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("%s->%s %s (%s)", getIdentifier(column), jsonPathStr, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else if column.IsMap {
 			mapPath := expr.Key.Segments[1:]
 			escapedParts := make([]string, len(mapPath))
@@ -514,18 +550,44 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				escapedParts[i] = escaped
 			}
 			mapKey := strings.Join(escapedParts, "][")
-			return fmt.Sprintf("%s[%s] %s (%s)", getIdentifier(column), mapKey, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s[%s]", getIdentifier(column), mapKey)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			return fmt.Sprintf("%s[%d] %s (%s)", getIdentifier(column), arrayIndex, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else if column.IsStruct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
-			return fmt.Sprintf("%s.`%s` %s (%s)", getIdentifier(column), structColumn, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else if column.JSONString {
 			jsonPath := expr.Key.Segments[1:]
 			pathParts := make([]string, len(jsonPath))
@@ -533,12 +595,33 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("parse_json(%s)->%s %s (%s)", getIdentifier(column), jsonPathStr, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
 	}
 
+	colRef := getIdentifier(column)
+	if hasTransformers {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
+		if err != nil {
+			return "", err
+		}
+	}
 	return fmt.Sprintf("%s %s (%s)", colRef, sqlOp, valuesSQL), nil
 }
 
@@ -556,17 +639,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		return "", err
 	}
 
-	colRef := getIdentifier(column)
-	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
-		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
-			return "", err
-		}
-		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
-		if err != nil {
-			return "", err
-		}
-	}
+	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if expr.Key.IsSegmented() {
 		if column.IsJSON {
@@ -581,11 +654,18 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			leafExpr := fmt.Sprintf("%s->%s", getIdentifier(column), jsonPathStr)
-			if isNotHas {
-				return fmt.Sprintf("INSTR(cast(%s as string), %s) = 0", leafExpr, value), nil
+			leafExpr := fmt.Sprintf("cast(%s->%s as string)", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
 			}
-			return fmt.Sprintf("INSTR(cast(%s as string), %s) > 0", leafExpr, value), nil
+			if isNotHas {
+				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
 		} else if column.IsMap {
 			mapPath := expr.Key.Segments[1:]
 			escapedParts := make([]string, len(mapPath))
@@ -598,6 +678,13 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			}
 			mapKey := strings.Join(escapedParts, "][")
 			leafExpr := fmt.Sprintf("%s[%s]", getIdentifier(column), mapKey)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
@@ -609,6 +696,13 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
 			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
@@ -617,6 +711,13 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
 			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
@@ -633,13 +734,32 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			leafExpr := fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), jsonPathStr)
-			if isNotHas {
-				return fmt.Sprintf("INSTR(cast(%s as string), %s) = 0", leafExpr, value), nil
+			leafExpr := fmt.Sprintf("cast(parse_json(%s)->%s as string)", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
 			}
-			return fmt.Sprintf("INSTR(cast(%s as string), %s) > 0", leafExpr, value), nil
+			if isNotHas {
+				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
+			}
+			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
+		}
+	}
+
+	colRef := getIdentifier(column)
+	if hasTransformers {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -684,6 +804,8 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
+	hasTransformers := len(expr.Key.Transformers) > 0
+
 	if expr.Key.IsSegmented() {
 		if column.IsJSON {
 			jsonPath := expr.Key.Segments[1:]
@@ -697,28 +819,62 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("(%s->%s IS NOT NULL)", getIdentifier(column), jsonPathStr), nil
+			leafExpr := fmt.Sprintf("%s->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", leafExpr, leafExpr), nil
+			}
+			return fmt.Sprintf("(%s IS NOT NULL)", leafExpr), nil
 		} else if column.IsMap {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("(element_at(%s, %s) IS NOT NULL AND %s[%s] != '')",
-				getIdentifier(column), escapedMapKey, getIdentifier(column), escapedMapKey), nil
+			leafExpr := fmt.Sprintf("%s[%s]", getIdentifier(column), escapedMapKey)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(element_at(%s, %s) IS NOT NULL AND %s != '')",
+				getIdentifier(column), escapedMapKey, leafExpr), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			return fmt.Sprintf("(array_length(%s) >= %d AND %s[%d] != '')",
-				getIdentifier(column), arrayIndex, getIdentifier(column), arrayIndex), nil
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(array_length(%s) >= %d AND %s != '')",
+				getIdentifier(column), arrayIndex, leafExpr), nil
 		} else if column.IsStruct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
-			return fmt.Sprintf("(%s.`%s` IS NOT NULL AND %s.`%s` != '')",
-				getIdentifier(column), structColumn, getIdentifier(column), structColumn), nil
+			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", leafExpr, leafExpr), nil
 		} else if column.JSONString {
 			jsonPath := expr.Key.Segments[1:]
 			pathParts := make([]string, len(jsonPath))
@@ -726,14 +882,25 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("(json_exists(parse_json(%s), %s) AND parse_json(%s)->%s != '')",
-				getIdentifier(column), jsonPathStr, getIdentifier(column), jsonPathStr), nil
+			leafExpr := fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("(json_exists(parse_json(%s), %s) AND %s != '')",
+					getIdentifier(column), jsonPathStr, leafExpr), nil
+			}
+			return fmt.Sprintf("(json_exists(parse_json(%s), %s) AND %s != '')",
+				getIdentifier(column), jsonPathStr, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
 	}
 
-	if len(expr.Key.Transformers) > 0 {
+	if hasTransformers {
 		registry := transformers.DefaultRegistry()
 		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
 			return "", err
@@ -775,6 +942,8 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
+	hasTransformers := len(expr.Key.Transformers) > 0
+
 	if expr.Key.IsSegmented() {
 		if column.IsJSON {
 			jsonPath := expr.Key.Segments[1:]
@@ -788,28 +957,62 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("(%s->%s IS NULL)", getIdentifier(column), jsonPathStr), nil
+			leafExpr := fmt.Sprintf("%s->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("(%s IS NULL OR %s = '')", leafExpr, leafExpr), nil
+			}
+			return fmt.Sprintf("(%s IS NULL)", leafExpr), nil
 		} else if column.IsMap {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("(element_at(%s, %s) IS NULL OR %s[%s] = '')",
-				getIdentifier(column), escapedMapKey, getIdentifier(column), escapedMapKey), nil
+			leafExpr := fmt.Sprintf("%s[%s]", getIdentifier(column), escapedMapKey)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(element_at(%s, %s) IS NULL OR %s = '')",
+				getIdentifier(column), escapedMapKey, leafExpr), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			return fmt.Sprintf("(array_length(%s) < %d OR %s[%d] = '')",
-				getIdentifier(column), arrayIndex, getIdentifier(column), arrayIndex), nil
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(array_length(%s) < %d OR %s = '')",
+				getIdentifier(column), arrayIndex, leafExpr), nil
 		} else if column.IsStruct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
-			return fmt.Sprintf("(%s.`%s` IS NULL OR %s.`%s` = '')",
-				getIdentifier(column), structColumn, getIdentifier(column), structColumn), nil
+			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(%s IS NULL OR %s = '')", leafExpr, leafExpr), nil
 		} else if column.JSONString {
 			jsonPath := expr.Key.Segments[1:]
 			pathParts := make([]string, len(jsonPath))
@@ -817,14 +1020,24 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				pathParts[i] = QuoteJSONPathPart(part)
 			}
 			jsonPathStr := strings.Join(pathParts, "->")
-			return fmt.Sprintf("(NOT json_exists(parse_json(%s), '$.%s') OR parse_json(%s)->%s = '')",
-				getIdentifier(column), jsonPathStr, getIdentifier(column), jsonPathStr), nil
+			leafExpr := fmt.Sprintf("parse_json(%s)->%s", getIdentifier(column), jsonPathStr)
+			if hasTransformers {
+				registry := transformers.DefaultRegistry()
+				var err error
+				leafExpr, err = applyTransformerSQL(fmt.Sprintf("cast(%s as string)", leafExpr), expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("(NOT json_exists(parse_json(%s), '$.%s') OR %s = '')",
+					getIdentifier(column), jsonPathStr, leafExpr), nil
+			}
+			return fmt.Sprintf("(NOT json_exists(parse_json(%s), '$.%s') OR %s = '')",
+				getIdentifier(column), jsonPathStr, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
 	}
-
-	if len(expr.Key.Transformers) > 0 {
+	if hasTransformers {
 		registry := transformers.DefaultRegistry()
 		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
 			return "", err

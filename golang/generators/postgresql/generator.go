@@ -332,17 +332,6 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	}
 
 	identifier := getIdentifier(column)
-	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
-		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
-			return "", err
-		}
-		var err error
-		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
-		if err != nil {
-			return "", err
-		}
-	}
 
 	if expr.Key.IsSegmented() {
 		if column.IsJSONB || column.JSONString {
@@ -358,6 +347,14 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				}
 			}
 			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				var err error
+				pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			return fmt.Sprintf("%s %s (%s)", pathExpr, sqlOp, valuesSQL), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -365,19 +362,46 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("%s->%s %s (%s)", identifier, escapedMapKey, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			return fmt.Sprintf("%s[%d] %s (%s)", identifier, arrayIndex+1, sqlOp, valuesSQL), nil
+			leafExpr := fmt.Sprintf("%s[%d]", identifier, arrayIndex+1)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
 	}
 
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
+		}
+	}
 	return fmt.Sprintf("%s %s (%s)", identifier, sqlOp, valuesSQL), nil
 }
 
@@ -396,16 +420,6 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	}
 
 	identifier := getIdentifier(column)
-	if len(expr.Key.Transformers) > 0 {
-		registry := transformers.DefaultRegistry()
-		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
-			return "", err
-		}
-		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
-		if err != nil {
-			return "", err
-		}
-	}
 
 	if expr.Key.IsSegmented() {
 		if column.IsJSONB || column.JSONString {
@@ -421,6 +435,13 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				}
 			}
 			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("position(%s in %s) = 0", value, pathExpr), nil
 			}
@@ -432,6 +453,13 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				return "", err
 			}
 			leafExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("position(%s in %s) = 0", value, leafExpr), nil
 			}
@@ -444,12 +472,30 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			}
 			pgIndex := arrayIndex + 1
 			leafExpr := fmt.Sprintf("%s[%d]", identifier, pgIndex)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			if isNotHas {
 				return fmt.Sprintf("position(%s in %s) = 0", value, leafExpr), nil
 			}
 			return fmt.Sprintf("position(%s in %s) > 0", value, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
+		}
+	}
+
+	if len(expr.Key.Transformers) > 0 {
+		registry := transformers.DefaultRegistry()
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -514,6 +560,14 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 				}
 			}
 			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				var err error
+				pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", pathExpr, pathExpr), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -521,8 +575,16 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("(%s ? %s AND %s->%s != '')",
-				identifier, escapedMapKey, identifier, escapedMapKey), nil
+			leafExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(%s ? %s AND %s != '')",
+				identifier, escapedMapKey, leafExpr), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -530,8 +592,16 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
 			pgIndex := arrayIndex + 1
-			return fmt.Sprintf("(array_length(%s, 1) >= %d AND %s[%d] != '')",
-				identifier, pgIndex, identifier, pgIndex), nil
+			leafExpr := fmt.Sprintf("%s[%d]", identifier, pgIndex)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(array_length(%s, 1) >= %d AND %s != '')",
+				identifier, pgIndex, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -590,6 +660,14 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				}
 			}
 			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				var err error
+				pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
 			return fmt.Sprintf("(%s IS NULL OR %s = '')", pathExpr, pathExpr), nil
 		} else if column.IsHstore {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
@@ -597,8 +675,16 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("(NOT (%s ? %s) OR %s->%s = '')",
-				identifier, escapedMapKey, identifier, escapedMapKey), nil
+			leafExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(NOT (%s ? %s) OR %s = '')",
+				identifier, escapedMapKey, leafExpr), nil
 		} else if column.IsArray {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -606,8 +692,16 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
 			pgIndex := arrayIndex + 1
-			return fmt.Sprintf("(array_length(%s, 1) < %d OR %s[%d] = '')",
-				identifier, pgIndex, identifier, pgIndex), nil
+			leafExpr := fmt.Sprintf("%s[%d]", identifier, pgIndex)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "postgresql", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("(array_length(%s, 1) < %d OR %s = '')",
+				identifier, pgIndex, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -644,9 +738,6 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 }
 
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
-	if len(expr.Key.Transformers) > 0 {
-		return "", fmt.Errorf("transformers on segmented (nested path) keys are not supported")
-	}
 	columnName := expr.Key.Segments[0]
 
 	column, ok := columns[columnName]
@@ -654,7 +745,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" && !column.JSONString {
+	if column.NormalizedType != "" && !column.JSONString && len(expr.Key.Transformers) == 0 {
 		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
 			return "", err
 		}
@@ -676,6 +767,14 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 
 		pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
+		if len(expr.Key.Transformers) > 0 {
+			registry := transformers.DefaultRegistry()
+			var err error
+			pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+			if err != nil {
+				return "", err
+			}
+		}
 
 		value, err := EscapeParam(expr.Value)
 		if err != nil {
@@ -709,6 +808,13 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 
 		accessExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
+		if len(expr.Key.Transformers) > 0 {
+			registry := transformers.DefaultRegistry()
+			accessExpr, err = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
+			if err != nil {
+				return "", err
+			}
+		}
 
 		switch expr.Operator {
 		case flyql.OpRegex:
@@ -732,6 +838,13 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 
 		pgIndex := arrayIndex + 1
 		accessExpr := fmt.Sprintf("%s[%d]", identifier, pgIndex)
+		if len(expr.Key.Transformers) > 0 {
+			registry := transformers.DefaultRegistry()
+			accessExpr, err = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
+			if err != nil {
+				return "", err
+			}
+		}
 
 		switch expr.Operator {
 		case flyql.OpRegex:

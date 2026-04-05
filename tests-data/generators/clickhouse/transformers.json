@@ -50,6 +50,108 @@
       "input": "field|split(\".\")",
       "expected_result": "success",
       "expected_sql": "(splitByChar('.', field) IS NOT NULL AND splitByChar('.', field) != '')"
+    },
+    {
+      "name": "json_nested_upper_equals",
+      "input": "new_json.user.name|upper = 'JOHN'",
+      "expected_result": "success",
+      "expected_sql": "upper(new_json.`user`.`name`) = 'JOHN'"
+    },
+    {
+      "name": "json_nested_truthy_upper",
+      "input": "new_json.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(upper(new_json.`user`.`name`) IS NOT NULL AND upper(new_json.`user`.`name`) != '')"
+    },
+    {
+      "name": "json_nested_falsy_upper",
+      "input": "not new_json.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(upper(new_json.`user`.`name`) IS NULL OR upper(new_json.`user`.`name`) = '')"
+    },
+    {
+      "name": "json_nested_chained_upper_lower",
+      "input": "new_json.user.name|upper|lower = 'alice'",
+      "expected_result": "success",
+      "expected_sql": "lower(upper(new_json.`user`.`name`)) = 'alice'"
+    },
+    {
+      "name": "jsonstring_nested_lower_equals",
+      "input": "json_column.user.name|lower = 'alice'",
+      "expected_result": "success",
+      "expected_sql": "equals(lower(JSONExtractString(json_column, 'user', 'name')), 'alice')"
+    },
+    {
+      "name": "jsonstring_nested_upper_in",
+      "input": "json_column.status|upper in ['ACTIVE', 'PENDING']",
+      "expected_result": "success",
+      "expected_sql": "upper(JSONExtractString(json_column, 'status')) IN ('ACTIVE', 'PENDING')"
+    },
+    {
+      "name": "jsonstring_nested_truthy_upper",
+      "input": "json_column.user.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(JSONHas(json_column, 'user', 'name') AND upper(JSONExtractString(json_column, 'user', 'name')) != '')"
+    },
+    {
+      "name": "jsonstring_nested_falsy_lower",
+      "input": "not json_column.user.name|lower",
+      "expected_result": "success",
+      "expected_sql": "(NOT JSONHas(json_column, 'user', 'name') OR lower(JSONExtractString(json_column, 'user', 'name')) = '')"
+    },
+    {
+      "name": "jsonstring_nested_has_upper",
+      "input": "json_column.user.name|upper has 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "position(upper(JSONExtractString(json_column, 'user', 'name')), 'FOO') > 0"
+    },
+    {
+      "name": "map_lower_equals",
+      "input": "metadata.key|lower = 'x'",
+      "expected_result": "success",
+      "expected_sql": "equals(lower(metadata['key']), 'x')"
+    },
+    {
+      "name": "map_lower_in",
+      "input": "metadata.key|lower in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "lower(metadata['key']) IN ('a', 'b')"
+    },
+    {
+      "name": "map_truthy_lower",
+      "input": "metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(mapContains(metadata, 'key') AND lower(metadata['key']) != '')"
+    },
+    {
+      "name": "map_falsy_lower",
+      "input": "not metadata.key|lower",
+      "expected_result": "success",
+      "expected_sql": "(NOT mapContains(metadata, 'key') OR lower(metadata['key']) = '')"
+    },
+    {
+      "name": "map_has_lower",
+      "input": "metadata.key|lower has 'x'",
+      "expected_result": "success",
+      "expected_sql": "position(lower(metadata['key']), 'x') > 0"
+    },
+    {
+      "name": "array_upper_equals",
+      "input": "tags.0|upper = 'FOO'",
+      "expected_result": "success",
+      "expected_sql": "equals(upper(tags[0]), 'FOO')"
+    },
+    {
+      "name": "array_upper_in",
+      "input": "tags.0|upper in ['A', 'B']",
+      "expected_result": "success",
+      "expected_sql": "upper(tags[0]) IN ('A', 'B')"
+    },
+    {
+      "name": "array_has_upper",
+      "input": "tags.0|upper has 'F'",
+      "expected_result": "success",
+      "expected_sql": "position(upper(tags[0]), 'F') > 0"
     }
   ]
 }

@@ -1,5 +1,9 @@
 <template>
-    <div class="flyql-editor" :class="{ 'flyql-editor--focused': focused }" ref="editorRoot">
+    <div
+        class="flyql-editor"
+        :class="{ 'flyql-editor--focused': focused, 'flyql-dark': dark }"
+        ref="editorRoot"
+    >
         <span class="flyql-editor__icon">
             <slot name="icon">
                 <svg

@@ -35,7 +35,8 @@ describe('highlight', () => {
 
     it('highlights transformers', () => {
         const html = highlight("message|upper='HELLO'")
-        expect(html).toContain('flyql-transformer')
+        expect(html).toContain('flyql-pipe">|</span>')
+        expect(html).toContain('flyql-transformer">upper</span>')
     })
 
     it('highlights boolean literals', () => {

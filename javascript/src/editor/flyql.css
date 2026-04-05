@@ -11,7 +11,7 @@
     --flyql-value-color: #8b0000;
     --flyql-number-color: #098658;
     --flyql-error-color: #ff0000;
-    --flyql-transformer-color: #a21caf;
+    --flyql-transformer-color: #b45309;
     --flyql-wildcard-color: #e06c75;
 
     --flyql-dropdown-bg: #ffffff;
@@ -36,7 +36,7 @@
     --flyql-value-color: #ce9178;
     --flyql-number-color: #b5cea8;
     --flyql-error-color: #f48771;
-    --flyql-transformer-color: #d946ef;
+    --flyql-transformer-color: #e5c07b;
     --flyql-wildcard-color: #e06c75;
 
     --flyql-dropdown-bg: #252526;
@@ -325,6 +325,10 @@
 }
 
 .flyql-transformer {
+    color: var(--flyql-key-color);
+}
+
+.flyql-pipe {
     color: var(--flyql-transformer-color);
 }
 

@@ -26,7 +26,7 @@ const QUERY_CLASS = {
     [QueryCharType.BOOLEAN]: 'flyql-boolean',
     [QueryCharType.NULL]: 'flyql-null',
     [QueryCharType.SPACE]: 'flyql-space',
-    [QueryCharType.PIPE]: 'flyql-transformer',
+    [QueryCharType.PIPE]: 'flyql-pipe',
     [QueryCharType.TRANSFORMER]: 'flyql-transformer',
     [QueryCharType.ARGUMENT]: 'flyql-argument',
     [QueryCharType.WILDCARD]: 'flyql-wildcard',

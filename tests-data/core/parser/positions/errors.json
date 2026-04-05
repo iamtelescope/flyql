@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "description": "Error-range fixtures. ASCII inputs only.",
+  "test_suite": "positions_errors",
+  "tests": [
+    {
+      "name": "invalid_char_in_key",
+      "input": "ke$y=value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 3,
+        "range": [2, 3]
+      }
+    },
+    {
+      "name": "unknown_operator_double_equals",
+      "input": "key==value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 10,
+        "range": [5, 6]
+      }
+    }
+  ]
+}

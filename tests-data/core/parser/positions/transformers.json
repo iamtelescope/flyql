@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "description": "Transformer pipeline position fixtures. ASCII inputs only.",
+  "test_suite": "positions_transformers",
+  "tests": [
+    {
+      "name": "upper_with_int_arg",
+      "input": "host|upper(321)",
+      "expected_ranges": {
+        "root.range": [0, 15],
+        "root.left.expression.range": [0, 15],
+        "root.left.expression.key.range": [0, 15],
+        "root.left.expression.key.segment_ranges[0]": [0, 4],
+        "root.left.expression.key.transformers[0].range": [5, 15],
+        "root.left.expression.key.transformers[0].name_range": [5, 10],
+        "root.left.expression.key.transformers[0].argument_ranges[0]": [11, 14]
+      }
+    },
+    {
+      "name": "format_with_string_and_int_args",
+      "input": "host|format(\"YYYY\", 0)=1",
+      "expected_ranges": {
+        "root.range": [0, 24],
+        "root.left.expression.range": [0, 24],
+        "root.left.expression.operator_range": [22, 23],
+        "root.left.expression.value_range": [23, 24],
+        "root.left.expression.key.range": [0, 22],
+        "root.left.expression.key.transformers[0].range": [5, 22],
+        "root.left.expression.key.transformers[0].name_range": [5, 11],
+        "root.left.expression.key.transformers[0].argument_ranges[0]": [12, 18],
+        "root.left.expression.key.transformers[0].argument_ranges[1]": [20, 21]
+      }
+    },
+    {
+      "name": "no_args_transformer",
+      "input": "host|upper=X",
+      "expected_ranges": {
+        "root.range": [0, 12],
+        "root.left.expression.key.range": [0, 10],
+        "root.left.expression.key.transformers[0].range": [5, 10],
+        "root.left.expression.key.transformers[0].name_range": [5, 10]
+      }
+    },
+    {
+      "name": "chained_transformers",
+      "input": "host|upper|lower=X",
+      "expected_ranges": {
+        "root.left.expression.key.range": [0, 16],
+        "root.left.expression.key.transformers[0].range": [5, 10],
+        "root.left.expression.key.transformers[0].name_range": [5, 10],
+        "root.left.expression.key.transformers[1].range": [11, 16],
+        "root.left.expression.key.transformers[1].name_range": [11, 16]
+      }
+    }
+  ]
+}

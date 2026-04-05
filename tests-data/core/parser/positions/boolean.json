@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "description": "Boolean operator position fixtures. ASCII inputs only.",
+  "test_suite": "positions_boolean",
+  "tests": [
+    {
+      "name": "simple_and",
+      "input": "a=1 and b=2",
+      "expected_ranges": {
+        "root.range": [0, 11],
+        "root.bool_operator_range": [4, 7],
+        "root.left.range": [0, 3],
+        "root.left.expression.range": [0, 3],
+        "root.right.range": [8, 11],
+        "root.right.expression.range": [8, 11]
+      }
+    },
+    {
+      "name": "simple_or",
+      "input": "a=1 or b=2",
+      "expected_ranges": {
+        "root.range": [0, 10],
+        "root.bool_operator_range": [4, 6],
+        "root.left.range": [0, 3],
+        "root.right.range": [7, 10]
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "version": "1.0",
+  "description": "Basic position fixtures. Paths use parallel-range-array notation. ASCII inputs only — ranges are byte-identical across Python, Go, JS.",
+  "test_suite": "positions_basic",
+  "tests": [
+    {
+      "name": "simple_equals",
+      "input": "host=example.com",
+      "expected_ranges": {
+        "root.range": [0, 16],
+        "root.left.range": [0, 16],
+        "root.left.expression.range": [0, 16],
+        "root.left.expression.operator_range": [4, 5],
+        "root.left.expression.value_range": [5, 16],
+        "root.left.expression.key.range": [0, 4],
+        "root.left.expression.key.segment_ranges[0]": [0, 4]
+      }
+    },
+    {
+      "name": "numeric_value",
+      "input": "status=200",
+      "expected_ranges": {
+        "root.range": [0, 10],
+        "root.left.expression.range": [0, 10],
+        "root.left.expression.operator_range": [6, 7],
+        "root.left.expression.value_range": [7, 10],
+        "root.left.expression.key.range": [0, 6],
+        "root.left.expression.key.segment_ranges[0]": [0, 6]
+      }
+    },
+    {
+      "name": "not_equals",
+      "input": "status!=404",
+      "expected_ranges": {
+        "root.range": [0, 11],
+        "root.left.expression.range": [0, 11],
+        "root.left.expression.operator_range": [6, 8],
+        "root.left.expression.value_range": [8, 11]
+      }
+    },
+    {
+      "name": "single_quoted_value",
+      "input": "name='john'",
+      "expected_ranges": {
+        "root.range": [0, 11],
+        "root.left.expression.range": [0, 11],
+        "root.left.expression.operator_range": [4, 5],
+        "root.left.expression.value_range": [5, 11],
+        "root.left.expression.key.range": [0, 4]
+      }
+    }
+  ]
+}

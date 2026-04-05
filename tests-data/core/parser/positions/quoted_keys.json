@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "description": "Quoted-segment key position fixtures. Segment ranges include the quotes. ASCII inputs only.",
+  "test_suite": "positions_quoted_keys",
+  "tests": [
+    {
+      "name": "quoted_dot_segment",
+      "input": "\"foo.bar\".baz=1",
+      "expected_ranges": {
+        "root.range": [0, 15],
+        "root.left.expression.key.range": [0, 13],
+        "root.left.expression.key.segment_ranges[0]": [0, 9],
+        "root.left.expression.key.segment_ranges[1]": [10, 13]
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "description": "IN-list position fixtures. ASCII inputs only.",
+  "test_suite": "positions_in",
+  "tests": [
+    {
+      "name": "in_ints",
+      "input": "status in [200, 201, 404]",
+      "expected_ranges": {
+        "root.range": [0, 25],
+        "root.left.expression.range": [0, 25],
+        "root.left.expression.value_ranges[0]": [11, 14],
+        "root.left.expression.value_ranges[1]": [16, 19],
+        "root.left.expression.value_ranges[2]": [21, 24]
+      }
+    }
+  ]
+}

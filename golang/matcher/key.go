@@ -8,7 +8,7 @@ type Key struct {
 }
 
 func NewKey(value string) Key {
-	parsed, err := flyql.ParseKey(value)
+	parsed, err := flyql.ParseKey(value, 0)
 	if err != nil {
 		return Key{
 			Value: value,

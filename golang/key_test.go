@@ -42,7 +42,7 @@ func TestKey(t *testing.T) {
 
 	for _, tc := range testFile.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
-			key, err := ParseKey(tc.Input)
+			key, err := ParseKey(tc.Input, 0)
 
 			if tc.ExpectedResult == "error" {
 				if err == nil {

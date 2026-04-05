@@ -8,13 +8,17 @@ import (
 )
 
 type Expression struct {
-	Key         Key
-	Operator    string
-	Value       any
-	ValueType   types.ValueType
-	Values      []any
-	ValuesType  *string
-	ValuesTypes []types.ValueType
+	Key           Key
+	Operator      string
+	Value         any
+	ValueType     types.ValueType
+	Values        []any
+	ValuesType    *string
+	ValuesTypes   []types.ValueType
+	Range         Range
+	OperatorRange *Range
+	ValueRange    *Range
+	ValueRanges   []Range
 }
 
 func tryConvertToNumber(value string) (any, types.ValueType) {

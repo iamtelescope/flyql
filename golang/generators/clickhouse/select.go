@@ -129,7 +129,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 	exprs := make([]string, 0, len(raws))
 
 	for _, raw := range raws {
-		key, err := flyql.ParseKey(raw.name)
+		key, err := flyql.ParseKey(raw.name, 0)
 		if err != nil {
 			return nil, fmt.Errorf("invalid column name %q: %w", raw.name, err)
 		}

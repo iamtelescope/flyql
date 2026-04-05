@@ -1,22 +1,28 @@
 package flyql
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
 
-// KeyTransformer represents a transformer applied to a key (e.g., upper, len).
-type KeyTransformer struct {
-	Name      string `json:"name"`
-	Arguments []any  `json:"arguments"`
+// Transformer represents a parsed transformer invocation from a key pipeline
+// (e.g., upper or format("YYYY")). Carries source ranges so tooling can map
+// the AST back to the raw input.
+type Transformer struct {
+	Name           string  `json:"name"`
+	Arguments      []any   `json:"arguments"`
+	Range          Range   `json:"-"`
+	NameRange      Range   `json:"-"`
+	ArgumentRanges []Range `json:"-"`
 }
 
 type Key struct {
 	Segments       []string
 	QuotedSegments []bool
 	Raw            string
-	Transformers   []KeyTransformer
+	Transformers   []Transformer
+	Range          Range
+	SegmentRanges  []Range
 }
 
 func (k Key) IsSegmented() bool {
@@ -26,11 +32,14 @@ func (k Key) IsSegmented() bool {
 type keyParser struct {
 	input                    string
 	pos                      int
+	baseOffset               int
 	segments                 []string
 	quotedSegments           []bool
+	segmentRanges            []Range
 	currentSegment           string
 	currentSegmentQuoted     bool
 	currentSegmentHasContent bool
+	currentSegmentStart      int
 }
 
 func (p *keyParser) peek(offset int) (byte, bool) {
@@ -52,7 +61,10 @@ func (p *keyParser) parseEscapeSequence() (string, error) {
 	ch, ok := p.peek(0)
 
 	if !ok {
-		return "", &KeyParseError{Message: "Incomplete escape sequence"}
+		return "", &KeyParseError{
+			Message: "Incomplete escape sequence",
+			Range:   Range{Start: p.baseOffset + p.pos, End: p.baseOffset + p.pos + 1},
+		}
 	}
 
 	p.advance()
@@ -75,12 +87,18 @@ func (p *keyParser) parseEscapeSequence() (string, error) {
 }
 
 func (p *keyParser) parseQuotedSegment(quoteChar byte) error {
+	if !p.currentSegmentHasContent && p.currentSegmentStart == -1 {
+		p.currentSegmentStart = p.pos
+	}
 	p.advance()
 
 	for {
 		ch, ok := p.peek(0)
 		if !ok {
-			return &KeyParseError{Message: "Unterminated quoted segment"}
+			return &KeyParseError{
+				Message: "Unterminated quoted segment",
+				Range:   Range{Start: p.baseOffset + p.pos, End: p.baseOffset + p.pos},
+			}
 		}
 
 		if ch == '\\' {
@@ -128,6 +146,9 @@ func (p *keyParser) parseNormalSegment() error {
 			}
 			p.currentSegmentHasContent = true
 		case '\\':
+			if p.currentSegmentStart == -1 {
+				p.currentSegmentStart = p.pos
+			}
 			escaped, err := p.parseEscapeSequence()
 			if err != nil {
 				return err
@@ -135,6 +156,9 @@ func (p *keyParser) parseNormalSegment() error {
 			p.currentSegment += escaped
 			p.currentSegmentHasContent = true
 		default:
+			if p.currentSegmentStart == -1 {
+				p.currentSegmentStart = p.pos
+			}
 			p.advance()
 			p.currentSegment += string(ch)
 			p.currentSegmentHasContent = true
@@ -142,29 +166,51 @@ func (p *keyParser) parseNormalSegment() error {
 	}
 }
 
-func (p *keyParser) parse(keyString string) (Key, error) {
+func (p *keyParser) parse(keyString string, baseOffset int) (Key, error) {
 	p.input = keyString
 	p.pos = 0
+	p.baseOffset = baseOffset
 	p.segments = nil
 	p.quotedSegments = nil
+	p.segmentRanges = nil
 	p.currentSegment = ""
 	p.currentSegmentQuoted = false
 	p.currentSegmentHasContent = false
+	p.currentSegmentStart = -1
+
+	keyRange := Range{Start: baseOffset, End: baseOffset + len(keyString)}
 
 	if len(p.input) == 0 {
-		return Key{Segments: []string{}, QuotedSegments: []bool{}, Raw: keyString}, nil
+		return Key{
+			Segments:       []string{},
+			QuotedSegments: []bool{},
+			Raw:            keyString,
+			Range:          keyRange,
+			SegmentRanges:  []Range{},
+		}, nil
 	}
 
 	for p.pos < len(p.input) {
+		segStartBefore := p.pos
 		if err := p.parseNormalSegment(); err != nil {
 			return Key{}, err
+		}
+		segEnd := p.pos
+
+		var segStart int
+		if p.currentSegmentStart == -1 {
+			segStart = p.baseOffset + segStartBefore
+		} else {
+			segStart = p.baseOffset + p.currentSegmentStart
 		}
 
 		p.segments = append(p.segments, p.currentSegment)
 		p.quotedSegments = append(p.quotedSegments, p.currentSegmentQuoted)
+		p.segmentRanges = append(p.segmentRanges, Range{Start: segStart, End: p.baseOffset + segEnd})
 		p.currentSegment = ""
 		p.currentSegmentQuoted = false
 		p.currentSegmentHasContent = false
+		p.currentSegmentStart = -1
 
 		ch, ok := p.peek(0)
 		if ok && ch == '.' {
@@ -172,15 +218,23 @@ func (p *keyParser) parse(keyString string) (Key, error) {
 			if p.pos >= len(p.input) {
 				p.segments = append(p.segments, "")
 				p.quotedSegments = append(p.quotedSegments, false)
+				p.segmentRanges = append(p.segmentRanges, Range{Start: p.baseOffset + p.pos, End: p.baseOffset + p.pos})
 			}
 		}
 	}
 
-	return Key{Segments: p.segments, QuotedSegments: p.quotedSegments, Raw: keyString}, nil
+	return Key{
+		Segments:       p.segments,
+		QuotedSegments: p.quotedSegments,
+		Raw:            keyString,
+		Range:          keyRange,
+		SegmentRanges:  p.segmentRanges,
+	}, nil
 }
 
-func parseTransformerArguments(argsStr string) []any {
+func parseTransformerArguments(argsStr string, baseOffset int) ([]any, []Range) {
 	args := []any{}
+	ranges := []Range{}
 	i := 0
 	for i < len(argsStr) {
 		for i < len(argsStr) && argsStr[i] == ' ' {
@@ -189,6 +243,7 @@ func parseTransformerArguments(argsStr string) []any {
 		if i >= len(argsStr) {
 			break
 		}
+		argStart := i
 		if argsStr[i] == '"' || argsStr[i] == '\'' {
 			quote := argsStr[i]
 			i++
@@ -212,13 +267,16 @@ func parseTransformerArguments(argsStr string) []any {
 			if i < len(argsStr) {
 				i++
 			}
+			argEnd := i
 			args = append(args, val)
+			ranges = append(ranges, Range{Start: baseOffset + argStart, End: baseOffset + argEnd})
 		} else {
 			val := ""
 			for i < len(argsStr) && argsStr[i] != ',' && argsStr[i] != ' ' {
 				val += string(argsStr[i])
 				i++
 			}
+			argEnd := i
 			if n, err := strconv.Atoi(val); err == nil {
 				args = append(args, n)
 			} else if f, err := strconv.ParseFloat(val, 64); err == nil {
@@ -226,49 +284,75 @@ func parseTransformerArguments(argsStr string) []any {
 			} else {
 				args = append(args, val)
 			}
+			ranges = append(ranges, Range{Start: baseOffset + argStart, End: baseOffset + argEnd})
 		}
 		for i < len(argsStr) && (argsStr[i] == ' ' || argsStr[i] == ',') {
 			i++
 		}
 	}
-	return args
+	return args, ranges
 }
 
-func parseTransformerSpec(spec string) KeyTransformer {
+func parseTransformerSpec(spec string, baseOffset int) Transformer {
 	parenIdx := strings.Index(spec, "(")
 	if parenIdx == -1 {
-		return KeyTransformer{Name: spec, Arguments: []any{}}
+		return Transformer{
+			Name:           spec,
+			Arguments:      []any{},
+			Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
+			NameRange:      Range{Start: baseOffset, End: baseOffset + len(spec)},
+			ArgumentRanges: []Range{},
+		}
 	}
 	name := spec[:parenIdx]
 	closeIdx := strings.LastIndex(spec, ")")
 	if closeIdx == -1 {
-		return KeyTransformer{Name: spec, Arguments: []any{}}
+		return Transformer{
+			Name:           spec,
+			Arguments:      []any{},
+			Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
+			NameRange:      Range{Start: baseOffset, End: baseOffset + len(spec)},
+			ArgumentRanges: []Range{},
+		}
 	}
 	argsStr := spec[parenIdx+1 : closeIdx]
-	return KeyTransformer{Name: name, Arguments: parseTransformerArguments(argsStr)}
+	argValues, argRanges := parseTransformerArguments(argsStr, baseOffset+parenIdx+1)
+	return Transformer{
+		Name:           name,
+		Arguments:      argValues,
+		Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
+		NameRange:      Range{Start: baseOffset, End: baseOffset + parenIdx},
+		ArgumentRanges: argRanges,
+	}
 }
 
-func ParseKey(keyString string) (Key, error) {
+func ParseKey(keyString string, baseOffset int) (Key, error) {
 	parts := strings.Split(keyString, "|")
 	baseKeyString := parts[0]
 	transformerSpecs := parts[1:]
 
 	parser := &keyParser{}
-	key, err := parser.parse(baseKeyString)
+	key, err := parser.parse(baseKeyString, baseOffset)
 	if err != nil {
 		return key, err
 	}
 
 	if len(transformerSpecs) > 0 {
-		key.Transformers = make([]KeyTransformer, len(transformerSpecs))
+		key.Transformers = make([]Transformer, len(transformerSpecs))
+		runningOffset := baseOffset + len(baseKeyString) + 1
 		for i, spec := range transformerSpecs {
-			parsed := parseTransformerSpec(spec)
+			parsed := parseTransformerSpec(spec, runningOffset)
 			if parsed.Name == "" {
-				return Key{}, fmt.Errorf("empty transformer name in key")
+				return Key{}, &KeyParseError{
+					Message: "empty transformer name in key",
+					Range:   Range{Start: runningOffset, End: runningOffset + len(spec)},
+				}
 			}
 			key.Transformers[i] = parsed
+			runningOffset += len(spec) + 1
 		}
 		key.Raw = keyString
+		key.Range = Range{Start: baseOffset, End: baseOffset + len(keyString)}
 	}
 
 	return key, nil

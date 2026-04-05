@@ -72,12 +72,35 @@ type Parser struct {
 	inListQuoteChar            rune
 	pipeSeenInKey              bool
 	transformerParenDepth      int
+	errorRange                 Range
+	keyStart                   int
+	keyEnd                     int
+	valueStart                 int
+	valueEnd                   int
+	operatorStart              int
+	operatorEnd                int
+	exprStart                  int
+	boolOpStartStack           []int
+	boolOpEndStack             []int
+	groupStartStack            []int
+	inListValueStart           int
+	inListValueEnd             int
+	inListValueRanges          []Range
 }
 
 func NewParser() *Parser {
 	return &Parser{
-		boolOperator: BoolOpAnd,
-		state:        stateInitial,
+		boolOperator:     BoolOpAnd,
+		state:            stateInitial,
+		keyStart:         -1,
+		keyEnd:           -1,
+		valueStart:       -1,
+		valueEnd:         -1,
+		operatorStart:    -1,
+		operatorEnd:      -1,
+		exprStart:        -1,
+		inListValueStart: -1,
+		inListValueEnd:   -1,
 	}
 }
 
@@ -86,7 +109,9 @@ func (p *Parser) setErrorState(errorText string, errno int) {
 	p.errorText = errorText
 	p.errno = errno
 	if p.char != nil {
-		p.errorText += fmt.Sprintf(" [char '%c' at %d], errno=%d", p.char.value, p.char.pos, errno)
+		p.errorRange = Range{Start: p.char.pos, End: p.char.pos + 1}
+	} else {
+		p.errorRange = Range{Start: p.pos, End: p.pos}
 	}
 }
 
@@ -94,15 +119,21 @@ func (p *Parser) resetKey() {
 	p.key = ""
 	p.pipeSeenInKey = false
 	p.transformerParenDepth = 0
+	p.keyStart = -1
+	p.keyEnd = -1
 }
 
 func (p *Parser) resetValue() {
 	p.value = ""
 	p.valueIsString = nil
+	p.valueStart = -1
+	p.valueEnd = -1
 }
 
 func (p *Parser) resetKeyValueOperator() {
 	p.keyValueOperator = ""
+	p.operatorStart = -1
+	p.operatorEnd = -1
 }
 
 func (p *Parser) resetData() {
@@ -110,6 +141,7 @@ func (p *Parser) resetData() {
 	p.resetValue()
 	p.resetKeyValueOperator()
 	p.resetInListData()
+	p.exprStart = -1
 }
 
 func (p *Parser) resetInListData() {
@@ -122,10 +154,17 @@ func (p *Parser) resetInListData() {
 	p.isNotHas = false
 	p.isNotLike = false
 	p.isNotIlike = false
+	p.inListValueStart = -1
+	p.inListValueEnd = -1
+	p.inListValueRanges = nil
 }
 
 func (p *Parser) extendInListCurrentValue() {
 	if p.char != nil {
+		if p.inListValueStart == -1 {
+			p.inListValueStart = p.char.pos
+		}
+		p.inListValueEnd = p.char.pos + 1
 		p.inListCurrentValue += string(p.char.value)
 	}
 }
@@ -159,8 +198,13 @@ func (p *Parser) finalizeInListValue() bool {
 
 	p.inListValues = append(p.inListValues, value)
 	p.inListValuesTypes = append(p.inListValuesTypes, explicitType)
+	if p.inListValueStart >= 0 {
+		p.inListValueRanges = append(p.inListValueRanges, Range{Start: p.inListValueStart, End: p.inListValueEnd})
+	}
 	p.inListCurrentValue = ""
 	p.inListCurrentValueIsString = nil
+	p.inListValueStart = -1
+	p.inListValueEnd = -1
 	return true
 }
 
@@ -172,28 +216,55 @@ func (p *Parser) setValueIsString() {
 	t := true
 	p.valueIsString = &t
 	p.valueQuoteChar = p.char.value
+	if p.char != nil {
+		if p.valueStart == -1 {
+			p.valueStart = p.char.pos
+		}
+		p.valueEnd = p.char.pos + 1
+	}
 }
 
 func (p *Parser) extendKey() {
 	if p.char != nil {
+		if p.keyStart == -1 {
+			p.keyStart = p.char.pos
+			if p.exprStart == -1 {
+				p.exprStart = p.char.pos
+			}
+		}
+		p.keyEnd = p.char.pos + 1
 		p.key += string(p.char.value)
 	}
 }
 
 func (p *Parser) extendValue() {
 	if p.char != nil {
+		if p.valueStart == -1 {
+			p.valueStart = p.char.pos
+		}
+		p.valueEnd = p.char.pos + 1
 		p.value += string(p.char.value)
 	}
 }
 
 func (p *Parser) extendKeyValueOperator() {
 	if p.char != nil {
+		if p.operatorStart == -1 {
+			p.operatorStart = p.char.pos
+		}
+		p.operatorEnd = p.char.pos + 1
 		p.keyValueOperator += string(p.char.value)
 	}
 }
 
 func (p *Parser) extendBoolOperator() {
 	if p.char != nil {
+		if p.boolOperator == "" {
+			p.boolOpStartStack = append(p.boolOpStartStack, p.char.pos)
+			p.boolOpEndStack = append(p.boolOpEndStack, p.char.pos+1)
+		} else if len(p.boolOpEndStack) > 0 {
+			p.boolOpEndStack[len(p.boolOpEndStack)-1] = p.char.pos + 1
+		}
 		p.boolOperator += string(p.char.value)
 	}
 }
@@ -215,12 +286,52 @@ func unescapeQuotes(s string, quoteChar rune) string {
 	return strings.ReplaceAll(s, `\"`, `"`)
 }
 
-func (p *Parser) newExpression() *Expression {
-	key, err := ParseKey(p.key)
-	if err != nil {
-		p.setErrorState(err.Error(), 1)
-		return nil
+func (p *Parser) buildExprRanges(end int) (exprRange Range, keyRange Range, operatorRange *Range) {
+	keyRange = Range{Start: p.keyStart, End: p.keyEnd}
+	if p.operatorStart >= 0 {
+		or := Range{Start: p.operatorStart, End: p.operatorEnd}
+		operatorRange = &or
 	}
+	start := p.exprStart
+	if start < 0 {
+		start = p.keyStart
+	}
+	exprRange = Range{Start: start, End: end}
+	return
+}
+
+func (p *Parser) parseKeyWithRange(keyRange Range) (Key, bool) {
+	parsed, err := ParseKey(p.key, keyRange.Start)
+	if err != nil {
+		if kpe, ok := err.(*KeyParseError); ok {
+			p.state = stateError
+			p.errorText = kpe.Message
+			p.errno = 60
+			p.errorRange = kpe.Range
+		} else {
+			p.setErrorState(err.Error(), 1)
+		}
+		return Key{Segments: []string{""}, Range: keyRange, SegmentRanges: []Range{keyRange}}, false
+	}
+	return parsed, true
+}
+
+func (p *Parser) newExpression() *Expression {
+	var exprEnd int
+	if p.valueEnd >= 0 {
+		exprEnd = p.valueEnd
+	} else if p.operatorEnd >= 0 {
+		exprEnd = p.operatorEnd
+	} else {
+		exprEnd = p.keyEnd
+	}
+	exprRange, keyRange, operatorRange := p.buildExprRanges(exprEnd)
+	var valueRange *Range
+	if p.valueStart >= 0 {
+		vr := Range{Start: p.valueStart, End: p.valueEnd}
+		valueRange = &vr
+	}
+	key, _ := p.parseKeyWithRange(keyRange)
 	valueIsString := p.valueIsString != nil && *p.valueIsString
 	value := p.value
 
@@ -229,19 +340,25 @@ func (p *Parser) newExpression() *Expression {
 			p.setErrorState(fmt.Sprintf("null value cannot be used with operator '%s'", p.keyValueOperator), 51)
 		}
 		return &Expression{
-			Key:       key,
-			Operator:  p.keyValueOperator,
-			Value:     nil,
-			ValueType: types.Null,
+			Key:           key,
+			Operator:      p.keyValueOperator,
+			Value:         nil,
+			ValueType:     types.Null,
+			Range:         exprRange,
+			OperatorRange: operatorRange,
+			ValueRange:    valueRange,
 		}
 	}
 
 	if (value == "true" || value == "false") && !valueIsString {
 		return &Expression{
-			Key:       key,
-			Operator:  p.keyValueOperator,
-			Value:     value == "true",
-			ValueType: types.Boolean,
+			Key:           key,
+			Operator:      p.keyValueOperator,
+			Value:         value == "true",
+			ValueType:     types.Boolean,
+			Range:         exprRange,
+			OperatorRange: operatorRange,
+			ValueRange:    valueRange,
 		}
 	}
 
@@ -253,34 +370,40 @@ func (p *Parser) newExpression() *Expression {
 		p.setErrorState(exprErr.Error(), 1)
 		return nil
 	}
+	expr.Range = exprRange
+	expr.OperatorRange = operatorRange
+	expr.ValueRange = valueRange
 	return expr
 }
 
 func (p *Parser) newTruthyExpression() *Expression {
-	key, err := ParseKey(p.key)
-	if err != nil {
-		p.setErrorState(err.Error(), 1)
-		return nil
-	}
+	exprEnd := p.keyEnd
+	exprRange, keyRange, _ := p.buildExprRanges(exprEnd)
+	key, _ := p.parseKeyWithRange(keyRange)
 	expr, exprErr := NewExpression(key, OpTruthy, "", true)
 	if exprErr != nil {
 		p.setErrorState(exprErr.Error(), 1)
 		return nil
 	}
+	expr.Range = exprRange
 	return expr
 }
 
 func (p *Parser) newInExpression() *Expression {
-	key, err := ParseKey(p.key)
-	if err != nil {
-		p.setErrorState(err.Error(), 1)
-		return nil
+	var exprEnd int
+	if p.char != nil {
+		exprEnd = p.char.pos + 1
 	}
+	exprRange, keyRange, _ := p.buildExprRanges(exprEnd)
+	key, _ := p.parseKeyWithRange(keyRange)
 	operator := OpIn
 	if p.isNotIn {
 		operator = OpNotIn
 	}
-	return NewInExpression(key, operator, p.inListValues, p.inListValuesType, p.inListValuesTypes)
+	expr := NewInExpression(key, operator, p.inListValues, p.inListValuesType, p.inListValuesTypes)
+	expr.Range = exprRange
+	expr.ValueRanges = append([]Range(nil), p.inListValueRanges...)
+	return expr
 }
 
 func (p *Parser) togglePendingNegation() {
@@ -293,19 +416,66 @@ func (p *Parser) consumePendingNegation() bool {
 	return negated
 }
 
+func (p *Parser) popBoolOpRange() *Range {
+	if len(p.boolOpStartStack) > 0 && len(p.boolOpEndStack) > 0 {
+		s := p.boolOpStartStack[len(p.boolOpStartStack)-1]
+		e := p.boolOpEndStack[len(p.boolOpEndStack)-1]
+		p.boolOpStartStack = p.boolOpStartStack[:len(p.boolOpStartStack)-1]
+		p.boolOpEndStack = p.boolOpEndStack[:len(p.boolOpEndStack)-1]
+		r := Range{Start: s, End: e}
+		return &r
+	}
+	return nil
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func (p *Parser) extendTreeWithExpression(expression *Expression) {
 	negated := p.consumePendingNegation()
+	exprRange := Range{}
+	if expression != nil {
+		exprRange = expression.Range
+	}
 	if p.currentNode != nil && p.currentNode.Left == nil {
 		node := NewNode("", expression, nil, nil, negated)
+		node.Range = exprRange
 		p.currentNode.Left = node
 		p.currentNode.BoolOperator = p.boolOperator
+		p.currentNode.Range = Range{
+			Start: minInt(p.currentNode.Range.Start, exprRange.Start),
+			End:   maxInt(p.currentNode.Range.End, exprRange.End),
+		}
 	} else if p.currentNode != nil && p.currentNode.Right == nil {
 		node := NewNode("", expression, nil, nil, negated)
+		node.Range = exprRange
 		p.currentNode.Right = node
 		p.currentNode.BoolOperator = p.boolOperator
+		bopR := p.popBoolOpRange()
+		if bopR != nil {
+			p.currentNode.BoolOperatorRange = bopR
+		}
+		p.currentNode.Range = Range{
+			Start: minInt(p.currentNode.Range.Start, exprRange.Start),
+			End:   maxInt(p.currentNode.Range.End, exprRange.End),
+		}
 	} else {
 		right := NewNode("", expression, nil, nil, negated)
+		right.Range = exprRange
+		bopR := p.popBoolOpRange()
 		node := NewBranchNode(p.boolOperator, p.currentNode, right)
+		node.Range = Range{Start: p.currentNode.Range.Start, End: exprRange.End}
+		node.BoolOperatorRange = bopR
 		p.currentNode = node
 	}
 }
@@ -338,18 +508,48 @@ func (p *Parser) extendTreeFromStack(boolOperator string) {
 		p.negationStack = p.negationStack[:len(p.negationStack)-1]
 	}
 
+	var groupStart *int
+	if len(p.groupStartStack) > 0 {
+		gs := p.groupStartStack[len(p.groupStartStack)-1]
+		p.groupStartStack = p.groupStartStack[:len(p.groupStartStack)-1]
+		groupStart = &gs
+	}
+
 	if node.Right == nil {
 		if p.currentNode != nil {
 			p.applyNegationToTree(p.currentNode, negated)
 		}
 		node.Right = p.currentNode
-		node.BoolOperator = boolOperator
+		if boolOperator != "" {
+			node.BoolOperator = boolOperator
+			bopR := p.popBoolOpRange()
+			if bopR != nil {
+				node.BoolOperatorRange = bopR
+			}
+		}
+		if groupStart != nil && p.char != nil {
+			node.Range = Range{Start: *groupStart, End: p.char.pos + 1}
+		} else if p.currentNode != nil {
+			node.Range = Range{Start: node.Range.Start, End: p.currentNode.Range.End}
+		}
 		p.currentNode = node
 	} else {
 		if p.currentNode != nil {
 			p.applyNegationToTree(p.currentNode, negated)
 		}
+		var bopR *Range
+		if boolOperator != "" {
+			bopR = p.popBoolOpRange()
+		}
+		leftStart := node.Range.Start
+		rightEnd := p.currentNode.Range.End
+		if groupStart != nil && p.char != nil {
+			leftStart = *groupStart
+			rightEnd = p.char.pos + 1
+		}
 		newNode := NewBranchNode(boolOperator, node, p.currentNode)
+		newNode.Range = Range{Start: leftStart, End: rightEnd}
+		newNode.BoolOperatorRange = bopR
 		p.currentNode = newNode
 	}
 }
@@ -360,9 +560,13 @@ func (p *Parser) inStateInitial() {
 	}
 
 	p.resetData()
+	p.exprStart = -1
+	startPos := p.char.pos
 	p.currentNode = NewNode(p.boolOperator, nil, nil, nil, false)
+	p.currentNode.Range = Range{Start: startPos, End: startPos}
 
 	if p.char.isGroupOpen() {
+		p.groupStartStack = append(p.groupStartStack, startPos)
 		if p.pendingNegation {
 			p.negationStack = append(p.negationStack, true)
 			p.pendingNegation = false
@@ -678,6 +882,7 @@ func (p *Parser) inStateSingleQuotedValue() {
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendValue()
 		} else {
+			p.valueEnd = p.char.pos + 1
 			p.state = stateExpectBoolOp
 			p.extendTree()
 			p.resetData()
@@ -698,6 +903,7 @@ func (p *Parser) inStateDoubleQuotedValue() {
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendValue()
 		} else {
+			p.valueEnd = p.char.pos + 1
 			p.state = stateExpectBoolOp
 			p.extendTree()
 			p.resetData()
@@ -767,6 +973,7 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		}
 		p.extendNodesStack()
 		p.extendBoolOpStack()
+		p.groupStartStack = append(p.groupStartStack, p.char.pos)
 		p.state = stateInitial
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
@@ -904,6 +1111,7 @@ func (p *Parser) inStateExpectNotTarget() {
 		p.pendingNegation = false
 		p.extendNodesStack()
 		p.extendBoolOpStack()
+		p.groupStartStack = append(p.groupStartStack, p.char.pos)
 		p.state = stateInitial
 	} else {
 		p.setErrorState("expected key or group after not", 33)
@@ -1324,7 +1532,7 @@ func (p *Parser) Parse(text string) error {
 		return &ParseError{
 			Code:    p.errno,
 			Message: p.errorText,
-			Pos:     p.pos,
+			Range:   p.errorRange,
 		}
 	}
 
@@ -1334,7 +1542,7 @@ func (p *Parser) Parse(text string) error {
 		return &ParseError{
 			Code:    p.errno,
 			Message: p.errorText,
-			Pos:     p.pos,
+			Range:   p.errorRange,
 		}
 	}
 

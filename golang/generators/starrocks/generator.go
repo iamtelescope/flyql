@@ -20,7 +20,7 @@ func getIdentifier(column *Column) string {
 	return fmt.Sprintf("`%s`", escaped)
 }
 
-func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
+func applyTransformerSQL(columnRef string, keyTransformers []flyql.Transformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
 	result := columnRef
 	for _, t := range keyTransformers {
 		transformer := registry.Get(t.Name)
@@ -32,7 +32,7 @@ func applyTransformerSQL(columnRef string, keyTransformers []flyql.KeyTransforme
 	return result, nil
 }
 
-func validateTransformerChain(keyTransformers []flyql.KeyTransformer, registry *transformers.TransformerRegistry) error {
+func validateTransformerChain(keyTransformers []flyql.Transformer, registry *transformers.TransformerRegistry) error {
 	currentType := transformers.TransformerTypeString
 	for i, t := range keyTransformers {
 		transformer := registry.Get(t.Name)

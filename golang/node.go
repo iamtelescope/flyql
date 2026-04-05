@@ -1,11 +1,13 @@
 package flyql
 
 type Node struct {
-	BoolOperator string
-	Expression   *Expression
-	Left         *Node
-	Right        *Node
-	Negated      bool
+	BoolOperator      string
+	Expression        *Expression
+	Left              *Node
+	Right             *Node
+	Negated           bool
+	Range             Range
+	BoolOperatorRange *Range
 }
 
 func NewNode(boolOperator string, expression *Expression, left *Node, right *Node, negated bool) *Node {

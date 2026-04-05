@@ -563,7 +563,7 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 
 	result := make([]ParsedColumn, 0, len(p.columns))
 	for _, col := range p.columns {
-		key, err := flyql.ParseKey(col.name)
+		key, err := flyql.ParseKey(col.name, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse key %q: %w", col.name, err)
 		}

@@ -5,15 +5,16 @@ import "fmt"
 type ParseError struct {
 	Code    int
 	Message string
-	Pos     int
+	Range   Range
 }
 
 func (e *ParseError) Error() string {
-	return fmt.Sprintf("parse error at position %d: %s (code %d)", e.Pos, e.Message, e.Code)
+	return fmt.Sprintf("parse error at [%d,%d): %s (code %d)", e.Range.Start, e.Range.End, e.Message, e.Code)
 }
 
 type KeyParseError struct {
 	Message string
+	Range   Range
 }
 
 func (e *KeyParseError) Error() string {

@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional
 
+from flyql.core.column import Column as CoreColumn
 from flyql.generators.starrocks.constants import (
     NORMALIZED_TYPE_TO_STARROCKS_TYPES,
     NORMALIZED_TYPE_STRING,
@@ -85,7 +86,7 @@ def normalize_starrocks_type(sr_type: str) -> Optional[str]:
     return None
 
 
-class Column:
+class Column(CoreColumn):
     def __init__(
         self,
         name: str,
@@ -95,18 +96,17 @@ class Column:
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        self.name = name
-        self.jsonstring = jsonstring
-        self.type = _type
-        self.values = values or []
-        self.normalized_type = normalize_starrocks_type(_type)
-        self.is_map = self.normalized_type == NORMALIZED_TYPE_MAP
-        self.is_array = self.normalized_type == NORMALIZED_TYPE_ARRAY
-        self.is_struct = self.normalized_type == NORMALIZED_TYPE_STRUCT
-        self.is_json = self.normalized_type == NORMALIZED_TYPE_JSON
-        self.display_name = display_name
-        self.raw_identifier = raw_identifier
-
-    def with_raw_identifier(self, identifier: str) -> "Column":
-        self.raw_identifier = identifier
-        return self
+        normalized = normalize_starrocks_type(_type)
+        super().__init__(
+            name=name,
+            jsonstring=jsonstring,
+            _type=_type,
+            normalized_type=normalized,
+            values=values,
+            display_name=display_name,
+            raw_identifier=raw_identifier,
+        )
+        self.is_map = normalized == NORMALIZED_TYPE_MAP
+        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
+        self.is_struct = normalized == NORMALIZED_TYPE_STRUCT
+        self.is_json = normalized == NORMALIZED_TYPE_JSON

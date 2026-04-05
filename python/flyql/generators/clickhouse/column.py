@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional
 
+from flyql.core.column import Column as CoreColumn
 from flyql.generators.clickhouse.constants import (
     NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES,
     NORMALIZED_TYPE_STRING,
@@ -110,7 +111,7 @@ def _escape_identifier(name: str) -> str:
     return f"`{escaped}`"
 
 
-class Column:
+class Column(CoreColumn):
     def __init__(
         self,
         name: str,
@@ -120,17 +121,18 @@ class Column:
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        self.name = _escape_identifier(name)
-        self.jsonstring = jsonstring
-        self.type = _type
-        self.values = values or []
-        self.normalized_type = normalize_clickhouse_type(_type)
-        self.is_map = self.normalized_type == NORMALIZED_TYPE_MAP
-        self.is_array = self.normalized_type == NORMALIZED_TYPE_ARRAY
-        self.is_json = self.normalized_type == NORMALIZED_TYPE_JSON
-        self.display_name = display_name
-        self.raw_identifier = raw_identifier
-
-    def with_raw_identifier(self, identifier: str) -> "Column":
-        self.raw_identifier = identifier
-        return self
+        escaped = _escape_identifier(name)
+        normalized = normalize_clickhouse_type(_type)
+        super().__init__(
+            name=escaped,
+            jsonstring=jsonstring,
+            _type=_type,
+            normalized_type=normalized,
+            values=values,
+            display_name=display_name,
+            raw_identifier=raw_identifier,
+            match_name=name,
+        )
+        self.is_map = normalized == NORMALIZED_TYPE_MAP
+        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
+        self.is_json = normalized == NORMALIZED_TYPE_JSON

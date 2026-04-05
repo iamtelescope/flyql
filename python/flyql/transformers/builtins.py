@@ -1,6 +1,6 @@
-from typing import Any, List, Optional
+from typing import Any, ClassVar, List, Optional, Tuple
 
-from .base import Transformer, TransformerType
+from .base import ArgSpec, Transformer, TransformerType
 
 
 class UpperTransformer(Transformer):
@@ -76,6 +76,10 @@ class LenTransformer(Transformer):
 
 
 class SplitTransformer(Transformer):
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
+        ArgSpec(type=TransformerType.STRING, required=False),
+    )
+
     @property
     def name(self) -> str:
         return "split"

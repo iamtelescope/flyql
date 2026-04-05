@@ -11,6 +11,7 @@ type Upper struct{}
 func (Upper) Name() string                { return "upper" }
 func (Upper) InputType() TransformerType  { return TransformerTypeString }
 func (Upper) OutputType() TransformerType { return TransformerTypeString }
+func (Upper) ArgSchema() []ArgSpec        { return []ArgSpec{} }
 func (Upper) Apply(value interface{}, args []any) interface{} {
 	return strings.ToUpper(fmt.Sprintf("%v", value))
 }
@@ -28,6 +29,7 @@ type Lower struct{}
 func (Lower) Name() string                { return "lower" }
 func (Lower) InputType() TransformerType  { return TransformerTypeString }
 func (Lower) OutputType() TransformerType { return TransformerTypeString }
+func (Lower) ArgSchema() []ArgSpec        { return []ArgSpec{} }
 func (Lower) Apply(value interface{}, args []any) interface{} {
 	return strings.ToLower(fmt.Sprintf("%v", value))
 }
@@ -45,6 +47,7 @@ type Len struct{}
 func (Len) Name() string                                    { return "len" }
 func (Len) InputType() TransformerType                      { return TransformerTypeString }
 func (Len) OutputType() TransformerType                     { return TransformerTypeInt }
+func (Len) ArgSchema() []ArgSpec                            { return []ArgSpec{} }
 func (Len) Apply(value interface{}, args []any) interface{} { return len(fmt.Sprintf("%v", value)) }
 
 func (Len) SQL(dialect, columnRef string, args []any) string {
@@ -60,6 +63,9 @@ type Split struct{}
 func (Split) Name() string                { return "split" }
 func (Split) InputType() TransformerType  { return TransformerTypeString }
 func (Split) OutputType() TransformerType { return TransformerTypeArray }
+func (Split) ArgSchema() []ArgSpec {
+	return []ArgSpec{{Type: TransformerTypeString, Required: false}}
+}
 
 func (Split) SQL(dialect, columnRef string, args []any) string {
 	delimiter := ","

@@ -17,6 +17,7 @@ func (f firstOctet) InputType() transformers.TransformerType {
 	return transformers.TransformerTypeString
 }
 func (f firstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f firstOctet) ArgSchema() []transformers.ArgSpec        { return []transformers.ArgSpec{} }
 func (f firstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)

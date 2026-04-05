@@ -255,6 +255,7 @@ export class Column {
         this.isJSON = this.normalizedType === NormalizedTypeJSON
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
+        this.matchName = name
     }
 
     withRawIdentifier(identifier) {

@@ -14,3 +14,15 @@ export {
     VALID_BOOL_OPERATORS_CHARS,
 } from './constants.js'
 export { isNumeric, tryConvertToNumber } from './utils.js'
+export { Range } from './range.js'
+export { Column, normalizedToTransformerType } from './column.js'
+export {
+    Diagnostic,
+    diagnose,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_TRANSFORMER,
+    CODE_ARG_COUNT,
+    CODE_ARG_TYPE,
+    CODE_CHAIN_TYPE,
+    CODE_INVALID_AST,
+} from './validator.js'

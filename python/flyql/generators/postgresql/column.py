@@ -1,6 +1,7 @@
 import re
 from typing import List, Optional
 
+from flyql.core.column import Column as CoreColumn
 from flyql.generators.postgresql.constants import (
     NORMALIZED_TYPE_TO_POSTGRESQL_TYPES,
     NORMALIZED_TYPE_STRING,
@@ -64,7 +65,7 @@ def normalize_postgresql_type(pg_type: str) -> Optional[str]:
     return None
 
 
-class Column:
+class Column(CoreColumn):
     def __init__(
         self,
         name: str,
@@ -74,17 +75,16 @@ class Column:
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        self.name = name
-        self.type = _type
-        self.values = values or []
-        self.normalized_type = normalize_postgresql_type(_type)
-        self.is_array = self.normalized_type == NORMALIZED_TYPE_ARRAY
-        self.is_jsonb = self.normalized_type == NORMALIZED_TYPE_JSON
-        self.is_hstore = self.normalized_type == NORMALIZED_TYPE_HSTORE
-        self.display_name = display_name
-        self.raw_identifier = raw_identifier
-        self.jsonstring = jsonstring
-
-    def with_raw_identifier(self, identifier: str) -> "Column":
-        self.raw_identifier = identifier
-        return self
+        normalized = normalize_postgresql_type(_type)
+        super().__init__(
+            name=name,
+            jsonstring=jsonstring,
+            _type=_type,
+            normalized_type=normalized,
+            values=values,
+            display_name=display_name,
+            raw_identifier=raw_identifier,
+        )
+        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
+        self.is_jsonb = normalized == NORMALIZED_TYPE_JSON
+        self.is_hstore = normalized == NORMALIZED_TYPE_HSTORE

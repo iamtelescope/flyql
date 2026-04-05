@@ -1,4 +1,4 @@
-import { Transformer, TransformerType } from './base.js'
+import { ArgSpec, Transformer, TransformerType } from './base.js'
 
 export class UpperTransformer extends Transformer {
     get name() {
@@ -61,6 +61,10 @@ export class SplitTransformer extends Transformer {
 
     get outputType() {
         return TransformerType.ARRAY
+    }
+
+    get argSchema() {
+        return [new ArgSpec(TransformerType.STRING, false)]
     }
 
     sql(dialect, columnRef, args = []) {

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, ClassVar, List, Optional, Tuple
 
 
 class TransformerType(Enum):
@@ -11,7 +12,15 @@ class TransformerType(Enum):
     ARRAY = "array"
 
 
+@dataclass(frozen=True)
+class ArgSpec:
+    type: TransformerType
+    required: bool = True
+
+
 class Transformer(ABC):
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = ()
+
     @property
     @abstractmethod
     def name(self) -> str: ...

@@ -12,6 +12,7 @@ type FirstOctet struct{}
 func (f FirstOctet) Name() string                { return "firstoctet" }
 func (f FirstOctet) InputType() TransformerType  { return TransformerTypeString }
 func (f FirstOctet) OutputType() TransformerType { return TransformerTypeInt }
+func (f FirstOctet) ArgSchema() []ArgSpec        { return []ArgSpec{} }
 func (f FirstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)

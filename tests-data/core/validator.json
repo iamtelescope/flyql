@@ -1,0 +1,262 @@
+{
+  "version": "1.0",
+  "description": "Shared validator test fixtures. Each test provides a query, column schema, and expected diagnostics. Custom transformers (takes_string_then_int, string_to_int, takes_float, takes_int) must be registered per-language before running.",
+  "test_suite": "validator",
+  "custom_transformers": {
+    "takes_string_then_int": {
+      "input_type": "string",
+      "output_type": "string",
+      "arg_schema": [
+        { "type": "string", "required": true },
+        { "type": "int", "required": true }
+      ]
+    },
+    "string_to_int": {
+      "input_type": "string",
+      "output_type": "int",
+      "arg_schema": []
+    },
+    "takes_float": {
+      "input_type": "string",
+      "output_type": "string",
+      "arg_schema": [
+        { "type": "float", "required": true }
+      ]
+    },
+    "takes_int": {
+      "input_type": "string",
+      "output_type": "string",
+      "arg_schema": [
+        { "type": "int", "required": true }
+      ]
+    }
+  },
+  "tests": [
+    {
+      "name": "happy_path",
+      "query": "name=X",
+      "columns": [{ "name": "name", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "unknown_column",
+      "query": "hstt=X",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [0, 4],
+          "message_contains": "hstt"
+        }
+      ]
+    },
+    {
+      "name": "unknown_column_case_insensitive_match",
+      "query": "Host=X",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "duplicate_columns_first_wins",
+      "query": "x|upper=V",
+      "columns": [
+        { "name": "x", "normalized_type": "string" },
+        { "name": "x", "normalized_type": "int" }
+      ],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "unknown_transformer",
+      "query": "host|xyz=Y",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_transformer",
+          "severity": "error",
+          "range": [5, 8],
+          "message_contains": "xyz"
+        }
+      ]
+    },
+    {
+      "name": "arg_count_too_few",
+      "query": "host|takes_string_then_int=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_count",
+          "severity": "error",
+          "message_contains": "expects"
+        }
+      ]
+    },
+    {
+      "name": "arg_count_too_many",
+      "query": "host|upper(\"extra\")=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_count",
+          "severity": "error",
+          "message_contains": "expects"
+        }
+      ]
+    },
+    {
+      "name": "arg_type_mismatch",
+      "query": "host|takes_string_then_int(\"a\", \"b\")=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_type",
+          "severity": "error",
+          "message_contains": "argument 2"
+        }
+      ]
+    },
+    {
+      "name": "arg_type_int_widens_to_float",
+      "query": "host|takes_float(3)=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "arg_type_float_does_not_match_int",
+      "query": "host|takes_int(3.5)=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_type",
+          "severity": "error"
+        }
+      ]
+    },
+    {
+      "name": "chain_type_column_to_first_transformer",
+      "query": "count|upper=V",
+      "columns": [{ "name": "count", "normalized_type": "int" }],
+      "expected_diagnostics": [
+        {
+          "code": "chain_type",
+          "severity": "error",
+          "message_contains": "upper"
+        }
+      ]
+    },
+    {
+      "name": "chain_type_between_transformers",
+      "query": "host|string_to_int|upper=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "chain_type",
+          "severity": "error",
+          "message_contains": "upper"
+        }
+      ]
+    },
+    {
+      "name": "chain_type_cascades_after_error",
+      "query": "count|len|upper=V",
+      "columns": [{ "name": "count", "normalized_type": "int" }],
+      "expected_diagnostics": [
+        { "code": "chain_type", "severity": "error" },
+        { "code": "chain_type", "severity": "error" }
+      ]
+    },
+    {
+      "name": "chain_type_breaks_at_unknown_transformer",
+      "query": "host|xyz|upper=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        { "code": "unknown_transformer", "severity": "error" }
+      ],
+      "absent_codes": ["chain_type"]
+    },
+    {
+      "name": "chain_type_skipped_when_column_unknown",
+      "query": "missing|upper=V",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error" }
+      ],
+      "absent_codes": ["chain_type"]
+    },
+    {
+      "name": "chain_type_skipped_when_normalized_type_unmapped",
+      "query": "m|upper=V",
+      "columns": [{ "name": "m", "normalized_type": "map" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["chain_type"]
+    },
+    {
+      "name": "multiple_expressions",
+      "query": "hstt=A and othr=B",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error", "message_contains": "hstt" },
+        { "code": "unknown_column", "severity": "error", "message_contains": "othr" }
+      ]
+    },
+    {
+      "name": "or_and_not_expressions",
+      "query": "not (a=1 or b=2)",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error", "message_contains": "a" },
+        { "code": "unknown_column", "severity": "error", "message_contains": "b" }
+      ]
+    },
+    {
+      "name": "truthy_known",
+      "query": "host",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "truthy_unknown",
+      "query": "host",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error" }
+      ]
+    },
+    {
+      "name": "in_known",
+      "query": "status in [200, 404]",
+      "columns": [{ "name": "status", "normalized_type": "int" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "in_unknown",
+      "query": "status in [200, 404]",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error" }
+      ]
+    },
+    {
+      "name": "mixed_diagnostics",
+      "query": "unknown_col|xyz=V",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error" },
+        { "code": "unknown_transformer", "severity": "error" }
+      ]
+    },
+    {
+      "name": "default_registry_fallback",
+      "query": "host|upper=V",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "use_default_registry": true,
+      "expected_diagnostics": []
+    },
+    {
+      "name": "none_ast",
+      "query": null,
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    }
+  ]
+}

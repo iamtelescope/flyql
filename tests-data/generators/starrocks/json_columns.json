@@ -61,7 +61,7 @@
       "name": "native_json_regex_not_match",
       "input": "new_json.name!~'john.*'",
       "expected_result": "success",
-      "expected_sql": "cast(`new_json`->'\"name\"' as string) not regexp 'john.*'"
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) NOT regexp 'john.*'"
     },
     {
       "name": "jsonstring_simple_path",
@@ -97,7 +97,7 @@
       "name": "jsonstring_regex_not_match",
       "input": "json_column.message!~'error.*'",
       "expected_result": "success",
-      "expected_sql": "cast(parse_json(`json_column`)->'\"message\"' as string) not regexp 'error.*'"
+      "expected_sql": "cast(parse_json(`json_column`)->'\"message\"' as string) NOT regexp 'error.*'"
     }
   ]
 }

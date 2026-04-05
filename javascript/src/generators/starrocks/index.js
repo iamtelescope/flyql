@@ -17,6 +17,11 @@ import { defaultRegistry } from '../../transformers/index.js'
 
 export { Column, newColumn, normalizeStarRocksType }
 
+const boolOpToSQL = {
+    [BoolOperator.AND]: 'AND',
+    [BoolOperator.OR]: 'OR',
+}
+
 const operatorToStarRocksOperator = {
     [Operator.EQUALS]: '=',
     [Operator.NOT_EQUALS]: '!=',
@@ -138,7 +143,7 @@ function expressionToSQLSimple(expr, columns, registry = null) {
         }
         case Operator.NOT_REGEX: {
             const value = escapeParam(String(expr.value))
-            return `not regexp(${colRef}, ${value})`
+            return `NOT regexp(${colRef}, ${value})`
         }
         case Operator.LIKE: {
             const value = escapeLikeParam(expr.value)
@@ -179,7 +184,7 @@ function expressionToSQLSimple(expr, columns, registry = null) {
 }
 
 function expressionToSQLSegmented(expr, columns) {
-    const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
+    const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'NOT ' : ''
     const operator = operatorToStarRocksOperator[expr.operator]
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
@@ -661,7 +666,7 @@ export function generateWhere(root, columns, registry = null) {
         if (!VALID_BOOL_OPERATORS.includes(root.boolOperator)) {
             throw new Error(`invalid bool operator: ${root.boolOperator}`)
         }
-        text = `(${left} ${root.boolOperator} ${right})`
+        text = `(${left} ${boolOpToSQL[root.boolOperator]} ${right})`
     } else if (left) {
         text = left
     } else if (right) {

@@ -33,6 +33,8 @@ from flyql.generators.transformer_helpers import (
 )
 from flyql.transformers.registry import TransformerRegistry
 
+BOOL_OP_TO_SQL = {"and": "AND", "or": "OR"}
+
 OPERATOR_TO_STARROCKS_OPERATOR = {
     Operator.EQUALS.value: "=",
     Operator.NOT_EQUALS.value: "!=",
@@ -601,7 +603,7 @@ def expression_to_sql(
     if expression.key.is_segmented:
         reverse_operator = ""
         if expression.operator == Operator.NOT_REGEX.value:
-            reverse_operator = "not "
+            reverse_operator = "NOT "
         operator = OPERATOR_TO_STARROCKS_OPERATOR[expression.operator]
         column_name = expression.key.segments[0]
         if column_name not in columns:
@@ -727,7 +729,7 @@ def expression_to_sql(
             text = f"regexp({col_ref}, {value})"
         elif expression.operator == Operator.NOT_REGEX.value:
             value = escape_param(str(expression.value))
-            text = f"not regexp({col_ref}, {value})"
+            text = f"NOT regexp({col_ref}, {value})"
         elif expression.operator == Operator.LIKE.value:
             value = _escape_like_param(expression.value)
             text = f"{col_ref} LIKE {value}"
@@ -813,7 +815,7 @@ def to_sql(
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)
-        text = f"({left} {root.bool_operator} {right})"
+        text = f"({left} {BOOL_OP_TO_SQL[root.bool_operator]} {right})"
     elif len(left) > 0:
         text = left
     elif len(right) > 0:

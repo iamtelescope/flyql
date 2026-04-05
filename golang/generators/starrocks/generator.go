@@ -72,6 +72,11 @@ var validBoolOperators = map[string]bool{
 	flyql.BoolOpOr:  true,
 }
 
+var boolOpToSQL = map[string]string{
+	flyql.BoolOpAnd: "AND",
+	flyql.BoolOpOr:  "OR",
+}
+
 var operatorToStarRocksOperator = map[string]string{
 	flyql.OpEquals:          "=",
 	flyql.OpNotEquals:       "!=",
@@ -266,7 +271,7 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("not regexp(%s, %s)", colRef, value), nil
+		return fmt.Sprintf("NOT regexp(%s, %s)", colRef, value), nil
 
 	case flyql.OpLike:
 		return fmt.Sprintf("%s LIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
@@ -317,7 +322,7 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	reverseOperator := ""
 	if expr.Operator == flyql.OpNotRegex {
-		reverseOperator = "not "
+		reverseOperator = "NOT "
 	}
 	operator := operatorToStarRocksOperator[expr.Operator]
 
@@ -1170,7 +1175,7 @@ func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*trans
 		if err := validateBoolOperator(root.BoolOperator); err != nil {
 			return "", err
 		}
-		text = fmt.Sprintf("(%s %s %s)", left, root.BoolOperator, right)
+		text = fmt.Sprintf("(%s %s %s)", left, boolOpToSQL[root.BoolOperator], right)
 	} else if left != "" {
 		text = left
 	} else if right != "" {

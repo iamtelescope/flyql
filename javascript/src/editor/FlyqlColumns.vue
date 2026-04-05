@@ -1,9 +1,5 @@
 <template>
-    <div
-        class="flyql-columns"
-        :class="{ 'flyql-columns--focused': focused, 'flyql-dark': dark }"
-        ref="editorRoot"
-    >
+    <div class="flyql-columns" :class="{ 'flyql-columns--focused': focused, 'flyql-dark': dark }" ref="editorRoot">
         <span class="flyql-columns__icon">
             <slot name="icon">
                 <svg

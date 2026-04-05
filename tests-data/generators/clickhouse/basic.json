@@ -25,7 +25,7 @@
       "name": "string_regex_not_match",
       "input": "message!~'test.*'",
       "expected_result": "success",
-      "expected_sql": "not match(message, 'test.*')"
+      "expected_sql": "NOT match(message, 'test.*')"
     },
     {
       "name": "int_equals",

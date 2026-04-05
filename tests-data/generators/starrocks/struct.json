@@ -37,7 +37,7 @@
       "name": "struct_regex_not_match",
       "input": "object.pattern!~'test.*'",
       "expected_result": "success",
-      "expected_sql": "`object`.`pattern` not regexp 'test.*'"
+      "expected_sql": "`object`.`pattern` NOT regexp 'test.*'"
     }
   ]
 }

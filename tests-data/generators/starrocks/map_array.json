@@ -37,7 +37,7 @@
       "name": "map_regex_not_match",
       "input": "metadata.pattern!~'test.*'",
       "expected_result": "success",
-      "expected_sql": "`metadata`['pattern'] not regexp 'test.*'"
+      "expected_sql": "`metadata`['pattern'] NOT regexp 'test.*'"
     },
     {
       "name": "array_index_0",

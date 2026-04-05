@@ -18,6 +18,11 @@ import { defaultRegistry } from '../../transformers/index.js'
 
 export { Column, newColumn, normalizeClickHouseType }
 
+const boolOpToSQL = {
+    [BoolOperator.AND]: 'AND',
+    [BoolOperator.OR]: 'OR',
+}
+
 const operatorToClickHouseFunc = {
     [Operator.EQUALS]: 'equals',
     [Operator.NOT_EQUALS]: 'notEquals',
@@ -147,7 +152,7 @@ function expressionToSQLSimple(expr, columns, registry = null) {
         }
         case Operator.NOT_REGEX: {
             const value = escapeParam(String(expr.value))
-            return `not match(${colRef}, ${value})`
+            return `NOT match(${colRef}, ${value})`
         }
         case Operator.LIKE: {
             const value = escapeLikeParam(expr.value)
@@ -187,7 +192,7 @@ function expressionToSQLSimple(expr, columns, registry = null) {
 const validAliasPattern = /^[a-zA-Z_][a-zA-Z0-9_.]*$/
 
 function expressionToSQLSegmented(expr, columns) {
-    const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'not ' : ''
+    const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'NOT ' : ''
     const funcName = operatorToClickHouseFunc[expr.operator]
     if (!funcName) {
         throw new Error(`unsupported operator for segmented expression: ${expr.operator}`)
@@ -717,7 +722,7 @@ export function generateWhere(root, columns, registry = null) {
 
     if (left && right) {
         validateBoolOperator(root.boolOperator)
-        text = `(${left} ${root.boolOperator} ${right})`
+        text = `(${left} ${boolOpToSQL[root.boolOperator]} ${right})`
     } else if (left) {
         text = left
     } else if (right) {

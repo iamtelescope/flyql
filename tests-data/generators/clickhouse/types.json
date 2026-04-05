@@ -43,7 +43,7 @@
       "name": "null_and_boolean_combined",
       "input": "field=null and active=true",
       "expected_result": "success",
-      "expected_sql": "(field IS NULL and active = true)"
+      "expected_sql": "(field IS NULL AND active = true)"
     },
     {
       "name": "in_heterogeneous",

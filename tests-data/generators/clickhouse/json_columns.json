@@ -85,7 +85,7 @@
       "name": "jsonstring_regex_not_match",
       "input": "json_column.message!~'error.*'",
       "expected_result": "success",
-      "expected_sql": "not multiIf(JSONType(json_column, 'message') = 'String', match(JSONExtractString(json_column, 'message'), 'error.*'),0)"
+      "expected_sql": "NOT multiIf(JSONType(json_column, 'message') = 'String', match(JSONExtractString(json_column, 'message'), 'error.*'),0)"
     }
   ]
 }

@@ -1,8 +1,9 @@
 import { Char } from './char.js'
 import { Expression } from './expression.js'
 import { Node } from './tree.js'
-import { ParserError } from './exceptions.js'
-import { parseKey } from './key.js'
+import { ParserError, KeyParseError } from './exceptions.js'
+import { parseKey, Key } from './key.js'
+import { Range } from './range.js'
 import { tryConvertToNumber } from './utils.js'
 import { ValueType } from '../types.js'
 import {
@@ -55,6 +56,21 @@ export class Parser {
         this.isNotIlike = false
         this.valueQuoteChar = ''
         this.inListQuoteChar = ''
+        // Position tracking
+        this._keyStart = -1
+        this._keyEnd = -1
+        this._valueStart = -1
+        this._valueEnd = -1
+        this._operatorStart = -1
+        this._operatorEnd = -1
+        this._exprStart = -1
+        this._boolOpStartStack = []
+        this._boolOpEndStack = []
+        this._groupStartStack = []
+        this._inListValueStart = -1
+        this._inListValueEnd = -1
+        this._inListValueRanges = []
+        this._errorRange = null
     }
 
     setState(state) {
@@ -75,15 +91,25 @@ export class Parser {
 
     setValueIsString() {
         this.valueIsString = true
-        this.valueQuoteChar = this.char.value
+        if (this.char) {
+            this.valueQuoteChar = this.char.value
+            if (this._valueStart === -1) {
+                this._valueStart = this.char.pos
+            }
+            this._valueEnd = this.char.pos + 1
+        }
     }
 
-    setErrorState(errorText, errno) {
+    setErrorState(errorText, errno, range = null) {
         this.state = State.ERROR
         this.errorText = errorText
         this.errno = errno
-        if (this.char) {
-            this.errorText += ` [char ${this.char.value} at ${this.char.pos}], errno=${errno}`
+        if (range !== null) {
+            this._errorRange = range
+        } else if (this.char) {
+            this._errorRange = new Range(this.char.pos, this.char.pos + 1)
+        } else {
+            this._errorRange = null
         }
     }
 
@@ -95,11 +121,15 @@ export class Parser {
         this.key = ''
         this._pipeSeenInKey = false
         this._transformerParenDepth = 0
+        this._keyStart = -1
+        this._keyEnd = -1
     }
 
     resetValue() {
         this.value = ''
         this.resetValueIsString()
+        this._valueStart = -1
+        this._valueEnd = -1
     }
 
     resetValueIsString() {
@@ -108,6 +138,8 @@ export class Parser {
 
     resetKeyValueOperator() {
         this.keyValueOperator = ''
+        this._operatorStart = -1
+        this._operatorEnd = -1
     }
 
     resetData() {
@@ -115,6 +147,7 @@ export class Parser {
         this.resetValue()
         this.resetKeyValueOperator()
         this.resetInListData()
+        this._exprStart = -1
     }
 
     resetInListData() {
@@ -127,10 +160,17 @@ export class Parser {
         this.isNotHas = false
         this.isNotLike = false
         this.isNotIlike = false
+        this._inListValueStart = -1
+        this._inListValueEnd = -1
+        this._inListValueRanges = []
     }
 
     extendInListCurrentValue() {
         if (this.char) {
+            if (this._inListValueStart === -1) {
+                this._inListValueStart = this.char.pos
+            }
+            this._inListValueEnd = this.char.pos + 1
             this.inListCurrentValue += this.char.value
         }
     }
@@ -162,8 +202,13 @@ export class Parser {
 
         this.inListValues.push(value)
         this.inListValuesTypes.push(explicitType)
+        if (this._inListValueStart >= 0) {
+            this._inListValueRanges.push(new Range(this._inListValueStart, this._inListValueEnd))
+        }
         this.inListCurrentValue = ''
         this.inListCurrentValueIsString = null
+        this._inListValueStart = -1
+        this._inListValueEnd = -1
         return true
     }
 
@@ -173,24 +218,45 @@ export class Parser {
 
     extendKey() {
         if (this.char) {
+            if (this._keyStart === -1) {
+                this._keyStart = this.char.pos
+                if (this._exprStart === -1) {
+                    this._exprStart = this.char.pos
+                }
+            }
+            this._keyEnd = this.char.pos + 1
             this.key += this.char.value
         }
     }
 
     extendValue() {
         if (this.char) {
+            if (this._valueStart === -1) {
+                this._valueStart = this.char.pos
+            }
+            this._valueEnd = this.char.pos + 1
             this.value += this.char.value
         }
     }
 
     extendKeyValueOperator() {
         if (this.char) {
+            if (this._operatorStart === -1) {
+                this._operatorStart = this.char.pos
+            }
+            this._operatorEnd = this.char.pos + 1
             this.keyValueOperator += this.char.value
         }
     }
 
     extendBoolOperator() {
         if (this.char) {
+            if (this.boolOperator === '') {
+                this._boolOpStartStack.push(this.char.pos)
+                this._boolOpEndStack.push(this.char.pos + 1)
+            } else if (this._boolOpEndStack.length > 0) {
+                this._boolOpEndStack[this._boolOpEndStack.length - 1] = this.char.pos + 1
+            }
             this.boolOperator += this.char.value
         }
     }
@@ -209,11 +275,35 @@ export class Parser {
         this.typedChars.push([this.char, charType])
     }
 
-    newNode(boolOperator, expression, left, right, negated = false) {
-        return new Node(boolOperator, expression, left, right, negated)
+    newNode(boolOperator, expression, left, right, negated = false, range = null, boolOperatorRange = null) {
+        return new Node(boolOperator, expression, left, right, negated, range, boolOperatorRange)
+    }
+
+    _buildExprRanges(end) {
+        const keyRange = new Range(this._keyStart, this._keyEnd)
+        const operatorRange = this._operatorStart >= 0 ? new Range(this._operatorStart, this._operatorEnd) : null
+        const start = this._exprStart >= 0 ? this._exprStart : this._keyStart
+        const exprRange = new Range(start, end)
+        return { exprRange, keyRange, operatorRange }
+    }
+
+    _parseKeyWithRange(keyRange) {
+        try {
+            return parseKey(this.key, keyRange.start)
+        } catch (e) {
+            if (e instanceof KeyParseError) {
+                this.setErrorState(e.message, 60, e.range)
+                return new Key([''], '', [], [false], keyRange, [keyRange])
+            }
+            throw e
+        }
     }
 
     newExpression() {
+        const exprEnd = this._valueEnd >= 0 ? this._valueEnd : this._operatorEnd >= 0 ? this._operatorEnd : this._keyEnd
+        const { exprRange, keyRange, operatorRange } = this._buildExprRanges(exprEnd)
+        const valueRange = this._valueStart >= 0 ? new Range(this._valueStart, this._valueEnd) : null
+        const key = this._parseKeyWithRange(keyRange)
         let value = this.value
 
         if (value === 'null' && !this.valueIsString) {
@@ -221,7 +311,7 @@ export class Parser {
                 this.setErrorState(`null value cannot be used with operator '${this.keyValueOperator}'`, 51)
             }
             return new Expression(
-                parseKey(this.key),
+                key,
                 this.keyValueOperator,
                 null,
                 null,
@@ -229,12 +319,16 @@ export class Parser {
                 null,
                 null,
                 ValueType.NULL,
+                exprRange,
+                operatorRange,
+                valueRange,
+                null,
             )
         }
 
         if ((value === 'true' || value === 'false') && !this.valueIsString) {
             return new Expression(
-                parseKey(this.key),
+                key,
                 this.keyValueOperator,
                 value === 'true',
                 null,
@@ -242,6 +336,10 @@ export class Parser {
                 null,
                 null,
                 ValueType.BOOLEAN,
+                exprRange,
+                operatorRange,
+                valueRange,
+                null,
             )
         }
 
@@ -256,23 +354,47 @@ export class Parser {
                 value = value.replace(/\\"/g, '"')
             }
         }
-        return new Expression(parseKey(this.key), this.keyValueOperator, value, this.valueIsString)
+        return new Expression(
+            key,
+            this.keyValueOperator,
+            value,
+            this.valueIsString,
+            null,
+            null,
+            null,
+            undefined,
+            exprRange,
+            operatorRange,
+            valueRange,
+            null,
+        )
     }
 
     newTruthyExpression() {
-        return new Expression(parseKey(this.key), Operator.TRUTHY, '', true)
+        const exprEnd = this._keyEnd
+        const { exprRange, keyRange } = this._buildExprRanges(exprEnd)
+        const key = this._parseKeyWithRange(keyRange)
+        return new Expression(key, Operator.TRUTHY, '', true, null, null, null, undefined, exprRange, null, null, null)
     }
 
     newInExpression() {
+        const exprEnd = this.char ? this.char.pos + 1 : this._keyEnd
+        const { exprRange, keyRange } = this._buildExprRanges(exprEnd)
+        const key = this._parseKeyWithRange(keyRange)
         const operator = this.isNotIn ? Operator.NOT_IN : Operator.IN
         return new Expression(
-            parseKey(this.key),
+            key,
             operator,
             '',
             null,
             this.inListValues,
             this.inListValuesType,
             this.inListValuesTypes.length > 0 ? this.inListValuesTypes : null,
+            undefined,
+            exprRange,
+            null,
+            null,
+            this._inListValueRanges.length > 0 ? [...this._inListValueRanges] : null,
         )
     }
 
@@ -286,21 +408,56 @@ export class Parser {
         return negated
     }
 
-    extendTreeWithExpression(expression) {
+    _popBoolOpRange() {
+        if (this._boolOpStartStack.length > 0 && this._boolOpEndStack.length > 0) {
+            const s = this._boolOpStartStack.pop()
+            const e = this._boolOpEndStack.pop()
+            return new Range(s, e)
+        }
+        return null
+    }
+
+    _attachExpr(expression) {
         const negated = this.consumePendingNegation()
+        const exprRange = expression ? expression.range : null
         if (this.currentNode && this.currentNode.left === null) {
-            const node = this.newNode('', expression, null, null, negated)
+            const node = this.newNode('', expression, null, null, negated, exprRange)
             this.currentNode.setLeft(node)
             this.currentNode.setBoolOperator(this.boolOperator)
+            if (exprRange && this.currentNode.range) {
+                this.currentNode.range = new Range(
+                    Math.min(this.currentNode.range.start, exprRange.start),
+                    Math.max(this.currentNode.range.end, exprRange.end),
+                )
+            }
         } else if (this.currentNode && this.currentNode.right === null) {
-            const node = this.newNode('', expression, null, null, negated)
+            const node = this.newNode('', expression, null, null, negated, exprRange)
             this.currentNode.setRight(node)
             this.currentNode.setBoolOperator(this.boolOperator)
+            const bopR = this._popBoolOpRange()
+            if (bopR !== null) {
+                this.currentNode.boolOperatorRange = bopR
+            }
+            if (exprRange && this.currentNode.range) {
+                this.currentNode.range = new Range(
+                    Math.min(this.currentNode.range.start, exprRange.start),
+                    Math.max(this.currentNode.range.end, exprRange.end),
+                )
+            }
         } else {
-            const right = this.newNode('', expression, null, null, negated)
-            const node = this.newNode(this.boolOperator, null, this.currentNode, right)
+            const right = this.newNode('', expression, null, null, negated, exprRange)
+            const bopR = this._popBoolOpRange()
+            const parentRange =
+                this.currentNode && this.currentNode.range && exprRange
+                    ? new Range(this.currentNode.range.start, exprRange.end)
+                    : null
+            const node = this.newNode(this.boolOperator, null, this.currentNode, right, false, parentRange, bopR)
             this.setCurrentNode(node)
         }
+    }
+
+    extendTreeWithExpression(expression) {
+        this._attachExpr(expression)
     }
 
     applyNegationToTree() {
@@ -313,30 +470,45 @@ export class Parser {
     }
 
     extendTree() {
-        const negated = this.consumePendingNegation()
-        if (this.currentNode && this.currentNode.left === null) {
-            const node = this.newNode('', this.newExpression(), null, null, negated)
-            this.currentNode.setLeft(node)
-            this.currentNode.setBoolOperator(this.boolOperator)
-        } else if (this.currentNode && this.currentNode.right === null) {
-            const node = this.newNode('', this.newExpression(), null, null, negated)
-            this.currentNode.setRight(node)
-            this.currentNode.setBoolOperator(this.boolOperator)
-        } else {
-            const right = this.newNode('', this.newExpression(), null, null, negated)
-            const node = this.newNode(this.boolOperator, null, this.currentNode, right)
-            this.setCurrentNode(node)
-        }
+        this._attachExpr(this.newExpression())
     }
 
     extendTreeFromStack(boolOperator) {
         const node = this.nodesStack.pop()
+        const groupStart = this._groupStartStack.length > 0 ? this._groupStartStack.pop() : null
         if (node.right === null) {
             node.right = this.currentNode
-            node.setBoolOperator(boolOperator)
+            if (boolOperator) {
+                node.setBoolOperator(boolOperator)
+                const bopR = this._popBoolOpRange()
+                if (bopR !== null) node.boolOperatorRange = bopR
+            }
+            if (groupStart !== null && this.char) {
+                node.range = new Range(groupStart, this.char.pos + 1)
+            } else if (this.currentNode && this.currentNode.range) {
+                node.range = new Range(
+                    node.range ? node.range.start : this.currentNode.range.start,
+                    this.currentNode.range.end,
+                )
+            }
             this.setCurrentNode(node)
         } else {
-            const newNode = this.newNode(boolOperator, null, node, this.currentNode)
+            const bopR = boolOperator ? this._popBoolOpRange() : null
+            let leftStart = node.range ? node.range.start : 0
+            let rightEnd = this.currentNode && this.currentNode.range ? this.currentNode.range.end : 0
+            if (groupStart !== null && this.char) {
+                leftStart = groupStart
+                rightEnd = this.char.pos + 1
+            }
+            const newNode = this.newNode(
+                boolOperator,
+                null,
+                node,
+                this.currentNode,
+                false,
+                new Range(leftStart, rightEnd),
+                bopR,
+            )
             this.setCurrentNode(newNode)
         }
     }
@@ -347,10 +519,13 @@ export class Parser {
         }
 
         this.resetData()
-        this.setCurrentNode(this.newNode(this.boolOperator, null, null, null))
+        this._exprStart = -1
+        const startPos = this.char.pos
+        this.setCurrentNode(this.newNode(this.boolOperator, null, null, null, false, new Range(startPos, startPos)))
         if (this.char.isGroupOpen()) {
             this.extendNodesStack()
             this.extendBoolOpStack()
+            this._groupStartStack.push(startPos)
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isDelimiter()) {
@@ -540,6 +715,7 @@ export class Parser {
             }
             this.extendNodesStack()
             this.extendBoolOpStack()
+            this._groupStartStack.push(this.char.pos)
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else {
@@ -851,6 +1027,7 @@ export class Parser {
             if (prevPos >= 0 && this.text[prevPos] === '\\') {
                 this.extendValue()
             } else {
+                this._valueEnd = this.char.pos + 1
                 this.setState(State.EXPECT_BOOL_OP)
                 this.extendTree()
                 this.resetData()
@@ -884,6 +1061,7 @@ export class Parser {
             if (prevPos >= 0 && this.text[prevPos] === '\\') {
                 this.extendValue()
             } else {
+                this._valueEnd = this.char.pos + 1
                 this.setState(State.EXPECT_BOOL_OP)
                 this.extendTree()
                 this.resetData()
@@ -967,6 +1145,7 @@ export class Parser {
             }
             this.extendNodesStack()
             this.extendBoolOpStack()
+            this._groupStartStack.push(this.char.pos)
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isGroupClose()) {
@@ -1517,7 +1696,7 @@ export class Parser {
 
         if (this.state === State.ERROR) {
             if (raiseError) {
-                throw new ParserError(this.errorText, this.errno)
+                throw new ParserError(this.errorText, this.errno, this._errorRange)
             } else {
                 return
             }
@@ -1529,7 +1708,7 @@ export class Parser {
 
         if (this.state === State.ERROR) {
             if (raiseError) {
-                throw new ParserError(this.errorText, this.errno)
+                throw new ParserError(this.errorText, this.errno, this._errorRange)
             } else {
                 return
             }

@@ -14,6 +14,10 @@ export class Expression {
         valuesType = null,
         valuesTypes = null,
         valueType = undefined,
+        range = null,
+        operatorRange = null,
+        valueRange = null,
+        valueRanges = null,
     ) {
         if (operator !== Operator.TRUTHY && !VALID_KEY_VALUE_OPERATORS.includes(operator)) {
             throw new FlyqlError(`invalid operator: ${operator}`)
@@ -28,6 +32,10 @@ export class Expression {
         this.values = values
         this.valuesType = valuesType
         this.valuesTypes = valuesTypes
+        this.range = range
+        this.operatorRange = operatorRange
+        this.valueRange = valueRange
+        this.valueRanges = valueRanges
 
         if (valueType !== undefined) {
             this.value = value

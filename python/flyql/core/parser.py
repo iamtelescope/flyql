@@ -5,7 +5,8 @@ from flyql.core.expression import Expression, try_convert_to_number
 from flyql.core.char import Char
 from flyql.types import ValueType
 from flyql.core.state import State
-from flyql.core.exceptions import FlyqlError
+from flyql.core.exceptions import FlyqlError, KeyParseError
+from flyql.core.range import Range
 from flyql.core.constants import VALID_BOOL_OPERATORS
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
@@ -16,13 +17,19 @@ from flyql.core.constants import HAS_KEYWORD
 from flyql.core.constants import LIKE_KEYWORD
 from flyql.core.constants import ILIKE_KEYWORD
 from flyql.core.constants import Operator
-from flyql.core.key import parse_key
+from flyql.core.key import parse_key, Key
 
 
 class ParserError(FlyqlError):
-    def __init__(self, message: str, errno: int) -> None:
+    def __init__(
+        self,
+        message: str,
+        errno: int,
+        range: Optional[Range] = None,
+    ) -> None:
         super().__init__(message)
         self.errno = errno
+        self.range = range
 
     def __str__(self) -> str:
         return self.message
@@ -66,6 +73,22 @@ class Parser:
         self.is_not_ilike: bool = False
         self.value_quote_char: str = ""
         self.in_list_quote_char: str = ""
+        # Position tracking for source ranges.
+        self._key_start: int = -1
+        self._key_end: int = -1
+        self._value_start: int = -1
+        self._value_end: int = -1
+        self._operator_start: int = -1
+        self._operator_end: int = -1
+        self._expr_start: int = -1
+        self._expr_end: int = -1
+        self._bool_op_start_stack: List[int] = []
+        self._bool_op_end_stack: List[int] = []
+        self._group_start_stack: List[int] = []
+        self._in_list_value_start: int = -1
+        self._in_list_value_end: int = -1
+        self._in_list_value_ranges: List[Range] = []
+        self._error_range: Optional[Range] = None
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -83,15 +106,26 @@ class Parser:
         self.value_is_string = True
         if self.char is not None:
             self.value_quote_char = self.char.value
+            # Include the opening quote in the value range.
+            if self._value_start == -1:
+                self._value_start = self.char.pos
+            self._value_end = self.char.pos + 1
 
-    def set_error_state(self, error_text: str, errno: int) -> None:
+    def set_error_state(
+        self,
+        error_text: str,
+        errno: int,
+        range: Optional[Range] = None,
+    ) -> None:
         self.state = State.ERROR
         self.error_text = error_text
         self.errno = errno
-        if self.char:
-            self.error_text += (
-                f" [char '{self.char.value}' at {self.char.pos}], errno={errno}"
-            )
+        if range is not None:
+            self._error_range = range
+        elif self.char is not None:
+            self._error_range = Range(self.char.pos, self.char.pos + 1)
+        else:
+            self._error_range = None
 
     def reset_pos(self) -> None:
         self.pos = 0
@@ -100,22 +134,29 @@ class Parser:
         self.key = ""
         self._pipe_seen_in_key = False
         self._transformer_paren_depth = 0
+        self._key_start = -1
+        self._key_end = -1
 
     def reset_value(self) -> None:
         self.value = ""
         self.reset_value_is_string()
+        self._value_start = -1
+        self._value_end = -1
 
     def reset_value_is_string(self) -> None:
         self.value_is_string = None
 
     def reset_key_value_operator(self) -> None:
         self.key_value_operator = ""
+        self._operator_start = -1
+        self._operator_end = -1
 
     def reset_data(self) -> None:
         self.reset_key()
         self.reset_value()
         self.reset_key_value_operator()
         self.reset_in_list_data()
+        self._expr_start = -1
 
     def reset_in_list_data(self) -> None:
         self.in_list_values = []
@@ -127,9 +168,15 @@ class Parser:
         self.is_not_has = False
         self.is_not_like = False
         self.is_not_ilike = False
+        self._in_list_value_start = -1
+        self._in_list_value_end = -1
+        self._in_list_value_ranges = []
 
     def extend_in_list_current_value(self) -> None:
         if self.char:
+            if self._in_list_value_start == -1:
+                self._in_list_value_start = self.char.pos
+            self._in_list_value_end = self.char.pos + 1
             self.in_list_current_value += self.char.value
 
     def finalize_in_list_value(self) -> bool:
@@ -155,8 +202,14 @@ class Parser:
 
         self.in_list_values.append(value)
         self.in_list_values_types.append(explicit_type)
+        if self._in_list_value_start >= 0:
+            self._in_list_value_ranges.append(
+                Range(self._in_list_value_start, self._in_list_value_end)
+            )
         self.in_list_current_value = ""
         self.in_list_current_value_is_string = None
+        self._in_list_value_start = -1
+        self._in_list_value_end = -1
         return True
 
     def reset_bool_operator(self) -> None:
@@ -164,18 +217,35 @@ class Parser:
 
     def extend_key(self) -> None:
         if self.char:
+            if self._key_start == -1:
+                self._key_start = self.char.pos
+                if self._expr_start == -1:
+                    self._expr_start = self.char.pos
+            self._key_end = self.char.pos + 1
             self.key += self.char.value
 
     def extend_value(self) -> None:
         if self.char:
+            if self._value_start == -1:
+                self._value_start = self.char.pos
+            self._value_end = self.char.pos + 1
             self.value += self.char.value
 
     def extend_key_value_operator(self) -> None:
         if self.char:
+            if self._operator_start == -1:
+                self._operator_start = self.char.pos
+            self._operator_end = self.char.pos + 1
             self.key_value_operator += self.char.value
 
     def extend_bool_operator(self) -> None:
         if self.char:
+            if self.bool_operator == "":
+                self._bool_op_start_stack.append(self.char.pos)
+                self._bool_op_end_stack.append(self.char.pos + 1)
+            else:
+                if self._bool_op_end_stack:
+                    self._bool_op_end_stack[-1] = self.char.pos + 1
             self.bool_operator += self.char.value
 
     def extend_nodes_stack(self) -> None:
@@ -195,6 +265,8 @@ class Parser:
         expression: Union[Expression, None],
         left: Union[Node, None],
         right: Union[Node, None],
+        range: Range,
+        bool_operator_range: Optional[Range] = None,
         negated: bool = False,
     ) -> Node:
         return Node(
@@ -202,6 +274,8 @@ class Parser:
             expression=expression,
             left=left,
             right=right,
+            range=range,
+            bool_operator_range=bool_operator_range,
             negated=negated,
         )
 
@@ -211,6 +285,29 @@ class Parser:
             return value.replace("\\'", "'")
         return value.replace('\\"', '"')
 
+    def _build_expr_ranges(self, end: int) -> tuple[Range, Range, Optional[Range]]:
+        """Build (expr_range, key_range, operator_range) for the current
+        accumulated expression state."""
+        key_range = Range(self._key_start, self._key_end)
+        operator_range = (
+            Range(self._operator_start, self._operator_end)
+            if self._operator_start >= 0
+            else None
+        )
+        start = self._expr_start if self._expr_start >= 0 else self._key_start
+        expr_range = Range(start, end)
+        return expr_range, key_range, operator_range
+
+    def _parse_key_with_range(self, key_range: Range) -> Key:
+        try:
+            parsed = parse_key(self.key, key_range.start)
+        except KeyParseError as e:
+            self.set_error_state(e.message, 60, range=e.range)
+            # Return an empty Key sentinel; extend_tree won't be called
+            # because new_expression checks state afterwards.
+            return Key([""], range=key_range, segment_ranges=[key_range])
+        return parsed
+
     def new_expression(self) -> Expression:
         value = self.value
         if self.value_is_string and self.key_value_operator not in (
@@ -218,6 +315,20 @@ class Parser:
             Operator.NOT_REGEX.value,
         ):
             value = self._unescape_quotes(value, self.value_quote_char)
+
+        if self._value_end >= 0:
+            expr_end = self._value_end
+        elif self._operator_end >= 0:
+            expr_end = self._operator_end
+        else:
+            expr_end = self._key_end
+        expr_range, key_range, operator_range = self._build_expr_ranges(expr_end)
+        value_range = (
+            Range(self._value_start, self._value_end)
+            if self._value_start >= 0
+            else None
+        )
+        key = self._parse_key_with_range(key_range)
 
         if value == "null" and not self.value_is_string:
             if self.key_value_operator not in (
@@ -229,46 +340,72 @@ class Parser:
                     51,
                 )
             return Expression(
-                key=parse_key(self.key),
+                key=key,
                 operator=self.key_value_operator,
                 value=None,
                 value_is_string=None,
+                range=expr_range,
+                operator_range=operator_range,
+                value_range=value_range,
                 value_type=ValueType.NULL,
             )
 
         if value in ("true", "false") and not self.value_is_string:
             return Expression(
-                key=parse_key(self.key),
+                key=key,
                 operator=self.key_value_operator,
                 value=value == "true",
                 value_is_string=None,
+                range=expr_range,
+                operator_range=operator_range,
+                value_range=value_range,
                 value_type=ValueType.BOOLEAN,
             )
 
         return Expression(
-            key=parse_key(self.key),
+            key=key,
             operator=self.key_value_operator,
             value=value,
             value_is_string=self.value_is_string,
+            range=expr_range,
+            operator_range=operator_range,
+            value_range=value_range,
         )
 
     def new_truthy_expression(self) -> Expression:
         """Create a truthy expression (standalone key check)"""
+        expr_end = self._key_end
+        expr_range, key_range, _ = self._build_expr_ranges(expr_end)
+        key = self._parse_key_with_range(key_range)
         return Expression(
-            key=parse_key(self.key),
+            key=key,
             operator=Operator.TRUTHY.value,
             value="",
             value_is_string=True,
+            range=expr_range,
+            operator_range=None,
+            value_range=None,
         )
 
     def new_in_expression(self) -> Expression:
         """Create an IN or NOT IN expression"""
         operator = Operator.NOT_IN.value if self.is_not_in else Operator.IN.value
+        # expr end is position after the closing ']' — char just consumed is ']'.
+        assert self.char is not None
+        expr_end = self.char.pos + 1
+        expr_range, key_range, _ = self._build_expr_ranges(expr_end)
+        key = self._parse_key_with_range(key_range)
         return Expression(
-            key=parse_key(self.key),
+            key=key,
             operator=operator,
             value="",
             value_is_string=None,
+            range=expr_range,
+            operator_range=None,
+            value_range=None,
+            value_ranges=(
+                list(self._in_list_value_ranges) if self._in_list_value_ranges else None
+            ),
             values=self.in_list_values,
             values_type=self.in_list_values_type,
             values_types=(
@@ -286,6 +423,13 @@ class Parser:
         self.pending_negation = False
         return negated
 
+    def _pop_bool_op_range(self) -> Optional[Range]:
+        if self._bool_op_start_stack and self._bool_op_end_stack:
+            s = self._bool_op_start_stack.pop()
+            e = self._bool_op_end_stack.pop()
+            return Range(s, e)
+        return None
+
     def extend_tree(self, expression: Union[Expression, None] = None) -> None:
         """Extend the AST with an expression. If expression is None, creates one from current state."""
         if expression is None:
@@ -298,54 +442,95 @@ class Parser:
                 expression=expression,
                 left=None,
                 right=None,
+                range=expression.range,
                 negated=negated,
             )
             self.current_node.set_left(node)
             self.current_node.set_bool_operator(self.bool_operator)
+            # Expand the parent wrapper range to cover the new leaf.
+            self.current_node.range = Range(
+                min(self.current_node.range.start, expression.range.start),
+                max(self.current_node.range.end, expression.range.end),
+            )
         elif self.current_node and self.current_node.right is None:
             node = self.new_node(
                 bool_operator="",
                 expression=expression,
                 left=None,
                 right=None,
+                range=expression.range,
                 negated=negated,
             )
             self.current_node.set_right(node)
             self.current_node.set_bool_operator(self.bool_operator)
+            bool_op_r = self._pop_bool_op_range()
+            if bool_op_r is not None:
+                self.current_node.bool_operator_range = bool_op_r
+            self.current_node.range = Range(
+                min(self.current_node.range.start, expression.range.start),
+                max(self.current_node.range.end, expression.range.end),
+            )
         else:
             right = self.new_node(
                 bool_operator="",
                 expression=expression,
                 left=None,
                 right=None,
+                range=expression.range,
                 negated=negated,
             )
+            bool_op_r = self._pop_bool_op_range()
+            assert self.current_node is not None
             node = self.new_node(
                 bool_operator=self.bool_operator,
                 expression=None,
                 left=self.current_node,
                 right=right,
+                range=Range(self.current_node.range.start, expression.range.end),
+                bool_operator_range=bool_op_r,
             )
             self.set_current_node(node)
 
     def extend_tree_from_stack(self, bool_operator: str) -> None:
         node = self.nodes_stack.pop()
         negated = self.negation_stack.pop() if self.negation_stack else False
+        group_start = self._group_start_stack.pop() if self._group_start_stack else None
 
         if node.right is None:
             if self.current_node:
                 self._apply_negation_to_tree(self.current_node, negated)
             node.right = self.current_node
-            node.set_bool_operator(bool_operator)
+            if bool_operator:
+                node.set_bool_operator(bool_operator)
+                bool_op_r = self._pop_bool_op_range()
+                if bool_op_r is not None:
+                    node.bool_operator_range = bool_op_r
+            # Set group range: span from '(' to current char pos+1 (the ')').
+            if group_start is not None and self.char is not None:
+                node.range = Range(group_start, self.char.pos + 1)
+            elif self.current_node is not None:
+                node.range = Range(
+                    node.range.start if node.range else self.current_node.range.start,
+                    self.current_node.range.end,
+                )
             self.set_current_node(node)
         else:
             if self.current_node:
                 self._apply_negation_to_tree(self.current_node, negated)
+            bool_op_r = self._pop_bool_op_range() if bool_operator else None
+            assert self.current_node is not None
+            left_start = node.range.start
+            right_end = self.current_node.range.end
+            if group_start is not None and self.char is not None:
+                left_start = group_start
+                right_end = self.char.pos + 1
             new_node = self.new_node(
                 bool_operator=bool_operator,
                 expression=None,
                 left=node,
                 right=self.current_node,
+                range=Range(left_start, right_end),
+                bool_operator_range=bool_op_r,
             )
             self.set_current_node(new_node)
 
@@ -368,18 +553,22 @@ class Parser:
             return
 
         self.reset_data()
+        self._expr_start = -1
+        start_pos = self.char.pos
         self.set_current_node(
             self.new_node(
                 bool_operator=self.bool_operator,
                 expression=None,
                 left=None,
                 right=None,
+                range=Range(start_pos, start_pos),
             )
         )
         if self.char.is_group_open():
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
             self.negation_stack.append(False)  # No negation for regular groups
+            self._group_start_stack.append(start_pos)
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_delimiter():
@@ -700,6 +889,8 @@ class Parser:
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
             else:
+                # Include closing quote in value range.
+                self._value_end = self.char.pos + 1
                 self.set_state(State.EXPECT_BOOL_OP)
                 self.extend_tree()
                 self.reset_data()
@@ -721,6 +912,8 @@ class Parser:
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_value()
             else:
+                # Include closing quote in value range.
+                self._value_end = self.char.pos + 1
                 self.set_state(State.EXPECT_BOOL_OP)
                 self.extend_tree()
                 self.reset_data()
@@ -790,6 +983,7 @@ class Parser:
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
             self.negation_stack.append(False)  # No negation for regular groups
+            self._group_start_stack.append(self.char.pos)
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_group_close():
@@ -920,6 +1114,7 @@ class Parser:
             self.extend_nodes_stack()
             self.extend_bool_op_stack()
             self.negation_stack.append(self.consume_pending_negation())
+            self._group_start_stack.append(self.char.pos)
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         else:
@@ -1125,11 +1320,15 @@ class Parser:
         elif self.char.is_single_quote():
             self.in_list_current_value_is_string = True
             self.in_list_quote_char = self.char.value
+            self._in_list_value_start = self.char.pos
+            self._in_list_value_end = self.char.pos + 1
             self.store_typed_char(CharType.VALUE)
             self.set_state(State.IN_LIST_SINGLE_QUOTED_VALUE)
         elif self.char.is_double_quote():
             self.in_list_current_value_is_string = True
             self.in_list_quote_char = self.char.value
+            self._in_list_value_start = self.char.pos
+            self._in_list_value_end = self.char.pos + 1
             self.store_typed_char(CharType.VALUE)
             self.set_state(State.IN_LIST_DOUBLE_QUOTED_VALUE)
         elif self.char.is_value():
@@ -1182,6 +1381,7 @@ class Parser:
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_in_list_current_value()
             else:
+                self._in_list_value_end = self.char.pos + 1
                 if not self.finalize_in_list_value():
                     return
                 self.set_state(State.EXPECT_LIST_COMMA_OR_END)
@@ -1202,6 +1402,7 @@ class Parser:
             if prev_pos >= 0 and self.text[prev_pos] == "\\":
                 self.extend_in_list_current_value()
             else:
+                self._in_list_value_end = self.char.pos + 1
                 if not self.finalize_in_list_value():
                     return
                 self.set_state(State.EXPECT_LIST_COMMA_OR_END)
@@ -1356,6 +1557,7 @@ class Parser:
                 raise ParserError(
                     message=self.error_text,
                     errno=self.errno,
+                    range=self._error_range,
                 )
             else:
                 return

@@ -2,6 +2,7 @@ from typing import Any, List, Optional, Tuple
 from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.key import Key
+from flyql.core.range import Range
 from flyql.types import ValueType
 
 INT64_MIN = -(2**63)
@@ -31,6 +32,10 @@ class Expression:
         operator: str,
         value: str | int | float | bool | None,
         value_is_string: bool | None,
+        range: Optional[Range] = None,
+        operator_range: Optional[Range] = None,
+        value_range: Optional[Range] = None,
+        value_ranges: Optional[List[Range]] = None,
         values: Optional[List[Any]] = None,
         values_type: Optional[str] = None,
         value_type: Optional[ValueType] = None,
@@ -47,6 +52,10 @@ class Expression:
         self.values: Optional[List[Any]] = values
         self.values_type: Optional[str] = values_type
         self.values_types: Optional[List[ValueType]] = values_types
+        self.range = range if range is not None else Range(0, 0)
+        self.operator_range = operator_range
+        self.value_range = value_range
+        self.value_ranges = value_ranges
 
         if value_type is not None:
             self.value: Any = value

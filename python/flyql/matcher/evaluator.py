@@ -152,10 +152,10 @@ class Evaluator:
 
         if expression.key.transformers:
             for t_dict in expression.key.transformers:
-                transformer = self._registry.get(t_dict["name"])
+                transformer = self._registry.get(t_dict.name)
                 if transformer is None:
-                    raise FlyqlError(f"unknown transformer: {t_dict['name']}")
-                value = transformer.apply(value, t_dict.get("arguments"))
+                    raise FlyqlError(f"unknown transformer: {t_dict.name}")
+                value = transformer.apply(value, t_dict.arguments)
 
         # Handle truthy operator (standalone key check)
         if expression.operator == Operator.TRUTHY.value:

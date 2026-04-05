@@ -64,7 +64,7 @@ class TestCustomRegistration:
         assert result.root is not None
         key = result.root.left.expression.key
         assert len(key.transformers) == 1
-        assert key.transformers[0]["name"] == "firstoctet"
+        assert key.transformers[0].name == "firstoctet"
 
     def test_registration_under_10_lines(self) -> None:
         # The FirstOctetTransformer class definition is 10 lines

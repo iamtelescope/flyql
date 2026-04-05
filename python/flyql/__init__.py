@@ -1,3 +1,4 @@
+from .core.range import Range
 from .transformers import (
     Transformer,
     TransformerRegistry,
@@ -7,6 +8,7 @@ from .transformers import (
 from .types import ValueType
 
 __all__ = [
+    "Range",
     "Transformer",
     "TransformerType",
     "TransformerRegistry",

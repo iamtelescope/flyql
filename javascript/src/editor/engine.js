@@ -42,6 +42,7 @@ const CHAR_TYPE_CLASS = {
     [CharType.ARGUMENT_STRING]: 'flyql-argument-string',
     [CharType.ARGUMENT_NUMBER]: 'flyql-argument-number',
     [CharType.WILDCARD]: 'flyql-wildcard',
+    [CharType.COLUMN]: 'flyql-column',
 }
 
 function escapeHtml(str) {
@@ -570,6 +571,8 @@ export class EditorEngine {
                     spanType = CharType.NULL
                 } else if (isNumeric(currentText)) {
                     spanType = CharType.NUMBER
+                } else if (currentText.length > 0 && currentText[0] !== "'" && currentText[0] !== '"') {
+                    spanType = CharType.COLUMN
                 }
             }
             const inner = wrapSpan(spanType, currentText)

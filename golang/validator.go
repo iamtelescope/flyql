@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/iamtelescope/flyql/golang/transformers"
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 // DiagnosticSeverity is the severity level of a diagnostic.
@@ -23,6 +24,7 @@ const (
 	CodeArgType            = "arg_type"
 	CodeChainType          = "chain_type"
 	CodeInvalidAST         = "invalid_ast"
+	CodeUnknownColumnValue = "unknown_column_value"
 )
 
 // Diagnostic is a positioned diagnostic produced by Diagnose.
@@ -180,6 +182,40 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 		// Cascade: always use this transformer's output_type
 		prevOutputType = t.OutputType()
 		hasPrevType = true
+	}
+
+	// COLUMN value validation
+	if expr.ValueType == types.Column {
+		if v, ok := expr.Value.(string); ok && v != "" {
+			if _, found := byName[strings.ToLower(v)]; !found {
+				if expr.ValueRange != nil {
+					diags = append(diags, Diagnostic{
+						Range:    *expr.ValueRange,
+						Code:     CodeUnknownColumnValue,
+						Severity: SeverityWarning,
+						Message:  fmt.Sprintf("column '%s' is not defined", v),
+					})
+				}
+			}
+		}
+	}
+
+	// IN-list COLUMN value validation
+	for i, vt := range expr.ValuesTypes {
+		if vt == types.Column {
+			if v, ok := expr.Values[i].(string); ok {
+				if _, found := byName[strings.ToLower(v)]; !found {
+					if i < len(expr.ValueRanges) {
+						diags = append(diags, Diagnostic{
+							Range:    expr.ValueRanges[i],
+							Code:     CodeUnknownColumnValue,
+							Severity: SeverityWarning,
+							Message:  fmt.Sprintf("column '%s' is not defined", v),
+						})
+					}
+				}
+			}
+		}
 	}
 
 	return diags

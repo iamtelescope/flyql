@@ -5,7 +5,7 @@
   "tests": [
     {
       "name": "spaces_around_equals",
-      "input": "key = value",
+      "input": "key = 'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -21,7 +21,7 @@
     },
     {
       "name": "spaces_before_equals",
-      "input": "key =value",
+      "input": "key ='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -37,7 +37,7 @@
     },
     {
       "name": "spaces_after_equals",
-      "input": "key= value",
+      "input": "key= 'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -53,7 +53,7 @@
     },
     {
       "name": "multiple_spaces_around_equals",
-      "input": "key   =   value",
+      "input": "key   =   'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -149,7 +149,7 @@
     },
     {
       "name": "spaces_with_regex_match",
-      "input": "message ~ hello.*",
+      "input": "message ~ 'hello.*'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -165,7 +165,7 @@
     },
     {
       "name": "spaces_with_regex_not_match",
-      "input": "message !~ test",
+      "input": "message !~ 'test'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -213,7 +213,7 @@
     },
     {
       "name": "spaces_in_boolean_expressions",
-      "input": "key1 = value1 and key2 = value2",
+      "input": "key1 = 'value1' and key2 = 'value2'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -244,7 +244,7 @@
     },
     {
       "name": "spaces_in_grouped_expressions",
-      "input": "(key=value)",
+      "input": "(key='value')",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -260,7 +260,7 @@
     },
     {
       "name": "mixed_spacing_styles",
-      "input": "key1=value1 and key2 = value2 or key3= value3",
+      "input": "key1='value1' and key2 = 'value2' or key3= 'value3'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "or",
@@ -306,7 +306,7 @@
     },
     {
       "name": "complex_expression_with_spaces",
-      "input": "status = 200 and ( service != api or user = 'john doe' )",
+      "input": "status = 200 and ( service != 'api' or user = 'john doe' )",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -352,7 +352,7 @@
     },
     {
       "name": "spaces_with_nested_keys",
-      "input": "user:name = john",
+      "input": "user:name = 'john'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -368,7 +368,7 @@
     },
     {
       "name": "backward_compatibility_no_spaces",
-      "input": "key=value",
+      "input": "key='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -384,7 +384,7 @@
     },
     {
       "name": "backward_compatibility_complex_no_spaces",
-      "input": "status=200 and service!=api",
+      "input": "status=200 and service!='api'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",

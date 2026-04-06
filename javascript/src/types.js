@@ -6,4 +6,5 @@ export const ValueType = Object.freeze({
     BOOLEAN: 'boolean',
     NULL: 'null',
     ARRAY: 'array',
+    COLUMN: 'column',
 })

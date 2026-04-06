@@ -479,7 +479,7 @@ describe('EditorEngine', () => {
             const html = engine.getHighlightTokens()
             expect(html).toContain('flyql-key')
             expect(html).toContain('flyql-operator')
-            expect(html).toContain('flyql-value')
+            expect(html).toContain('flyql-column')
         })
 
         it('handles parse errors in highlight', () => {
@@ -503,7 +503,7 @@ describe('EditorEngine', () => {
             expect(html).toContain('flyql-key')
             expect(html).toContain('flyql-transformer')
             expect(html).toContain('flyql-operator')
-            expect(html).toContain('flyql-value')
+            expect(html).toContain('flyql-column')
         })
 
         it('highlights chained transformers', () => {
@@ -1049,7 +1049,7 @@ describe('EditorEngine', () => {
             const html = engine.getHighlightTokens('status=info\nand host=prod')
             expect(html).toContain('flyql-key')
             expect(html).toContain('flyql-operator')
-            expect(html).toContain('flyql-value')
+            expect(html).toContain('flyql-column')
         })
 
         it('handles Windows \\r\\n newlines', () => {
@@ -1057,7 +1057,7 @@ describe('EditorEngine', () => {
             const html = engine.getHighlightTokens('status=info\r\nand host=prod')
             expect(html).toContain('flyql-key')
             expect(html).toContain('flyql-operator')
-            expect(html).toContain('flyql-value')
+            expect(html).toContain('flyql-column')
         })
 
         it('handles bare \\r newlines', () => {
@@ -1120,8 +1120,8 @@ describe('EditorEngine', () => {
             expect(html).toContain('flyql-key')
             // = should be highlighted as operator
             expect(html).toContain('flyql-operator')
-            // info should be highlighted as value
-            expect(html).toContain('flyql-value')
+            // info should be highlighted as column reference
+            expect(html).toContain('flyql-column')
             // error portion should have error class
             expect(html).toContain('flyql-error')
         })
@@ -1217,7 +1217,7 @@ describe('EditorEngine', () => {
 
         it('returns unknown_column diagnostic for unrecognized column', () => {
             const engine = new EditorEngine({ host: { type: 'string' } })
-            engine.setQuery('hstt=X')
+            engine.setQuery("hstt='X'")
             const diags = engine.getDiagnostics()
             expect(diags.length).toBe(1)
             expect(diags[0].code).toBe('unknown_column')
@@ -1227,7 +1227,7 @@ describe('EditorEngine', () => {
 
         it('returns no diagnostics for valid query', () => {
             const engine = new EditorEngine({ status: { type: 'enum', values: ['info'] } })
-            engine.setQuery('status=info')
+            engine.setQuery("status='info'")
             expect(engine.getDiagnostics()).toEqual([])
         })
 

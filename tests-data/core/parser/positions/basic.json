@@ -5,13 +5,13 @@
   "tests": [
     {
       "name": "simple_equals",
-      "input": "host=example.com",
+      "input": "host='example.com'",
       "expected_ranges": {
-        "root.range": [0, 16],
-        "root.left.range": [0, 16],
-        "root.left.expression.range": [0, 16],
+        "root.range": [0, 18],
+        "root.left.range": [0, 18],
+        "root.left.expression.range": [0, 18],
         "root.left.expression.operator_range": [4, 5],
-        "root.left.expression.value_range": [5, 16],
+        "root.left.expression.value_range": [5, 18],
         "root.left.expression.key.range": [0, 4],
         "root.left.expression.key.segment_ranges[0]": [0, 4]
       }

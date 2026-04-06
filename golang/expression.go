@@ -21,7 +21,7 @@ type Expression struct {
 	ValueRanges   []Range
 }
 
-func tryConvertToNumber(value string) (any, types.ValueType) {
+func convertUnquotedValue(value string) (any, types.ValueType) {
 	if i, err := strconv.ParseInt(value, 10, 64); err == nil {
 		return i, types.Integer
 	}
@@ -31,7 +31,7 @@ func tryConvertToNumber(value string) (any, types.ValueType) {
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
 		return f, types.Float
 	}
-	return value, types.String
+	return value, types.Column
 }
 
 func NewExpression(key Key, operator string, value string, valueIsString bool) (*Expression, error) {
@@ -51,7 +51,7 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) (
 		expr.Value = value
 		expr.ValueType = types.String
 	} else {
-		expr.Value, expr.ValueType = tryConvertToNumber(value)
+		expr.Value, expr.ValueType = convertUnquotedValue(value)
 	}
 
 	return expr, nil

@@ -9,7 +9,7 @@ INT64_MIN = -(2**63)
 INT64_MAX = 2**63 - 1
 
 
-def try_convert_to_number(
+def convert_unquoted_value(
     value: str | int | float,
 ) -> Tuple[str | int | float, ValueType]:
     try:
@@ -22,7 +22,7 @@ def try_convert_to_number(
     try:
         return float(value), ValueType.FLOAT
     except ValueError:
-        return value, ValueType.STRING
+        return value, ValueType.COLUMN
 
 
 class Expression:
@@ -64,7 +64,7 @@ class Expression:
             self.value = None
             self.value_type = None
         elif not value_is_string and value is not None:
-            self.value, self.value_type = try_convert_to_number(value)
+            self.value, self.value_type = convert_unquoted_value(value)
         else:
             self.value = value
             self.value_type = ValueType.STRING

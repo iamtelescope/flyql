@@ -292,7 +292,7 @@ func TestDiagnoseDialectColumnSubclass(t *testing.T) {
 		NormalizedType: "string",
 		MatchName:      "1host",
 	}
-	ast := parseAST(t, "host=X")
+	ast := parseAST(t, "host='X'")
 	cols := []Column{makeColumn("host", "string"), col}
 	diags := Diagnose(ast, cols, reg)
 	if len(diags) != 0 {

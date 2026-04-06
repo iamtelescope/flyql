@@ -33,6 +33,7 @@ export const CharType = Object.freeze({
     ARGUMENT_STRING: 'flyqlArgumentString',
     ARGUMENT_NUMBER: 'flyqlArgumentNumber',
     WILDCARD: 'flyqlWildcard',
+    COLUMN: 'flyqlColumn',
 })
 
 export const State = Object.freeze({

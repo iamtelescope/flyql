@@ -7,10 +7,10 @@ export function isNumeric(str) {
 
 const integerPattern = /^-?\d+$/
 
-export function tryConvertToNumber(value) {
+export function convertUnquotedValue(value) {
     if (typeof value !== 'string') return [value, null]
 
-    if (value === '') return [value, ValueType.STRING]
+    if (value === '') return [value, ValueType.COLUMN]
 
     if (integerPattern.test(value)) {
         const n = BigInt(value)
@@ -26,5 +26,5 @@ export function tryConvertToNumber(value) {
         return [n, ValueType.FLOAT]
     }
 
-    return [value, ValueType.STRING]
+    return [value, ValueType.COLUMN]
 }

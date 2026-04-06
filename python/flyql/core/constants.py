@@ -16,6 +16,7 @@ class CharType(Enum):
     ARGUMENT_STRING = "flyqlArgumentString"
     ARGUMENT_NUMBER = "flyqlArgumentNumber"
     WILDCARD = "flyqlWildcard"
+    COLUMN = "flyqlColumn"
 
 
 class Operator(Enum):

@@ -26,6 +26,7 @@ export const tokenTypes = [
     CharType.STRING,
     CharType.BOOLEAN,
     CharType.NULL,
+    CharType.COLUMN,
 ]
 
 export function generateMonacoTokens(parser) {
@@ -61,6 +62,8 @@ export function generateMonacoTokens(parser) {
                 token.type = CharType.NULL
             } else if (isNumeric(token.value)) {
                 token.type = CharType.NUMBER
+            } else if (token.value.length > 0 && token.value[0] !== "'" && token.value[0] !== '"') {
+                token.type = CharType.COLUMN
             } else {
                 token.type = CharType.STRING
             }

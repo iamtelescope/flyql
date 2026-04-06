@@ -5,7 +5,7 @@
   "tests": [
     {
       "name": "simple_key_value",
-      "input": "key=value",
+      "input": "key='value'",
       "expected_typed_chars": [
         [
           "k",
@@ -22,6 +22,10 @@
         [
           "=",
           "flyqlOperator"
+        ],
+        [
+          "'",
+          "flyqlValue"
         ],
         [
           "v",
@@ -41,13 +45,17 @@
         ],
         [
           "e",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
     },
     {
       "name": "key_space_value",
-      "input": "key = value",
+      "input": "key = 'value'",
       "expected_typed_chars": [
         [
           "k",
@@ -74,6 +82,10 @@
           "space"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "v",
           "flyqlValue"
         ],
@@ -91,6 +103,10 @@
         ],
         [
           "e",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
@@ -163,7 +179,7 @@
     },
     {
       "name": "boolean_operator_and",
-      "input": "key=value and key2=value2",
+      "input": "key='value' and key2='value2'",
       "expected_typed_chars": [
         [
           "k",
@@ -180,6 +196,10 @@
         [
           "=",
           "flyqlOperator"
+        ],
+        [
+          "'",
+          "flyqlValue"
         ],
         [
           "v",
@@ -199,6 +219,10 @@
         ],
         [
           "e",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ],
         [
@@ -242,6 +266,10 @@
           "flyqlOperator"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "v",
           "flyqlValue"
         ],
@@ -263,6 +291,10 @@
         ],
         [
           "2",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
@@ -341,7 +373,7 @@
     },
     {
       "name": "single_transformer",
-      "input": "host|upper=X",
+      "input": "host|upper='X'",
       "expected_typed_chars": [
         [
           "h",
@@ -388,14 +420,22 @@
           "flyqlOperator"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "X",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
     },
     {
       "name": "chained_transformers",
-      "input": "host|upper|lower=X",
+      "input": "host|upper|lower='X'",
       "expected_typed_chars": [
         [
           "h",
@@ -466,14 +506,22 @@
           "flyqlOperator"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "X",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
     },
     {
       "name": "transformer_args_mixed",
-      "input": "host|split(\".\",123)=X",
+      "input": "host|split(\".\",123)='X'",
       "expected_typed_chars": [
         [
           "h",
@@ -556,7 +604,15 @@
           "flyqlOperator"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "X",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
@@ -699,7 +755,7 @@
     },
     {
       "name": "wildcard_suffix",
-      "input": "key=val*",
+      "input": "key='val*'",
       "expected_typed_chars": [
         [
           "k",
@@ -716,6 +772,10 @@
         [
           "=",
           "flyqlOperator"
+        ],
+        [
+          "'",
+          "flyqlValue"
         ],
         [
           "v",
@@ -732,12 +792,16 @@
         [
           "*",
           "flyqlValue"
+        ],
+        [
+          "'",
+          "flyqlValue"
         ]
       ]
     },
     {
       "name": "wildcard_only",
-      "input": "key=*",
+      "input": "key='*'",
       "expected_typed_chars": [
         [
           "k",
@@ -756,7 +820,15 @@
           "flyqlOperator"
         ],
         [
+          "'",
+          "flyqlValue"
+        ],
+        [
           "*",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ]
       ]
@@ -797,7 +869,7 @@
     },
     {
       "name": "or_not_compound",
-      "input": "key=value or not key2",
+      "input": "key='value' or not key2",
       "expected_typed_chars": [
         [
           "k",
@@ -814,6 +886,10 @@
         [
           "=",
           "flyqlOperator"
+        ],
+        [
+          "'",
+          "flyqlValue"
         ],
         [
           "v",
@@ -833,6 +909,10 @@
         ],
         [
           "e",
+          "flyqlValue"
+        ],
+        [
+          "'",
           "flyqlValue"
         ],
         [

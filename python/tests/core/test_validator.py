@@ -259,7 +259,7 @@ class TestDialectColumnSubclass:
         from flyql.generators.clickhouse.column import Column as CHColumn
 
         col = CHColumn("host", False, "String")
-        ast = _parse_ast("host=X")
+        ast = _parse_ast("host='X'")
         assert diagnose(ast, [col], registry) == []
 
 
@@ -292,6 +292,6 @@ class TestBacktickEscapedColumn:
         col = CHColumn("1host", False, "String")
         assert col.name == "`1host`"
         assert col.match_name == "1host"
-        ast = _parse_ast("host=X")
+        ast = _parse_ast("host='X'")
         cols = [make_column("host", "string")]
         assert diagnose(ast, cols, registry) == []

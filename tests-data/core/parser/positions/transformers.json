@@ -33,9 +33,9 @@
     },
     {
       "name": "no_args_transformer",
-      "input": "host|upper=X",
+      "input": "host|upper='X'",
       "expected_ranges": {
-        "root.range": [0, 12],
+        "root.range": [0, 14],
         "root.left.expression.key.range": [0, 10],
         "root.left.expression.key.transformers[0].range": [5, 10],
         "root.left.expression.key.transformers[0].name_range": [5, 10]
@@ -43,7 +43,7 @@
     },
     {
       "name": "chained_transformers",
-      "input": "host|upper|lower=X",
+      "input": "host|upper|lower='X'",
       "expected_ranges": {
         "root.left.expression.key.range": [0, 16],
         "root.left.expression.key.transformers[0].range": [5, 10],

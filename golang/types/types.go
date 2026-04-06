@@ -10,4 +10,5 @@ const (
 	Boolean ValueType = "boolean"
 	Null    ValueType = "null"
 	Array   ValueType = "array"
+	Column  ValueType = "column"
 )

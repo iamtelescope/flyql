@@ -34,13 +34,13 @@
   "tests": [
     {
       "name": "happy_path",
-      "query": "name=X",
+      "query": "name='X'",
       "columns": [{ "name": "name", "normalized_type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "unknown_column",
-      "query": "hstt=X",
+      "query": "hstt='X'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -53,13 +53,13 @@
     },
     {
       "name": "unknown_column_case_insensitive_match",
-      "query": "Host=X",
+      "query": "Host='X'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "duplicate_columns_first_wins",
-      "query": "x|upper=V",
+      "query": "x|upper='V'",
       "columns": [
         { "name": "x", "normalized_type": "string" },
         { "name": "x", "normalized_type": "int" }
@@ -68,7 +68,7 @@
     },
     {
       "name": "unknown_transformer",
-      "query": "host|xyz=Y",
+      "query": "host|xyz='Y'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -81,7 +81,7 @@
     },
     {
       "name": "arg_count_too_few",
-      "query": "host|takes_string_then_int=V",
+      "query": "host|takes_string_then_int='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -93,7 +93,7 @@
     },
     {
       "name": "arg_count_too_many",
-      "query": "host|upper(\"extra\")=V",
+      "query": "host|upper(\"extra\")='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -105,7 +105,7 @@
     },
     {
       "name": "arg_type_mismatch",
-      "query": "host|takes_string_then_int(\"a\", \"b\")=V",
+      "query": "host|takes_string_then_int(\"a\", \"b\")='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -117,13 +117,13 @@
     },
     {
       "name": "arg_type_int_widens_to_float",
-      "query": "host|takes_float(3)=V",
+      "query": "host|takes_float(3)='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "arg_type_float_does_not_match_int",
-      "query": "host|takes_int(3.5)=V",
+      "query": "host|takes_int(3.5)='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -134,7 +134,7 @@
     },
     {
       "name": "chain_type_column_to_first_transformer",
-      "query": "count|upper=V",
+      "query": "count|upper='V'",
       "columns": [{ "name": "count", "normalized_type": "int" }],
       "expected_diagnostics": [
         {
@@ -146,7 +146,7 @@
     },
     {
       "name": "chain_type_between_transformers",
-      "query": "host|string_to_int|upper=V",
+      "query": "host|string_to_int|upper='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         {
@@ -158,7 +158,7 @@
     },
     {
       "name": "chain_type_cascades_after_error",
-      "query": "count|len|upper=V",
+      "query": "count|len|upper='V'",
       "columns": [{ "name": "count", "normalized_type": "int" }],
       "expected_diagnostics": [
         { "code": "chain_type", "severity": "error" },
@@ -167,7 +167,7 @@
     },
     {
       "name": "chain_type_breaks_at_unknown_transformer",
-      "query": "host|xyz|upper=V",
+      "query": "host|xyz|upper='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         { "code": "unknown_transformer", "severity": "error" }
@@ -176,7 +176,7 @@
     },
     {
       "name": "chain_type_skipped_when_column_unknown",
-      "query": "missing|upper=V",
+      "query": "missing|upper='V'",
       "columns": [],
       "expected_diagnostics": [
         { "code": "unknown_column", "severity": "error" }
@@ -185,14 +185,14 @@
     },
     {
       "name": "chain_type_skipped_when_normalized_type_unmapped",
-      "query": "m|upper=V",
+      "query": "m|upper='V'",
       "columns": [{ "name": "m", "normalized_type": "map" }],
       "expected_diagnostics": [],
       "absent_codes": ["chain_type"]
     },
     {
       "name": "multiple_expressions",
-      "query": "hstt=A and othr=B",
+      "query": "hstt='A' and othr='B'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": [
         { "code": "unknown_column", "severity": "error", "message_contains": "hstt" },
@@ -238,7 +238,7 @@
     },
     {
       "name": "mixed_diagnostics",
-      "query": "unknown_col|xyz=V",
+      "query": "unknown_col|xyz='V'",
       "columns": [],
       "expected_diagnostics": [
         { "code": "unknown_column", "severity": "error" },
@@ -247,7 +247,7 @@
     },
     {
       "name": "default_registry_fallback",
-      "query": "host|upper=V",
+      "query": "host|upper='V'",
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "use_default_registry": true,
       "expected_diagnostics": []
@@ -257,6 +257,95 @@
       "query": null,
       "columns": [{ "name": "host", "normalized_type": "string" }],
       "expected_diagnostics": []
+    },
+    {
+      "name": "column_value_known",
+      "query": "field=host",
+      "columns": [
+        { "name": "field", "normalized_type": "string" },
+        { "name": "host", "normalized_type": "string" }
+      ],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "column_value_unknown",
+      "query": "field=nonexistent",
+      "columns": [{ "name": "field", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column_value",
+          "severity": "warning",
+          "message_contains": "nonexistent"
+        }
+      ]
+    },
+    {
+      "name": "column_value_case_insensitive",
+      "query": "field=Host",
+      "columns": [
+        { "name": "field", "normalized_type": "string" },
+        { "name": "host", "normalized_type": "string" }
+      ],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "column_value_quoted_string_no_warning",
+      "query": "field='somevalue'",
+      "columns": [{ "name": "field", "normalized_type": "string" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "column_value_numeric_no_warning",
+      "query": "field=42",
+      "columns": [{ "name": "field", "normalized_type": "string" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "column_value_in_list_mixed",
+      "query": "field in [known, 'str', unknown]",
+      "columns": [
+        { "name": "field", "normalized_type": "string" },
+        { "name": "known", "normalized_type": "string" }
+      ],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column_value",
+          "severity": "warning",
+          "message_contains": "unknown"
+        }
+      ]
+    },
+    {
+      "name": "column_value_both_sides_unknown",
+      "query": "missing=also_missing",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error", "message_contains": "missing" },
+        { "code": "unknown_column_value", "severity": "warning", "message_contains": "also_missing" }
+      ]
+    },
+    {
+      "name": "column_value_in_boolean_expr",
+      "query": "a=b and c=d",
+      "columns": [
+        { "name": "a", "normalized_type": "string" },
+        { "name": "b", "normalized_type": "string" },
+        { "name": "c", "normalized_type": "string" }
+      ],
+      "expected_diagnostics": [
+        { "code": "unknown_column_value", "severity": "warning", "message_contains": "d" }
+      ]
+    },
+    {
+      "name": "column_value_truthy_no_warning",
+      "query": "host",
+      "columns": [{ "name": "host", "normalized_type": "string" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
     }
   ]
 }

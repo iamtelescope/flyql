@@ -66,7 +66,7 @@
     },
     {
       "name": "real_world_query_2",
-      "input": "level=ERROR and (service=payment or service=auth) and message~\".*timeout.*\"",
+      "input": "level='ERROR' and (service='payment' or service='auth') and message~\".*timeout.*\"",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",
@@ -127,7 +127,7 @@
     },
     {
       "name": "real_world_query_3",
-      "input": "user:id>1000 and user:status=active and (created_at>=2023-01-01 or updated_at>=2023-01-01)",
+      "input": "user:id>1000 and user:status='active' and (created_at>='2023-01-01' or updated_at>='2023-01-01')",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "and",

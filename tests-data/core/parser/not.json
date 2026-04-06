@@ -243,7 +243,7 @@
     },
     {
       "name": "not_with_regex",
-      "input": "not message~error.*",
+      "input": "not message~'error.*'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -277,7 +277,7 @@
     },
     {
       "name": "not_with_quoted_key",
-      "input": "not 'my column'=value",
+      "input": "not 'my column'='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",

@@ -377,6 +377,10 @@
     color: var(--flyql-value-color);
 }
 
+.flyql-column {
+    color: var(--flyql-key-color);
+}
+
 .flyql-number {
     color: var(--flyql-number-color);
 }

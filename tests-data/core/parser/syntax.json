@@ -5,7 +5,7 @@
   "tests": [
     {
       "name": "no_spaces",
-      "input": "key=value",
+      "input": "key='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -145,7 +145,7 @@
     },
     {
       "name": "single_character_key_value",
-      "input": "a=b",
+      "input": "a='b'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -161,7 +161,7 @@
     },
     {
       "name": "numeric_key",
-      "input": "123=value",
+      "input": "123='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",

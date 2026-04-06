@@ -4,7 +4,7 @@ import { Node } from './tree.js'
 import { ParserError, KeyParseError } from './exceptions.js'
 import { parseKey, Key } from './key.js'
 import { Range } from './range.js'
-import { tryConvertToNumber } from './utils.js'
+import { convertUnquotedValue } from './utils.js'
 import { ValueType } from '../types.js'
 import {
     State,
@@ -197,7 +197,7 @@ export class Parser {
             value = this.inListCurrentValue === 'true'
             explicitType = ValueType.BOOLEAN
         } else {
-            const [convertedValue, detectedType] = tryConvertToNumber(this.inListCurrentValue)
+            const [convertedValue, detectedType] = convertUnquotedValue(this.inListCurrentValue)
             value = convertedValue
             explicitType = detectedType
         }

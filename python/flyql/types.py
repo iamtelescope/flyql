@@ -9,3 +9,4 @@ class ValueType(str, Enum):
     BOOLEAN = "boolean"
     NULL = "null"
     ARRAY = "array"
+    COLUMN = "column"

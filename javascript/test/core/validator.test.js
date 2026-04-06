@@ -224,7 +224,7 @@ describe('Validator (language-specific)', () => {
 
     it('should accept ClickHouse Column with matchName', () => {
         const col = new CHColumn('host', false, 'String')
-        const ast = parseAst('host=X')
+        const ast = parseAst("host='X'")
         expect(diagnose(ast, [col], registry)).toEqual([])
     })
 

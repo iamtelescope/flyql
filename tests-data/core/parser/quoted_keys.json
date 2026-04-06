@@ -132,7 +132,7 @@
     },
     {
       "name": "quoted_key_starting_with_quote",
-      "input": "'key.with.colons' = value",
+      "input": "'key.with.colons' = 'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -148,7 +148,7 @@
     },
     {
       "name": "double_quoted_key_starting_with_quote",
-      "input": "\"key.with.dots\" = value",
+      "input": "\"key.with.dots\" = 'value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",

@@ -149,7 +149,7 @@
     },
     {
       "name": "like_unquoted_value",
-      "input": "key like hello%",
+      "input": "key like 'hello%'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",

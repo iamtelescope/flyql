@@ -326,7 +326,7 @@
     },
     {
       "name": "string_unquoted",
-      "input": "field=hello",
+      "input": "field='hello'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -374,7 +374,7 @@
     },
     {
       "name": "string_unquoted_with_letters_and_digits",
-      "input": "field=abc123",
+      "input": "field='abc123'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -534,7 +534,7 @@
     },
     {
       "name": "null_prefixed_value",
-      "input": "field=nullable",
+      "input": "field='nullable'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -550,7 +550,7 @@
     },
     {
       "name": "null_case_sensitive_capitalized",
-      "input": "field=Null",
+      "input": "field='Null'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -566,7 +566,7 @@
     },
     {
       "name": "null_case_sensitive_uppercase",
-      "input": "field=NULL",
+      "input": "field='NULL'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -614,7 +614,7 @@
     },
     {
       "name": "boolean_case_sensitive_capitalized",
-      "input": "field=True",
+      "input": "field='True'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -630,7 +630,7 @@
     },
     {
       "name": "boolean_case_sensitive_uppercase",
-      "input": "field=TRUE",
+      "input": "field='TRUE'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -646,7 +646,7 @@
     },
     {
       "name": "boolean_case_sensitive_false_cap",
-      "input": "field=False",
+      "input": "field='False'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -687,6 +687,132 @@
           "operator": "=",
           "value": "false",
           "value_type": "string"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "column_reference_basic",
+      "input": "field=otherfield",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "otherfield",
+          "value_type": "column"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "column_reference_with_spaces",
+      "input": "field = otherfield",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "otherfield",
+          "value_type": "column"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "column_reference_both_sides",
+      "input": "a=b and c=d",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": "b",
+            "value_type": "column"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "c",
+            "operator": "=",
+            "value": "d",
+            "value_type": "column"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "column_reference_mixed_with_string",
+      "input": "a='string' and b=column_ref",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": "string",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": "column_ref",
+            "value_type": "column"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "column_reference_numeric_prefix",
+      "input": "field=123abc",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "123abc",
+          "value_type": "column"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "column_reference_keyword_prefix",
+      "input": "field=true_ish",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "true_ish",
+          "value_type": "column"
         },
         "left": null,
         "right": null

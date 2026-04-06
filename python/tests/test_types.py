@@ -14,13 +14,14 @@ class TestValueType:
             (ValueType.BOOLEAN, "boolean"),
             (ValueType.NULL, "null"),
             (ValueType.ARRAY, "array"),
+            (ValueType.COLUMN, "column"),
         ],
     )
     def test_value_type_values(self, member: ValueType, expected_value: str) -> None:
         assert member.value == expected_value
 
     def test_value_type_count(self) -> None:
-        assert len(ValueType) == 7
+        assert len(ValueType) == 8
 
     @pytest.mark.parametrize(
         "member, expected_value",
@@ -32,6 +33,7 @@ class TestValueType:
             (ValueType.BOOLEAN, "boolean"),
             (ValueType.NULL, "null"),
             (ValueType.ARRAY, "array"),
+            (ValueType.COLUMN, "column"),
         ],
     )
     def test_value_type_string_comparison(

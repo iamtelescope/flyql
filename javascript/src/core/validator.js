@@ -1,3 +1,4 @@
+import { ValueType } from '../types.js'
 import { normalizedToTransformerType } from './column.js'
 import { Range } from './range.js'
 import { TransformerType } from '../transformers/base.js'
@@ -9,6 +10,7 @@ export const CODE_ARG_COUNT = 'arg_count'
 export const CODE_ARG_TYPE = 'arg_type'
 export const CODE_CHAIN_TYPE = 'chain_type'
 export const CODE_INVALID_AST = 'invalid_ast'
+export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
 
 export class Diagnostic {
     constructor(range, message, severity, code) {
@@ -155,6 +157,42 @@ function _diagnoseExpression(expression, columnsByName, registry) {
         }
 
         prevOutputType = t.outputType
+    }
+
+    // COLUMN value validation
+    if (expression.valueType === ValueType.COLUMN && typeof expression.value === 'string' && expression.value !== '') {
+        if (columnsByName[expression.value.toLowerCase()] == null) {
+            if (expression.valueRange != null) {
+                diags.push(
+                    new Diagnostic(
+                        expression.valueRange,
+                        `column '${expression.value}' is not defined`,
+                        'warning',
+                        CODE_UNKNOWN_COLUMN_VALUE,
+                    ),
+                )
+            }
+        }
+    }
+
+    // IN-list COLUMN value validation
+    if (expression.valuesTypes != null) {
+        for (let i = 0; i < expression.valuesTypes.length; i++) {
+            if (expression.valuesTypes[i] === ValueType.COLUMN && typeof expression.values[i] === 'string') {
+                if (columnsByName[expression.values[i].toLowerCase()] == null) {
+                    if (expression.valueRanges != null && i < expression.valueRanges.length) {
+                        diags.push(
+                            new Diagnostic(
+                                expression.valueRanges[i],
+                                `column '${expression.values[i]}' is not defined`,
+                                'warning',
+                                CODE_UNKNOWN_COLUMN_VALUE,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     return diags

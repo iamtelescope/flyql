@@ -5,7 +5,7 @@
   "tests": [
     {
       "name": "simple_equals",
-      "input": "key=value",
+      "input": "key='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -37,7 +37,7 @@
     },
     {
       "name": "simple_regex",
-      "input": "message~hello.*",
+      "input": "message~'hello.*'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -53,7 +53,7 @@
     },
     {
       "name": "simple_not_regex",
-      "input": "message!~test",
+      "input": "message!~'test'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -133,7 +133,7 @@
     },
     {
       "name": "string_value",
-      "input": "name=john",
+      "input": "name='john'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -256,7 +256,7 @@
     },
     {
       "name": "key_with_underscore",
-      "input": "user_name=john",
+      "input": "user_name='john'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -272,7 +272,7 @@
     },
     {
       "name": "key_with_dot",
-      "input": "user.name=john",
+      "input": "user.name='john'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -288,7 +288,7 @@
     },
     {
       "name": "key_with_colon",
-      "input": "user:name=john",
+      "input": "user:name='john'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -304,7 +304,7 @@
     },
     {
       "name": "key_with_slash",
-      "input": "path/to/column=value",
+      "input": "path/to/column='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -320,7 +320,7 @@
     },
     {
       "name": "complex_key",
-      "input": "nested.object:column_name/sub=value",
+      "input": "nested.object:column_name/sub='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -352,7 +352,7 @@
     },
     {
       "name": "key_with_at_sign",
-      "input": "user@host=alice",
+      "input": "user@host='alice'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -368,7 +368,7 @@
     },
     {
       "name": "key_starting_with_at",
-      "input": "@host=value",
+      "input": "@host='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -384,7 +384,7 @@
     },
     {
       "name": "key_ending_with_at",
-      "input": "user@=value",
+      "input": "user@='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",
@@ -400,7 +400,7 @@
     },
     {
       "name": "key_with_consecutive_at",
-      "input": "user@@host=value",
+      "input": "user@@host='value'",
       "expected_result": "success",
       "expected_ast": {
         "bool_operator": "",

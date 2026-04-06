@@ -30,6 +30,7 @@ const QUERY_CLASS = {
     [QueryCharType.TRANSFORMER]: 'flyql-transformer',
     [QueryCharType.ARGUMENT]: 'flyql-argument',
     [QueryCharType.WILDCARD]: 'flyql-wildcard',
+    [QueryCharType.COLUMN]: 'flyql-column',
 }
 
 const COLUMNS_CLASS = {
@@ -113,6 +114,7 @@ export function highlight(text, options) {
             if (val === 'true' || val === 'false') return QueryCharType.BOOLEAN
             if (val === 'null') return QueryCharType.NULL
             if (isNumeric(val)) return QueryCharType.NUMBER
+            if (val.length > 0 && val[0] !== "'" && val[0] !== '"') return QueryCharType.COLUMN
         }
         return type
     }

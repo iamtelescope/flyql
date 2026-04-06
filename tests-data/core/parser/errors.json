@@ -32,7 +32,7 @@
     },
     {
       "name": "unmatched_parentheses_open",
-      "input": "(key=value",
+      "input": "(key='value'",
       "expected_result": "error",
       "expected_error": {
         "message_contains": "unmatched parenthesis"
@@ -40,7 +40,7 @@
     },
     {
       "name": "unmatched_parentheses_close",
-      "input": "key=value)",
+      "input": "key='value')",
       "expected_result": "error",
       "expected_error": {
         "message_contains": "unmatched parenthesis"

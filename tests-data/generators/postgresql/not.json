@@ -65,7 +65,7 @@
     },
     {
       "name": "not_with_regex",
-      "input": "not message~error",
+      "input": "not message~'error'",
       "expected_result": "success",
       "expected_sql": "NOT (\"message\" ~ 'error')"
     }

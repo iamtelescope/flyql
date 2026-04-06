@@ -13,7 +13,7 @@ export {
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
 } from './constants.js'
-export { isNumeric, tryConvertToNumber } from './utils.js'
+export { isNumeric, convertUnquotedValue } from './utils.js'
 export { Range } from './range.js'
 export { Column, normalizedToTransformerType } from './column.js'
 export {
@@ -25,4 +25,5 @@ export {
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
     CODE_INVALID_AST,
+    CODE_UNKNOWN_COLUMN_VALUE,
 } from './validator.js'

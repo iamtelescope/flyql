@@ -26,6 +26,7 @@ from flyql.core.column import Column, normalized_to_transformer_type
 from flyql.core.expression import Expression
 from flyql.core.range import Range
 from flyql.core.tree import Node
+from flyql.types import ValueType
 from flyql.transformers.base import TransformerType
 from flyql.transformers.base import Transformer as TransformerDef
 from flyql.transformers.registry import TransformerRegistry, default_registry
@@ -38,6 +39,7 @@ CODE_ARG_COUNT = "arg_count"
 CODE_ARG_TYPE = "arg_type"
 CODE_CHAIN_TYPE = "chain_type"
 CODE_INVALID_AST = "invalid_ast"
+CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,7 @@ __all__ = [
     "CODE_ARG_TYPE",
     "CODE_CHAIN_TYPE",
     "CODE_INVALID_AST",
+    "CODE_UNKNOWN_COLUMN_VALUE",
 ]
 
 
@@ -210,6 +213,41 @@ def _diagnose_expression(
 
         # Cascade: always use this transformer's output_type
         prev_output_type = t.output_type
+
+    # COLUMN value validation
+    if (
+        expression.value_type == ValueType.COLUMN
+        and isinstance(expression.value, str)
+        and expression.value != ""
+    ):
+        if expression.value.lower() not in columns_by_name:
+            if expression.value_range is not None:
+                diags.append(
+                    Diagnostic(
+                        range=expression.value_range,
+                        code=CODE_UNKNOWN_COLUMN_VALUE,
+                        severity="warning",
+                        message=f"column '{expression.value}' is not defined",
+                    )
+                )
+
+    # IN-list COLUMN value validation
+    if expression.values_types is not None and expression.values is not None:
+        for i, vt in enumerate(expression.values_types):
+            if vt == ValueType.COLUMN and isinstance(expression.values[i], str):
+                val: str = expression.values[i]
+                if val.lower() not in columns_by_name:
+                    if expression.value_ranges is not None and i < len(
+                        expression.value_ranges
+                    ):
+                        diags.append(
+                            Diagnostic(
+                                range=expression.value_ranges[i],
+                                code=CODE_UNKNOWN_COLUMN_VALUE,
+                                severity="warning",
+                                message=f"column '{val}' is not defined",
+                            )
+                        )
 
     return diags
 

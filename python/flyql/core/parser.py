@@ -1,7 +1,7 @@
 from typing import List, Optional, Union, Any
 
 from flyql.core.tree import Node
-from flyql.core.expression import Expression, try_convert_to_number
+from flyql.core.expression import Expression, convert_unquoted_value
 from flyql.core.char import Char
 from flyql.types import ValueType
 from flyql.core.state import State
@@ -200,7 +200,7 @@ class Parser:
             value = self.in_list_current_value == "true"
             explicit_type = ValueType.BOOLEAN
         else:
-            value, explicit_type = try_convert_to_number(self.in_list_current_value)
+            value, explicit_type = convert_unquoted_value(self.in_list_current_value)
 
         self.in_list_values.append(value)
         self.in_list_values_types.append(explicit_type)

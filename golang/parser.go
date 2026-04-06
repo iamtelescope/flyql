@@ -196,7 +196,7 @@ func (p *Parser) finalizeInListValue() bool {
 		value = p.inListCurrentValue == "true"
 		explicitType = types.Boolean
 	} else {
-		value, explicitType = tryConvertToNumber(p.inListCurrentValue)
+		value, explicitType = convertUnquotedValue(p.inListCurrentValue)
 	}
 
 	p.inListValues = append(p.inListValues, value)

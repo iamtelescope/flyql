@@ -14,6 +14,7 @@ func TestValueTypeConstants(t *testing.T) {
 		{Boolean, "boolean"},
 		{Null, "null"},
 		{Array, "array"},
+		{Column, "column"},
 	}
 
 	for _, tt := range tests {
@@ -27,14 +28,14 @@ func TestValueTypeConstants(t *testing.T) {
 
 func TestValueTypeCount(t *testing.T) {
 	seen := make(map[ValueType]bool)
-	constants := []ValueType{Integer, BigInt, Float, String, Boolean, Null, Array}
+	constants := []ValueType{Integer, BigInt, Float, String, Boolean, Null, Array, Column}
 	for _, c := range constants {
 		if seen[c] {
 			t.Errorf("duplicate ValueType constant value: %s", c)
 		}
 		seen[c] = true
 	}
-	if len(seen) != 7 {
-		t.Errorf("expected 7 unique ValueType constants, got %d", len(seen))
+	if len(seen) != 8 {
+		t.Errorf("expected 8 unique ValueType constants, got %d", len(seen))
 	}
 }

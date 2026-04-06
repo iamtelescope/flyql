@@ -1,4 +1,4 @@
-import { tryConvertToNumber } from './utils.js'
+import { convertUnquotedValue } from './utils.js'
 import { FlyqlError } from './exceptions.js'
 import { VALID_KEY_VALUE_OPERATORS, Operator } from './constants.js'
 import { Key } from './key.js'
@@ -47,14 +47,14 @@ export class Expression {
             this.value = ''
             this.valueType = null
         } else if (valueIsString === false) {
-            const [convertedValue, detectedType] = tryConvertToNumber(value)
+            const [convertedValue, detectedType] = convertUnquotedValue(value)
             this.value = convertedValue
             this.valueType = detectedType
         } else if (valueIsString === true) {
             this.value = value
             this.valueType = ValueType.STRING
         } else {
-            const [convertedValue, detectedType] = tryConvertToNumber(value)
+            const [convertedValue, detectedType] = convertUnquotedValue(value)
             this.value = convertedValue
             this.valueType = detectedType
         }

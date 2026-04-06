@@ -174,6 +174,10 @@ func TestLike(t *testing.T) {
 	runTestCases(t, "like.json")
 }
 
+func TestColumnRef(t *testing.T) {
+	runTestCases(t, "column_ref.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string

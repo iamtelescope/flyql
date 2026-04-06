@@ -7,6 +7,7 @@ import (
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/transformers"
+	"github.com/iamtelescope/flyql/golang/types"
 )
 
 type Evaluator struct {
@@ -142,77 +143,110 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 		}
 	}
 
+	// Resolve COLUMN-typed RHS values from the record
+	exprValue := expr.Value
+	if expr.ValueType == types.Column {
+		if strVal, ok := exprValue.(string); ok {
+			rhsKey := NewKey(strVal)
+			if _, exists := record.data[rhsKey.Value]; exists {
+				exprValue = record.GetValue(rhsKey)
+			}
+		}
+	}
+
 	switch expr.Operator {
 	case flyql.OpTruthy:
 		return isTruthy(value), nil
 	case flyql.OpEquals:
-		return compareEqual(value, expr.Value), nil
+		return compareEqual(value, exprValue), nil
 	case flyql.OpNotEquals:
-		return !compareEqual(value, expr.Value), nil
+		return !compareEqual(value, exprValue), nil
 	case flyql.OpRegex:
-		regex, err := e.getRegex(toString(expr.Value))
+		regex, err := e.getRegex(toString(exprValue))
 		if err != nil {
 			return false, err
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotRegex:
-		regex, err := e.getRegex(toString(expr.Value))
+		regex, err := e.getRegex(toString(exprValue))
 		if err != nil {
 			return false, err
 		}
 		return !regex.MatchString(toString(value)), nil
 	case flyql.OpLike:
-		regex, err := e.getRegex(likeToRegex(toString(expr.Value)))
+		regex, err := e.getRegex(likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotLike:
-		regex, err := e.getRegex(likeToRegex(toString(expr.Value)))
+		regex, err := e.getRegex(likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
 		}
 		return !regex.MatchString(toString(value)), nil
 	case flyql.OpILike:
-		regex, err := e.getRegex("(?i)" + likeToRegex(toString(expr.Value)))
+		regex, err := e.getRegex("(?i)" + likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotILike:
-		regex, err := e.getRegex("(?i)" + likeToRegex(toString(expr.Value)))
+		regex, err := e.getRegex("(?i)" + likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
 		}
 		return !regex.MatchString(toString(value)), nil
 	case flyql.OpGreater:
-		return compareGreater(value, expr.Value), nil
+		return compareGreater(value, exprValue), nil
 	case flyql.OpLess:
-		return compareLess(value, expr.Value), nil
+		return compareLess(value, exprValue), nil
 	case flyql.OpGreaterOrEquals:
-		return compareGreaterOrEqual(value, expr.Value), nil
+		return compareGreaterOrEqual(value, exprValue), nil
 	case flyql.OpLessOrEquals:
-		return compareLessOrEqual(value, expr.Value), nil
+		return compareLessOrEqual(value, exprValue), nil
 	case flyql.OpIn:
 		if len(expr.Values) == 0 {
 			return false, nil
 		}
-		return valueInList(value, expr.Values), nil
+		resolvedValues := e.resolveInValues(expr, record)
+		return valueInList(value, resolvedValues), nil
 	case flyql.OpNotIn:
 		if len(expr.Values) == 0 {
 			return true, nil
 		}
-		return !valueInList(value, expr.Values), nil
+		resolvedValues := e.resolveInValues(expr, record)
+		return !valueInList(value, resolvedValues), nil
 	case flyql.OpHas:
-		return evalHas(value, expr.Value), nil
+		return evalHas(value, exprValue), nil
 	case flyql.OpNotHas:
 		if value == nil {
 			return true, nil
 		}
-		return !evalHas(value, expr.Value), nil
+		return !evalHas(value, exprValue), nil
 	default:
 		return false, fmt.Errorf("unknown expression operator: %s", expr.Operator)
 	}
+}
+
+func (e *Evaluator) resolveInValues(expr *flyql.Expression, record *Record) []any {
+	if len(expr.ValuesTypes) == 0 {
+		return expr.Values
+	}
+	resolved := make([]any, len(expr.Values))
+	for i, v := range expr.Values {
+		if i < len(expr.ValuesTypes) && expr.ValuesTypes[i] == types.Column {
+			if strVal, ok := v.(string); ok {
+				rhsKey := NewKey(strVal)
+				if _, exists := record.data[rhsKey.Value]; exists {
+					resolved[i] = record.GetValue(rhsKey)
+					continue
+				}
+			}
+		}
+		resolved[i] = v
+	}
+	return resolved
 }
 
 func likeToRegex(pattern string) string {

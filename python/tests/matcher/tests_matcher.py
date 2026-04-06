@@ -51,6 +51,35 @@ def test_matcher_evaluates_correctly(query, data, expected_result):
     assert result is expected_result
 
 
+@pytest.mark.parametrize(
+    "query,data,expected_result",
+    [
+        # Simple column-to-column match
+        ("field=other", {"field": "hello", "other": "hello"}, True),
+        ("field=other", {"field": "hello", "other": "world"}, False),
+        # Column not equals
+        ("field!=other", {"field": "hello", "other": "world"}, True),
+        ("field!=other", {"field": "hello", "other": "hello"}, False),
+        # Numeric column comparison
+        ("count>threshold", {"count": 10, "threshold": 5}, True),
+        ("count>threshold", {"count": 3, "threshold": 5}, False),
+        ("count<=threshold", {"count": 5, "threshold": 5}, True),
+        # Dot-path column reference
+        ("field=nested.value", {"field": "x", "nested": {"value": "x"}}, True),
+        ("field=nested.value", {"field": "x", "nested": {"value": "y"}}, False),
+        # Column ref that doesn't exist in data falls back to literal
+        ("field=unknown", {"field": "unknown"}, True),
+        ("field=unknown", {"field": "other"}, False),
+    ],
+)
+def test_matcher_column_to_column(query, data, expected_result):
+    root = parse(query).root
+    evaluator = Evaluator()
+    record = Record(data=data)
+    result = evaluator.evaluate(root, record)
+    assert result is expected_result
+
+
 def test_matcher_with_complex_query():
     query = "status=200 and message=hello"
     data = {"status": 200, "message": "hello"}

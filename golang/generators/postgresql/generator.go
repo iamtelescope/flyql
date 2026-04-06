@@ -222,6 +222,22 @@ func IsNumber(value any) bool {
 	}
 }
 
+func resolveRhsColumnRef(value string, columns map[string]*Column) (string, bool) {
+	key, err := flyql.ParseKey(value, 0)
+	if err != nil {
+		return "", false
+	}
+	column, path, pathQuoted, err := resolveColumn(key, columns)
+	if err != nil {
+		return "", false
+	}
+	ref, err := buildSelectExpr(getIdentifier(column), column, path, pathQuoted)
+	if err != nil {
+		return "", false
+	}
+	return ref, true
+}
+
 func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	var reg *transformers.TransformerRegistry
 	if len(registry) > 0 && registry[0] != nil {
@@ -333,6 +349,14 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 
 	valueParts := make([]string, len(expr.Values))
 	for i, v := range expr.Values {
+		if i < len(expr.ValuesTypes) && expr.ValuesTypes[i] == types.Column {
+			if valStr, ok := v.(string); ok {
+				if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+					valueParts[i] = colRef
+					continue
+				}
+			}
+		}
 		escaped, err := EscapeParam(v)
 		if err != nil {
 			return "", err
@@ -429,9 +453,17 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	value, err := EscapeParam(expr.Value)
-	if err != nil {
-		return "", err
+	var value string
+	if expr.ValueType == types.Column {
+		if colRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); resolved {
+			value = colRef
+		}
+	} else {
+		var err error
+		value, err = EscapeParam(expr.Value)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	identifier := getIdentifier(column)
@@ -452,9 +484,10 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			pathExpr := buildJSONBPath(castIdentifier, jsonPath, jsonPathQuoted)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
-				pathExpr, err = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
-				if err != nil {
-					return "", err
+				var transformErr error
+				pathExpr, transformErr = applyTransformerSQL(pathExpr, expr.Key.Transformers, "postgresql", registry)
+				if transformErr != nil {
+					return "", transformErr
 				}
 			}
 			if isNotHas {
@@ -508,9 +541,10 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
 			return "", err
 		}
-		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
-		if err != nil {
-			return "", err
+		var transformErr error
+		identifier, transformErr = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
+		if transformErr != nil {
+			return "", transformErr
 		}
 	}
 
@@ -791,6 +825,30 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			}
 		}
 
+		// Check if the value is a COLUMN reference
+		if expr.ValueType == types.Column {
+			if valStr, ok := expr.Value.(string); ok {
+				if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+					switch expr.Operator {
+					case flyql.OpRegex:
+						return fmt.Sprintf("%s ~ %s", pathExpr, colRef), nil
+					case flyql.OpNotRegex:
+						return fmt.Sprintf("%s !~ %s", pathExpr, colRef), nil
+					case flyql.OpLike:
+						return fmt.Sprintf("%s LIKE %s", pathExpr, colRef), nil
+					case flyql.OpNotLike:
+						return fmt.Sprintf("%s NOT LIKE %s", pathExpr, colRef), nil
+					case flyql.OpILike:
+						return fmt.Sprintf("%s ILIKE %s", pathExpr, colRef), nil
+					case flyql.OpNotILike:
+						return fmt.Sprintf("%s NOT ILIKE %s", pathExpr, colRef), nil
+					default:
+						return fmt.Sprintf("%s %s %s", pathExpr, expr.Operator, colRef), nil
+					}
+				}
+			}
+		}
+
 		value, err := EscapeParam(expr.Value)
 		if err != nil {
 			return "", err
@@ -817,18 +875,44 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", err
 		}
-		value, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
-		}
 
 		accessExpr := fmt.Sprintf("%s->%s", identifier, escapedMapKey)
 		if len(expr.Key.Transformers) > 0 {
 			registry := transformers.DefaultRegistry()
-			accessExpr, err = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
-			if err != nil {
-				return "", err
+			var transformErr error
+			accessExpr, transformErr = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
+			if transformErr != nil {
+				return "", transformErr
 			}
+		}
+
+		// Check if the value is a COLUMN reference
+		if expr.ValueType == types.Column {
+			if valStr, ok := expr.Value.(string); ok {
+				if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+					switch expr.Operator {
+					case flyql.OpRegex:
+						return fmt.Sprintf("%s ~ %s", accessExpr, colRef), nil
+					case flyql.OpNotRegex:
+						return fmt.Sprintf("%s !~ %s", accessExpr, colRef), nil
+					case flyql.OpLike:
+						return fmt.Sprintf("%s LIKE %s", accessExpr, colRef), nil
+					case flyql.OpNotLike:
+						return fmt.Sprintf("%s NOT LIKE %s", accessExpr, colRef), nil
+					case flyql.OpILike:
+						return fmt.Sprintf("%s ILIKE %s", accessExpr, colRef), nil
+					case flyql.OpNotILike:
+						return fmt.Sprintf("%s NOT ILIKE %s", accessExpr, colRef), nil
+					default:
+						return fmt.Sprintf("%s %s %s", accessExpr, expr.Operator, colRef), nil
+					}
+				}
+			}
+		}
+
+		value, err := EscapeParam(expr.Value)
+		if err != nil {
+			return "", err
 		}
 
 		switch expr.Operator {
@@ -846,19 +930,45 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 		}
-		value, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
-		}
 
 		pgIndex := arrayIndex + 1
 		accessExpr := fmt.Sprintf("%s[%d]", identifier, pgIndex)
 		if len(expr.Key.Transformers) > 0 {
 			registry := transformers.DefaultRegistry()
-			accessExpr, err = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
-			if err != nil {
-				return "", err
+			var transformErr error
+			accessExpr, transformErr = applyTransformerSQL(accessExpr, expr.Key.Transformers, "postgresql", registry)
+			if transformErr != nil {
+				return "", transformErr
 			}
+		}
+
+		// Check if the value is a COLUMN reference
+		if expr.ValueType == types.Column {
+			if valStr, ok := expr.Value.(string); ok {
+				if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+					switch expr.Operator {
+					case flyql.OpRegex:
+						return fmt.Sprintf("%s ~ %s", accessExpr, colRef), nil
+					case flyql.OpNotRegex:
+						return fmt.Sprintf("%s !~ %s", accessExpr, colRef), nil
+					case flyql.OpLike:
+						return fmt.Sprintf("%s LIKE %s", accessExpr, colRef), nil
+					case flyql.OpNotLike:
+						return fmt.Sprintf("%s NOT LIKE %s", accessExpr, colRef), nil
+					case flyql.OpILike:
+						return fmt.Sprintf("%s ILIKE %s", accessExpr, colRef), nil
+					case flyql.OpNotILike:
+						return fmt.Sprintf("%s NOT ILIKE %s", accessExpr, colRef), nil
+					default:
+						return fmt.Sprintf("%s %s %s", accessExpr, expr.Operator, colRef), nil
+					}
+				}
+			}
+		}
+
+		value, err := EscapeParam(expr.Value)
+		if err != nil {
+			return "", err
 		}
 
 		switch expr.Operator {
@@ -912,6 +1022,30 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
 		if err != nil {
 			return "", err
+		}
+	}
+
+	// Check if the value is a COLUMN reference
+	if expr.ValueType == types.Column {
+		if valStr, ok := expr.Value.(string); ok {
+			if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+				switch expr.Operator {
+				case flyql.OpRegex:
+					return fmt.Sprintf("%s ~ %s", identifier, colRef), nil
+				case flyql.OpNotRegex:
+					return fmt.Sprintf("%s !~ %s", identifier, colRef), nil
+				case flyql.OpLike:
+					return fmt.Sprintf("%s LIKE %s", identifier, colRef), nil
+				case flyql.OpNotLike:
+					return fmt.Sprintf("%s NOT LIKE %s", identifier, colRef), nil
+				case flyql.OpILike:
+					return fmt.Sprintf("%s ILIKE %s", identifier, colRef), nil
+				case flyql.OpNotILike:
+					return fmt.Sprintf("%s NOT ILIKE %s", identifier, colRef), nil
+				default:
+					return fmt.Sprintf("%s %s %s", identifier, expr.Operator, colRef), nil
+				}
+			}
 		}
 	}
 

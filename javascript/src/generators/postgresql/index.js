@@ -176,6 +176,17 @@ function buildJSONBPath(identifier, pathParts, quoted) {
     return result
 }
 
+function resolveRhsColumnRef(value, columns) {
+    try {
+        const key = parseKey(value)
+        const resolved = resolveColumn(key, columns)
+        const { column, path, pathQuoted } = resolved
+        return buildSelectExpr(getIdentifier(column), column, path, pathQuoted)
+    } catch {
+        return null
+    }
+}
+
 function buildJSONBPathRaw(identifier, pathParts, quoted) {
     if (pathParts.length === 0) {
         return identifier
@@ -202,6 +213,35 @@ function expressionToSQLSimple(expr, columns, registry = null) {
     const column = columns[columnName]
     if (!column) {
         throw new Error(`unknown column: ${columnName}`)
+    }
+
+    let rhsRef = null
+    if (expr.valueType === ValueType.COLUMN) {
+        rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+    }
+
+    if (rhsRef !== null) {
+        let identifier = getIdentifier(column)
+        if (expr.key.transformers.length) {
+            validateTransformerChain(expr.key.transformers, registry)
+            identifier = applyTransformerSQL(identifier, expr.key.transformers, 'postgresql', registry)
+        }
+        switch (expr.operator) {
+            case Operator.REGEX:
+                return `${identifier} ~ ${rhsRef}`
+            case Operator.NOT_REGEX:
+                return `${identifier} !~ ${rhsRef}`
+            case Operator.LIKE:
+                return `${identifier} LIKE ${rhsRef}`
+            case Operator.NOT_LIKE:
+                return `${identifier} NOT LIKE ${rhsRef}`
+            case Operator.ILIKE:
+                return `${identifier} ILIKE ${rhsRef}`
+            case Operator.NOT_ILIKE:
+                return `${identifier} NOT ILIKE ${rhsRef}`
+            default:
+                return `${identifier} ${expr.operator} ${rhsRef}`
+        }
     }
 
     if (column.values && column.values.length > 0) {
@@ -292,6 +332,18 @@ function expressionToSQLSegmented(expr, columns) {
         if (hasTransformers) {
             pathExpr = applyTransformerSQL(pathExpr, expr.key.transformers, 'postgresql')
         }
+
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+
+        if (rhsRef !== null) {
+            if (expr.operator === Operator.REGEX) return `${pathExpr} ~ ${rhsRef}`
+            if (expr.operator === Operator.NOT_REGEX) return `${pathExpr} !~ ${rhsRef}`
+            return `${pathExpr} ${expr.operator} ${rhsRef}`
+        }
+
         const value = escapeParam(expr.value)
 
         switch (true) {
@@ -313,7 +365,11 @@ function expressionToSQLSegmented(expr, columns) {
     } else if (column.isHstore) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
-        const value = escapeParam(expr.value)
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let accessExpr = `${identifier}->${escapedMapKey}`
         if (hasTransformers) {
             accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
@@ -333,7 +389,11 @@ function expressionToSQLSegmented(expr, columns) {
         if (isNaN(arrayIndex)) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
-        const value = escapeParam(expr.value)
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         const pgIndex = arrayIndex + 1
         let accessExpr = `${identifier}[${pgIndex}]`
         if (hasTransformers) {
@@ -371,7 +431,14 @@ function inExpressionToSQL(expr, columns) {
         validateInListTypes(expr.values, column.normalizedType)
     }
 
-    const valueParts = expr.values.map((v) => escapeParam(v))
+    const valueParts = []
+    for (let i = 0; i < expr.values.length; i++) {
+        let rhsRef = null
+        if (expr.valuesTypes && i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.values[i]), columns)
+        }
+        valueParts.push(rhsRef !== null ? rhsRef : escapeParam(expr.values[i]))
+    }
     const valuesSQL = valueParts.join(', ')
 
     const sqlOp = isNotIn ? 'NOT IN' : 'IN'
@@ -582,7 +649,11 @@ function hasExpressionToSQL(expr, columns) {
     }
 
     let identifier = getIdentifier(column)
-    const value = escapeParam(expr.value)
+    let rhsRef = null
+    if (expr.valueType === ValueType.COLUMN) {
+        rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+    }
+    const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
 
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 

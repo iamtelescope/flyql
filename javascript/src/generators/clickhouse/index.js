@@ -121,11 +121,50 @@ export function escapeParam(item) {
     throw new Error(`unsupported type for escapeParam: ${typeof item}`)
 }
 
+function resolveRhsColumnRef(value, columns) {
+    try {
+        const key = parseKey(value)
+        const result = resolveColumn(key, columns)
+        return buildSelectExpr(result.column, result.path)
+    } catch {
+        return null
+    }
+}
+
 function expressionToSQLSimple(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
         throw new Error(`unknown column: ${columnName}`)
+    }
+
+    let rhsRef = null
+    if (expr.valueType === ValueType.COLUMN) {
+        rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+    }
+
+    if (rhsRef !== null) {
+        let colRef = getIdentifier(column)
+        if (expr.key.transformers.length) {
+            validateTransformerChain(expr.key.transformers, registry)
+            colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse', registry)
+        }
+        switch (expr.operator) {
+            case Operator.REGEX:
+                return `match(${colRef}, ${rhsRef})`
+            case Operator.NOT_REGEX:
+                return `NOT match(${colRef}, ${rhsRef})`
+            case Operator.LIKE:
+                return `${colRef} LIKE ${rhsRef}`
+            case Operator.NOT_LIKE:
+                return `${colRef} NOT LIKE ${rhsRef}`
+            case Operator.ILIKE:
+                return `${colRef} ILIKE ${rhsRef}`
+            case Operator.NOT_ILIKE:
+                return `${colRef} NOT ILIKE ${rhsRef}`
+            default:
+                return `${colRef} ${expr.operator} ${rhsRef}`
+        }
     }
 
     if (column.values && column.values.length > 0) {
@@ -217,6 +256,18 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPathParts = jsonPath.map((p) => escapeParam(p))
         const jsonPathStr = jsonPathParts.join(', ')
 
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        if (rhsRef !== null) {
+            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+            }
+            return `${reverseOperator}${funcName}(${leafExpr}, ${rhsRef})`
+        }
+
         const strValue = escapeParam(expr.value)
         if (hasTransformers) {
             const leafExpr = applyTransformerSQL(
@@ -251,7 +302,11 @@ function expressionToSQLSegmented(expr, columns) {
         }
         const pathParts = jsonPath.map((part) => '`' + part + '`')
         const jsonPathStr = pathParts.join('.')
-        const value = escapeParam(expr.value)
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let leafExpr = `${colId}.${jsonPathStr}`
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
@@ -260,7 +315,11 @@ function expressionToSQLSegmented(expr, columns) {
     } else if (column.isMap) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
-        const value = escapeParam(expr.value)
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let leafExpr = `${colId}[${escapedMapKey}]`
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
@@ -272,7 +331,11 @@ function expressionToSQLSegmented(expr, columns) {
         if (isNaN(arrayIndex)) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
-        const value = escapeParam(expr.value)
+        let rhsRef = null
+        if (expr.valueType === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+        }
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let leafExpr = `${colId}[${arrayIndex}]`
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
@@ -301,7 +364,14 @@ function inExpressionToSQL(expr, columns) {
         validateInListTypes(expr.values, column.normalizedType)
     }
 
-    const valueParts = expr.values.map((v) => escapeParam(v))
+    const valueParts = []
+    for (let i = 0; i < expr.values.length; i++) {
+        let rhsRef = null
+        if (expr.valuesTypes && i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.values[i]), columns)
+        }
+        valueParts.push(rhsRef !== null ? rhsRef : escapeParam(expr.values[i]))
+    }
     const valuesSQL = valueParts.join(', ')
 
     const sqlOp = isNotIn ? 'NOT IN' : 'IN'
@@ -536,7 +606,11 @@ function hasExpressionToSQL(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    const value = escapeParam(expr.value)
+    let rhsRef = null
+    if (expr.valueType === ValueType.COLUMN) {
+        rhsRef = resolveRhsColumnRef(String(expr.value), columns)
+    }
+    const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
     const colId = getIdentifier(column)
 
     const hasTransformers = expr.key.transformers && expr.key.transformers.length

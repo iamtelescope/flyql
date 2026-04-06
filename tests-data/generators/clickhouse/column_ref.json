@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "description": "Column-to-column reference test cases for ClickHouse",
+  "test_suite": "column_ref",
+  "tests": [
+    {
+      "name": "simple_column_equals",
+      "input": "message=count",
+      "expected_result": "success",
+      "expected_sql": "message = count"
+    },
+    {
+      "name": "simple_column_not_equals",
+      "input": "message!=status",
+      "expected_result": "success",
+      "expected_sql": "message != status"
+    },
+    {
+      "name": "column_greater_than",
+      "input": "count>status",
+      "expected_result": "success",
+      "expected_sql": "count > status"
+    },
+    {
+      "name": "column_less_or_equals",
+      "input": "count<=status",
+      "expected_result": "success",
+      "expected_sql": "count <= status"
+    },
+    {
+      "name": "column_like",
+      "input": "message like count",
+      "expected_result": "success",
+      "expected_sql": "message LIKE count"
+    },
+    {
+      "name": "column_not_like",
+      "input": "message not like count",
+      "expected_result": "success",
+      "expected_sql": "message NOT LIKE count"
+    },
+    {
+      "name": "column_ilike",
+      "input": "message ilike count",
+      "expected_result": "success",
+      "expected_sql": "message ILIKE count"
+    },
+    {
+      "name": "column_regex",
+      "input": "message~count",
+      "expected_result": "success",
+      "expected_sql": "match(message, count)"
+    },
+    {
+      "name": "column_not_regex",
+      "input": "message!~count",
+      "expected_result": "success",
+      "expected_sql": "NOT match(message, count)"
+    },
+    {
+      "name": "column_has",
+      "input": "message has count",
+      "expected_result": "success",
+      "expected_sql": "position(message, count) > 0"
+    },
+    {
+      "name": "column_not_has",
+      "input": "message not has count",
+      "expected_result": "success",
+      "expected_sql": "(message IS NULL OR position(message, count) = 0)"
+    },
+    {
+      "name": "in_mixed_column_and_literal",
+      "input": "message in [count, 'literal', 42]",
+      "expected_result": "success",
+      "expected_sql": "message IN (count, 'literal', 42)"
+    },
+    {
+      "name": "segmented_jsonstring_column_rhs",
+      "input": "json_column.field=message",
+      "expected_result": "success",
+      "expected_sql_contains": ["JSONExtractString(json_column, 'field'), message)"]
+    },
+    {
+      "name": "segmented_json_column_rhs",
+      "input": "new_json.field=message",
+      "expected_result": "success",
+      "expected_sql": "new_json.`field` = message"
+    },
+    {
+      "name": "segmented_map_column_rhs",
+      "input": "metadata.key=message",
+      "expected_result": "success",
+      "expected_sql_contains": ["metadata['key'], message)"]
+    }
+  ]
+}

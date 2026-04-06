@@ -79,6 +79,7 @@ describe('StarRocks Generator', () => {
     runTestSuite('transformers.json')
     runTestSuite('types.json')
     runTestSuite('like.json')
+    runTestSuite('column_ref.json')
 
     runSelectTestSuite('select_basic.json')
     runSelectTestSuite('select_composite.json')

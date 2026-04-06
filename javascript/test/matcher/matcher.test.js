@@ -68,4 +68,31 @@ describe('Matcher', () => {
             expect(match('not active', { active: 'yes' })).toBe(false)
         })
     })
+
+    describe('column-to-column comparison', () => {
+        it('simple column match', () => {
+            expect(match('field=other', { field: 'hello', other: 'hello' })).toBe(true)
+            expect(match('field=other', { field: 'hello', other: 'world' })).toBe(false)
+        })
+
+        it('column not equals', () => {
+            expect(match('field!=other', { field: 'hello', other: 'world' })).toBe(true)
+            expect(match('field!=other', { field: 'hello', other: 'hello' })).toBe(false)
+        })
+
+        it('numeric column comparison', () => {
+            expect(match('count>threshold', { count: 10, threshold: 5 })).toBe(true)
+            expect(match('count>threshold', { count: 3, threshold: 5 })).toBe(false)
+        })
+
+        it('dot-path column reference', () => {
+            expect(match('field=nested.value', { field: 'x', nested: { value: 'x' } })).toBe(true)
+            expect(match('field=nested.value', { field: 'x', nested: { value: 'y' } })).toBe(false)
+        })
+
+        it('column ref not in data falls back to literal', () => {
+            expect(match('field=unknown', { field: 'unknown' })).toBe(true)
+            expect(match('field=unknown', { field: 'other' })).toBe(false)
+        })
+    })
 })

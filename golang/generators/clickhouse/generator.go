@@ -176,6 +176,22 @@ func getIdentifier(column *Column) string {
 	return column.Name
 }
 
+func resolveRhsColumnRef(value string, columns map[string]*Column) (string, bool) {
+	key, err := flyql.ParseKey(value, 0)
+	if err != nil {
+		return "", false
+	}
+	column, path, err := resolveColumn(key, columns)
+	if err != nil {
+		return "", false
+	}
+	ref, err := buildSelectExpr(column, path)
+	if err != nil {
+		return "", false
+	}
+	return ref, true
+}
+
 func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	var reg *transformers.TransformerRegistry
 	if len(registry) > 0 && registry[0] != nil {
@@ -234,6 +250,12 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 
 	valueParts := make([]string, len(expr.Values))
 	for i, v := range expr.Values {
+		if len(expr.ValuesTypes) > i && expr.ValuesTypes[i] == types.Column {
+			if ref, ok := resolveRhsColumnRef(fmt.Sprintf("%v", v), columns); ok {
+				valueParts[i] = ref
+				continue
+			}
+		}
 		escaped, err := EscapeParam(v)
 		if err != nil {
 			return "", err
@@ -350,9 +372,22 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	value, err := EscapeParam(expr.Value)
-	if err != nil {
-		return "", err
+	var value string
+	var err error
+	if expr.ValueType == types.Column {
+		if ref, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+			value = ref
+		} else {
+			value, err = EscapeParam(expr.Value)
+			if err != nil {
+				return "", err
+			}
+		}
+	} else {
+		value, err = EscapeParam(expr.Value)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if expr.Key.IsSegmented() {
@@ -824,6 +859,25 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 		jsonPathStr := strings.Join(jsonPathParts, ", ")
 
+		var rhsRef string
+		if expr.ValueType == types.Column {
+			if ref, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+				rhsRef = ref
+			}
+		}
+		if rhsRef != "" {
+			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), jsonPathStr)
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err := applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, rhsRef), nil
+			}
+			return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, rhsRef), nil
+		}
+
 		strValue, err := EscapeParam(expr.Value)
 		if err != nil {
 			return "", err
@@ -869,13 +923,22 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			pathParts[i] = fmt.Sprintf("`%s`", part)
 		}
 		jsonPathStr := strings.Join(pathParts, ".")
-		value, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
+		var value string
+		if expr.ValueType == types.Column {
+			if colRef, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+				value = colRef
+			}
+		} else {
+			var err error
+			value, err = EscapeParam(expr.Value)
+			if err != nil {
+				return "", err
+			}
 		}
 		leafExpr := fmt.Sprintf("%s.%s", getIdentifier(column), jsonPathStr)
 		if len(expr.Key.Transformers) > 0 {
 			registry := transformers.DefaultRegistry()
+			var err error
 			leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
 			if err != nil {
 				return "", err
@@ -889,9 +952,16 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", err
 		}
-		value, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
+		var value string
+		if expr.ValueType == types.Column {
+			if colRef, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+				value = colRef
+			}
+		} else {
+			value, err = EscapeParam(expr.Value)
+			if err != nil {
+				return "", err
+			}
 		}
 		leafExpr := fmt.Sprintf("%s[%s]", getIdentifier(column), escapedMapKey)
 		if len(expr.Key.Transformers) > 0 {
@@ -909,9 +979,16 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 		}
-		value, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
+		var value string
+		if expr.ValueType == types.Column {
+			if colRef, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+				value = colRef
+			}
+		} else {
+			value, err = EscapeParam(expr.Value)
+			if err != nil {
+				return "", err
+			}
 		}
 		leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
 		if len(expr.Key.Transformers) > 0 {
@@ -934,6 +1011,43 @@ func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, r
 	column, ok := columns[columnName]
 	if !ok {
 		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	var rhsRef string
+	if expr.ValueType == types.Column {
+		if ref, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
+			rhsRef = ref
+		}
+	}
+
+	if rhsRef != "" {
+		colRef := getIdentifier(column)
+		if len(expr.Key.Transformers) > 0 {
+			if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+				return "", err
+			}
+			var err error
+			colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "clickhouse", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		switch expr.Operator {
+		case flyql.OpRegex:
+			return fmt.Sprintf("match(%s, %s)", colRef, rhsRef), nil
+		case flyql.OpNotRegex:
+			return fmt.Sprintf("NOT match(%s, %s)", colRef, rhsRef), nil
+		case flyql.OpLike:
+			return fmt.Sprintf("%s LIKE %s", colRef, rhsRef), nil
+		case flyql.OpNotLike:
+			return fmt.Sprintf("%s NOT LIKE %s", colRef, rhsRef), nil
+		case flyql.OpILike:
+			return fmt.Sprintf("%s ILIKE %s", colRef, rhsRef), nil
+		case flyql.OpNotILike:
+			return fmt.Sprintf("%s NOT ILIKE %s", colRef, rhsRef), nil
+		default:
+			return fmt.Sprintf("%s %s %s", colRef, expr.Operator, rhsRef), nil
+		}
 	}
 
 	if len(column.Values) > 0 {

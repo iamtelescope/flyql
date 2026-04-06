@@ -215,6 +215,38 @@ func TestMatchConvenienceFunction(t *testing.T) {
 	}
 }
 
+func TestMatcherColumnToColumn(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    string
+		data     map[string]any
+		expected bool
+	}{
+		{"simple column match true", "field=other", map[string]any{"field": "hello", "other": "hello"}, true},
+		{"simple column match false", "field=other", map[string]any{"field": "hello", "other": "world"}, false},
+		{"column not equals true", "field!=other", map[string]any{"field": "hello", "other": "world"}, true},
+		{"column not equals false", "field!=other", map[string]any{"field": "hello", "other": "hello"}, false},
+		{"numeric column greater true", "count>threshold", map[string]any{"count": 10, "threshold": 5}, true},
+		{"numeric column greater false", "count>threshold", map[string]any{"count": 3, "threshold": 5}, false},
+		{"dot-path column ref true", "field=nested.value", map[string]any{"field": "x", "nested": map[string]any{"value": "x"}}, true},
+		{"dot-path column ref false", "field=nested.value", map[string]any{"field": "x", "nested": map[string]any{"value": "y"}}, false},
+		{"column ref not in data fallback true", "field=unknown", map[string]any{"field": "unknown"}, true},
+		{"column ref not in data fallback false", "field=unknown", map[string]any{"field": "other"}, false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := Match(tc.query, tc.data)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if result != tc.expected {
+				t.Errorf("query=%q: expected %v, got %v", tc.query, tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestMatcherFromDataFiles(t *testing.T) {
 	files := []string{
 		"truthy.json",

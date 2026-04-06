@@ -180,55 +180,86 @@ def expression_to_sql_simple(
 
     column = columns[column_name]
 
-    if column.values and str(expression.value) not in column.values:
-        raise FlyqlError(f"unknown value: {expression.value}")
+    rhs_ref = None
+    if expression.value_type == ValueType.COLUMN:
+        rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
 
-    if column.normalized_type is not None and not expression.key.transformers:
-        validate_operation(
-            expression.value, column.normalized_type, expression.operator
-        )
-
-    identifier = get_identifier(column)
-    if expression.key.transformers:
-        validate_transformer_chain(expression.key.transformers, registry=registry)
-        identifier = apply_transformer_sql(
-            identifier, expression.key.transformers, "postgresql", registry=registry
-        )
-
-    if expression.operator == Operator.REGEX.value:
-        value = escape_param(str(expression.value))
-        return f"{identifier} ~ {value}"
-    elif expression.operator == Operator.NOT_REGEX.value:
-        value = escape_param(str(expression.value))
-        return f"{identifier} !~ {value}"
-    elif expression.operator == Operator.LIKE.value:
-        value = _escape_like_param(expression.value)
-        return f"{identifier} LIKE {value}"
-    elif expression.operator == Operator.NOT_LIKE.value:
-        value = _escape_like_param(expression.value)
-        return f"{identifier} NOT LIKE {value}"
-    elif expression.operator == Operator.ILIKE.value:
-        value = _escape_like_param(expression.value)
-        return f"{identifier} ILIKE {value}"
-    elif expression.operator == Operator.NOT_ILIKE.value:
-        value = _escape_like_param(expression.value)
-        return f"{identifier} NOT ILIKE {value}"
-    elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
-        if expression.value_type == ValueType.NULL:
-            return (
-                f"{identifier} IS NULL"
-                if expression.operator == Operator.EQUALS.value
-                else f"{identifier} IS NOT NULL"
+    if rhs_ref is not None:
+        identifier = get_identifier(column)
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers, registry=registry)
+            identifier = apply_transformer_sql(
+                identifier, expression.key.transformers, "postgresql", registry=registry
             )
-        elif expression.value_type == ValueType.BOOLEAN:
-            bool_literal = "TRUE" if expression.value else "FALSE"
-            return f"{identifier} {expression.operator} {bool_literal}"
+        if expression.operator == Operator.REGEX.value:
+            return f"{identifier} ~ {rhs_ref}"
+        elif expression.operator == Operator.NOT_REGEX.value:
+            return f"{identifier} !~ {rhs_ref}"
+        elif expression.operator in (
+            Operator.LIKE.value,
+            Operator.NOT_LIKE.value,
+            Operator.ILIKE.value,
+            Operator.NOT_ILIKE.value,
+        ):
+            like_op = {
+                Operator.LIKE.value: "LIKE",
+                Operator.NOT_LIKE.value: "NOT LIKE",
+                Operator.ILIKE.value: "ILIKE",
+                Operator.NOT_ILIKE.value: "NOT ILIKE",
+            }[expression.operator]
+            return f"{identifier} {like_op} {rhs_ref}"
         else:
-            value = escape_param(str(expression.value))
-            return f"{identifier} {expression.operator} {value}"
+            return f"{identifier} {expression.operator} {rhs_ref}"
     else:
-        value = escape_param(expression.value)
-        return f"{identifier} {expression.operator} {value}"
+        if column.values and str(expression.value) not in column.values:
+            raise FlyqlError(f"unknown value: {expression.value}")
+
+        if column.normalized_type is not None and not expression.key.transformers:
+            validate_operation(
+                expression.value, column.normalized_type, expression.operator
+            )
+
+        identifier = get_identifier(column)
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers, registry=registry)
+            identifier = apply_transformer_sql(
+                identifier, expression.key.transformers, "postgresql", registry=registry
+            )
+
+        if expression.operator == Operator.REGEX.value:
+            value = escape_param(str(expression.value))
+            return f"{identifier} ~ {value}"
+        elif expression.operator == Operator.NOT_REGEX.value:
+            value = escape_param(str(expression.value))
+            return f"{identifier} !~ {value}"
+        elif expression.operator == Operator.LIKE.value:
+            value = _escape_like_param(expression.value)
+            return f"{identifier} LIKE {value}"
+        elif expression.operator == Operator.NOT_LIKE.value:
+            value = _escape_like_param(expression.value)
+            return f"{identifier} NOT LIKE {value}"
+        elif expression.operator == Operator.ILIKE.value:
+            value = _escape_like_param(expression.value)
+            return f"{identifier} ILIKE {value}"
+        elif expression.operator == Operator.NOT_ILIKE.value:
+            value = _escape_like_param(expression.value)
+            return f"{identifier} NOT ILIKE {value}"
+        elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
+            if expression.value_type == ValueType.NULL:
+                return (
+                    f"{identifier} IS NULL"
+                    if expression.operator == Operator.EQUALS.value
+                    else f"{identifier} IS NOT NULL"
+                )
+            elif expression.value_type == ValueType.BOOLEAN:
+                bool_literal = "TRUE" if expression.value else "FALSE"
+                return f"{identifier} {expression.operator} {bool_literal}"
+            else:
+                value = escape_param(str(expression.value))
+                return f"{identifier} {expression.operator} {value}"
+        else:
+            value = escape_param(expression.value)
+            return f"{identifier} {expression.operator} {value}"
 
 
 def expression_to_sql_segmented(
@@ -265,6 +296,18 @@ def expression_to_sql_segmented(
             path_expr = apply_transformer_sql(
                 path_expr, expression.key.transformers, "postgresql"
             )
+        rhs_ref = None
+        if expression.value_type == ValueType.COLUMN:
+            rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+
+        if rhs_ref is not None:
+            if expression.operator == Operator.REGEX.value:
+                return f"{path_expr} ~ {rhs_ref}"
+            elif expression.operator == Operator.NOT_REGEX.value:
+                return f"{path_expr} !~ {rhs_ref}"
+            else:
+                return f"{path_expr} {expression.operator} {rhs_ref}"
+
         value = escape_param(expression.value)
 
         if expression.operator == Operator.REGEX.value:
@@ -295,7 +338,10 @@ def expression_to_sql_segmented(
     elif column.is_hstore:
         map_key = ".".join(expression.key.segments[1:])
         escaped_map_key = escape_param(map_key)
-        value = escape_param(expression.value)
+        rhs_ref = None
+        if expression.value_type == ValueType.COLUMN:
+            rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+        value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
         access_expr = f"{identifier}->{escaped_map_key}"
         if expression.key.transformers:
             access_expr = apply_transformer_sql(
@@ -317,7 +363,10 @@ def expression_to_sql_segmented(
             raise FlyqlError(
                 f"invalid array index, expected number: {array_index_str}"
             ) from err
-        value = escape_param(expression.value)
+        rhs_ref = None
+        if expression.value_type == ValueType.COLUMN:
+            rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+        value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
         pg_index = array_index + 1
         access_expr = f"{identifier}[{pg_index}]"
         if expression.key.transformers:
@@ -358,7 +407,17 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     ):
         validate_in_list_types(expression.values, column.normalized_type)
 
-    values_sql = ", ".join(escape_param(v) for v in expression.values)
+    values_parts: List[str] = []
+    for i, v in enumerate(expression.values):
+        rhs_ref = None
+        if (
+            expression.values_types is not None
+            and i < len(expression.values_types)
+            and expression.values_types[i] == ValueType.COLUMN
+        ):
+            rhs_ref = _resolve_rhs_column_ref(str(v), columns)
+        values_parts.append(rhs_ref if rhs_ref is not None else escape_param(v))
+    values_sql = ", ".join(values_parts)
     sql_op = "NOT IN" if is_not_in else "IN"
     identifier = get_identifier(column)
 
@@ -589,7 +648,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
     column = columns[column_name]
     is_not_has = expression.operator == Operator.NOT_HAS.value
     identifier = get_identifier(column)
-    value = escape_param(expression.value)
+    rhs_ref = None
+    if expression.value_type == ValueType.COLUMN:
+        rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+    value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
     if expression.key.is_segmented:
         if column.is_jsonb or column.jsonstring:
@@ -802,6 +864,18 @@ def _resolve_column(
         if candidate_key in columns:
             return columns[candidate_key], segments[i:], key.quoted_segments[i:]
     raise FlyqlError(f"unknown column: {key.raw}")
+
+
+def _resolve_rhs_column_ref(value: str, columns: Mapping[str, Column]) -> Optional[str]:
+    try:
+        key = parse_key(value)
+    except Exception:
+        return None
+    try:
+        column, path, path_quoted = _resolve_column(key, columns)
+    except FlyqlError:
+        return None
+    return _build_select_expr(get_identifier(column), column, path, path_quoted)
 
 
 def _build_select_expr(

@@ -122,6 +122,32 @@ function expressionToSQLSimple(expr, columns, registry = null) {
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
 
+    const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+
+    if (rhsRef !== null) {
+        let colRef = getIdentifier(column)
+        if (expr.key.transformers.length) {
+            validateTransformerChain(expr.key.transformers, registry)
+            colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
+        }
+        switch (expr.operator) {
+            case Operator.REGEX:
+                return `regexp(${colRef}, ${rhsRef})`
+            case Operator.NOT_REGEX:
+                return `NOT regexp(${colRef}, ${rhsRef})`
+            case Operator.LIKE:
+                return `${colRef} LIKE ${rhsRef}`
+            case Operator.NOT_LIKE:
+                return `${colRef} NOT LIKE ${rhsRef}`
+            case Operator.ILIKE:
+                return `${colRef} ILIKE ${rhsRef}`
+            case Operator.NOT_ILIKE:
+                return `${colRef} NOT ILIKE ${rhsRef}`
+            default:
+                return `${colRef} ${expr.operator} ${rhsRef}`
+        }
+    }
+
     if (column.values && column.values.length > 0) {
         if (!column.values.includes(String(expr.value))) throw new Error(`unknown value: ${expr.value}`)
     }
@@ -201,7 +227,8 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) validateJSONPathPart(part)
         const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-        const value = escapeParam(expr.value)
+        const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let columnExp = `${colId}->${jsonPathStr}`
         if (isRegexOp || hasTransformers) {
             columnExp = `cast(${columnExp} as string)`
@@ -213,7 +240,8 @@ function expressionToSQLSegmented(expr, columns) {
     } else if (column.isMap) {
         const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
         const mapKey = mapPath.join('][')
-        const value = escapeParam(expr.value)
+        const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let columnExp = `${colId}[${mapKey}]`
         if (hasTransformers) {
             columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
@@ -223,7 +251,8 @@ function expressionToSQLSegmented(expr, columns) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
         if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
-        const value = escapeParam(expr.value)
+        const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let columnExp = `${colId}[${arrayIndex}]`
         if (hasTransformers) {
             columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
@@ -232,7 +261,8 @@ function expressionToSQLSegmented(expr, columns) {
     } else if (column.isStruct) {
         const structPath = expr.key.segments.slice(1)
         const structColumn = structPath.join('`.`')
-        const value = escapeParam(expr.value)
+        const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let columnExp = `${colId}.\`${structColumn}\``
         if (hasTransformers) {
             columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
@@ -242,7 +272,8 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) validateJSONPathPart(part)
         const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
-        const value = escapeParam(expr.value)
+        const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
         let columnExp = `parse_json(${colId})->${jsonPathStr}`
         if (isRegexOp || hasTransformers) {
             columnExp = `cast(${columnExp} as string)`
@@ -269,7 +300,15 @@ function inExpressionToSQL(expr, columns) {
         validateInListTypes(expr.values, column.normalizedType)
     }
 
-    const valuesSQL = expr.values.map((v) => escapeParam(v)).join(', ')
+    const valueParts = []
+    for (let i = 0; i < expr.values.length; i++) {
+        let rhsRef = null
+        if (expr.valuesTypes && i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN) {
+            rhsRef = resolveRhsColumnRef(String(expr.values[i]), columns)
+        }
+        valueParts.push(rhsRef !== null ? rhsRef : escapeParam(expr.values[i]))
+    }
+    const valuesSQL = valueParts.join(', ')
     const sqlOp = isNotIn ? 'NOT IN' : 'IN'
 
     const colId = getIdentifier(column)
@@ -504,7 +543,8 @@ function hasExpressionToSQL(expr, columns) {
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
 
-    const value = escapeParam(expr.value)
+    const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+    const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
     const colId = getIdentifier(column)
 
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
@@ -706,6 +746,16 @@ function resolveColumn(key, columns) {
         if (col) return { column: col, path: key.segments.slice(i) }
     }
     throw new Error(`unknown column: ${key.raw}`)
+}
+
+function resolveRhsColumnRef(value, columns) {
+    try {
+        const key = parseKey(value)
+        const { column, path } = resolveColumn(key, columns)
+        return buildSelectExpr(column, path)
+    } catch {
+        return null
+    }
 }
 
 function buildSelectExpr(column, path) {

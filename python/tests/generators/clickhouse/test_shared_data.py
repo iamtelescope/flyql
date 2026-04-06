@@ -565,3 +565,43 @@ class TestTypes:
             assert (
                 sql == expected_sql
             ), f"SQL mismatch: got {sql!r}, want {expected_sql!r}"
+
+
+class TestColumnRef:
+    @pytest.mark.parametrize(
+        "input_query,expected_result,expected_sql,expected_sql_contains,expected_error_contains",
+        list(generate_test_cases("column_ref.json")),
+    )
+    def test_column_ref(
+        self,
+        columns,
+        input_query,
+        expected_result,
+        expected_sql,
+        expected_sql_contains,
+        expected_error_contains,
+    ):
+        result = parse(input_query)
+
+        if expected_result == "error":
+            with pytest.raises(Exception) as exc_info:
+                to_sql(result.root, columns)
+            if expected_error_contains:
+                assert expected_error_contains in str(exc_info.value)
+            return
+
+        sql = to_sql(result.root, columns)
+
+        if expected_sql:
+            assert (
+                sql == expected_sql
+            ), f"SQL mismatch: got {sql!r}, want {expected_sql!r}"
+
+        if expected_sql_contains:
+            if isinstance(expected_sql_contains, str):
+                assert (
+                    expected_sql_contains in sql
+                ), f"SQL {sql!r} does not contain {expected_sql_contains!r}"
+            else:
+                for substr in expected_sql_contains:
+                    assert substr in sql, f"SQL {sql!r} does not contain {substr!r}"

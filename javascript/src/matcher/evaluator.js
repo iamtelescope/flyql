@@ -1,5 +1,7 @@
 import { Operator, BoolOperator } from '../core/constants.js'
 import { FlyqlError } from '../core/exceptions.js'
+import { ValueType } from '../types.js'
+import { parseKey } from '../core/key.js'
 import { defaultRegistry } from '../transformers/index.js'
 
 function isFalsy(value) {
@@ -186,6 +188,29 @@ export class Evaluator {
         return result
     }
 
+    _resolveColumnValue(rawValue, record) {
+        try {
+            const key = parseKey(String(rawValue))
+            const rootKey = key.segments[0]
+            if (record.data[rootKey] !== undefined) {
+                return record.getValue(String(rawValue))
+            }
+        } catch {
+            // not a valid key, fall through
+        }
+        return rawValue
+    }
+
+    _resolveInValues(expr, record) {
+        if (!expr.valuesTypes) return expr.values
+        return expr.values.map((v, i) => {
+            if (i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN && typeof v === 'string') {
+                return this._resolveColumnValue(v, record)
+            }
+            return v
+        })
+    }
+
     evalExpression(expr, record) {
         let value = record.getValue(expr.key.raw)
 
@@ -197,56 +222,62 @@ export class Evaluator {
             }
         }
 
+        // Resolve COLUMN-typed RHS values from the record
+        let exprValue = expr.value
+        if (expr.valueType === ValueType.COLUMN && typeof exprValue === 'string') {
+            exprValue = this._resolveColumnValue(exprValue, record)
+        }
+
         switch (expr.operator) {
             case Operator.TRUTHY:
                 return isTruthy(value)
             case Operator.EQUALS:
-                return compareEqual(value, expr.value)
+                return compareEqual(value, exprValue)
             case Operator.NOT_EQUALS:
-                return !compareEqual(value, expr.value)
+                return !compareEqual(value, exprValue)
             case Operator.REGEX: {
-                const regex = this.getRegex(toString(expr.value))
+                const regex = this.getRegex(toString(exprValue))
                 return regex.test(toString(value))
             }
             case Operator.NOT_REGEX: {
-                const regex = this.getRegex(toString(expr.value))
+                const regex = this.getRegex(toString(exprValue))
                 return !regex.test(toString(value))
             }
             case Operator.LIKE: {
-                const regex = this.getRegex(likeToRegex(toString(expr.value)))
+                const regex = this.getRegex(likeToRegex(toString(exprValue)))
                 return regex.test(toString(value))
             }
             case Operator.NOT_LIKE: {
-                const regex = this.getRegex(likeToRegex(toString(expr.value)))
+                const regex = this.getRegex(likeToRegex(toString(exprValue)))
                 return !regex.test(toString(value))
             }
             case Operator.ILIKE: {
-                const regex = this.getRegex('(?i)' + likeToRegex(toString(expr.value)))
+                const regex = this.getRegex('(?i)' + likeToRegex(toString(exprValue)))
                 return regex.test(toString(value))
             }
             case Operator.NOT_ILIKE: {
-                const regex = this.getRegex('(?i)' + likeToRegex(toString(expr.value)))
+                const regex = this.getRegex('(?i)' + likeToRegex(toString(exprValue)))
                 return !regex.test(toString(value))
             }
             case Operator.GREATER_THAN:
-                return compareGreater(value, expr.value)
+                return compareGreater(value, exprValue)
             case Operator.LOWER_THAN:
-                return compareLess(value, expr.value)
+                return compareLess(value, exprValue)
             case Operator.GREATER_OR_EQUALS_THAN:
-                return compareGreater(value, expr.value) || compareEqual(value, expr.value)
+                return compareGreater(value, exprValue) || compareEqual(value, exprValue)
             case Operator.LOWER_OR_EQUALS_THAN:
-                return compareLess(value, expr.value) || compareEqual(value, expr.value)
+                return compareLess(value, exprValue) || compareEqual(value, exprValue)
             case Operator.IN:
                 if (!expr.values || expr.values.length === 0) return false
-                return valueInList(value, expr.values)
+                return valueInList(value, this._resolveInValues(expr, record))
             case Operator.NOT_IN:
                 if (!expr.values || expr.values.length === 0) return true
-                return !valueInList(value, expr.values)
+                return !valueInList(value, this._resolveInValues(expr, record))
             case Operator.HAS:
-                return evalHas(value, expr.value)
+                return evalHas(value, exprValue)
             case Operator.NOT_HAS:
                 if (value === null || value === undefined) return true
-                return !evalHas(value, expr.value)
+                return !evalHas(value, exprValue)
             default:
                 throw new FlyqlError(`Unknown expression operator: ${expr.operator}`)
         }

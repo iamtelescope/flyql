@@ -338,7 +338,17 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
     ):
         validate_in_list_types(expression.values, column.normalized_type)
 
-    values_sql = ", ".join(escape_param(v) for v in expression.values)
+    values_parts: List[str] = []
+    for i, v in enumerate(expression.values):
+        rhs_ref = None
+        if (
+            expression.values_types is not None
+            and i < len(expression.values_types)
+            and expression.values_types[i] == ValueType.COLUMN
+        ):
+            rhs_ref = _resolve_rhs_column_ref(str(v), columns)
+        values_parts.append(rhs_ref if rhs_ref is not None else escape_param(v))
+    values_sql = ", ".join(values_parts)
     sql_op = "NOT IN" if is_not_in else "IN"
 
     col_id = get_identifier(column)
@@ -405,7 +415,10 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
 
     column = columns[column_name]
     is_not_has = expression.operator == Operator.NOT_HAS.value
-    value = escape_param(expression.value)
+    rhs_ref = None
+    if expression.value_type == ValueType.COLUMN:
+        rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+    value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
     col_id = get_identifier(column)
 
@@ -540,44 +553,58 @@ def expression_to_sql(
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
 
-            str_value = escape_param(expression.value)
-            if expression.key.transformers:
-                # When transformers are present, extract the value as string and
-                # apply the transformer to the leaf, then compare as string.
-                leaf_expr = apply_transformer_sql(
-                    f"JSONExtractString({col_id}, {json_path_str})",
-                    expression.key.transformers,
-                    "clickhouse",
-                )
-                text = f"{reverse_operator}{func}({leaf_expr}, {str_value})"
-            else:
-                multi_if = [
-                    f"JSONType({col_id}, {json_path_str}) = 'String', {func}(JSONExtractString({col_id}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
-                ]
-                if expression.value_type in (
-                    ValueType.INTEGER,
-                    ValueType.BIGINT,
-                    ValueType.FLOAT,
-                ) and expression.operator not in [
-                    Operator.REGEX.value,
-                    Operator.NOT_REGEX.value,
-                ]:
-                    multi_if.extend(
-                        [
-                            f"JSONType({col_id}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                            f"JSONType({col_id}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                            f"JSONType({col_id}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
-                        ]
+            rhs_ref = None
+            if expression.value_type == ValueType.COLUMN:
+                rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+            if rhs_ref is not None:
+                leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
+                if expression.key.transformers:
+                    leaf_expr = apply_transformer_sql(
+                        leaf_expr, expression.key.transformers, "clickhouse"
                     )
-                multi_if.append("0")
-                multi_if_str = ",".join(multi_if)
-                text = f"{reverse_operator}multiIf({multi_if_str})"
+                text = f"{reverse_operator}{func}({leaf_expr}, {rhs_ref})"
+            else:
+                str_value = escape_param(expression.value)
+                if expression.key.transformers:
+                    # When transformers are present, extract the value as string and
+                    # apply the transformer to the leaf, then compare as string.
+                    leaf_expr = apply_transformer_sql(
+                        f"JSONExtractString({col_id}, {json_path_str})",
+                        expression.key.transformers,
+                        "clickhouse",
+                    )
+                    text = f"{reverse_operator}{func}({leaf_expr}, {str_value})"
+                else:
+                    multi_if = [
+                        f"JSONType({col_id}, {json_path_str}) = 'String', {func}(JSONExtractString({col_id}, {json_path_str}), {str_value})"  # pylint: disable=line-too-long
+                    ]
+                    if expression.value_type in (
+                        ValueType.INTEGER,
+                        ValueType.BIGINT,
+                        ValueType.FLOAT,
+                    ) and expression.operator not in [
+                        Operator.REGEX.value,
+                        Operator.NOT_REGEX.value,
+                    ]:
+                        multi_if.extend(
+                            [
+                                f"JSONType({col_id}, {json_path_str}) = 'Int64', {func}(JSONExtractInt({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                                f"JSONType({col_id}, {json_path_str}) = 'Double', {func}(JSONExtractFloat({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                                f"JSONType({col_id}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
+                            ]
+                        )
+                    multi_if.append("0")
+                    multi_if_str = ",".join(multi_if)
+                    text = f"{reverse_operator}multiIf({multi_if_str})"
         elif column.is_json:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
             json_path_str = ".".join(f"`{part}`" for part in json_path)
-            value = escape_param(expression.value)
+            rhs_ref = None
+            if expression.value_type == ValueType.COLUMN:
+                rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+            value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             leaf_expr = f"{col_id}.{json_path_str}"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
@@ -587,7 +614,10 @@ def expression_to_sql(
         elif column.is_map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
-            value = escape_param(expression.value)
+            rhs_ref = None
+            if expression.value_type == ValueType.COLUMN:
+                rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+            value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             leaf_expr = f"{col_id}[{escaped_map_key}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
@@ -602,7 +632,10 @@ def expression_to_sql(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            value = escape_param(expression.value)
+            rhs_ref = None
+            if expression.value_type == ValueType.COLUMN:
+                rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+            value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             leaf_expr = f"{col_id}[{array_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
@@ -619,55 +652,99 @@ def expression_to_sql(
 
         column = columns[column_name]
 
-        if column.values and str(expression.value) not in column.values:
-            raise FlyqlError(f"unknown value: {expression.value}")
+        rhs_ref = None
+        if expression.value_type == ValueType.COLUMN:
+            rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
 
-        if column.normalized_type is not None and not expression.key.transformers:
-            validate_operation(
-                expression.value, column.normalized_type, expression.operator
-            )
-
-        col_ref = get_identifier(column)
-        if expression.key.transformers:
-            validate_transformer_chain(expression.key.transformers, registry=registry)
-            col_ref = apply_transformer_sql(
-                col_ref, expression.key.transformers, "clickhouse", registry=registry
-            )
-
-        if expression.operator == Operator.REGEX.value:
-            value = escape_param(str(expression.value))
-            text = f"match({col_ref}, {value})"
-        elif expression.operator == Operator.NOT_REGEX.value:
-            value = escape_param(str(expression.value))
-            text = f"NOT match({col_ref}, {value})"
-        elif expression.operator == Operator.LIKE.value:
-            value = _escape_like_param(expression.value)
-            text = f"{col_ref} LIKE {value}"
-        elif expression.operator == Operator.NOT_LIKE.value:
-            value = _escape_like_param(expression.value)
-            text = f"{col_ref} NOT LIKE {value}"
-        elif expression.operator == Operator.ILIKE.value:
-            value = _escape_like_param(expression.value)
-            text = f"{col_ref} ILIKE {value}"
-        elif expression.operator == Operator.NOT_ILIKE.value:
-            value = _escape_like_param(expression.value)
-            text = f"{col_ref} NOT ILIKE {value}"
-        elif expression.operator in [Operator.EQUALS.value, Operator.NOT_EQUALS.value]:
-            if expression.value_type == ValueType.NULL:
-                text = (
-                    f"{col_ref} IS NULL"
-                    if expression.operator == Operator.EQUALS.value
-                    else f"{col_ref} IS NOT NULL"
+        if rhs_ref is not None:
+            col_ref = get_identifier(column)
+            if expression.key.transformers:
+                validate_transformer_chain(
+                    expression.key.transformers, registry=registry
                 )
-            elif expression.value_type == ValueType.BOOLEAN:
-                bool_literal = "true" if expression.value else "false"
-                text = f"{col_ref} {expression.operator} {bool_literal}"
+                col_ref = apply_transformer_sql(
+                    col_ref,
+                    expression.key.transformers,
+                    "clickhouse",
+                    registry=registry,
+                )
+            if expression.operator == Operator.REGEX.value:
+                text = f"match({col_ref}, {rhs_ref})"
+            elif expression.operator == Operator.NOT_REGEX.value:
+                text = f"NOT match({col_ref}, {rhs_ref})"
+            elif expression.operator in (
+                Operator.LIKE.value,
+                Operator.NOT_LIKE.value,
+                Operator.ILIKE.value,
+                Operator.NOT_ILIKE.value,
+            ):
+                like_op = {
+                    Operator.LIKE.value: "LIKE",
+                    Operator.NOT_LIKE.value: "NOT LIKE",
+                    Operator.ILIKE.value: "ILIKE",
+                    Operator.NOT_ILIKE.value: "NOT ILIKE",
+                }[expression.operator]
+                text = f"{col_ref} {like_op} {rhs_ref}"
             else:
-                value = escape_param(str(expression.value))
-                text = f"{col_ref} {expression.operator} {value}"
+                text = f"{col_ref} {expression.operator} {rhs_ref}"
         else:
-            value = escape_param(expression.value)
-            text = f"{col_ref} {expression.operator} {value}"
+            if column.values and str(expression.value) not in column.values:
+                raise FlyqlError(f"unknown value: {expression.value}")
+
+            if column.normalized_type is not None and not expression.key.transformers:
+                validate_operation(
+                    expression.value, column.normalized_type, expression.operator
+                )
+
+            col_ref = get_identifier(column)
+            if expression.key.transformers:
+                validate_transformer_chain(
+                    expression.key.transformers, registry=registry
+                )
+                col_ref = apply_transformer_sql(
+                    col_ref,
+                    expression.key.transformers,
+                    "clickhouse",
+                    registry=registry,
+                )
+
+            if expression.operator == Operator.REGEX.value:
+                value = escape_param(str(expression.value))
+                text = f"match({col_ref}, {value})"
+            elif expression.operator == Operator.NOT_REGEX.value:
+                value = escape_param(str(expression.value))
+                text = f"NOT match({col_ref}, {value})"
+            elif expression.operator == Operator.LIKE.value:
+                value = _escape_like_param(expression.value)
+                text = f"{col_ref} LIKE {value}"
+            elif expression.operator == Operator.NOT_LIKE.value:
+                value = _escape_like_param(expression.value)
+                text = f"{col_ref} NOT LIKE {value}"
+            elif expression.operator == Operator.ILIKE.value:
+                value = _escape_like_param(expression.value)
+                text = f"{col_ref} ILIKE {value}"
+            elif expression.operator == Operator.NOT_ILIKE.value:
+                value = _escape_like_param(expression.value)
+                text = f"{col_ref} NOT ILIKE {value}"
+            elif expression.operator in [
+                Operator.EQUALS.value,
+                Operator.NOT_EQUALS.value,
+            ]:
+                if expression.value_type == ValueType.NULL:
+                    text = (
+                        f"{col_ref} IS NULL"
+                        if expression.operator == Operator.EQUALS.value
+                        else f"{col_ref} IS NOT NULL"
+                    )
+                elif expression.value_type == ValueType.BOOLEAN:
+                    bool_literal = "true" if expression.value else "false"
+                    text = f"{col_ref} {expression.operator} {bool_literal}"
+                else:
+                    value = escape_param(str(expression.value))
+                    text = f"{col_ref} {expression.operator} {value}"
+            else:
+                value = escape_param(expression.value)
+                text = f"{col_ref} {expression.operator} {value}"
     return text
 
 
@@ -775,6 +852,18 @@ def _parse_raw_select_columns(text: str) -> List[Tuple[str, str]]:
             raise FlyqlError("empty column name")
         result.append((name, alias))
     return result
+
+
+def _resolve_rhs_column_ref(value: str, columns: Mapping[str, Column]) -> Optional[str]:
+    try:
+        key = parse_key(value)
+    except Exception:
+        return None
+    try:
+        column, path = _resolve_column(key, columns)
+    except FlyqlError:
+        return None
+    return _build_select_expr(column, path)
 
 
 def _resolve_column(

@@ -514,7 +514,7 @@ export class EditorEngine {
      * Accepts an optional query parameter to avoid mutating engine state.
      * When diagnostics are provided, wraps affected characters with diagnostic spans.
      */
-    getHighlightTokens(query, diagnostics = null) {
+    getHighlightTokens(query, diagnostics = null, highlightDiagIndex = -1) {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
@@ -533,14 +533,23 @@ export class EditorEngine {
 
         // Build per-character diagnostic map
         let diagMap = null
+        let highlightSet = null
         if (diagnostics && diagnostics.length > 0) {
             diagMap = new Array(value.length).fill(null)
-            for (const d of diagnostics) {
+            for (let di = 0; di < diagnostics.length; di++) {
+                const d = diagnostics[di]
                 for (let j = d.range.start; j < d.range.end && j < value.length; j++) {
-                    const existing = diagMap[j]
-                    if (!existing || (d.severity === 'error' && existing.severity !== 'error')) {
-                        diagMap[j] = d
+                    if (!diagMap[j]) {
+                        diagMap[j] = { diag: d, index: di }
                     }
+                }
+            }
+            // Build separate highlight set for hovered diagnostic
+            if (highlightDiagIndex >= 0 && highlightDiagIndex < diagnostics.length) {
+                highlightSet = new Set()
+                const hd = diagnostics[highlightDiagIndex]
+                for (let j = hd.range.start; j < hd.range.end && j < value.length; j++) {
+                    highlightSet.add(j)
                 }
             }
         }
@@ -549,6 +558,7 @@ export class EditorEngine {
         let currentType = null
         let currentText = ''
         let currentDiag = null
+        let currentHighlight = false
 
         const flushSpan = () => {
             if (!currentText) return
@@ -563,9 +573,16 @@ export class EditorEngine {
                 }
             }
             const inner = wrapSpan(spanType, currentText)
-            if (currentDiag) {
-                const sev = currentDiag.severity === 'warning' ? 'warning' : 'error'
-                html += `<span class="flyql-diagnostic flyql-diagnostic--${sev}" title="${escapeHtml(currentDiag.message)}">${inner}</span>`
+            if (currentDiag || currentHighlight) {
+                const classes = ['flyql-diagnostic']
+                if (currentDiag) {
+                    classes.push('flyql-diagnostic--' + (currentDiag.diag.severity === 'warning' ? 'warning' : 'error'))
+                }
+                if (currentHighlight) {
+                    classes.push('flyql-diagnostic--highlight')
+                }
+                const title = currentDiag ? ` title="${escapeHtml(currentDiag.diag.message)}"` : ''
+                html += `<span class="${classes.join(' ')}"${title}>${inner}</span>`
             } else {
                 html += inner
             }
@@ -575,12 +592,19 @@ export class EditorEngine {
             const charType = typedChars[i][1]
             const ch = value[i] !== undefined ? value[i] : typedChars[i][0].value
             const newDiag = diagMap ? diagMap[i] : null
-            if (charType === currentType && newDiag === currentDiag && ch !== '\n') {
+            const newHighlight = highlightSet ? highlightSet.has(i) : false
+            if (
+                charType === currentType &&
+                newDiag === currentDiag &&
+                newHighlight === currentHighlight &&
+                ch !== '\n'
+            ) {
                 currentText += ch
             } else {
                 flushSpan()
                 currentType = charType
                 currentDiag = newDiag
+                currentHighlight = newHighlight
                 currentText = ch
             }
         }

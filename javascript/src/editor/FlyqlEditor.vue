@@ -130,15 +130,19 @@
                     @mousedown.stop="panelInteracting = true"
                     @mouseup="panelInteracting = false"
                 >
+                    <div class="flyql-panel__header">Diagnostics</div>
                     <div
                         v-for="(diag, idx) in diagnostics"
                         :key="idx"
                         class="flyql-panel__diagnostic-item"
                         :class="'flyql-panel__diagnostic-item--' + diag.severity"
+                        @mouseenter="hoveredDiagIndex = idx"
+                        @mouseleave="hoveredDiagIndex = -1"
                     >
-                        <span class="flyql-panel__diagnostic-icon">{{
-                            diag.severity === 'error' ? '\u2716' : '\u26A0'
-                        }}</span>
+                        <span
+                            class="flyql-panel__diagnostic-bullet"
+                            :class="'flyql-panel__diagnostic-bullet--' + diag.severity"
+                        ></span>
                         <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
                     </div>
                 </div>
@@ -220,6 +224,7 @@ const message = ref('')
 const stateLabel = ref('')
 const context = ref(null)
 const diagnostics = ref([])
+const hoveredDiagIndex = ref(-1)
 const lastParseError = ref(null)
 
 const panelStyle = computed(() => ({
@@ -255,7 +260,7 @@ function syncFromEngine() {
 // ── Highlighting ──
 
 const highlightedHtml = computed(() => {
-    return engine.getHighlightTokens(props.modelValue, diagnostics.value)
+    return engine.getHighlightTokens(props.modelValue, diagnostics.value, hoveredDiagIndex.value)
 })
 
 // ── Panel Positioning ──

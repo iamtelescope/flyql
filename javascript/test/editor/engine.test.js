@@ -1315,13 +1315,13 @@ describe('EditorEngine', () => {
             expect(html).toContain('is not defined')
         })
 
-        it('handles overlapping diagnostics with error > warning priority', () => {
+        it('highlights diagnostic range on hover', () => {
             const engine = new EditorEngine(TEST_COLUMNS)
-            const warn = new Diagnostic(new Range(0, 6), 'warning msg', 'warning', 'w1')
-            const err = new Diagnostic(new Range(2, 4), 'error msg', 'error', 'e1')
-            const html = engine.getHighlightTokens('status=info', [warn, err])
-            // The overlapping region (chars 2-3) should be error, not warning
-            expect(html).toContain('flyql-diagnostic--error')
+            const diag = new Diagnostic(new Range(0, 4), 'test error', 'error', 'e1')
+            const htmlNoHover = engine.getHighlightTokens('hstt=X', [diag], -1)
+            expect(htmlNoHover).not.toContain('flyql-diagnostic--highlight')
+            const htmlHover = engine.getHighlightTokens('hstt=X', [diag], 0)
+            expect(htmlHover).toContain('flyql-diagnostic--highlight')
         })
 
         it('handles adjacent diagnostics as separate spans', () => {

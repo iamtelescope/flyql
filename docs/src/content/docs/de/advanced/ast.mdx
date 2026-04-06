@@ -508,10 +508,14 @@ import {
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
   Key,                 // Field path
+  Range,               // Source position range [start, end)
+  Column,              // Core column type for validator
   Operator,            // Comparison operator constants
   BoolOperator,        // Boolean operator constants ("and", "or")
   FlyqlError,          // Base error class
   ParserError,         // Parse error (extends FlyqlError, includes errno)
+  diagnose,            // AST validator: diagnose(ast, columns, registry?) → Diagnostic[]
+  Diagnostic,          // Positioned diagnostic record
 } from 'flyql'
 ```
 
@@ -524,7 +528,10 @@ import flyql "github.com/iamtelescope/flyql/golang"
 // flyql.Node        — AST node struct
 // flyql.Expression  — leaf condition struct
 // flyql.Key         — field path struct
-// flyql.NewNode(), flyql.NewExpressionNode(), flyql.NewBranchNode()
+// flyql.Range       — source position range [Start, End)
+// flyql.Column      — core column type for validator
+// flyql.Diagnose(ast, columns, registry) []Diagnostic — AST validator
+// flyql.Diagnostic  — positioned diagnostic record
 //
 // Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
 // Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
@@ -537,6 +544,9 @@ from flyql.core.parser import parse, Parser
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key
+from flyql.core.range import Range
+from flyql.core.column import Column
+from flyql.core.validator import diagnose, Diagnostic
 from flyql.core.constants import Operator, BoolOperator
 from flyql.core.exceptions import FlyqlError, ParserError
 ```

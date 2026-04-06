@@ -7,17 +7,29 @@ O sistema de transformadores do FlyQL é extensível. Você pode registrar trans
 
 ## Interface do Transformador
 
-Todo transformador implementa 5 membros:
+Todo transformador implementa 6 membros:
 
 | Membro | Tipo | Descrição |
 |--------|------|-------------|
 | `name` | string | Identificador único em minúsculas (ex.: `"firstoctet"`) |
-| `inputType` | TransformerType | Tipo de entrada esperado (`string`, `int`, `float`) |
+| `inputType` | TransformerType | Tipo de entrada esperado (`string`, `int`, `float`, `bool`, `array`) |
 | `outputType` | TransformerType | Tipo de saída após a transformação |
-| `sql(dialect, columnRef)` | string | Gera SQL específico do dialeto envolvendo a referência da coluna |
-| `apply(value)` | any | Transforma um valor em tempo de execução na memória |
+| `argSchema` | ArgSpec[] | Tipos de argumento declarados e aridade (padrão: vazio = sem argumentos) |
+| `sql(dialect, columnRef, args)` | string | Gera SQL específico do dialeto envolvendo a referência da coluna |
+| `apply(value, args)` | any | Transforma um valor em tempo de execução na memória |
 
-O método `sql()` recebe o nome do dialeto SQL (`"clickhouse"`, `"postgresql"`, `"starrocks"`) e uma string de referência de coluna. Ele retorna uma expressão SQL envolvendo essa referência. O método `apply()` recebe um valor em tempo de execução e retorna o valor transformado.
+O método `sql()` recebe o nome do dialeto SQL (`"clickhouse"`, `"postgresql"`, `"starrocks"`), uma string de referência de coluna e a lista de argumentos analisados. Ele retorna uma expressão SQL envolvendo essa referência. O método `apply()` recebe um valor em tempo de execução e a lista de argumentos, e retorna o valor transformado.
+
+### ArgSpec
+
+Cada entrada em `argSchema` declara um argumento esperado:
+
+| Campo | Tipo | Padrão | Descrição |
+|-------|------|--------|-------------|
+| `type` | TransformerType | — | Tipo de argumento esperado (`string`, `int`, `float`, `bool`) |
+| `required` | boolean | `true` | Se o argumento deve ser fornecido |
+
+A aridade é derivada do comprimento do esquema: argumentos obrigatórios devem estar presentes, argumentos opcionais finais podem ser omitidos. Transformadores sem argumentos (como `upper`, `lower`, `len`) herdam o esquema vazio padrão.
 
 ## API do Registro
 
@@ -44,12 +56,26 @@ class FirstOctetTransformer(Transformer):
     def input_type(self): return TransformerType.STRING
     @property
     def output_type(self): return TransformerType.INT
-    def sql(self, dialect, column_ref):
+    def sql(self, dialect, column_ref, args=None):
         if dialect == "clickhouse":
             return f"toUInt8(splitByChar('.', {column_ref})[1])"
         return f"CAST(SPLIT_PART({column_ref}, '.', 1) AS INTEGER)"
-    def apply(self, value):
+    def apply(self, value, args=None):
         return int(str(value).split('.')[0])
+```
+
+O atributo de classe `arg_schema` tem como valor padrão `()` (sem argumentos). Para declarar argumentos, substitua-o por uma tupla de `ArgSpec`:
+
+```python
+from typing import ClassVar, Tuple
+from flyql.transformers.base import ArgSpec
+
+class SubstringTransformer(Transformer):
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
+        ArgSpec(type=TransformerType.INT),                    # start (required)
+        ArgSpec(type=TransformerType.INT, required=False),    # length (optional)
+    )
+    # ... name, input_type, output_type, sql, apply ...
 ```
 
 Registre e use:
@@ -83,17 +109,31 @@ evaluator.evaluate(result.root, record)  # True (193 > 192)
 Defina um transformador customizado estendendo `Transformer`:
 
 ```javascript
-import { Transformer, TransformerType, defaultRegistry } from 'flyql/transformers'
+import { Transformer, TransformerType, ArgSpec, defaultRegistry } from 'flyql/transformers'
 
 class FirstOctetTransformer extends Transformer {
     get name() { return 'firstoctet' }
     get inputType() { return TransformerType.STRING }
     get outputType() { return TransformerType.INT }
-    sql(dialect, columnRef) {
+    sql(dialect, columnRef, args = []) {
         if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
         return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
     }
-    apply(value) { return parseInt(String(value).split('.')[0], 10) }
+    apply(value, args = []) { return parseInt(String(value).split('.')[0], 10) }
+}
+```
+
+O getter `argSchema` tem como valor padrão `[]` (sem argumentos). Para declarar argumentos, substitua-o:
+
+```javascript
+class SubstringTransformer extends Transformer {
+    get argSchema() {
+        return [
+            new ArgSpec(TransformerType.INT, true),     // start (required)
+            new ArgSpec(TransformerType.INT, false),    // length (optional)
+        ]
+    }
+    // ... name, inputType, outputType, sql, apply ...
 }
 ```
 
@@ -148,16 +188,28 @@ type FirstOctet struct{}
 func (f FirstOctet) Name() string               { return "firstoctet" }
 func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
 func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
-func (f FirstOctet) SQL(dialect, colRef string) string {
+func (f FirstOctet) ArgSchema() []transformers.ArgSpec        { return []transformers.ArgSpec{} }
+func (f FirstOctet) SQL(dialect, colRef string, args []any) string {
     if dialect == "clickhouse" {
         return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
     }
     return fmt.Sprintf("CAST(SPLIT_PART(%s, '.', 1) AS INTEGER)", colRef)
 }
-func (f FirstOctet) Apply(value interface{}) interface{} {
+func (f FirstOctet) Apply(value interface{}, args []any) interface{} {
     parts := strings.SplitN(fmt.Sprint(value), ".", 2)
     n, _ := strconv.Atoi(parts[0])
     return n
+}
+```
+
+Para declarar argumentos, retorne entradas `ArgSpec` a partir de `ArgSchema()`:
+
+```go
+func (s Substring) ArgSchema() []transformers.ArgSpec {
+    return []transformers.ArgSpec{
+        {Type: transformers.TransformerTypeInt, Required: true},   // start (required)
+        {Type: transformers.TransformerTypeInt, Required: false},  // length (optional)
+    }
 }
 ```
 
@@ -191,9 +243,55 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 ## Compatibilidade de Tipos
 
-Transformadores customizados participam da mesma validação de cadeia de tipos que os integrados. Se você encadear `field|firstoctet|upper`, o sistema detecta que `firstoctet` gera `int` mas `upper` requer `string`, e levanta um erro de tipo no momento da geração.
+Transformadores customizados participam da mesma validação de cadeia de tipos que os integrados. Se você encadear `field|firstoctet|upper`, o sistema detecta que `firstoctet` gera `int` mas `upper` requer `string`.
 
 Tipos disponíveis: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+
+## Validation with `diagnose()`
+
+The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+
+- **Unknown column** — base key not in the column list
+- **Unknown transformer** — transformer name not in the registry
+- **Wrong arity** — too few or too many arguments vs `argSchema`
+- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
+- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+
+Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+
+```python
+# Python
+from flyql.core.parser import parse
+from flyql.core.column import Column
+from flyql.core.validator import diagnose
+
+ast = parse("hstt|upper=X").root
+columns = [Column(name="host", jsonstring=False, _type="String", normalized_type="string")]
+diags = diagnose(ast, columns)
+# [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
+```
+
+```javascript
+// JavaScript
+import { parse, Column, diagnose } from 'flyql'
+
+const ast = parse('hstt|upper=X').root
+const columns = [new Column('host', false, 'String', 'string')]
+const diags = diagnose(ast, columns)
+// [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
+```
+
+```go
+// Go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+result, _ := flyql.Parse("hstt|upper=X")
+columns := []flyql.Column{flyql.NewColumn("host", false, "String", "string")}
+diags := flyql.Diagnose(result.Root, columns, nil) // nil = default registry
+// []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
+```
+
+Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
 
 ## Segurança
 

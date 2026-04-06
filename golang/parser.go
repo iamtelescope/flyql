@@ -72,6 +72,8 @@ type Parser struct {
 	inListQuoteChar            rune
 	pipeSeenInKey              bool
 	transformerParenDepth      int
+	transformerQuote           rune
+	TypedChars                 []TypedChar
 	errorRange                 Range
 	keyStart                   int
 	keyEnd                     int
@@ -119,6 +121,7 @@ func (p *Parser) resetKey() {
 	p.key = ""
 	p.pipeSeenInKey = false
 	p.transformerParenDepth = 0
+	p.transformerQuote = 0
 	p.keyStart = -1
 	p.keyEnd = -1
 }
@@ -254,6 +257,18 @@ func (p *Parser) extendKeyValueOperator() {
 		}
 		p.operatorEnd = p.char.pos + 1
 		p.keyValueOperator += string(p.char.value)
+	}
+}
+
+func (p *Parser) storeTypedChar(charType string) {
+	if p.char != nil {
+		p.TypedChars = append(p.TypedChars, TypedChar{
+			Value:   p.char.value,
+			Pos:     p.char.pos,
+			Line:    p.char.line,
+			LinePos: p.char.linePos,
+			Type:    charType,
+		})
 	}
 }
 
@@ -576,17 +591,22 @@ func (p *Parser) inStateInitial() {
 		p.extendNodesStack()
 		p.extendBoolOpStack()
 		p.state = stateInitial
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isDelimiter() {
 		p.state = stateBoolOpDelimiter
+		p.storeTypedChar(CharTypeSpace)
 	} else if p.char.isKey() {
 		p.extendKey()
 		p.state = stateKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isSingleQuote() {
 		p.extendKey()
 		p.state = stateSingleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isDoubleQuote() {
 		p.extendKey()
 		p.state = stateDoubleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else {
 		p.setErrorState("invalid character", 1)
 	}
@@ -597,9 +617,18 @@ func (p *Parser) inStateKey() {
 		return
 	}
 
+	if p.transformerQuote != 0 {
+		p.extendKey()
+		if p.char.value == p.transformerQuote {
+			p.transformerQuote = 0
+		}
+		p.storeTypedChar(CharTypeArgumentString)
+		return
+	}
 	if p.char.isDelimiter() {
 		if p.transformerParenDepth > 0 {
 			p.extendKey()
+			p.storeTypedChar(CharTypeArgument)
 			return
 		}
 		if p.key == NotKeyword {
@@ -609,27 +638,44 @@ func (p *Parser) inStateKey() {
 		} else {
 			p.state = stateKeyOrBoolOp
 		}
+		p.storeTypedChar(CharTypeSpace)
 	} else if p.char.isKey() {
+		p.extendKey()
 		if p.char.value == '|' {
 			p.pipeSeenInKey = true
+			p.storeTypedChar(CharTypePipe)
+		} else if p.transformerParenDepth > 0 {
+			p.storeTypedChar(CharTypeArgumentNumber)
+		} else if p.pipeSeenInKey {
+			p.storeTypedChar(CharTypeTransformer)
+		} else {
+			p.storeTypedChar(CharTypeKey)
 		}
-		p.extendKey()
 	} else if p.pipeSeenInKey && (p.char.isGroupOpen() || p.char.isGroupClose() || p.char.isDoubleQuote() || p.char.isSingleQuote() || p.char.value == ',') {
 		if p.char.isGroupOpen() {
 			p.transformerParenDepth++
 		} else if p.char.isGroupClose() {
 			p.transformerParenDepth--
+		} else if p.transformerParenDepth > 0 && (p.char.isDoubleQuote() || p.char.isSingleQuote()) {
+			p.transformerQuote = p.char.value
+			p.extendKey()
+			p.storeTypedChar(CharTypeArgumentString)
+			return
 		}
 		p.extendKey()
+		p.storeTypedChar(CharTypeArgument)
 	} else if p.char.isSingleQuote() {
 		p.extendKey()
 		p.state = stateSingleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isDoubleQuote() {
 		p.extendKey()
 		p.state = stateDoubleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
 			p.setErrorState("unmatched parenthesis", 9)
@@ -644,6 +690,7 @@ func (p *Parser) inStateKey() {
 		}
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("invalid character", 3)
 	}
@@ -655,10 +702,12 @@ func (p *Parser) inStateExpectOperator() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("expected operator", 28)
 	}
@@ -671,12 +720,15 @@ func (p *Parser) inStateKeyValueOperator() {
 
 	if p.keyValueOperator == "h" && p.char.value == 'a' {
 		p.keyValueOperator = "ha"
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == "ha" && p.char.value == 's' {
 		p.keyValueOperator = HasKeyword
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == HasKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = OpHas
 			p.isNotHas = false
 			p.state = stateExpectValue
@@ -685,96 +737,119 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.isNotHas = false
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isDoubleQuote() {
 			p.keyValueOperator = OpHas
 			p.isNotHas = false
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpHas
 			p.isNotHas = false
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		} else {
 			p.setErrorState("expected value after 'has'", 50)
 		}
 		return
 	}
 
-	if p.keyValueOperator == "l" && p.char.value == 'i' {
-		p.keyValueOperator = "li"
-		return
-	} else if p.keyValueOperator == "li" && p.char.value == 'k' {
-		p.keyValueOperator = "lik"
-		return
-	} else if p.keyValueOperator == "lik" && p.char.value == 'e' {
-		p.keyValueOperator = LikeKeyword
-		return
-	} else if p.keyValueOperator == LikeKeyword {
-		if p.char.isDelimiter() {
-			p.keyValueOperator = OpLike
-			p.state = stateExpectValue
-		} else if p.char.isSingleQuote() {
-			p.keyValueOperator = OpLike
-			p.setValueIsString()
-			p.state = stateSingleQuotedValue
-		} else if p.char.isDoubleQuote() {
-			p.keyValueOperator = OpLike
-			p.setValueIsString()
-			p.state = stateDoubleQuotedValue
-		} else if p.char.isValue() {
-			p.keyValueOperator = OpLike
-			p.state = stateValue
-			p.extendValue()
-		} else {
-			p.setErrorState("expected value after 'like'", 50)
-		}
+	if p.keyValueOperator == "i" && p.char.value == 'n' {
+		p.keyValueOperator = "in"
+		p.storeTypedChar(CharTypeOperator)
 		return
 	}
 
 	if p.keyValueOperator == "i" && p.char.value == 'l' {
 		p.keyValueOperator = "il"
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == "il" && p.char.value == 'i' {
 		p.keyValueOperator = "ili"
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == "ili" && p.char.value == 'k' {
 		p.keyValueOperator = "ilik"
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == "ilik" && p.char.value == 'e' {
 		p.keyValueOperator = ILikeKeyword
+		p.storeTypedChar(CharTypeOperator)
 		return
 	} else if p.keyValueOperator == ILikeKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = OpILike
 			p.state = stateExpectValue
 		} else if p.char.isSingleQuote() {
 			p.keyValueOperator = OpILike
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isDoubleQuote() {
 			p.keyValueOperator = OpILike
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpILike
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		} else {
 			p.setErrorState("expected value after 'ilike'", 50)
 		}
 		return
 	}
 
-	if p.keyValueOperator == "i" && p.char.value == 'n' {
-		p.keyValueOperator = "in"
+	if p.keyValueOperator == "l" && p.char.value == 'i' {
+		p.keyValueOperator = "li"
+		p.storeTypedChar(CharTypeOperator)
 		return
-	} else if p.keyValueOperator == "in" {
+	} else if p.keyValueOperator == "li" && p.char.value == 'k' {
+		p.keyValueOperator = "lik"
+		p.storeTypedChar(CharTypeOperator)
+		return
+	} else if p.keyValueOperator == "lik" && p.char.value == 'e' {
+		p.keyValueOperator = LikeKeyword
+		p.storeTypedChar(CharTypeOperator)
+		return
+	} else if p.keyValueOperator == LikeKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
+			p.keyValueOperator = OpLike
+			p.state = stateExpectValue
+		} else if p.char.isSingleQuote() {
+			p.keyValueOperator = OpLike
+			p.setValueIsString()
+			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isDoubleQuote() {
+			p.keyValueOperator = OpLike
+			p.setValueIsString()
+			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isValue() {
+			p.keyValueOperator = OpLike
+			p.state = stateValue
+			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
+		} else {
+			p.setErrorState("expected value after 'like'", 50)
+		}
+		return
+	}
+
+	if p.keyValueOperator == "in" {
+		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = ""
 			p.isNotIn = false
 			p.state = stateExpectListStart
 		} else if p.char.value == '[' {
+			p.storeTypedChar(CharTypeOperator)
 			p.keyValueOperator = ""
 			p.isNotIn = false
 			p.state = stateExpectListValue
@@ -785,6 +860,7 @@ func (p *Parser) inStateKeyValueOperator() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		if !validKeyValueOperators[p.keyValueOperator] {
 			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
 		} else {
@@ -792,12 +868,14 @@ func (p *Parser) inStateKeyValueOperator() {
 		}
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isValue() {
 		if !validKeyValueOperators[p.keyValueOperator] {
 			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
 		} else {
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		}
 	} else if p.char.isSingleQuote() {
 		if !validKeyValueOperators[p.keyValueOperator] {
@@ -805,6 +883,7 @@ func (p *Parser) inStateKeyValueOperator() {
 		} else {
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		}
 	} else if p.char.isDoubleQuote() {
 		if !validKeyValueOperators[p.keyValueOperator] {
@@ -812,6 +891,7 @@ func (p *Parser) inStateKeyValueOperator() {
 		} else {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		}
 	} else {
 		p.setErrorState("invalid character", 4)
@@ -824,16 +904,20 @@ func (p *Parser) inStateExpectValue() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isValue() {
 		p.state = stateValue
 		p.extendValue()
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isSingleQuote() {
 		p.setValueIsString()
 		p.state = stateSingleQuotedValue
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isDoubleQuote() {
 		p.setValueIsString()
 		p.state = stateDoubleQuotedValue
+		p.storeTypedChar(CharTypeValue)
 	} else {
 		p.setErrorState("expected value", 29)
 	}
@@ -846,11 +930,13 @@ func (p *Parser) inStateValue() {
 
 	if p.char.isValue() {
 		p.extendValue()
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isDelimiter() {
 		p.state = stateExpectBoolOp
 		p.extendTree()
 		p.resetData()
 		p.resetBoolOperator()
+		p.storeTypedChar(CharTypeSpace)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
 			p.setErrorState("unmatched parenthesis", 9)
@@ -865,6 +951,7 @@ func (p *Parser) inStateValue() {
 		p.extendTreeFromStack(p.boolOperator)
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("invalid character", 10)
 	}
@@ -877,7 +964,9 @@ func (p *Parser) inStateSingleQuotedValue() {
 
 	if !p.char.isSingleQuote() {
 		p.extendValue()
+		p.storeTypedChar(CharTypeValue)
 	} else {
+		p.storeTypedChar(CharTypeValue)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendValue()
@@ -898,7 +987,9 @@ func (p *Parser) inStateDoubleQuotedValue() {
 
 	if !p.char.isDoubleQuote() {
 		p.extendValue()
+		p.storeTypedChar(CharTypeValue)
 	} else {
+		p.storeTypedChar(CharTypeValue)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendValue()
@@ -919,7 +1010,9 @@ func (p *Parser) inStateSingleQuotedKey() {
 
 	if !p.char.isSingleQuote() {
 		p.extendKey()
+		p.storeTypedChar(CharTypeKey)
 	} else {
+		p.storeTypedChar(CharTypeKey)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendKey()
@@ -937,7 +1030,9 @@ func (p *Parser) inStateDoubleQuotedKey() {
 
 	if !p.char.isDoubleQuote() {
 		p.extendKey()
+		p.storeTypedChar(CharTypeKey)
 	} else {
+		p.storeTypedChar(CharTypeKey)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendKey()
@@ -954,16 +1049,20 @@ func (p *Parser) inStateBoolOpDelimiter() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isKey() {
 		p.state = stateKey
 		p.extendKey()
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isSingleQuote() {
 		p.extendKey()
 		p.state = stateSingleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isDoubleQuote() {
 		p.extendKey()
 		p.state = stateDoubleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isGroupOpen() {
 		if p.pendingNegation {
 			p.negationStack = append(p.negationStack, true)
@@ -975,6 +1074,7 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		p.extendBoolOpStack()
 		p.groupStartStack = append(p.groupStartStack, p.char.pos)
 		p.state = stateInitial
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
 			p.setErrorState("unmatched parenthesis", 15)
@@ -987,6 +1087,7 @@ func (p *Parser) inStateBoolOpDelimiter() {
 			p.extendTreeFromStack(boolOp)
 		}
 		p.state = stateExpectBoolOp
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("invalid character", 18)
 	}
@@ -998,6 +1099,7 @@ func (p *Parser) inStateExpectBoolOp() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
@@ -1012,8 +1114,10 @@ func (p *Parser) inStateExpectBoolOp() {
 			p.extendTreeFromStack(boolOp)
 		}
 		p.state = stateExpectBoolOp
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.extendBoolOperator()
+		p.storeTypedChar(CharTypeOperator)
 		if len(p.boolOperator) > 3 || !validBoolOperatorChars[p.char.value] {
 			p.setErrorState("invalid character", 20)
 		} else {
@@ -1025,6 +1129,8 @@ func (p *Parser) inStateExpectBoolOp() {
 						p.setErrorState("expected delimiter after bool operator", 23)
 						return
 					}
+					p.state = stateBoolOpDelimiter
+				} else {
 					p.state = stateBoolOpDelimiter
 				}
 			}
@@ -1038,10 +1144,12 @@ func (p *Parser) inStateKeyOrBoolOp() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
 			p.setErrorState("unmatched parenthesis", 19)
@@ -1056,24 +1164,30 @@ func (p *Parser) inStateKeyOrBoolOp() {
 		}
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'i' {
 		p.keyValueOperator = "i"
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'h' {
 		p.keyValueOperator = "h"
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'l' {
 		p.keyValueOperator = "l"
 		p.state = stateKeyValueOperator
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'n' {
 		p.keyValueOperator = "n"
 		p.state = stateExpectInKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if validBoolOperatorChars[p.char.value] {
 		p.extendTreeWithExpression(p.newTruthyExpression())
 		p.resetData()
 		p.resetBoolOperator()
-		p.state = stateExpectBoolOp
 		p.extendBoolOperator()
+		p.storeTypedChar(CharTypeOperator)
+		p.state = stateExpectBoolOp
 		if validBoolOperators[p.boolOperator] {
 			nextPos := p.char.pos + 1
 			if nextPos < len(p.text) {
@@ -1082,6 +1196,8 @@ func (p *Parser) inStateKeyOrBoolOp() {
 					p.setErrorState("expected delimiter after bool operator", 23)
 					return
 				}
+				p.state = stateBoolOpDelimiter
+			} else {
 				p.state = stateBoolOpDelimiter
 			}
 		}
@@ -1096,16 +1212,20 @@ func (p *Parser) inStateExpectNotTarget() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.isKey() {
 		p.extendKey()
 		p.state = stateKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isSingleQuote() {
 		p.extendKey()
 		p.state = stateSingleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isDoubleQuote() {
 		p.extendKey()
 		p.state = stateDoubleQuotedKey
+		p.storeTypedChar(CharTypeKey)
 	} else if p.char.isGroupOpen() {
 		p.negationStack = append(p.negationStack, p.pendingNegation)
 		p.pendingNegation = false
@@ -1113,6 +1233,7 @@ func (p *Parser) inStateExpectNotTarget() {
 		p.extendBoolOpStack()
 		p.groupStartStack = append(p.groupStartStack, p.char.pos)
 		p.state = stateInitial
+		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("expected key or group after not", 33)
 	}
@@ -1126,17 +1247,20 @@ func (p *Parser) inStateExpectInKeyword() {
 	if p.keyValueOperator == "n" {
 		if p.char.value == 'o' {
 			p.keyValueOperator += "o"
+			p.storeTypedChar(CharTypeOperator)
 		} else {
 			p.setErrorState("expected 'not' or 'in' keyword", 41)
 		}
 	} else if p.keyValueOperator == "no" {
 		if p.char.value == 't' {
 			p.keyValueOperator += "t"
+			p.storeTypedChar(CharTypeOperator)
 		} else {
 			p.setErrorState("expected 'not' keyword", 41)
 		}
 	} else if p.keyValueOperator == "not" {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = ""
 			p.isNotIn = true
 			p.state = stateExpectListStart
@@ -1154,25 +1278,32 @@ func (p *Parser) inStateExpectListStart() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.value == 'h' && p.isNotIn {
 		p.keyValueOperator = "h"
 		p.isNotIn = false
 		p.isNotHas = true
 		p.state = stateExpectHasKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'l' && p.isNotIn {
 		p.keyValueOperator = "l"
 		p.isNotIn = false
 		p.isNotLike = true
 		p.state = stateExpectLikeKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'i' && p.isNotIn {
 		p.keyValueOperator = "i"
 		p.state = stateExpectLikeKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == 'i' {
 		p.keyValueOperator = "i"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
 		p.keyValueOperator = ""
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.value == '[' {
+		p.storeTypedChar(CharTypeOperator)
 		p.state = stateExpectListValue
 	} else {
 		p.setErrorState("expected '['", 42)
@@ -1186,24 +1317,30 @@ func (p *Parser) inStateExpectHasKeyword() {
 
 	if p.keyValueOperator == "h" && p.char.value == 'a' {
 		p.keyValueOperator = "ha"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "ha" && p.char.value == 's' {
 		p.keyValueOperator = HasKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == HasKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = OpNotHas
 			p.state = stateExpectValue
 		} else if p.char.isSingleQuote() {
 			p.keyValueOperator = OpNotHas
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isDoubleQuote() {
 			p.keyValueOperator = OpNotHas
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotHas
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		} else {
 			p.setErrorState("expected value after 'not has'", 50)
 		}
@@ -1220,26 +1357,33 @@ func (p *Parser) inStateExpectLikeKeyword() {
 	// Path A: building "like" for "not like"
 	if p.keyValueOperator == "l" && p.char.value == 'i' {
 		p.keyValueOperator = "li"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "li" && p.char.value == 'k' {
 		p.keyValueOperator = "lik"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "lik" && p.char.value == 'e' {
 		p.keyValueOperator = LikeKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == LikeKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = OpNotLike
 			p.state = stateExpectValue
 		} else if p.char.isSingleQuote() {
 			p.keyValueOperator = OpNotLike
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isDoubleQuote() {
 			p.keyValueOperator = OpNotLike
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotLike
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		} else {
 			p.setErrorState("expected value after 'not like'", 50)
 		}
@@ -1247,32 +1391,42 @@ func (p *Parser) inStateExpectLikeKeyword() {
 	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
 		p.keyValueOperator = ""
 		p.isNotIn = true
+		p.storeTypedChar(CharTypeOperator)
 		p.state = stateExpectListStart
 	} else if p.keyValueOperator == "i" && p.char.value == 'l' {
 		p.keyValueOperator = "il"
+		p.isNotIn = false
 		p.isNotIlike = true
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "il" && p.char.value == 'i' {
 		p.keyValueOperator = "ili"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "ili" && p.char.value == 'k' {
 		p.keyValueOperator = "ilik"
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == "ilik" && p.char.value == 'e' {
 		p.keyValueOperator = ILikeKeyword
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.keyValueOperator == ILikeKeyword {
 		if p.char.isDelimiter() {
+			p.storeTypedChar(CharTypeSpace)
 			p.keyValueOperator = OpNotILike
 			p.state = stateExpectValue
 		} else if p.char.isSingleQuote() {
 			p.keyValueOperator = OpNotILike
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isDoubleQuote() {
 			p.keyValueOperator = OpNotILike
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
+			p.storeTypedChar(CharTypeValue)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotILike
 			p.state = stateValue
 			p.extendValue()
+			p.storeTypedChar(CharTypeValue)
 		} else {
 			p.setErrorState("expected value after 'not ilike'", 50)
 		}
@@ -1287,8 +1441,10 @@ func (p *Parser) inStateExpectListValue() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.value == ']' {
+		p.storeTypedChar(CharTypeOperator)
 		p.extendTreeWithExpression(p.newInExpression())
 		p.resetData()
 		p.resetBoolOperator()
@@ -1296,11 +1452,14 @@ func (p *Parser) inStateExpectListValue() {
 	} else if p.char.isSingleQuote() {
 		p.setInListCurrentValueIsString()
 		p.state = stateInListSingleQuotedValue
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isDoubleQuote() {
 		p.setInListCurrentValueIsString()
 		p.state = stateInListDoubleQuotedValue
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isValue() && p.char.value != ',' && p.char.value != ']' {
 		p.extendInListCurrentValue()
+		p.storeTypedChar(CharTypeValue)
 		p.state = stateInListValue
 	} else {
 		p.setErrorState("expected value in list", 43)
@@ -1314,20 +1473,24 @@ func (p *Parser) inStateInListValue() {
 
 	if p.char.isValue() && p.char.value != ',' && p.char.value != ']' {
 		p.extendInListCurrentValue()
+		p.storeTypedChar(CharTypeValue)
 	} else if p.char.isDelimiter() {
 		if !p.finalizeInListValue() {
 			return
 		}
+		p.storeTypedChar(CharTypeSpace)
 		p.state = stateExpectListCommaOrEnd
 	} else if p.char.value == ',' {
 		if !p.finalizeInListValue() {
 			return
 		}
+		p.storeTypedChar(CharTypeOperator)
 		p.state = stateExpectListValue
 	} else if p.char.value == ']' {
 		if !p.finalizeInListValue() {
 			return
 		}
+		p.storeTypedChar(CharTypeOperator)
 		p.extendTreeWithExpression(p.newInExpression())
 		p.resetData()
 		p.resetBoolOperator()
@@ -1344,7 +1507,9 @@ func (p *Parser) inStateInListSingleQuotedValue() {
 
 	if !p.char.isSingleQuote() {
 		p.extendInListCurrentValue()
+		p.storeTypedChar(CharTypeValue)
 	} else {
+		p.storeTypedChar(CharTypeValue)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendInListCurrentValue()
@@ -1364,7 +1529,9 @@ func (p *Parser) inStateInListDoubleQuotedValue() {
 
 	if !p.char.isDoubleQuote() {
 		p.extendInListCurrentValue()
+		p.storeTypedChar(CharTypeValue)
 	} else {
+		p.storeTypedChar(CharTypeValue)
 		prevPos := p.char.pos - 1
 		if prevPos >= 0 && p.text[prevPos] == '\\' {
 			p.extendInListCurrentValue()
@@ -1383,10 +1550,13 @@ func (p *Parser) inStateExpectListCommaOrEnd() {
 	}
 
 	if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
 		return
 	} else if p.char.value == ',' {
+		p.storeTypedChar(CharTypeOperator)
 		p.state = stateExpectListValue
 	} else if p.char.value == ']' {
+		p.storeTypedChar(CharTypeOperator)
 		p.extendTreeWithExpression(p.newInExpression())
 		p.resetData()
 		p.resetBoolOperator()
@@ -1425,9 +1595,10 @@ func (p *Parser) inStateLastChar() {
 	} else if p.state == stateKeyOrBoolOp {
 		p.extendTreeWithExpression(p.newTruthyExpression())
 		p.resetBoolOperator()
-	} else if p.state == stateValue ||
-		p.state == stateDoubleQuotedValue ||
-		p.state == stateSingleQuotedValue {
+	} else if p.state == stateDoubleQuotedValue || p.state == stateSingleQuotedValue {
+		p.setErrorState("unclosed string", 28)
+		return
+	} else if p.state == stateValue {
 		p.extendTree()
 		p.resetBoolOperator()
 	} else if p.state == stateBoolOpDelimiter {
@@ -1453,6 +1624,8 @@ func (p *Parser) Parse(text string) error {
 	p.Root = nil
 	p.pendingNegation = false
 	p.negationStack = nil
+	p.TypedChars = nil
+	p.transformerQuote = 0
 
 	for _, c := range text {
 		if p.state == stateError {

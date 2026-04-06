@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { EditorEngine } from '../../src/editor/engine.js'
+import { Diagnostic } from '../../src/core/validator.js'
+import { Range } from '../../src/core/range.js'
 
 const TEST_COLUMNS = {
     status: {
@@ -438,7 +440,7 @@ describe('EditorEngine', () => {
             engine.setCursorPosition(9)
             await engine.updateSuggestions()
             expect(engine.suggestions).toHaveLength(0)
-            expect(engine.message).toContain('len outputs int')
+            expect(engine.message).toBe('No matching transformers')
         })
 
         it('shows specific type mismatch naming the attempted transformer', async () => {
@@ -446,7 +448,9 @@ describe('EditorEngine', () => {
             engine.setQuery('host|len|upper')
             engine.setCursorPosition(14)
             await engine.updateSuggestions()
-            expect(engine.message).toBe('len outputs int, upper requires string input')
+            // Diagnostics catch the chain type error
+            engine.getDiagnostics()
+            expect(engine.diagnostics.some((d) => d.code === 'chain_type')).toBe(true)
         })
 
         it('shows unknown transformer error for field|bogus', async () => {
@@ -455,7 +459,10 @@ describe('EditorEngine', () => {
             engine.setCursorPosition(10)
             await engine.updateSuggestions()
             expect(engine.suggestions).toHaveLength(0)
-            expect(engine.message).toBe('Unknown transformer: bogus')
+            expect(engine.message).toBe('No matching transformers')
+            // Diagnostics catch the unknown transformer
+            engine.getDiagnostics()
+            expect(engine.diagnostics.some((d) => d.code === 'unknown_transformer')).toBe(true)
         })
     })
 
@@ -1184,6 +1191,146 @@ describe('EditorEngine', () => {
             engine.setCursorPosition(16)
             await engine.updateSuggestions()
             expect(engine.suggestionType).toBe('column')
+        })
+    })
+
+    describe('getDiagnostics', () => {
+        it('returns empty array for empty query', () => {
+            const engine = new EditorEngine({ status: { type: 'enum' } })
+            engine.setQuery('')
+            expect(engine.getDiagnostics()).toEqual([])
+        })
+
+        it('returns syntax diagnostic when query has syntax error', () => {
+            const engine = new EditorEngine({ status: { type: 'enum' } })
+            engine.setQuery('=X')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBe(1)
+            expect(diags[0].code).toBe('syntax')
+        })
+
+        it('returns empty for incomplete query at end', () => {
+            const engine = new EditorEngine({ status: { type: 'enum' } })
+            engine.setQuery('status=info and ')
+            expect(engine.getDiagnostics()).toEqual([])
+        })
+
+        it('returns unknown_column diagnostic for unrecognized column', () => {
+            const engine = new EditorEngine({ host: { type: 'string' } })
+            engine.setQuery('hstt=X')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBe(1)
+            expect(diags[0].code).toBe('unknown_column')
+            expect(diags[0].range.start).toBe(0)
+            expect(diags[0].range.end).toBe(4)
+        })
+
+        it('returns no diagnostics for valid query', () => {
+            const engine = new EditorEngine({ status: { type: 'enum', values: ['info'] } })
+            engine.setQuery('status=info')
+            expect(engine.getDiagnostics()).toEqual([])
+        })
+
+        it('column type mapping: enum → string', () => {
+            const engine = new EditorEngine({ status: { type: 'enum' } })
+            engine.setQuery('status=x')
+            engine.getDiagnostics()
+            expect(engine._validatorColumns[0].normalizedType).toBe('string')
+        })
+
+        it('column type mapping: number → int', () => {
+            const engine = new EditorEngine({ level: { type: 'number' } })
+            engine.setQuery('level=1')
+            engine.getDiagnostics()
+            expect(engine._validatorColumns[0].normalizedType).toBe('int')
+        })
+
+        it('column type mapping: unknown type passes through', () => {
+            const engine = new EditorEngine({ x: { type: 'custom' } })
+            engine.setQuery('x=1')
+            engine.getDiagnostics()
+            expect(engine._validatorColumns[0].normalizedType).toBe('custom')
+        })
+
+        it('setColumns() invalidates validator column cache', () => {
+            const engine = new EditorEngine({ a: { type: 'string' } })
+            engine.setQuery('a=1')
+            engine.getDiagnostics()
+            expect(engine._validatorColumns).not.toBeNull()
+            engine.setColumns({ b: { type: 'number' } })
+            expect(engine._validatorColumns).toBeNull()
+            engine.setQuery('b=1')
+            engine.getDiagnostics()
+            expect(engine._validatorColumns).not.toBeNull()
+            expect(engine._validatorColumns[0].name).toBe('b')
+        })
+
+        it('returns empty for whitespace-only query', () => {
+            const engine = new EditorEngine({ a: { type: 'string' } })
+            engine.setQuery('   ')
+            expect(engine.getDiagnostics()).toEqual([])
+        })
+    })
+
+    describe('getHighlightTokens with diagnostics', () => {
+        it('renders without diagnostic spans when diagnostics is null', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info', null)
+            expect(html).not.toContain('flyql-diagnostic')
+        })
+
+        it('renders without diagnostic spans when diagnostics is empty array', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('status=info', [])
+            expect(html).not.toContain('flyql-diagnostic')
+        })
+
+        it('adds diagnostic span for error diagnostic', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const diag = new Diagnostic(new Range(0, 4), "column 'hstt' is not defined", 'error', 'unknown_column')
+            const html = engine.getHighlightTokens('hstt=X', [diag])
+            expect(html).toContain('flyql-diagnostic--error')
+        })
+
+        it('adds diagnostic span for warning diagnostic', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const diag = new Diagnostic(new Range(0, 6), 'deprecated column', 'warning', 'deprecated')
+            const html = engine.getHighlightTokens('status=info', [diag])
+            expect(html).toContain('flyql-diagnostic--warning')
+        })
+
+        it('preserves syntax coloring spans inside diagnostic spans', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const diag = new Diagnostic(new Range(0, 4), 'unknown column', 'error', 'unknown_column')
+            const html = engine.getHighlightTokens('hstt=X', [diag])
+            expect(html).toContain('flyql-key')
+            expect(html).toContain('flyql-diagnostic--error')
+        })
+
+        it('shows message in title attribute', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const diag = new Diagnostic(new Range(0, 4), "column 'hstt' is not defined", 'error', 'unknown_column')
+            const html = engine.getHighlightTokens('hstt=X', [diag])
+            expect(html).toContain('title="')
+            expect(html).toContain('is not defined')
+        })
+
+        it('handles overlapping diagnostics with error > warning priority', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const warn = new Diagnostic(new Range(0, 6), 'warning msg', 'warning', 'w1')
+            const err = new Diagnostic(new Range(2, 4), 'error msg', 'error', 'e1')
+            const html = engine.getHighlightTokens('status=info', [warn, err])
+            // The overlapping region (chars 2-3) should be error, not warning
+            expect(html).toContain('flyql-diagnostic--error')
+        })
+
+        it('handles adjacent diagnostics as separate spans', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const d1 = new Diagnostic(new Range(0, 3), 'first', 'error', 'e1')
+            const d2 = new Diagnostic(new Range(3, 6), 'second', 'error', 'e2')
+            const html = engine.getHighlightTokens('status=info', [d1, d2])
+            const matches = html.match(/flyql-diagnostic--error/g)
+            expect(matches.length).toBeGreaterThanOrEqual(2)
         })
     })
 })

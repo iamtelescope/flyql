@@ -254,6 +254,11 @@ def _parse_transformer_arguments(
                 i += 1
             if i < len(args_str):
                 i += 1  # consume closing quote
+            else:
+                raise KeyParseError(
+                    "unclosed string in transformer arguments",
+                    Range(base_offset + arg_start, base_offset + i),
+                )
             arg_end = i
             args.append(val)
             ranges.append(Range(base_offset + arg_start, base_offset + arg_end))
@@ -289,11 +294,23 @@ def _parse_transformer_spec(spec: str, base_offset: int) -> Transformer:
     name = spec[:paren_index]
     close_index = spec.rfind(")")
     if close_index == -1:
+        partial_args_str = spec[paren_index + 1 :]
+        if partial_args_str:
+            arg_values, arg_ranges = _parse_transformer_arguments(
+                partial_args_str, base_offset + paren_index + 1
+            )
+            return Transformer(
+                name=name,
+                arguments=arg_values,
+                range=Range(base_offset, base_offset + len(spec)),
+                name_range=Range(base_offset, base_offset + paren_index),
+                argument_ranges=arg_ranges,
+            )
         return Transformer(
-            name=spec,
+            name=name,
             arguments=[],
             range=Range(base_offset, base_offset + len(spec)),
-            name_range=Range(base_offset, base_offset + len(spec)),
+            name_range=Range(base_offset, base_offset + paren_index),
             argument_ranges=[],
         )
     args_str = spec[paren_index + 1 : close_index]

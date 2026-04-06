@@ -1,6 +1,7 @@
 import pytest
 from flyql.core.parser import parse
 from flyql.core.constants import CharType
+from tests.core.helpers import load_test_data
 
 
 class TestTypedChars:
@@ -183,3 +184,17 @@ class TestTypedChars:
         for char, _ in parser.typed_chars:
             if char.pos > newline_pos:
                 assert char.line == 1
+
+
+_fixture_data = load_test_data("typed_chars.json")
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    _fixture_data["tests"],
+    ids=[tc["name"] for tc in _fixture_data["tests"]],
+)
+def test_typed_chars_shared_fixture(test_case):
+    parser = parse(test_case["input"])
+    actual = [[c.value, ct.value] for c, ct in parser.typed_chars]
+    assert actual == test_case["expected_typed_chars"]

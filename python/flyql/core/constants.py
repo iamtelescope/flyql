@@ -8,6 +8,14 @@ class CharType(Enum):
     NUMBER = "number"
     STRING = "string"
     SPACE = "space"
+    BOOLEAN = "flyqlBoolean"
+    NULL = "flyqlNull"
+    PIPE = "flyqlPipe"
+    TRANSFORMER = "flyqlTransformer"
+    ARGUMENT = "flyqlArgument"
+    ARGUMENT_STRING = "flyqlArgumentString"
+    ARGUMENT_NUMBER = "flyqlArgumentNumber"
+    WILDCARD = "flyqlWildcard"
 
 
 class Operator(Enum):

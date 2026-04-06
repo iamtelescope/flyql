@@ -30,6 +30,8 @@ export const CharType = Object.freeze({
     PIPE: 'flyqlPipe',
     TRANSFORMER: 'flyqlTransformer',
     ARGUMENT: 'flyqlArgument',
+    ARGUMENT_STRING: 'flyqlArgumentString',
+    ARGUMENT_NUMBER: 'flyqlArgumentNumber',
     WILDCARD: 'flyqlWildcard',
 })
 

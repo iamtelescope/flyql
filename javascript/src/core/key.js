@@ -231,7 +231,14 @@ function parseTransformerArguments(argsStr, baseOffset) {
                 }
                 i++
             }
-            if (i < argsStr.length) i++ // skip closing quote
+            if (i < argsStr.length) {
+                i++ // skip closing quote
+            } else {
+                throw new KeyParseError(
+                    'unclosed string in transformer arguments',
+                    new Range(baseOffset + argStart, baseOffset + i),
+                )
+            }
             const argEnd = i
             args.push(val)
             ranges.push(new Range(baseOffset + argStart, baseOffset + argEnd))
@@ -265,12 +272,17 @@ function parseTransformerSpec(spec, baseOffset) {
     const name = spec.substring(0, parenIndex)
     const closeIndex = spec.lastIndexOf(')')
     if (closeIndex === -1) {
+        const partialArgsStr = spec.substring(parenIndex + 1)
+        const { args, ranges } =
+            partialArgsStr.length > 0
+                ? parseTransformerArguments(partialArgsStr, baseOffset + parenIndex + 1)
+                : { args: [], ranges: [] }
         return new Transformer(
-            spec,
-            [],
+            name,
+            args,
             new Range(baseOffset, baseOffset + spec.length),
-            new Range(baseOffset, baseOffset + spec.length),
-            [],
+            new Range(baseOffset, baseOffset + parenIndex),
+            ranges,
         )
     }
     const argsStr = spec.substring(parenIndex + 1, closeIndex)

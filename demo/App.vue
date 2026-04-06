@@ -47,7 +47,7 @@
                         <option value="postgresql">PostgreSQL</option>
                         <option value="starrocks">StarRocks</option>
                     </select>
-                    <button class="generate-btn" :disabled="!isValid || generating" @click="generate">
+                    <button class="generate-btn" :disabled="generating" @click="generate">
                         {{ generating ? 'Generating...' : 'Generate SQL' }}
                     </button>
                 </div>
@@ -246,7 +246,7 @@ function checkStatus() {
 }
 
 async function generate() {
-    if (!isValid.value || generating.value) return
+    if (generating.value || !query.value) return
     generating.value = true
     generateError.value = ''
     generatedSQL.value = ''

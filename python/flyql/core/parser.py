@@ -60,6 +60,7 @@ class Parser:
         self.typed_chars: List[tuple[Char, CharType]] = []
         self._pipe_seen_in_key: bool = False
         self._transformer_paren_depth: int = 0
+        self._transformer_quote: Optional[str] = None
         self.pending_negation: bool = False
         self.negation_stack: List[bool] = []
         self.in_list_values: List[Any] = []
@@ -134,6 +135,7 @@ class Parser:
         self.key = ""
         self._pipe_seen_in_key = False
         self._transformer_paren_depth = 0
+        self._transformer_quote = None
         self._key_start = -1
         self._key_end = -1
 
@@ -594,31 +596,48 @@ class Parser:
         if not self.char:
             return
 
+        if self._transformer_quote:
+            self.extend_key()
+            if self.char.value == self._transformer_quote:
+                self._transformer_quote = None
+            self.store_typed_char(CharType.ARGUMENT_STRING)
+            return
+
         if self.char.is_delimiter():
             if self._transformer_paren_depth > 0:
                 self.extend_key()
-                self.store_typed_char(CharType.KEY)
+                self.store_typed_char(CharType.ARGUMENT)
                 return
             if self.key == NOT_KEYWORD:
                 self.toggle_pending_negation()
                 self.reset_key()
                 self.set_state(State.EXPECT_NOT_TARGET)
-                self.store_typed_char(CharType.OPERATOR)
             else:
                 self.set_state(State.KEY_OR_BOOL_OP)
-                self.store_typed_char(CharType.SPACE)
+            self.store_typed_char(CharType.SPACE)
         elif self.char.is_key():
+            self.extend_key()
             if self.char.value == "|":
                 self._pipe_seen_in_key = True
-            self.extend_key()
-            self.store_typed_char(CharType.KEY)
+                self.store_typed_char(CharType.PIPE)
+            elif self._transformer_paren_depth > 0:
+                self.store_typed_char(CharType.ARGUMENT_NUMBER)
+            elif self._pipe_seen_in_key:
+                self.store_typed_char(CharType.TRANSFORMER)
+            else:
+                self.store_typed_char(CharType.KEY)
         elif self._pipe_seen_in_key and self.char.value in "(),\"'":
             if self.char.value == "(":
                 self._transformer_paren_depth += 1
             elif self.char.value == ")":
                 self._transformer_paren_depth -= 1
+            elif self._transformer_paren_depth > 0 and self.char.value in "\"'":
+                self._transformer_quote = self.char.value
+                self.extend_key()
+                self.store_typed_char(CharType.ARGUMENT_STRING)
+                return
             self.extend_key()
-            self.store_typed_char(CharType.KEY)
+            self.store_typed_char(CharType.ARGUMENT)
         elif self.char.is_single_quote():
             self.extend_key()
             self.set_state(State.SINGLE_QUOTED_KEY)
@@ -1038,6 +1057,8 @@ class Parser:
                             return
                         else:
                             self.set_state(State.BOOL_OP_DELIMITER)
+                    else:
+                        self.set_state(State.BOOL_OP_DELIMITER)
 
     def in_state_key_or_bool_op(self) -> None:
         """After a key and delimiter, determine if truthy expression, has operator, or in/not in."""
@@ -1459,11 +1480,10 @@ class Parser:
         elif self.state == State.KEY_OR_BOOL_OP:
             self.extend_tree(self.new_truthy_expression())
             self.reset_bool_operator()
-        elif self.state in (
-            State.VALUE,
-            State.DOUBLE_QUOTED_VALUE,
-            State.SINGLE_QUOTED_VALUE,
-        ):
+        elif self.state in (State.DOUBLE_QUOTED_VALUE, State.SINGLE_QUOTED_VALUE):
+            self.set_error_state("unclosed string", 28)
+            return
+        elif self.state == State.VALUE:
             self.extend_tree()
             self.reset_bool_operator()
         elif self.state == State.BOOL_OP_DELIMITER:

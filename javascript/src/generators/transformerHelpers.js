@@ -10,7 +10,19 @@ export function applyTransformerSQL(columnRef, transformers, dialect, registry =
         if (!transformer) {
             throw new Error(`unknown transformer: ${tDict.name}`)
         }
-        result = transformer.sql(dialect, result, tDict.arguments || [])
+        const args = tDict.arguments || []
+        const requiredCount = transformer.argSchema.filter((s) => s.required).length
+        const maxCount = transformer.argSchema.length
+        if (args.length < requiredCount || args.length > maxCount) {
+            let expectStr
+            if (requiredCount === maxCount) {
+                expectStr = `${requiredCount} arguments`
+            } else {
+                expectStr = `${requiredCount}..${maxCount} arguments`
+            }
+            throw new Error(`${tDict.name} expects ${expectStr}, got ${args.length}`)
+        }
+        result = transformer.sql(dialect, result, args)
     }
     return result
 }

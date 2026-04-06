@@ -124,6 +124,24 @@
                         No suggestions
                     </div>
                 </div>
+                <div
+                    v-if="diagnostics.length > 0"
+                    class="flyql-panel__diagnostics"
+                    @mousedown.stop="panelInteracting = true"
+                    @mouseup="panelInteracting = false"
+                >
+                    <div
+                        v-for="(diag, idx) in diagnostics"
+                        :key="idx"
+                        class="flyql-panel__diagnostic-item"
+                        :class="'flyql-panel__diagnostic-item--' + diag.severity"
+                    >
+                        <span class="flyql-panel__diagnostic-icon">{{
+                            diag.severity === 'error' ? '\u2716' : '\u26A0'
+                        }}</span>
+                        <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
+                    </div>
+                </div>
                 <div class="flyql-panel__footer">
                     <span v-if="context && context.key && suggestionType === 'value'" class="flyql-panel__footer-col">{{
                         context.key
@@ -159,7 +177,7 @@ const props = defineProps({
     dark: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus', 'blur'])
+const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus', 'blur', 'diagnostics'])
 
 // ── Engine ──
 
@@ -189,6 +207,7 @@ const activated = ref(false)
 const panelRef = ref(null)
 const panelLeft = ref(0)
 const panelTop = ref(0)
+let panelInteracting = false
 
 // ── Reactive state read from engine ──
 
@@ -200,6 +219,7 @@ const suggestionType = ref('')
 const message = ref('')
 const stateLabel = ref('')
 const context = ref(null)
+const diagnostics = ref([])
 const lastParseError = ref(null)
 
 const panelStyle = computed(() => ({
@@ -222,6 +242,7 @@ function syncFromEngine() {
     message.value = engine.message
     stateLabel.value = engine.getStateLabel()
     context.value = engine.context
+    diagnostics.value = engine.diagnostics
 
     // Check for parse-error transitions
     const currentError = engine.getParseError()
@@ -234,7 +255,7 @@ function syncFromEngine() {
 // ── Highlighting ──
 
 const highlightedHtml = computed(() => {
-    return engine.getHighlightTokens(props.modelValue)
+    return engine.getHighlightTokens(props.modelValue, diagnostics.value)
 })
 
 // ── Panel Positioning ──
@@ -303,9 +324,24 @@ async function triggerSuggestions() {
     if (!ta) return
     engine.setQuery(ta.value)
     engine.setCursorPosition(ta.selectionStart)
+
+    // Run diagnostics first — fast, sync operation
+    engine.getDiagnostics()
+    syncFromEngine()
+    emit('diagnostics', diagnostics.value)
+
+    // If there are diagnostic errors, clear suggestions and stop
+    if (diagnostics.value.length > 0) {
+        engine.suggestions = []
+        engine.message = ''
+        engine.suggestionType = ''
+        syncFromEngine()
+        return
+    }
+
     try {
         const promise = engine.updateSuggestions()
-        syncFromEngine() // sync immediately after engine clears state
+        syncFromEngine()
         const ctx = await promise
         syncFromEngine()
         nextTick(() => {
@@ -524,17 +560,29 @@ function acceptSuggestion(index) {
 
     engine.setQuery(newValue)
     engine.setCursorPosition(newCursorPos)
-    engine
-        .updateSuggestions()
-        .then((nextCtx) => {
-            syncFromEngine()
-            nextTick(() => {
-                updatePanelPosition(nextCtx)
+
+    engine.getDiagnostics()
+    syncFromEngine()
+    emit('diagnostics', diagnostics.value)
+
+    if (diagnostics.value.length > 0) {
+        engine.suggestions = []
+        engine.message = ''
+        engine.suggestionType = ''
+        syncFromEngine()
+    } else {
+        engine
+            .updateSuggestions()
+            .then((nextCtx) => {
+                syncFromEngine()
+                nextTick(() => {
+                    updatePanelPosition(nextCtx)
+                })
             })
-        })
-        .catch(() => {
-            syncFromEngine()
-        })
+            .catch(() => {
+                syncFromEngine()
+            })
+    }
 
     emit('update:modelValue', newValue)
 
@@ -564,6 +612,7 @@ function onFocus() {
 }
 
 function onBlur() {
+    if (panelInteracting) return
     focused.value = false
     activated.value = false
     engine.state.setFocused(false)
@@ -638,7 +687,7 @@ watch(
 watch(
     () => props.columns,
     (newColumns) => {
-        engine.columns = newColumns || {}
+        engine.setColumns(newColumns)
     },
 )
 

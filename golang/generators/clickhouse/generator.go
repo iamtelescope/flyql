@@ -756,6 +756,21 @@ func applyTransformerSQL(columnRef string, keyTransformers []flyql.Transformer, 
 		if transformer == nil {
 			return "", fmt.Errorf("unknown transformer: %s", t.Name)
 		}
+		schema := transformer.ArgSchema()
+		requiredCount := 0
+		for _, s := range schema {
+			if s.Required {
+				requiredCount++
+			}
+		}
+		maxCount := len(schema)
+		got := len(t.Arguments)
+		if got < requiredCount || got > maxCount {
+			if requiredCount == maxCount {
+				return "", fmt.Errorf("%s expects %d arguments, got %d", t.Name, requiredCount, got)
+			}
+			return "", fmt.Errorf("%s expects %d..%d arguments, got %d", t.Name, requiredCount, maxCount, got)
+		}
 		result = transformer.SQL(dialect, result, t.Arguments)
 	}
 	return result, nil

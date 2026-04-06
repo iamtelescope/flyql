@@ -5,6 +5,11 @@
  */
 
 import { Parser, CharType, State, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
+import { Column } from '../core/column.js'
+import { Diagnostic, diagnose, CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from '../core/validator.js'
+import { Range } from '../core/range.js'
+import { TransformerType } from '../transformers/base.js'
+import { defaultRegistry } from '../transformers/registry.js'
 import { EditorState } from './state.js'
 import {
     updateSuggestions,
@@ -13,6 +18,14 @@ import {
     getInsertRange,
     STATE_LABELS,
 } from './suggestions.js'
+
+const EDITOR_TYPE_TO_NORMALIZED = {
+    enum: TransformerType.STRING,
+    string: TransformerType.STRING,
+    number: TransformerType.INT,
+    float: TransformerType.FLOAT,
+    boolean: TransformerType.BOOL,
+}
 
 const CHAR_TYPE_CLASS = {
     [CharType.KEY]: 'flyql-key',
@@ -26,11 +39,13 @@ const CHAR_TYPE_CLASS = {
     [CharType.PIPE]: 'flyql-transformer',
     [CharType.TRANSFORMER]: 'flyql-transformer',
     [CharType.ARGUMENT]: 'flyql-argument',
+    [CharType.ARGUMENT_STRING]: 'flyql-argument-string',
+    [CharType.ARGUMENT_NUMBER]: 'flyql-argument-number',
     [CharType.WILDCARD]: 'flyql-wildcard',
 }
 
 function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 /**
@@ -64,11 +79,117 @@ export class EditorEngine {
         this.suggestionType = ''
         this.incomplete = false
         this.message = ''
+
         this.isLoading = false
         this.keyCache = {}
         this._suggestionSeq = 0
         this._debounceTimer = null
         this._valueState = null
+        this._validatorColumns = null
+        this.diagnostics = []
+    }
+
+    /**
+     * Set columns and invalidate the validator column cache.
+     */
+    setColumns(columns) {
+        this.columns = columns || {}
+        this._validatorColumns = null
+    }
+
+    _buildValidatorColumns() {
+        this._validatorColumns = Object.entries(this.columns).map(([name, def]) => {
+            const d = def || {}
+            const normalizedType = EDITOR_TYPE_TO_NORMALIZED[d.type] || d.type || null
+            return new Column(name, false, d.type || '', normalizedType, { matchName: name })
+        })
+        return this._validatorColumns
+    }
+
+    /**
+     * Run the validator on the current query and return diagnostics.
+     * Includes parser syntax errors and semantic validation errors.
+     */
+    getDiagnostics() {
+        const value = this.state.query
+        if (!value) {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+        const normalized = normalizeForParser(value)
+        const parser = new Parser()
+        try {
+            parser.parse(normalized, false, false)
+        } catch (e) {
+            const range = e.range || new Range(parser.typedChars ? parser.typedChars.length : 0, normalized.length)
+            // Suppress syntax errors at the end of query — user is still typing
+            if (range.end >= normalized.length) {
+                this.diagnostics = []
+                return this.diagnostics
+            }
+            this.diagnostics = [new Diagnostic(range, e.message || 'Parse error', 'error', 'syntax')]
+            return this.diagnostics
+        }
+        if (parser.state === State.ERROR) {
+            const start = parser.typedChars ? parser.typedChars.length : 0
+            // Suppress if error is at the end of query
+            if (start >= normalized.length - 1) {
+                this.diagnostics = []
+                return this.diagnostics
+            }
+            this.diagnostics = [
+                new Diagnostic(
+                    new Range(start, normalized.length),
+                    parser.errorText || 'Parse error',
+                    'error',
+                    'syntax',
+                ),
+            ]
+            return this.diagnostics
+        }
+        if (
+            parser.state !== State.EXPECT_BOOL_OP &&
+            parser.state !== State.VALUE &&
+            parser.state !== State.KEY &&
+            parser.state !== State.KEY_OR_BOOL_OP
+        ) {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+        if (!parser.root) {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+        const columns = this._validatorColumns || this._buildValidatorColumns()
+        const reg = this.registry || defaultRegistry()
+        try {
+            this.diagnostics = diagnose(parser.root, columns, reg)
+        } catch {
+            this.diagnostics = []
+        }
+        // Suppress unknown_transformer/unknown_column at query end when name is a prefix of a known one
+        if (this.diagnostics.length > 0) {
+            const queryLen = normalized.length
+            const transformerNames = reg.names()
+            const columnNames = Object.keys(this.columns).map((n) => n.toLowerCase())
+            this.diagnostics = this.diagnostics.filter((d) => {
+                if (d.range.end < queryLen) return true
+                if (d.code === CODE_UNKNOWN_TRANSFORMER) {
+                    const match = d.message.match(/^unknown transformer: '(.+)'$/)
+                    if (!match) return true
+                    const partial = match[1]
+                    return !transformerNames.some((n) => n.startsWith(partial) && n !== partial)
+                }
+                if (d.code === CODE_UNKNOWN_COLUMN) {
+                    const match = d.message.match(/^column '(.+)' is not defined$/)
+                    if (!match) return true
+                    const partial = match[1].toLowerCase()
+                    return !columnNames.some((n) => n.startsWith(partial) && n !== partial)
+                }
+                return true
+            })
+        }
+        return this.diagnostics
     }
 
     /**
@@ -151,8 +272,20 @@ export class EditorEngine {
         if (pipeIndex >= 0) {
             const lastPipeIndex = keyStr.lastIndexOf('|')
             ctx.transformerBaseKey = keyStr.substring(0, pipeIndex)
-            ctx.transformerPrefix = keyStr.substring(lastPipeIndex + 1)
+            let rawPrefix = keyStr.substring(lastPipeIndex + 1)
             ctx.transformerChain = pipeIndex < lastPipeIndex ? keyStr.substring(pipeIndex + 1, lastPipeIndex) : ''
+            // Strip argument portion from prefix: "upper(1,2" → "upper"
+            const parenIdx = rawPrefix.indexOf('(')
+            if (parenIdx >= 0 && !rawPrefix.endsWith(')')) {
+                ctx.transformerPrefix = rawPrefix.substring(0, parenIdx)
+                ctx.transformerInArgs = true
+            } else if (parenIdx >= 0) {
+                ctx.transformerPrefix = rawPrefix.substring(0, parenIdx)
+                ctx.transformerInArgs = false
+            } else {
+                ctx.transformerPrefix = rawPrefix
+                ctx.transformerInArgs = false
+            }
             // Normalize key to base column for all downstream lookups
             ctx.key = ctx.transformerBaseKey
             if (parser.state === State.KEY) {
@@ -299,6 +432,7 @@ export class EditorEngine {
             this.suggestionType = result.suggestionType
             this.incomplete = result.incomplete || false
             this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+
             this.state.selectedIndex = 0
             return ctx
         }
@@ -338,6 +472,7 @@ export class EditorEngine {
             this.suggestionType = result.suggestionType
             this.incomplete = result.incomplete || false
             this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+
             this.state.selectedIndex = 0
             return ctx
         }
@@ -368,6 +503,7 @@ export class EditorEngine {
         this.suggestionType = result.suggestionType
         this.incomplete = result.incomplete || false
         this.message = result.message
+        this.messageIsError = result.messageIsError || false
         this.state.selectedIndex = 0
 
         return ctx
@@ -376,8 +512,9 @@ export class EditorEngine {
     /**
      * Generate highlight tokens as HTML string.
      * Accepts an optional query parameter to avoid mutating engine state.
+     * When diagnostics are provided, wraps affected characters with diagnostic spans.
      */
-    getHighlightTokens(query) {
+    getHighlightTokens(query, diagnostics = null) {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
@@ -394,9 +531,24 @@ export class EditorEngine {
             return escapeHtml(value)
         }
 
+        // Build per-character diagnostic map
+        let diagMap = null
+        if (diagnostics && diagnostics.length > 0) {
+            diagMap = new Array(value.length).fill(null)
+            for (const d of diagnostics) {
+                for (let j = d.range.start; j < d.range.end && j < value.length; j++) {
+                    const existing = diagMap[j]
+                    if (!existing || (d.severity === 'error' && existing.severity !== 'error')) {
+                        diagMap[j] = d
+                    }
+                }
+            }
+        }
+
         let html = ''
         let currentType = null
         let currentText = ''
+        let currentDiag = null
 
         const flushSpan = () => {
             if (!currentText) return
@@ -410,18 +562,25 @@ export class EditorEngine {
                     spanType = CharType.NUMBER
                 }
             }
-            html += wrapSpan(spanType, currentText)
+            const inner = wrapSpan(spanType, currentText)
+            if (currentDiag) {
+                const sev = currentDiag.severity === 'warning' ? 'warning' : 'error'
+                html += `<span class="flyql-diagnostic flyql-diagnostic--${sev}" title="${escapeHtml(currentDiag.message)}">${inner}</span>`
+            } else {
+                html += inner
+            }
         }
 
         for (let i = 0; i < typedChars.length; i++) {
             const charType = typedChars[i][1]
-            // Use original character (preserves newlines) instead of normalized space
             const ch = value[i] !== undefined ? value[i] : typedChars[i][0].value
-            if (charType === currentType && ch !== '\n') {
+            const newDiag = diagMap ? diagMap[i] : null
+            if (charType === currentType && newDiag === currentDiag && ch !== '\n') {
                 currentText += ch
             } else {
                 flushSpan()
                 currentType = charType
+                currentDiag = newDiag
                 currentText = ch
             }
         }

@@ -117,6 +117,51 @@
         "errno": 19,
         "message_contains": "unmatched parenthesis"
       }
+    },
+    {
+      "name": "trailing_and_operator",
+      "input": "a=1 and",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 26,
+        "message_contains": "unexpected EOF"
+      }
+    },
+    {
+      "name": "trailing_or_operator",
+      "input": "a=1 or",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 26,
+        "message_contains": "unexpected EOF"
+      }
+    },
+    {
+      "name": "trailing_and_operator_with_space",
+      "input": "a=1 and ",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 26,
+        "message_contains": "unexpected EOF"
+      }
+    },
+    {
+      "name": "unclosed_single_quoted_value",
+      "input": "host='123",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 28,
+        "message_contains": "unclosed string"
+      }
+    },
+    {
+      "name": "unclosed_double_quoted_value",
+      "input": "host=\"123",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 28,
+        "message_contains": "unclosed string"
+      }
     }
   ]
 }

@@ -89,6 +89,49 @@ export function generateMonacoTokens(parser) {
     return data
 }
 
+/**
+ * Convert Diagnostic[] to Monaco IMarkerData[].
+ * @param {Diagnostic[]} diagnostics - from diagnose()
+ * @param {string} queryText - the original (pre-normalization) query text
+ * @returns {object[]} IMarkerData-compatible objects
+ */
+export function diagnosticsToMarkers(diagnostics, queryText) {
+    if (!diagnostics || diagnostics.length === 0) return []
+
+    const lineStarts = [0]
+    for (let i = 0; i < queryText.length; i++) {
+        if (queryText[i] === '\n') lineStarts.push(i + 1)
+    }
+
+    function offsetToPosition(offset) {
+        const clamped = Math.min(Math.max(0, offset), queryText.length)
+        let line = 0
+        for (let i = lineStarts.length - 1; i >= 0; i--) {
+            if (lineStarts[i] <= clamped) {
+                line = i
+                break
+            }
+        }
+        return { lineNumber: line + 1, column: clamped - lineStarts[line] + 1 }
+    }
+
+    const SEVERITY = { error: 8, warning: 4 }
+
+    return diagnostics.map((d) => {
+        const start = offsetToPosition(d.range.start)
+        const end = offsetToPosition(d.range.end)
+        return {
+            startLineNumber: start.lineNumber,
+            startColumn: start.column,
+            endLineNumber: end.lineNumber,
+            endColumn: end.column,
+            message: d.message,
+            severity: SEVERITY[d.severity] || 8,
+            code: d.code,
+        }
+    })
+}
+
 export function getMonacoTokenProvider() {
     return {
         getLegend: () => ({

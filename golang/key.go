@@ -1,6 +1,7 @@
 package flyql
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -232,7 +233,7 @@ func (p *keyParser) parse(keyString string, baseOffset int) (Key, error) {
 	}, nil
 }
 
-func parseTransformerArguments(argsStr string, baseOffset int) ([]any, []Range) {
+func parseTransformerArguments(argsStr string, baseOffset int) ([]any, []Range, error) {
 	args := []any{}
 	ranges := []Range{}
 	i := 0
@@ -266,6 +267,8 @@ func parseTransformerArguments(argsStr string, baseOffset int) ([]any, []Range) 
 			}
 			if i < len(argsStr) {
 				i++
+			} else {
+				return nil, nil, fmt.Errorf("unclosed string in transformer arguments")
 			}
 			argEnd := i
 			args = append(args, val)
@@ -290,10 +293,10 @@ func parseTransformerArguments(argsStr string, baseOffset int) ([]any, []Range) 
 			i++
 		}
 	}
-	return args, ranges
+	return args, ranges, nil
 }
 
-func parseTransformerSpec(spec string, baseOffset int) Transformer {
+func parseTransformerSpec(spec string, baseOffset int) (Transformer, error) {
 	parenIdx := strings.Index(spec, "(")
 	if parenIdx == -1 {
 		return Transformer{
@@ -302,28 +305,45 @@ func parseTransformerSpec(spec string, baseOffset int) Transformer {
 			Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
 			NameRange:      Range{Start: baseOffset, End: baseOffset + len(spec)},
 			ArgumentRanges: []Range{},
-		}
+		}, nil
 	}
 	name := spec[:parenIdx]
 	closeIdx := strings.LastIndex(spec, ")")
 	if closeIdx == -1 {
+		partialArgsStr := spec[parenIdx+1:]
+		if len(partialArgsStr) > 0 {
+			argValues, argRanges, err := parseTransformerArguments(partialArgsStr, baseOffset+parenIdx+1)
+			if err != nil {
+				return Transformer{}, err
+			}
+			return Transformer{
+				Name:           name,
+				Arguments:      argValues,
+				Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
+				NameRange:      Range{Start: baseOffset, End: baseOffset + parenIdx},
+				ArgumentRanges: argRanges,
+			}, nil
+		}
 		return Transformer{
-			Name:           spec,
+			Name:           name,
 			Arguments:      []any{},
 			Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
-			NameRange:      Range{Start: baseOffset, End: baseOffset + len(spec)},
+			NameRange:      Range{Start: baseOffset, End: baseOffset + parenIdx},
 			ArgumentRanges: []Range{},
-		}
+		}, nil
 	}
 	argsStr := spec[parenIdx+1 : closeIdx]
-	argValues, argRanges := parseTransformerArguments(argsStr, baseOffset+parenIdx+1)
+	argValues, argRanges, err := parseTransformerArguments(argsStr, baseOffset+parenIdx+1)
+	if err != nil {
+		return Transformer{}, err
+	}
 	return Transformer{
 		Name:           name,
 		Arguments:      argValues,
 		Range:          Range{Start: baseOffset, End: baseOffset + len(spec)},
 		NameRange:      Range{Start: baseOffset, End: baseOffset + parenIdx},
 		ArgumentRanges: argRanges,
-	}
+	}, nil
 }
 
 func ParseKey(keyString string, baseOffset int) (Key, error) {
@@ -341,7 +361,10 @@ func ParseKey(keyString string, baseOffset int) (Key, error) {
 		key.Transformers = make([]Transformer, len(transformerSpecs))
 		runningOffset := baseOffset + len(baseKeyString) + 1
 		for i, spec := range transformerSpecs {
-			parsed := parseTransformerSpec(spec, runningOffset)
+			parsed, err := parseTransformerSpec(spec, runningOffset)
+			if err != nil {
+				return Key{}, err
+			}
 			if parsed.Name == "" {
 				return Key{}, &KeyParseError{
 					Message: "empty transformer name in key",

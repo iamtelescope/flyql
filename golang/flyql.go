@@ -1,7 +1,8 @@
 package flyql
 
 type ParseResult struct {
-	Root *Node
+	Root       *Node
+	TypedChars []TypedChar
 }
 
 func Parse(query string) (*ParseResult, error) {
@@ -9,5 +10,5 @@ func Parse(query string) (*ParseResult, error) {
 	if err := parser.Parse(query); err != nil {
 		return nil, err
 	}
-	return &ParseResult{Root: parser.Root}, nil
+	return &ParseResult{Root: parser.Root, TypedChars: parser.TypedChars}, nil
 }

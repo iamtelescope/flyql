@@ -30,7 +30,6 @@ def load_matcher_test_data(filename: str) -> list:
     [
         ("message=hello", {"message": "hello"}, True),
         ("message=hello", {"message": "hllo"}, False),
-        ("message='hello", {"message": "hello"}, True),
         ("message!=hello", {"message": "hello"}, False),
         ("message!=hello", {"message": "hellohello"}, True),
         ("message~hello", {"message": "hello"}, True),

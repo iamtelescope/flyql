@@ -23,6 +23,18 @@ def apply_transformer_sql(
         transformer = registry.get(t.name)
         if transformer is None:
             raise FlyqlError(f"unknown transformer: {t.name}")
+        schema = transformer.arg_schema
+        required_count = sum(1 for s in schema if s.required)
+        max_count = len(schema)
+        got = len(t.arguments)
+        if got < required_count or got > max_count:
+            if required_count == max_count:
+                raise FlyqlError(
+                    f"{t.name} expects {required_count} arguments, got {got}"
+                )
+            raise FlyqlError(
+                f"{t.name} expects {required_count}..{max_count} arguments, got {got}"
+            )
         result = transformer.sql(dialect, result, t.arguments)
     return result
 

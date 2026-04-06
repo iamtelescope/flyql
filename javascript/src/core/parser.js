@@ -43,6 +43,7 @@ export class Parser {
         this.typedChars = []
         this._pipeSeenInKey = false
         this._transformerParenDepth = 0
+        this._transformerQuote = null
         this.pendingNegation = false
         this.negationStack = []
         this.inListValues = []
@@ -121,6 +122,7 @@ export class Parser {
         this.key = ''
         this._pipeSeenInKey = false
         this._transformerParenDepth = 0
+        this._transformerQuote = null
         this._keyStart = -1
         this._keyEnd = -1
     }
@@ -553,6 +555,14 @@ export class Parser {
             return
         }
 
+        if (this._transformerQuote) {
+            this.extendKey()
+            if (this.char.value === this._transformerQuote) {
+                this._transformerQuote = null
+            }
+            this.storeTypedChar(CharType.ARGUMENT_STRING)
+            return
+        }
         if (this.char.isDelimiter()) {
             if (this._transformerParenDepth > 0) {
                 this.extendKey()
@@ -572,6 +582,8 @@ export class Parser {
             if (this.char.value === PIPE) {
                 this._pipeSeenInKey = true
                 this.storeTypedChar(CharType.PIPE)
+            } else if (this._transformerParenDepth > 0) {
+                this.storeTypedChar(CharType.ARGUMENT_NUMBER)
             } else if (this._pipeSeenInKey) {
                 this.storeTypedChar(CharType.TRANSFORMER)
             } else {
@@ -580,6 +592,12 @@ export class Parser {
         } else if (this._pipeSeenInKey && '(),"\''.includes(this.char.value)) {
             if (this.char.value === '(') this._transformerParenDepth++
             else if (this.char.value === ')') this._transformerParenDepth--
+            else if (this._transformerParenDepth > 0 && (this.char.value === '"' || this.char.value === "'")) {
+                this._transformerQuote = this.char.value
+                this.extendKey()
+                this.storeTypedChar(CharType.ARGUMENT_STRING)
+                return
+            }
             this.extendKey()
             this.storeTypedChar(CharType.ARGUMENT)
         } else if (this.char.isSingleQuote()) {
@@ -1204,6 +1222,8 @@ export class Parser {
                         } else {
                             this.setState(State.BOOL_OP_DELIMITER)
                         }
+                    } else {
+                        this.setState(State.BOOL_OP_DELIMITER)
                     }
                 }
             }
@@ -1578,11 +1598,10 @@ export class Parser {
         } else if (this.state === State.KEY_OR_BOOL_OP) {
             this.extendTreeWithExpression(this.newTruthyExpression())
             this.resetBoolOperator()
-        } else if (
-            this.state === State.VALUE ||
-            this.state === State.DOUBLE_QUOTED_VALUE ||
-            this.state === State.SINGLE_QUOTED_VALUE
-        ) {
+        } else if (this.state === State.DOUBLE_QUOTED_VALUE || this.state === State.SINGLE_QUOTED_VALUE) {
+            this.setErrorState('unclosed string', 28)
+            return
+        } else if (this.state === State.VALUE) {
             this.extendTree()
             this.resetBoolOperator()
         } else if (this.state === State.BOOL_OP_DELIMITER) {

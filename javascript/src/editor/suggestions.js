@@ -532,7 +532,10 @@ export async function updateSuggestions(
     } else if (ctx.expecting === 'transformer') {
         const _registry = registry || defaultRegistry()
         const exactMatch = ctx.transformerPrefix && _registry.get(ctx.transformerPrefix)
-        if (exactMatch) {
+        if (ctx.transformerInArgs && exactMatch) {
+            // Inside transformer arguments — no suggestions, diagnostics handle validation
+            suggestionType = 'transformer'
+        } else if (exactMatch) {
             // Check type compatibility with chain before showing operators
             let typeError = false
             if (ctx.transformerChain) {
@@ -540,7 +543,6 @@ export async function updateSuggestions(
                 const lastInChain = chainParts[chainParts.length - 1]
                 const lastT = _registry.get(lastInChain)
                 if (lastT && lastT.outputType !== exactMatch.inputType) {
-                    message = `${lastInChain} outputs ${lastT.outputType}, ${ctx.transformerPrefix} requires ${exactMatch.inputType} input`
                     suggestionType = 'transformer'
                     typeError = true
                 }
@@ -570,30 +572,7 @@ export async function updateSuggestions(
             suggestions = getTransformerSuggestions(columns, ctx, registry)
             suggestionType = 'transformer'
             if (suggestions.length === 0) {
-                // Determine specific error: type incompatibility or unknown transformer
-                if (ctx.transformerChain) {
-                    const chainParts = ctx.transformerChain.split('|')
-                    const lastInChain = chainParts[chainParts.length - 1]
-                    const lastT = _registry.get(lastInChain)
-                    if (lastT) {
-                        if (ctx.transformerPrefix) {
-                            const attempted = _registry.get(ctx.transformerPrefix)
-                            if (attempted) {
-                                message = `${lastInChain} outputs ${lastT.outputType}, ${ctx.transformerPrefix} requires ${attempted.inputType} input`
-                            } else {
-                                message = `${lastInChain} outputs ${lastT.outputType}, no transformers accept ${lastT.outputType} input`
-                            }
-                        } else {
-                            message = `${lastInChain} outputs ${lastT.outputType}, no transformers accept ${lastT.outputType} input`
-                        }
-                    } else {
-                        message = 'No matching transformers'
-                    }
-                } else if (ctx.transformerPrefix) {
-                    message = `Unknown transformer: ${ctx.transformerPrefix}`
-                } else {
-                    message = 'No matching transformers'
-                }
+                message = 'No matching transformers'
             }
         }
     }

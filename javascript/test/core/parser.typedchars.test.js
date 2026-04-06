@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse, CharType } from '../../src/index.js'
+import { loadTestData } from '../helpers.js'
 
 describe('Parser typedChars functionality', () => {
     it('should collect typed chars for simple expression', () => {
@@ -193,5 +194,16 @@ describe('Parser typedChars functionality', () => {
         const types = new Set(parser.typedChars.map(([_, type]) => type))
         expect(types.has(CharType.PIPE)).toBe(false)
         expect(types.has(CharType.TRANSFORMER)).toBe(false)
+    })
+
+    describe('shared fixtures', () => {
+        const testData = loadTestData('typed_chars.json')
+        testData.tests.forEach((tc) => {
+            it(tc.name, () => {
+                const parser = parse(tc.input)
+                const actual = parser.typedChars.map(([ch, type]) => [ch.value, type])
+                expect(actual).toEqual(tc.expected_typed_chars)
+            })
+        })
     })
 })

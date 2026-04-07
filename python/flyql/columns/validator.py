@@ -108,9 +108,15 @@ def diagnose(
                 else:
                     expect_str = f"{required_count}..{max_count} arguments"
                 if name_range is not None:
+                    full_range = name_range
+                    if arg_ranges:
+                        full_range = Range(
+                            name_range.start,
+                            arg_ranges[-1].end + 1,
+                        )
                     diags.append(
                         Diagnostic(
-                            range=name_range,
+                            range=full_range,
                             message=f"{transformer['name']} expects {expect_str}, got {got}",
                             severity="error",
                             code=CODE_ARG_COUNT,

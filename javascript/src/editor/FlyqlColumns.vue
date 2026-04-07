@@ -57,7 +57,7 @@
                 ref="panelRef"
                 class="flyql-panel"
                 :class="{ 'flyql-dark': dark }"
-                @mousedown.prevent
+                @mousedown.prevent="onPanelMousedown"
                 :style="panelStyle"
             >
                 <div v-if="debug" class="flyql-panel__header flyql-panel__debug">
@@ -107,7 +107,12 @@
                         No suggestions
                     </div>
                 </div>
-                <div v-if="diagnostics.length > 0" class="flyql-panel__diagnostics">
+                <div
+                    v-if="diagnostics.length > 0"
+                    class="flyql-panel__diagnostics"
+                    @mousedown.stop="panelInteracting = true"
+                    @mouseup="panelInteracting = false"
+                >
                     <div class="flyql-panel__header">Diagnostics</div>
                     <div
                         v-for="(diag, idx) in diagnostics"
@@ -198,6 +203,7 @@ const footerInfo = ref(null)
 const lastParseError = ref(null)
 const diagnostics = ref([])
 const hoveredDiagIndex = ref(-1)
+let panelInteracting = false
 
 const panelStyle = computed(() => ({
     left: panelLeft.value + 'px',
@@ -517,7 +523,14 @@ function onFocus() {
     emit('focus')
 }
 
+function onPanelMousedown(e) {
+    // Allow text selection in diagnostics (mousedown.stop handles that),
+    // prevent blur for everything else
+    e.preventDefault()
+}
+
 function onBlur() {
+    if (panelInteracting) return
     focused.value = false
     activated.value = false
     emit('blur')

@@ -147,7 +147,7 @@
         {
           "code": "arg_count",
           "severity": "error",
-          "range": [6, 11],
+          "range": [6, 14],
           "message_contains": "upper"
         }
       ]

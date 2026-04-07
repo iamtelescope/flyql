@@ -109,8 +109,12 @@ func Diagnose(parsedColumns []ParsedColumn, columns []flyql.Column, registry *tr
 				} else {
 					expectStr = fmt.Sprintf("%d..%d arguments", requiredCount, maxCount)
 				}
+				fullRange := nameRange
+				if len(argRanges) > 0 {
+					fullRange = flyql.Range{Start: nameRange.Start, End: argRanges[len(argRanges)-1].End + 1}
+				}
 				diags = append(diags, flyql.Diagnostic{
-					Range:    nameRange,
+					Range:    fullRange,
 					Message:  fmt.Sprintf("%s expects %s, got %d", transformer.Name, expectStr, got),
 					Severity: flyql.SeverityError,
 					Code:     flyql.CodeArgCount,

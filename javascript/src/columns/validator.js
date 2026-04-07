@@ -81,9 +81,14 @@ export function diagnose(parsedColumns, columns, registry = null) {
                     expectStr = `${requiredCount}..${maxCount} arguments`
                 }
                 if (ranges.nameRange) {
+                    const argRangesArr = ranges.argumentRanges || []
+                    const fullRange =
+                        argRangesArr.length > 0
+                            ? new Range(ranges.nameRange.start, argRangesArr[argRangesArr.length - 1].end + 1)
+                            : ranges.nameRange
                     diags.push(
                         new Diagnostic(
-                            ranges.nameRange,
+                            fullRange,
                             `${transformer.name} expects ${expectStr}, got ${got}`,
                             'error',
                             CODE_ARG_COUNT,

@@ -6,7 +6,7 @@ export class TransformerRegistry {
     }
 
     get(name) {
-        return this._transformers[name] || null
+        return Object.hasOwn(this._transformers, name) ? this._transformers[name] : null
     }
 
     register(transformer) {

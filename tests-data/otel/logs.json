@@ -1,0 +1,214 @@
+{
+    "schemaColumns": [
+        { "name": "Timestamp", "type": "string" },
+        { "name": "TraceId", "type": "string" },
+        { "name": "SpanId", "type": "string" },
+        { "name": "SeverityText", "type": "string" },
+        { "name": "ServiceName", "type": "string" },
+        { "name": "Body", "type": "string" },
+        { "name": "ResourceAttributes", "type": "json" },
+        { "name": "LogAttributes", "type": "json" }
+    ],
+    "editorColumns": {
+        "Timestamp": { "type": "string", "suggest": true },
+        "TraceId": { "type": "string", "suggest": true },
+        "SpanId": { "type": "string", "suggest": true },
+        "TraceFlags": { "type": "number", "suggest": true },
+        "SeverityText": { "type": "string", "suggest": true, "autocomplete": true, "values": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"] },
+        "SeverityNumber": { "type": "number", "suggest": true },
+        "ServiceName": { "type": "string", "suggest": true, "autocomplete": true, "values": ["api-gateway", "order-service", "payment-service"] },
+        "Body": { "type": "string", "suggest": true },
+        "ResourceSchemaUrl": { "type": "string", "suggest": true },
+        "ResourceAttributes": {
+            "type": "object", "suggest": true,
+            "children": {
+                "service": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "name": { "type": "string", "suggest": true },
+                        "version": { "type": "string", "suggest": true }
+                    }
+                },
+                "k8s": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "cluster": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "namespace": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "deployment": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "pod": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true }, "uid": { "type": "string", "suggest": true } } },
+                        "container": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "node": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } }
+                    }
+                },
+                "deployment": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "environment": {
+                            "type": "object", "suggest": true,
+                            "children": {
+                                "name": { "type": "string", "suggest": true, "autocomplete": true, "values": ["production", "staging", "development"] }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "ScopeSchemaUrl": { "type": "string", "suggest": true },
+        "ScopeName": { "type": "string", "suggest": true },
+        "ScopeVersion": { "type": "string", "suggest": true },
+        "ScopeAttributes": { "type": "object", "suggest": true, "children": { "component": { "type": "string", "suggest": true } } },
+        "LogAttributes": {
+            "type": "object", "suggest": true,
+            "children": {
+                "http": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "method": { "type": "string", "suggest": true, "autocomplete": true, "values": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+                        "url": { "type": "string", "suggest": true },
+                        "status_code": { "type": "number", "suggest": true },
+                        "duration_ms": { "type": "number", "suggest": true }
+                    }
+                },
+                "error": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "type": { "type": "string", "suggest": true },
+                        "message": { "type": "string", "suggest": true }
+                    }
+                },
+                "db": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["postgresql", "redis", "mysql"] },
+                        "operation": { "type": "string", "suggest": true, "autocomplete": true, "values": ["SELECT", "INSERT", "UPDATE", "DELETE", "GET", "SET"] },
+                        "statement": { "type": "string", "suggest": true },
+                        "duration_ms": { "type": "number", "suggest": true }
+                    }
+                },
+                "messaging": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["kafka", "rabbitmq"] },
+                        "destination": { "type": "string", "suggest": true },
+                        "operation": { "type": "string", "suggest": true, "autocomplete": true, "values": ["publish", "consume"] },
+                        "message": { "type": "object", "suggest": true, "children": { "id": { "type": "string", "suggest": true } } }
+                    }
+                },
+                "rpc": {
+                    "type": "object", "suggest": true,
+                    "children": {
+                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["grpc"] },
+                        "service": { "type": "string", "suggest": true },
+                        "method": { "type": "string", "suggest": true },
+                        "grpc": { "type": "object", "suggest": true, "children": { "status_code": { "type": "number", "suggest": true } } }
+                    }
+                },
+                "retry": { "type": "object", "suggest": true, "children": { "count": { "type": "number", "suggest": true } } }
+            }
+        }
+    },
+    "dialectTypes": {
+        "clickhouse": {
+            "Timestamp": "DateTime64(9)",
+            "TraceId": "String",
+            "SpanId": "String",
+            "TraceFlags": "UInt8",
+            "SeverityText": "LowCardinality(String)",
+            "SeverityNumber": "UInt8",
+            "ServiceName": "LowCardinality(String)",
+            "Body": "String",
+            "ResourceSchemaUrl": "LowCardinality(String)",
+            "ResourceAttributes": "Map(LowCardinality(String), String)",
+            "ScopeSchemaUrl": "LowCardinality(String)",
+            "ScopeName": "String",
+            "ScopeVersion": "LowCardinality(String)",
+            "ScopeAttributes": "Map(LowCardinality(String), String)",
+            "LogAttributes": "Map(LowCardinality(String), String)"
+        },
+        "postgresql": {
+            "Timestamp": "timestamp",
+            "TraceId": "text",
+            "SpanId": "text",
+            "TraceFlags": "smallint",
+            "SeverityText": "text",
+            "SeverityNumber": "smallint",
+            "ServiceName": "text",
+            "Body": "text",
+            "ResourceSchemaUrl": "text",
+            "ResourceAttributes": "jsonb",
+            "ScopeSchemaUrl": "text",
+            "ScopeName": "text",
+            "ScopeVersion": "text",
+            "ScopeAttributes": "jsonb",
+            "LogAttributes": "jsonb"
+        },
+        "starrocks": {
+            "Timestamp": "DATETIME",
+            "TraceId": "VARCHAR",
+            "SpanId": "VARCHAR",
+            "TraceFlags": "TINYINT",
+            "SeverityText": "VARCHAR",
+            "SeverityNumber": "TINYINT",
+            "ServiceName": "VARCHAR",
+            "Body": "VARCHAR",
+            "ResourceSchemaUrl": "VARCHAR",
+            "ResourceAttributes": "JSON",
+            "ScopeSchemaUrl": "VARCHAR",
+            "ScopeName": "VARCHAR",
+            "ScopeVersion": "VARCHAR",
+            "ScopeAttributes": "JSON",
+            "LogAttributes": "JSON"
+        }
+    },
+    "examples": [
+        "SeverityText in [\"ERROR\", \"WARN\"] and ServiceName = \"api-gateway\"",
+        "LogAttributes.http.status_code >= 400",
+        "LogAttributes.db.system = \"postgresql\"",
+        "ResourceAttributes.k8s.namespace.name = \"orders\""
+    ],
+    "defaults": {
+        "query": "(SeverityText in [\"ERROR\", \"WARN\"]) or (LogAttributes.http.status_code >= 400 and ServiceName = \"api-gateway\")",
+        "selectExpr": "Timestamp, SeverityText, ServiceName, Body, LogAttributes",
+        "columnsPlaceholder": "SeverityText, ServiceName, LogAttributes.http.status_code as status",
+        "queryPlaceholder": "SeverityText = \"ERROR\" and ServiceName = \"api-gateway\""
+    },
+    "resourceAttributes": {
+        "api-gateway": {
+            "service": { "name": "api-gateway", "version": "2.5.1" },
+            "k8s": { "cluster": { "name": "prod-eu-west-1" }, "namespace": { "name": "gateway" }, "deployment": { "name": "api-gateway" }, "pod": { "name": "api-gateway-5d8f9b7c6-r2x4k", "uid": "a3f1e8b2-7c4d-4e9a-b5f6-1a2b3c4d5e6f" }, "container": { "name": "api" }, "node": { "name": "ip-10-0-42-17.eu-west-1.compute.internal" } },
+            "deployment": { "environment": { "name": "production" } }
+        },
+        "order-service": {
+            "service": { "name": "order-service", "version": "1.42.0" },
+            "k8s": { "cluster": { "name": "prod-eu-west-1" }, "namespace": { "name": "orders" }, "deployment": { "name": "order-service" }, "pod": { "name": "order-service-7f8b9c7d4-xk2mv", "uid": "b4g2f9c3-8d5e-4f0a-c6g7-2b3c4d5e6f7a" }, "container": { "name": "app" }, "node": { "name": "ip-10-0-42-18.eu-west-1.compute.internal" } },
+            "deployment": { "environment": { "name": "production" } }
+        },
+        "payment-service": {
+            "service": { "name": "payment-service", "version": "0.9.3" },
+            "k8s": { "cluster": { "name": "prod-eu-west-1" }, "namespace": { "name": "payments" }, "deployment": { "name": "payment-service" }, "pod": { "name": "payment-service-6c4e8a3b2-m7n9p", "uid": "c5h3g0d4-9e6f-4a1b-d7h8-3c4d5e6f7a8b" }, "container": { "name": "worker" }, "node": { "name": "ip-10-0-42-17.eu-west-1.compute.internal" } },
+            "deployment": { "environment": { "name": "production" } }
+        }
+    },
+    "records": [
+        { "Timestamp": "2026-04-07 14:23:15.100234567", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "00f067aa0ba902b7", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "Incoming request POST /api/v1/orders from 203.0.113.42", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/orders" } } },
+        { "Timestamp": "2026-04-07 14:23:15.115892341", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "1a2b3c4d5e6f7a8b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Creating order for user_id=12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": {} },
+        { "Timestamp": "2026-04-07 14:23:15.145003200", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "2b3c4d5e6f7a8b9c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Querying user credit balance", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "SELECT", "statement": "SELECT credit_balance FROM users WHERE id = $1", "duration_ms": 23 } } },
+        { "Timestamp": "2026-04-07 14:23:15.220451890", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "3c4d5e6f7a8b9c0d", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Processing payment for order ord-98765, amount=149.99 USD", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": {} },
+        { "Timestamp": "2026-04-07 14:23:15.620781234", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "4d5e6f7a8b9c0d1e", "TraceFlags": 1, "SeverityText": "ERROR", "SeverityNumber": 17, "ServiceName": "payment-service", "Body": "Payment gateway timeout: dial tcp 10.0.5.23:3000: i/o timeout after 400ms", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "error": { "type": "ConnectionTimeoutError", "message": "dial tcp 10.0.5.23:3000: i/o timeout" }, "retry": { "count": 3 } } },
+        { "Timestamp": "2026-04-07 14:23:15.630112456", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "5e6f7a8b9c0d1e2f", "TraceFlags": 1, "SeverityText": "WARN", "SeverityNumber": 13, "ServiceName": "order-service", "Body": "Payment failed for order ord-98765, marking as pending_payment", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "UPDATE", "statement": "UPDATE orders SET status = $1 WHERE id = $2", "duration_ms": 8 } } },
+        { "Timestamp": "2026-04-07 14:23:16.123890123", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "6f7a8b9c0d1e2f3a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "POST /api/v1/orders completed with status 202", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/orders", "status_code": 202, "duration_ms": 1023 } } },
+        { "Timestamp": "2026-04-07 14:23:47.200100000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "7a8b9c0d1e2f3a4b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "Incoming request GET /api/v1/users/12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/users/12345" } } },
+        { "Timestamp": "2026-04-07 14:23:47.208340000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "8b9c0d1e2f3a4b5c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Fetching user profile for id=12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": {} },
+        { "Timestamp": "2026-04-07 14:23:47.210520000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "9c0d1e2f3a4b5c6d", "TraceFlags": 1, "SeverityText": "DEBUG", "SeverityNumber": 5, "ServiceName": "order-service", "Body": "Cache hit for user:12345 in Redis, ttl=1842s", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "redis", "operation": "GET", "duration_ms": 2 } } },
+        { "Timestamp": "2026-04-07 14:23:47.225670000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "0d1e2f3a4b5c6d7e", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /api/v1/users/12345 completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/users/12345", "status_code": 200, "duration_ms": 25 } } },
+        { "Timestamp": "2026-04-07 14:24:02.100200000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "1e2f3a4b5c6d7e8f", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Retrying payment pm-44321 for order ord-98765 (attempt 1)", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "messaging": { "system": "kafka", "destination": "payment-retry", "operation": "consume" } } },
+        { "Timestamp": "2026-04-07 14:24:02.450890000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "2f3a4b5c6d7e8f9a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Payment pm-44321 processed successfully via gRPC", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "rpc": { "system": "grpc", "service": "PaymentGateway", "method": "ChargeCard", "grpc": { "status_code": 0 } } } },
+        { "Timestamp": "2026-04-07 14:24:02.480120000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "3a4b5c6d7e8f9a0b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Published payment-completed event for order ord-98765", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "messaging": { "system": "kafka", "destination": "order-events", "operation": "publish", "message": { "id": "msg-f7e6d5c4" } } } },
+        { "Timestamp": "2026-04-07 14:24:30.001230000", "TraceId": "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0", "SpanId": "4b5c6d7e8f9a0b1c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /healthz completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/healthz", "status_code": 200, "duration_ms": 1 } } },
+        { "Timestamp": "2026-04-07 14:24:45.330890000", "TraceId": "f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1", "SpanId": "5c6d7e8f9a0b1c2d", "TraceFlags": 1, "SeverityText": "WARN", "SeverityNumber": 13, "ServiceName": "api-gateway", "Body": "Rate limit threshold 80% reached for client 203.0.113.50", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/search", "status_code": 429, "duration_ms": 5 } } },
+        { "Timestamp": "2026-04-07 14:25:10.992340000", "TraceId": "a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2", "SpanId": "6d7e8f9a0b1c2d3e", "TraceFlags": 1, "SeverityText": "ERROR", "SeverityNumber": 17, "ServiceName": "order-service", "Body": "Failed to connect to PostgreSQL: connection refused", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "error": { "type": "ConnectionRefusedError", "message": "dial tcp 10.0.3.15:5432: connection refused" }, "db": { "system": "postgresql" } } },
+        { "Timestamp": "2026-04-07 14:25:30.112560000", "TraceId": "b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3", "SpanId": "7e8f9a0b1c2d3e4f", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "gRPC ChargeCard completed for amount=249.00 currency=EUR", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "rpc": { "system": "grpc", "service": "PaymentGateway", "method": "ChargeCard", "grpc": { "status_code": 0 } } } },
+        { "Timestamp": "2026-04-07 14:26:00.445670000", "TraceId": "c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4", "SpanId": "8f9a0b1c2d3e4f5a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /api/v1/products completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/products", "status_code": 200, "duration_ms": 89 } } },
+        { "Timestamp": "2026-04-07 14:26:15.778230000", "TraceId": "d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5", "SpanId": "9a0b1c2d3e4f5a6b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Order ord-98765 status updated to confirmed", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "UPDATE", "statement": "UPDATE orders SET status = $1 WHERE id = $2", "duration_ms": 12 } } }
+    ]
+}

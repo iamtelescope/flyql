@@ -8,13 +8,8 @@
 import { Parser } from '../columns/parser.js'
 import { parse as parseColumns } from '../columns/index.js'
 import { State } from '../columns/state.js'
-import {
-    CharType,
-    KNOWN_TRANSFORMERS,
-    TRANSFORMER_INFO,
-    TRANSFORMER_OPERATOR,
-    COLUMNS_DELIMITER,
-} from '../columns/constants.js'
+import { CharType, TRANSFORMER_OPERATOR, COLUMNS_DELIMITER } from '../columns/constants.js'
+import { defaultRegistry } from '../transformers/index.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 
@@ -37,11 +32,16 @@ const STATE_LABELS = {
     none: '',
 }
 
+const _colRegistry = defaultRegistry()
+const _colTransformerNames = _colRegistry.names()
+
 function transformerDetail(name) {
-    const info = TRANSFORMER_INFO[name]
-    if (!info || info.args.length === 0) return 'no args'
-    const parts = info.args.map((a) => (a.optional ? a.type + '?' : a.type))
-    return '(' + parts.join(', ') + ')'
+    const t = _colRegistry.get(name)
+    if (!t) return ''
+    const schema = t.argSchema
+    if (!schema || schema.length === 0) return `${t.inputType} → ${t.outputType}`
+    const parts = schema.map((a) => (a.optional ? a.type + '?' : a.type))
+    return '(' + parts.join(', ') + ') ' + t.inputType + ' → ' + t.outputType
 }
 
 function escapeHtml(str) {
@@ -60,7 +60,7 @@ function wrapSpan(charType, text) {
 export class ColumnsEngine {
     constructor(columns, options = {}) {
         this.columns = columns || {}
-        const capDefaults = { transformers: false }
+        const capDefaults = { transformers: true }
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
@@ -296,14 +296,13 @@ export class ColumnsEngine {
                 return { ctx, seq }
             }
             const prefix = ctx.transformer.toLowerCase()
-            const hasExactMatch = prefix && KNOWN_TRANSFORMERS.some((m) => m.toLowerCase() === prefix)
+            const hasExactMatch = prefix && _colTransformerNames.some((m) => m.toLowerCase() === prefix)
 
             if (hasExactMatch) {
                 // Exact transformer match — show next steps, then other matching transformers
-                const info =
-                    TRANSFORMER_INFO[prefix] ||
-                    TRANSFORMER_INFO[KNOWN_TRANSFORMERS.find((m) => m.toLowerCase() === prefix)]
-                const hasArgs = info && info.args.length > 0
+                const matchedName = _colTransformerNames.find((m) => m.toLowerCase() === prefix)
+                const t = matchedName ? _colRegistry.get(matchedName) : null
+                const hasArgs = t && t.argSchema && t.argSchema.length > 0
                 const nextSteps = [
                     {
                         label: COLUMNS_DELIMITER,
@@ -328,7 +327,7 @@ export class ColumnsEngine {
                     detail: 'chain transformer',
                 })
                 const otherMods = []
-                for (const mod of KNOWN_TRANSFORMERS) {
+                for (const mod of _colTransformerNames) {
                     if (mod.toLowerCase() === prefix) continue
                     if (!mod.toLowerCase().startsWith(prefix)) continue
                     otherMods.push({ label: mod, insertText: mod, type: 'transformer', detail: transformerDetail(mod) })
@@ -337,7 +336,7 @@ export class ColumnsEngine {
                 this.suggestionType = 'next'
             } else {
                 const suggestions = []
-                for (const mod of KNOWN_TRANSFORMERS) {
+                for (const mod of _colTransformerNames) {
                     if (prefix && !mod.toLowerCase().startsWith(prefix)) continue
                     suggestions.push({
                         label: mod,

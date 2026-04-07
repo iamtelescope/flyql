@@ -82,7 +82,37 @@
                     </button>
                 </div>
                 <div class="flyql-panel__loader" :class="{ 'flyql-panel__loader--active': isLoading }"></div>
-                <div class="flyql-panel__header">Suggestions</div>
+                <div
+                    class="flyql-panel__header"
+                    :class="{ 'flyql-panel__header--with-toggle': isValueContext && activated }"
+                >
+                    <span :class="{ 'flyql-panel__header-label': isValueContext && activated }">Suggestions</span>
+                    <span v-if="isValueContext && activated" class="flyql-panel__toggle">
+                        <span class="flyql-panel__toggle-hint"
+                            ><span class="flyql-panel__toggle-hint-icon">⇥</span> tab to switch</span
+                        >
+                        <span class="flyql-panel__toggle-group" role="tablist">
+                            <button
+                                role="tab"
+                                :aria-selected="activeTab === 'values'"
+                                class="flyql-panel__toggle-btn flyql-panel__toggle-btn--values"
+                                :class="{ 'flyql-panel__toggle-btn--active': activeTab === 'values' }"
+                                @mousedown.prevent="switchTab('values')"
+                            >
+                                Values
+                            </button>
+                            <button
+                                role="tab"
+                                :aria-selected="activeTab === 'columns'"
+                                class="flyql-panel__toggle-btn flyql-panel__toggle-btn--columns"
+                                :class="{ 'flyql-panel__toggle-btn--active': activeTab === 'columns' }"
+                                @mousedown.prevent="switchTab('columns')"
+                            >
+                                Columns
+                            </button>
+                        </span>
+                    </span>
+                </div>
                 <div class="flyql-panel__body" aria-live="polite">
                     <ul v-if="suggestions.length > 0" ref="listRef" class="flyql-panel__list" role="listbox">
                         <li
@@ -223,6 +253,8 @@ const suggestionType = ref('')
 const message = ref('')
 const stateLabel = ref('')
 const context = ref(null)
+const activeTab = ref('values')
+const isValueContext = computed(() => context.value?.expecting === 'value')
 const diagnostics = ref([])
 const hoveredDiagIndex = ref(-1)
 const lastParseError = ref(null)
@@ -236,6 +268,33 @@ function highlightMatch(label) {
     return engine.highlightMatch(label)
 }
 
+function filterColumnValueDiagnostics() {
+    const ta = textareaRef.value
+    if (!ta) return
+    const ctx0 = engine.buildContext(ta.value.substring(0, ta.selectionStart))
+    if (ctx0 && ctx0.expecting === 'value') {
+        const columnValueCodes = new Set(['unknown_column_value', 'invalid_column_value'])
+        if (engine.activeTab === 'values') {
+            engine.diagnostics = engine.diagnostics.filter((d) => !columnValueCodes.has(d.code))
+        } else {
+            const colNames = Object.keys(engine.columns).filter((n) => engine.columns[n]?.suggest !== false)
+            engine.diagnostics = engine.diagnostics.filter((d) => {
+                if (!columnValueCodes.has(d.code)) return true
+                const val = (ctx0.value || '').toLowerCase()
+                if (!val) return false
+                return !colNames.some((n) => n.toLowerCase().startsWith(val))
+            })
+        }
+    }
+}
+
+function switchTab(tab) {
+    engine.setTab(tab)
+    engine.getDiagnostics()
+    filterColumnValueDiagnostics()
+    syncFromEngine()
+}
+
 // ── Sync engine state to Vue refs ──
 
 function syncFromEngine() {
@@ -247,6 +306,7 @@ function syncFromEngine() {
     message.value = engine.message
     stateLabel.value = engine.getStateLabel()
     context.value = engine.context
+    activeTab.value = engine.activeTab
     diagnostics.value = engine.diagnostics
 
     // Check for parse-error transitions
@@ -330,19 +390,11 @@ async function triggerSuggestions() {
     engine.setQuery(ta.value)
     engine.setCursorPosition(ta.selectionStart)
 
-    // Run diagnostics first — fast, sync operation
+    // Run diagnostics — fast, sync operation
     engine.getDiagnostics()
+    filterColumnValueDiagnostics()
     syncFromEngine()
     emit('diagnostics', diagnostics.value)
-
-    // If there are diagnostic errors, clear suggestions and stop
-    if (diagnostics.value.length > 0) {
-        engine.suggestions = []
-        engine.message = ''
-        engine.suggestionType = ''
-        syncFromEngine()
-        return
-    }
 
     try {
         const promise = engine.updateSuggestions()
@@ -422,6 +474,29 @@ function onKeydown(e) {
             acceptSuggestion(selectedIndex.value)
             return
         }
+
+        // When column suggestions are showing and user types an operator character,
+        // accept the column and insert the operator with spaces
+        if (suggestionType.value === 'column' && '=><~'.includes(e.key) && e.key.length === 1) {
+            e.preventDefault()
+            acceptSuggestion(selectedIndex.value)
+            nextTick(() => {
+                const ta = textareaRef.value
+                if (ta) {
+                    const pos = ta.selectionStart
+                    const before = ta.value.substring(0, pos)
+                    const after = ta.value.substring(pos)
+                    // Remove trailing space that acceptSuggestion added, then insert ' op '
+                    const trimmed = before.endsWith(' ') ? before.slice(0, -1) : before
+                    ta.value = trimmed + ' ' + e.key + ' ' + after
+                    const newPos = trimmed.length + 3
+                    ta.selectionStart = newPos
+                    ta.selectionEnd = newPos
+                    ta.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: e.key, bubbles: true }))
+                }
+            })
+            return
+        }
     }
 
     if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
@@ -436,7 +511,13 @@ function onKeydown(e) {
     }
 
     if (e.key === 'Tab') {
-        if (activated.value && suggestions.value.length > 0) {
+        if (activated.value && engine.context?.expecting === 'value') {
+            e.preventDefault()
+            engine.cycleTab()
+            engine.getDiagnostics()
+            filterColumnValueDiagnostics()
+            syncFromEngine()
+        } else if (activated.value && suggestions.value.length > 0) {
             e.preventDefault()
             acceptSuggestion(selectedIndex.value)
         } else if (!activated.value) {
@@ -651,6 +732,7 @@ function setItemRef(el, index) {
 function badgeText(type) {
     switch (type) {
         case 'column':
+        case 'columnRef':
             return 'C'
         case 'operator':
             return 'Op'

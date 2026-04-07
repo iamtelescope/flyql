@@ -166,6 +166,10 @@ cython_debug/
 
 # NodeJS
 node_modules/
+.vite/
+
+# Demo
+demo/dist/
 
 # Astro build cache
 .astro/

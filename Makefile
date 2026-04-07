@@ -23,7 +23,7 @@ e2e-venv:
 e2e-clean:
 	cd e2e && make clean
 run-demo:
-	cd demo && make run
+	cd demo && make dev
 docs-install:
 	cd docs && npm install
 docs-build:

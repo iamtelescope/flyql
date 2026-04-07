@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FlyQL Editor Dev</title>
+    <title>FlyQL Playground</title>
+    <link rel="icon" type="image/svg+xml" href="./flyql.svg" />
 </head>
 <body>
+    <script>if(localStorage.getItem('flyql-dark')==='true')document.documentElement.classList.add('dark')</script>
     <div id="app"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
     <script type="module" src="./main.js"></script>
 </body>
 </html>

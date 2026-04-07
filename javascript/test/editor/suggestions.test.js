@@ -6,6 +6,7 @@ import {
     prepareSuggestionValues,
     getInsertRange,
     getTransformerSuggestions,
+    getColumnSuggestionsForValue,
 } from '../../src/editor/suggestions.js'
 
 const TEST_COLUMNS = {
@@ -311,6 +312,75 @@ describe('suggestions', () => {
             const result = getTransformerSuggestions(TEST_COLUMNS, ctx)
             expect(result.length).toBe(1)
             expect(result[0].label).toBe('upper')
+        })
+    })
+
+    describe('getColumnSuggestionsForValue', () => {
+        it('returns all suggestable columns with empty prefix', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, '')
+            expect(result.length).toBe(3) // status, host, count (hidden excluded)
+            expect(result.map((s) => s.label)).toContain('status')
+            expect(result.map((s) => s.label)).toContain('host')
+            expect(result.map((s) => s.label)).toContain('count')
+        })
+
+        it('excludes suggest:false columns', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, '')
+            expect(result.map((s) => s.label)).not.toContain('hidden')
+        })
+
+        it('filters by prefix', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, 'sta')
+            expect(result.length).toBe(1)
+            expect(result[0].label).toBe('status')
+        })
+
+        it('all items have type columnRef', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, '')
+            for (const item of result) {
+                expect(item.type).toBe('columnRef')
+            }
+        })
+
+        it('insertText has no trailing dot', () => {
+            const columnsWithChildren = {
+                ...TEST_COLUMNS,
+                meta: { type: 'object', suggest: true, children: { region: { type: 'string', suggest: true } } },
+            }
+            const result = getColumnSuggestionsForValue(columnsWithChildren, 'me')
+            const metaItem = result.find((s) => s.label === 'meta')
+            expect(metaItem).toBeDefined()
+            expect(metaItem.insertText).toBe('meta') // not 'meta.'
+        })
+
+        it('insertText is unquoted', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, 'host')
+            expect(result.length).toBe(1)
+            expect(result[0].insertText).toBe('host') // not '"host"'
+        })
+
+        it('excludes LHS column via excludeKey', () => {
+            const result = getColumnSuggestionsForValue(TEST_COLUMNS, '', 'status')
+            expect(result.map((s) => s.label)).not.toContain('status')
+            expect(result.length).toBe(2) // host, count
+        })
+
+        it('returns nested column paths', () => {
+            const columnsWithChildren = {
+                meta: {
+                    type: 'object',
+                    suggest: true,
+                    children: { region: { type: 'string', suggest: true }, tier: { type: 'string', suggest: true } },
+                },
+            }
+            const result = getColumnSuggestionsForValue(columnsWithChildren, 'meta.')
+            expect(result.length).toBe(2)
+            expect(result.map((s) => s.label)).toContain('meta.region')
+            expect(result.map((s) => s.label)).toContain('meta.tier')
+            for (const item of result) {
+                expect(item.type).toBe('columnRef')
+                expect(item.insertText).not.toMatch(/\.$/)
+            }
         })
     })
 })

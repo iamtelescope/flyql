@@ -15,6 +15,7 @@ import {
     updateSuggestions,
     prepareSuggestionValues,
     resolveColumnDef,
+    getColumnSuggestionsForValue,
     getInsertRange,
     STATE_LABELS,
 } from './suggestions.js'
@@ -81,13 +82,38 @@ export class EditorEngine {
         this.incomplete = false
         this.message = ''
 
+        this.activeTab = 'values'
+        this.valueSuggestions = []
+        this.columnSuggestions = []
+        this.valueMessage = ''
+
         this.isLoading = false
         this.keyCache = {}
         this._suggestionSeq = 0
         this._debounceTimer = null
         this._valueState = null
+        this._lastValueKey = null
         this._validatorColumns = null
         this.diagnostics = []
+    }
+
+    setTab(tab) {
+        if (tab === this.activeTab) return
+        this.activeTab = tab
+        this.suggestions = tab === 'values' ? this.valueSuggestions : this.columnSuggestions
+        this.message = tab === 'values' ? this.valueMessage : ''
+        this.state.selectedIndex = 0
+    }
+
+    cycleTab() {
+        this.setTab(this.activeTab === 'values' ? 'columns' : 'values')
+    }
+
+    _resetTabState() {
+        this.activeTab = 'values'
+        this.valueSuggestions = []
+        this.columnSuggestions = []
+        this.valueMessage = ''
     }
 
     /**
@@ -372,6 +398,17 @@ export class EditorEngine {
             this._valueState = null
         }
 
+        // Reset tab state when leaving value context or changing key
+        if (!ctx || ctx.expecting !== 'value') {
+            this._resetTabState()
+        } else if (this._lastValueKey && this._lastValueKey !== ctx.key) {
+            this._resetTabState()
+        }
+        if (ctx && ctx.expecting === 'value') {
+            this._lastValueKey = ctx.key
+            this.columnSuggestions = getColumnSuggestionsForValue(this.columns, ctx.value || '', ctx.key || '')
+        }
+
         // Only enter async _valueState flow when the column actually needs server fetch:
         // - column has autocomplete enabled AND no static values, OR
         // - column is unknown (unresolved dotted key — let onAutocomplete try)
@@ -388,7 +425,8 @@ export class EditorEngine {
 
         // Complete list: client-side filter, no server call
         if (_needsAsyncValue && this._valueState && !this._valueState.incomplete) {
-            this.suggestions = prepareSuggestionValues(this._valueState.items, ctx.quoteChar, ctx.value)
+            this.valueSuggestions = prepareSuggestionValues(this._valueState.items, ctx.quoteChar, ctx.value)
+            this.suggestions = this.activeTab === 'values' ? this.valueSuggestions : this.columnSuggestions
             this.incomplete = false
             this.isLoading = false
             this.state.selectedIndex = 0
@@ -429,10 +467,14 @@ export class EditorEngine {
                 items: result.rawItems || this._valueState.items,
                 incomplete: result.incomplete,
             }
-            this.suggestions = result.suggestions
+            this.valueSuggestions = result.suggestions
+            this.valueMessage = result.suggestions.length === 0 ? 'No matching values' : result.message
             this.suggestionType = result.suggestionType
             this.incomplete = result.incomplete || false
-            this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+            if (this.activeTab === 'values') {
+                this.suggestions = this.valueSuggestions
+                this.message = this.valueMessage
+            }
 
             this.state.selectedIndex = 0
             return ctx
@@ -469,10 +511,14 @@ export class EditorEngine {
                 items: result.rawItems || [],
                 incomplete: result.incomplete,
             }
-            this.suggestions = result.suggestions
+            this.valueSuggestions = result.suggestions
+            this.valueMessage = result.suggestions.length === 0 ? 'No matching values' : result.message
             this.suggestionType = result.suggestionType
             this.incomplete = result.incomplete || false
-            this.message = result.suggestions.length === 0 ? 'No matching values' : result.message
+            if (this.activeTab === 'values') {
+                this.suggestions = this.valueSuggestions
+                this.message = this.valueMessage
+            }
 
             this.state.selectedIndex = 0
             return ctx
@@ -500,10 +546,17 @@ export class EditorEngine {
 
         if (seq !== this._suggestionSeq) return ctx
 
-        this.suggestions = result.suggestions
+        if (ctx && ctx.expecting === 'value') {
+            this.valueSuggestions = result.suggestions
+            this.valueMessage = result.suggestions.length === 0 && !result.message ? 'No suggestions' : result.message
+            this.suggestions = this.activeTab === 'values' ? this.valueSuggestions : this.columnSuggestions
+            this.message = this.activeTab === 'values' ? this.valueMessage : ''
+        } else {
+            this.suggestions = result.suggestions
+            this.message = result.message
+        }
         this.suggestionType = result.suggestionType
         this.incomplete = result.incomplete || false
-        this.message = result.message
         this.messageIsError = result.messageIsError || false
         this.state.selectedIndex = 0
 

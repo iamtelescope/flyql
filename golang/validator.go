@@ -2,11 +2,14 @@ package flyql
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/iamtelescope/flyql/golang/transformers"
 	"github.com/iamtelescope/flyql/golang/types"
 )
+
+var validColumnNameRE = regexp.MustCompile(`^[a-zA-Z0-9_.:/@|\-]+$`)
 
 // DiagnosticSeverity is the severity level of a diagnostic.
 type DiagnosticSeverity string
@@ -25,6 +28,7 @@ const (
 	CodeChainType          = "chain_type"
 	CodeInvalidAST         = "invalid_ast"
 	CodeUnknownColumnValue = "unknown_column_value"
+	CodeInvalidColumnValue = "invalid_column_value"
 )
 
 // Diagnostic is a positioned diagnostic produced by Diagnose.
@@ -187,12 +191,21 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 	// COLUMN value validation
 	if expr.ValueType == types.Column {
 		if v, ok := expr.Value.(string); ok && v != "" {
-			if _, found := byName[strings.ToLower(v)]; !found {
+			if !validColumnNameRE.MatchString(v) {
+				if expr.ValueRange != nil {
+					diags = append(diags, Diagnostic{
+						Range:    *expr.ValueRange,
+						Code:     CodeInvalidColumnValue,
+						Severity: SeverityError,
+						Message:  fmt.Sprintf("invalid character in column name '%s'", v),
+					})
+				}
+			} else if _, found := byName[strings.ToLower(v)]; !found {
 				if expr.ValueRange != nil {
 					diags = append(diags, Diagnostic{
 						Range:    *expr.ValueRange,
 						Code:     CodeUnknownColumnValue,
-						Severity: SeverityWarning,
+						Severity: SeverityError,
 						Message:  fmt.Sprintf("column '%s' is not defined", v),
 					})
 				}
@@ -204,12 +217,21 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 	for i, vt := range expr.ValuesTypes {
 		if vt == types.Column {
 			if v, ok := expr.Values[i].(string); ok {
-				if _, found := byName[strings.ToLower(v)]; !found {
+				if !validColumnNameRE.MatchString(v) {
+					if i < len(expr.ValueRanges) {
+						diags = append(diags, Diagnostic{
+							Range:    expr.ValueRanges[i],
+							Code:     CodeInvalidColumnValue,
+							Severity: SeverityError,
+							Message:  fmt.Sprintf("invalid character in column name '%s'", v),
+						})
+					}
+				} else if _, found := byName[strings.ToLower(v)]; !found {
 					if i < len(expr.ValueRanges) {
 						diags = append(diags, Diagnostic{
 							Range:    expr.ValueRanges[i],
 							Code:     CodeUnknownColumnValue,
-							Severity: SeverityWarning,
+							Severity: SeverityError,
 							Message:  fmt.Sprintf("column '%s' is not defined", v),
 						})
 					}

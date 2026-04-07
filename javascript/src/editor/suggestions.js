@@ -211,16 +211,7 @@ export function getOperatorSuggestions(columns, fieldName, registry = null) {
     const col = resolveColumnDef(columns, fieldName)
     const result = []
 
-    // Offer pipe for transformer access when column has compatible transformers
     if (!registry) registry = defaultRegistry()
-    const colType = col && col.type ? COLUMN_TYPE_TO_TRANSFORMER_TYPE[col.type.toLowerCase()] : null
-    const hasTransformers = registry.names().some((name) => {
-        const t = registry.get(name)
-        return !colType || t.inputType === colType
-    })
-    if (hasTransformers) {
-        result.push({ label: '|', insertText: '|', type: 'transformer', detail: 'transformer (pipe)' })
-    }
 
     const ops = [
         { label: Operator.EQUALS, insertText: Operator.EQUALS, sortText: 'a' },
@@ -254,14 +245,24 @@ export function getOperatorSuggestions(columns, fieldName, registry = null) {
         ops.push({ label: Operator.NOT_REGEX, insertText: Operator.NOT_REGEX, sortText: 'd' })
     }
     ops.sort((a, b) => a.sortText.localeCompare(b.sortText))
-    result.push(
-        ...ops.map((op) => ({
-            label: op.label,
-            insertText: op.insertText,
-            type: 'operator',
-            detail: OPERATOR_NAMES[op.label] || '',
-        })),
-    )
+    const mapped = ops.map((op) => ({
+        label: op.label,
+        insertText: op.insertText,
+        type: 'operator',
+        detail: OPERATOR_NAMES[op.label] || '',
+    }))
+
+    // Insert pipe after equals and not-equals (3rd position)
+    const colType = col && col.type ? COLUMN_TYPE_TO_TRANSFORMER_TYPE[col.type.toLowerCase()] : null
+    const hasTransformers = registry.names().some((name) => {
+        const t = registry.get(name)
+        return !colType || t.inputType === colType
+    })
+    if (hasTransformers) {
+        mapped.splice(2, 0, { label: '|', insertText: '|', type: 'transformer', detail: 'transformer (pipe)' })
+    }
+
+    result.push(...mapped)
     return result
 }
 
@@ -351,6 +352,19 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
         }
     }
     return { suggestions: [], incomplete: false, message: '' }
+}
+
+export function getColumnSuggestionsForValue(columns, filterPrefix, excludeKey = '') {
+    const result = getKeySuggestions(columns, filterPrefix)
+    if (result === null) return [] // schemaless async — not supported in Columns tab
+    const excludeLower = excludeKey.toLowerCase()
+    return result
+        .filter((item) => !excludeLower || item.label.toLowerCase() !== excludeLower)
+        .map((item) => ({
+            ...item,
+            type: 'columnRef',
+            insertText: item.insertText.endsWith('.') ? item.insertText.slice(0, -1) : item.insertText,
+        }))
 }
 
 export async function getKeyDiscoverySuggestions(columns, prefix, onKeyDiscovery, keyCache, setLoading) {

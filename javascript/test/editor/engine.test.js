@@ -1333,4 +1333,131 @@ describe('EditorEngine', () => {
             expect(matches.length).toBeGreaterThanOrEqual(2)
         })
     })
+
+    describe('tab cycling', () => {
+        it('defaults activeTab to values', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            expect(engine.activeTab).toBe('values')
+        })
+
+        it('populates both suggestion lists in value context', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            expect(engine.valueSuggestions.length).toBeGreaterThan(0)
+            expect(engine.columnSuggestions.length).toBeGreaterThan(0)
+        })
+
+        it('excludes LHS column from columnSuggestions', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            const labels = engine.columnSuggestions.map((s) => s.label)
+            expect(labels).not.toContain('status')
+            expect(labels).toContain('host')
+            expect(labels).toContain('level')
+        })
+
+        it('cycleTab switches to columns', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            expect(engine.activeTab).toBe('values')
+
+            engine.cycleTab()
+            expect(engine.activeTab).toBe('columns')
+            expect(engine.suggestions).toBe(engine.columnSuggestions)
+        })
+
+        it('cycleTab back to values', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+
+            engine.cycleTab()
+            engine.cycleTab()
+            expect(engine.activeTab).toBe('values')
+            expect(engine.suggestions).toBe(engine.valueSuggestions)
+        })
+
+        it('setTab to same tab is no-op', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            engine.state.selectedIndex = 2
+
+            engine.setTab('values')
+            expect(engine.state.selectedIndex).toBe(2) // unchanged
+        })
+
+        it('resets activeTab when key changes', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            engine.cycleTab()
+            expect(engine.activeTab).toBe('columns')
+
+            engine.state.setQuery('host=')
+            engine.state.setCursorPosition(5)
+            await engine.updateSuggestions()
+            expect(engine.activeTab).toBe('values')
+        })
+
+        it('resets activeTab when leaving value context', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            engine.cycleTab()
+            expect(engine.activeTab).toBe('columns')
+
+            engine.state.setQuery('status=info ')
+            engine.state.setCursorPosition(12)
+            await engine.updateSuggestions()
+            expect(engine.activeTab).toBe('values')
+        })
+
+        it('filters both tabs simultaneously', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=ho')
+            engine.state.setCursorPosition(9)
+            await engine.updateSuggestions()
+
+            // Values tab: no static values match 'ho'
+            expect(engine.valueSuggestions.length).toBe(0)
+
+            // Columns tab: 'host' matches 'ho'
+            const colLabels = engine.columnSuggestions.map((s) => s.label)
+            expect(colLabels).toContain('host')
+        })
+
+        it('clears message when switching to columns tab', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('level=')
+            engine.state.setCursorPosition(6)
+            await engine.updateSuggestions()
+            // level has autocomplete: false, so message should indicate no suggestions
+            expect(engine.activeTab).toBe('values')
+
+            engine.cycleTab()
+            expect(engine.activeTab).toBe('columns')
+            expect(engine.message).toBe('')
+        })
+
+        it('columnSuggestions have type columnRef', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.state.setQuery('status=')
+            engine.state.setCursorPosition(7)
+            await engine.updateSuggestions()
+            for (const s of engine.columnSuggestions) {
+                expect(s.type).toBe('columnRef')
+            }
+        })
+    })
 })

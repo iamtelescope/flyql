@@ -40,6 +40,11 @@ CODE_ARG_TYPE = "arg_type"
 CODE_CHAIN_TYPE = "chain_type"
 CODE_INVALID_AST = "invalid_ast"
 CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
+CODE_INVALID_COLUMN_VALUE = "invalid_column_value"
+
+import re
+
+_VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,7 @@ __all__ = [
     "CODE_CHAIN_TYPE",
     "CODE_INVALID_AST",
     "CODE_UNKNOWN_COLUMN_VALUE",
+    "CODE_INVALID_COLUMN_VALUE",
 ]
 
 
@@ -220,13 +226,23 @@ def _diagnose_expression(
         and isinstance(expression.value, str)
         and expression.value != ""
     ):
-        if expression.value.lower() not in columns_by_name:
+        if not _VALID_COLUMN_NAME_RE.match(expression.value):
+            if expression.value_range is not None:
+                diags.append(
+                    Diagnostic(
+                        range=expression.value_range,
+                        code=CODE_INVALID_COLUMN_VALUE,
+                        severity="error",
+                        message=f"invalid character in column name '{expression.value}'",
+                    )
+                )
+        elif expression.value.lower() not in columns_by_name:
             if expression.value_range is not None:
                 diags.append(
                     Diagnostic(
                         range=expression.value_range,
                         code=CODE_UNKNOWN_COLUMN_VALUE,
-                        severity="warning",
+                        severity="error",
                         message=f"column '{expression.value}' is not defined",
                     )
                 )
@@ -236,7 +252,19 @@ def _diagnose_expression(
         for i, vt in enumerate(expression.values_types):
             if vt == ValueType.COLUMN and isinstance(expression.values[i], str):
                 val: str = expression.values[i]
-                if val.lower() not in columns_by_name:
+                if not _VALID_COLUMN_NAME_RE.match(val):
+                    if expression.value_ranges is not None and i < len(
+                        expression.value_ranges
+                    ):
+                        diags.append(
+                            Diagnostic(
+                                range=expression.value_ranges[i],
+                                code=CODE_INVALID_COLUMN_VALUE,
+                                severity="error",
+                                message=f"invalid character in column name '{val}'",
+                            )
+                        )
+                elif val.lower() not in columns_by_name:
                     if expression.value_ranges is not None and i < len(
                         expression.value_ranges
                     ):
@@ -244,7 +272,7 @@ def _diagnose_expression(
                             Diagnostic(
                                 range=expression.value_ranges[i],
                                 code=CODE_UNKNOWN_COLUMN_VALUE,
-                                severity="warning",
+                                severity="error",
                                 message=f"column '{val}' is not defined",
                             )
                         )

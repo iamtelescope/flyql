@@ -11,6 +11,9 @@ export const CODE_ARG_TYPE = 'arg_type'
 export const CODE_CHAIN_TYPE = 'chain_type'
 export const CODE_INVALID_AST = 'invalid_ast'
 export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
+export const CODE_INVALID_COLUMN_VALUE = 'invalid_column_value'
+
+const VALID_COLUMN_NAME_RE = /^[a-zA-Z0-9_.:/@|-]+$/
 
 export class Diagnostic {
     constructor(range, message, severity, code) {
@@ -161,13 +164,24 @@ function _diagnoseExpression(expression, columnsByName, registry) {
 
     // COLUMN value validation
     if (expression.valueType === ValueType.COLUMN && typeof expression.value === 'string' && expression.value !== '') {
-        if (columnsByName[expression.value.toLowerCase()] == null) {
+        if (!VALID_COLUMN_NAME_RE.test(expression.value)) {
+            if (expression.valueRange != null) {
+                diags.push(
+                    new Diagnostic(
+                        expression.valueRange,
+                        `invalid character in column name '${expression.value}'`,
+                        'error',
+                        CODE_INVALID_COLUMN_VALUE,
+                    ),
+                )
+            }
+        } else if (columnsByName[expression.value.toLowerCase()] == null) {
             if (expression.valueRange != null) {
                 diags.push(
                     new Diagnostic(
                         expression.valueRange,
                         `column '${expression.value}' is not defined`,
-                        'warning',
+                        'error',
                         CODE_UNKNOWN_COLUMN_VALUE,
                     ),
                 )
@@ -179,13 +193,25 @@ function _diagnoseExpression(expression, columnsByName, registry) {
     if (expression.valuesTypes != null) {
         for (let i = 0; i < expression.valuesTypes.length; i++) {
             if (expression.valuesTypes[i] === ValueType.COLUMN && typeof expression.values[i] === 'string') {
-                if (columnsByName[expression.values[i].toLowerCase()] == null) {
+                const val = expression.values[i]
+                if (!VALID_COLUMN_NAME_RE.test(val)) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {
                         diags.push(
                             new Diagnostic(
                                 expression.valueRanges[i],
-                                `column '${expression.values[i]}' is not defined`,
-                                'warning',
+                                `invalid character in column name '${val}'`,
+                                'error',
+                                CODE_INVALID_COLUMN_VALUE,
+                            ),
+                        )
+                    }
+                } else if (columnsByName[val.toLowerCase()] == null) {
+                    if (expression.valueRanges != null && i < expression.valueRanges.length) {
+                        diags.push(
+                            new Diagnostic(
+                                expression.valueRanges[i],
+                                `column '${val}' is not defined`,
+                                'error',
                                 CODE_UNKNOWN_COLUMN_VALUE,
                             ),
                         )

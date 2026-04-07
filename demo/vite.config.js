@@ -1,19 +1,19 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
 
-const jsDir = resolve(import.meta.dirname)
+const demoDir = resolve(import.meta.dirname)
 
 export default defineConfig({
-    plugins: [vue()],
-    root: resolve(jsDir, '../demo'),
+    plugins: [vue(), tailwindcss()],
     build: {
         outDir: 'dist',
         emptyOutDir: true,
     },
     resolve: {
         alias: {
-            vue: resolve(jsDir, 'node_modules/vue'),
+            vue: resolve(demoDir, 'node_modules/vue'),
         },
     },
 })

@@ -275,7 +275,7 @@
       "expected_diagnostics": [
         {
           "code": "unknown_column_value",
-          "severity": "warning",
+          "severity": "error",
           "message_contains": "nonexistent"
         }
       ]
@@ -314,7 +314,7 @@
       "expected_diagnostics": [
         {
           "code": "unknown_column_value",
-          "severity": "warning",
+          "severity": "error",
           "message_contains": "unknown"
         }
       ]
@@ -325,7 +325,7 @@
       "columns": [],
       "expected_diagnostics": [
         { "code": "unknown_column", "severity": "error", "message_contains": "missing" },
-        { "code": "unknown_column_value", "severity": "warning", "message_contains": "also_missing" }
+        { "code": "unknown_column_value", "severity": "error", "message_contains": "also_missing" }
       ]
     },
     {
@@ -337,7 +337,7 @@
         { "name": "c", "normalized_type": "string" }
       ],
       "expected_diagnostics": [
-        { "code": "unknown_column_value", "severity": "warning", "message_contains": "d" }
+        { "code": "unknown_column_value", "severity": "error", "message_contains": "d" }
       ]
     },
     {

@@ -220,13 +220,12 @@ describe('ColumnsEngine', () => {
 
         it('exact transformer with args shows comma, parens, and pipe', async () => {
             const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
-            engine.setQuery('level|chars')
+            engine.setQuery('level|split')
             engine.setCursorPosition(11)
             await engine.updateSuggestions()
             expect(engine.suggestions[0].label).toBe(',')
             expect(engine.suggestions[0].detail).toBe('next column')
             expect(engine.suggestions[1].label).toBe('()')
-            expect(engine.suggestions[1].detail).toBe('(int, int?)')
             expect(engine.suggestions[1].cursorOffset).toBe(-1)
             expect(engine.suggestions[2].label).toBe('|')
             expect(engine.suggestions[2].detail).toBe('chain transformer')
@@ -282,7 +281,9 @@ describe('ColumnsEngine', () => {
             const labels = engine.suggestions.map((s) => s.label)
             expect(labels).toContain('upper')
             expect(labels).toContain('lower')
-            expect(labels).toContain('chars')
+            expect(labels).toContain('split')
+            expect(labels).toContain('len')
+            expect(labels).not.toContain('chars')
         })
 
         it('filters transformers by prefix', async () => {
@@ -489,34 +490,40 @@ describe('ColumnsEngine', () => {
     })
 
     describe('capabilities', () => {
-        it('default engine (transformers disabled): pipe in column triggers error', () => {
+        it('default engine (transformers enabled): pipe in column returns transformer context', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             const ctx = engine.buildContext('message|')
-            expect(ctx.expecting).toBe('error')
-            expect(ctx.error).toContain('transformers are not enabled')
+            expect(ctx.expecting).toBe('transformer')
         })
 
-        it('default engine: exact column suggestions do NOT include pipe', async () => {
+        it('default engine: exact column suggestions include pipe', async () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             engine.setQuery('level')
             engine.setCursorPosition(5)
             await engine.updateSuggestions()
             const labels = engine.suggestions.map((s) => s.label)
             expect(labels).toContain(',')
-            expect(labels).not.toContain('|')
+            expect(labels).toContain('|')
         })
 
-        it('default engine: alias state does NOT include pipe', async () => {
+        it('default engine: alias state includes pipe', async () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             engine.setQuery('message ')
             engine.setCursorPosition(8)
             await engine.updateSuggestions()
             const labels = engine.suggestions.map((s) => s.label)
             expect(labels).toContain(',')
-            expect(labels).not.toContain('|')
+            expect(labels).toContain('|')
         })
 
-        it('transformers enabled: pipe in column returns transformer context', () => {
+        it('transformers disabled: pipe in column triggers error', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { capabilities: { transformers: false } })
+            const ctx = engine.buildContext('message|')
+            expect(ctx.expecting).toBe('error')
+            expect(ctx.error).toContain('transformers are not enabled')
+        })
+
+        it('transformers enabled explicitly: pipe in column returns transformer context', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('message|')
             expect(ctx.expecting).toBe('transformer')

@@ -161,14 +161,14 @@
         }
     },
     "examples": [
-        "SeverityText in [\"ERROR\", \"WARN\"] and ServiceName = \"api-gateway\"",
-        "LogAttributes.http.status_code >= 400",
-        "LogAttributes.db.system = \"postgresql\"",
-        "ResourceAttributes.k8s.namespace.name = \"orders\""
+        "Body ilike \"%timeout%\"",
+        "not SeverityText = \"INFO\"",
+        "LogAttributes.db.system",
+        "ResourceAttributes.service.name = @ServiceName"
     ],
     "defaults": {
         "query": "(SeverityText in [\"ERROR\", \"WARN\"]) or (LogAttributes.http.status_code >= 400 and ServiceName = \"api-gateway\")",
-        "selectExpr": "Timestamp, SeverityText, ServiceName, Body, LogAttributes",
+        "selectExpr": "Timestamp, SeverityText|lower as Severity, ServiceName, Body, LogAttributes.http.status_code as StatusCode",
         "columnsPlaceholder": "SeverityText, ServiceName, LogAttributes.http.status_code as status",
         "queryPlaceholder": "SeverityText = \"ERROR\" and ServiceName = \"api-gateway\""
     },

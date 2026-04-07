@@ -52,6 +52,10 @@
                             </div>
                         </div>
                         <div class="mt-2 ml-2 flex flex-wrap gap-2">
+                            <button
+                                class="px-3 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                                @click="selectExpr = otelLogs.defaults.selectExpr"
+                            >Reset to default</button>
                             <button v-for="(preset, i) in columnPresets" :key="i"
                                 class="px-3 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-full hover:border-gray-400 dark:hover:border-gray-400 transition-colors cursor-pointer"
                                 @click="selectExpr = preset.value"
@@ -83,6 +87,10 @@
 
                         <!-- Examples -->
                         <div class="mt-3 ml-2 flex flex-wrap gap-2">
+                            <button
+                                class="px-3 py-1 text-xs rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition-all cursor-pointer hover:scale-105 active:scale-95"
+                                @click="query = otelLogs.defaults.query"
+                            >Reset to default</button>
                             <button v-for="(ex, i) in examples" :key="i"
                                 class="px-3 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-full hover:border-gray-400 dark:hover:border-gray-400 transition-colors flyql-highlight"
                                 @click="query = ex"
@@ -173,8 +181,8 @@
                                                 </td>
                                                 <td v-for="(col, ci) in displayColumns" :key="ci"
                                                     class="px-3 py-2 text-gray-700 dark:text-gray-300 align-top"
-                                                    :class="typeof getRowValue(row, getFilterColumnKey(ci)) === 'string' && getRowValue(row, getFilterColumnKey(ci))?.startsWith('{') ? 'text-gray-500 dark:text-gray-400 whitespace-pre-wrap break-all text-[11px]' : 'truncate max-w-[200px]'"
-                                                >{{ getRowValue(row, getFilterColumnKey(ci)) }}</td>
+                                                    :class="typeof getRowValue(row, ci) === 'string' && getRowValue(row, ci)?.startsWith('{') ? 'text-gray-500 dark:text-gray-400 text-[11px] whitespace-nowrap' : 'whitespace-nowrap'"
+                                                >{{ getRowValue(row, ci) }}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -226,6 +234,9 @@ import { generateWhere as generateClickHouse, generateSelect as chSelect, newCol
 import { generateWhere as generatePostgreSQL, generateSelect as pgSelect, newColumn as pgNewColumn } from '../javascript/src/generators/postgresql/index.js'
 import { generateWhere as generateStarRocks, generateSelect as srSelect, newColumn as srNewColumn } from '../javascript/src/generators/starrocks/index.js'
 import { match } from '../javascript/src/matcher/index.js'
+import { defaultRegistry } from '../javascript/src/transformers/registry.js'
+
+const _transformerRegistry = defaultRegistry()
 
 import otelLogs from '../tests-data/otel/logs.json'
 import logoSvg from './flyql.svg'
@@ -249,7 +260,6 @@ const dialects = [
 ]
 
 const columnPresets = [
-    { label: 'Timestamp, SeverityText, ServiceName, Body, LogAttributes', value: 'Timestamp, SeverityText, ServiceName, Body, LogAttributes' },
     { label: 'All columns', value: schemaColumns.map((c) => c.name).join(', ') },
 ]
 
@@ -275,11 +285,11 @@ const selectExpr = ref(otelLogs.defaults.selectExpr)
 const parsedColumnsCount = ref(5)
 
 const parsedColumns = ref([
-    { name: 'Timestamp' },
-    { name: 'SeverityText' },
-    { name: 'ServiceName' },
-    { name: 'Body' },
-    { name: 'LogAttributes' },
+    { name: 'Timestamp', transformers: [] },
+    { name: 'SeverityText', transformers: [{ name: 'lower', arguments: [] }], alias: 'Severity' },
+    { name: 'ServiceName', transformers: [] },
+    { name: 'Body', transformers: [] },
+    { name: 'LogAttributes.http.status_code', transformers: [], alias: 'StatusCode' },
 ])
 const snapshotColumns = ref([])
 const displayColumns = computed(() => {
@@ -297,7 +307,7 @@ function onColumnsParsed(cols) {
     parsedColumns.value = cols
 }
 
-function getRowValue(row, colName) {
+function extractValue(row, colName) {
     const parts = colName.split('.')
     let val = row
     for (const p of parts) {
@@ -309,16 +319,39 @@ function getRowValue(row, colName) {
             val = val[p]
         }
     }
+    return val
+}
+
+function applyTransformers(value, transformers) {
+    let val = value
+    for (const t of transformers) {
+        const transformer = _transformerRegistry.get(t.name)
+        if (!transformer) continue
+        val = transformer.apply(val, t.arguments || [])
+    }
+    return val
+}
+
+function getRowValue(row, colIdx) {
+    let cols = snapshotColumns.value.length > 0 ? snapshotColumns.value : parsedColumns.value
+    if (cols.length === 0) {
+        const name = schemaColumns[colIdx]?.name || ''
+        if (!name) return null
+        let val = extractValue(row, name)
+        if (val != null && typeof val === 'object') return JSON.stringify(val)
+        return val
+    }
+    const col = cols[colIdx]
+    if (!col) return null
+    let val = extractValue(row, col.name)
+    if (col.transformers && col.transformers.length > 0) {
+        val = applyTransformers(val, col.transformers)
+    }
     if (val != null && typeof val === 'object') return JSON.stringify(val)
     return val
 }
 
-function getFilterColumnKey(idx) {
-    if (snapshotColumns.value.length > 0 && idx < snapshotColumns.value.length) {
-        return snapshotColumns.value[idx].name
-    }
-    return schemaColumns[idx]?.name || ''
-}
+
 const editorRef = ref(null)
 const parseError = ref(null)
 const outputTab = ref('sql')

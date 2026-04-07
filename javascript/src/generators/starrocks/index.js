@@ -803,7 +803,7 @@ export function generateSelect(text, columns, registry = null) {
             if (!validAliasPattern.test(alias)) throw new Error(`invalid alias: ${alias}`)
             sqlExpr = `${sqlExpr} AS \`${alias}\``
         } else if (path.length > 0) {
-            alias = raw.name
+            alias = key.raw.split('|')[0]
             if (!validAliasPattern.test(alias)) throw new Error(`invalid alias: ${alias}`)
             sqlExpr = `${sqlExpr} AS \`${alias}\``
         }

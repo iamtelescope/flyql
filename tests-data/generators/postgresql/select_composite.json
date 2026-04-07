@@ -158,6 +158,18 @@
       "input": "json_meta",
       "expected_result": "success",
       "expected_sql": "\"json_meta\""
+    },
+    {
+      "name": "jsonb_path_with_transformer",
+      "input": "jsonb_column.key|upper",
+      "expected_result": "success",
+      "expected_sql": "UPPER((\"jsonb_column\"->'key')::text) AS \"jsonb_column.key\""
+    },
+    {
+      "name": "jsonb_path_with_transformer_and_alias",
+      "input": "jsonb_column.key|upper as KEY",
+      "expected_result": "success",
+      "expected_sql": "UPPER((\"jsonb_column\"->'key')::text) AS \"KEY\""
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse, ParserError } from '../../src/columns/index.js'
+import { Range } from '../../src/core/range.js'
 import { loadTestData, compareColumns, formatColumnMismatchMessage } from './helpers.js'
 
 function runTestCase(testCase, suiteCapabilities) {
@@ -55,6 +56,47 @@ describe('Columns Parser', () => {
             it(`should handle ${testCase.name}`, () => {
                 runTestCase(testCase, testData.default_capabilities)
             })
+        })
+    })
+
+    describe('range tracking', () => {
+        it('single column has nameRange', () => {
+            const result = parse('level', { transformers: true })
+            expect(result[0].nameRange).toEqual(new Range(0, 5))
+        })
+
+        it('multiple columns have correct nameRanges', () => {
+            const result = parse('level, service', { transformers: true })
+            expect(result[0].nameRange).toEqual(new Range(0, 5))
+            expect(result[1].nameRange).toEqual(new Range(7, 14))
+        })
+
+        it('column with transformer has correct ranges', () => {
+            const result = parse('level|upper', { transformers: true })
+            expect(result[0].nameRange).toEqual(new Range(0, 5))
+            expect(result[0].transformerRanges).toHaveLength(1)
+            expect(result[0].transformerRanges[0].nameRange).toEqual(new Range(6, 11))
+        })
+
+        it('transformer with arguments has argumentRanges', () => {
+            const result = parse('level|split(",")', { transformers: true })
+            expect(result[0].transformerRanges[0].nameRange).toEqual(new Range(6, 11))
+            expect(result[0].transformerRanges[0].argumentRanges).toHaveLength(1)
+            // Quoted arg: range includes quotes
+            expect(result[0].transformerRanges[0].argumentRanges[0]).toEqual(new Range(12, 15))
+        })
+
+        it('column with alias has correct nameRange', () => {
+            const result = parse('level as lvl', { transformers: true })
+            expect(result[0].nameRange).toEqual(new Range(0, 5))
+        })
+
+        it('chained transformers have correct ranges', () => {
+            const result = parse('level|upper|len', { transformers: true })
+            expect(result[0].nameRange).toEqual(new Range(0, 5))
+            expect(result[0].transformerRanges).toHaveLength(2)
+            expect(result[0].transformerRanges[0].nameRange).toEqual(new Range(6, 11))
+            expect(result[0].transformerRanges[1].nameRange).toEqual(new Range(12, 15))
         })
     })
 })

@@ -92,6 +92,18 @@
       "input": "message, new_json.key as k, count",
       "expected_result": "success",
       "expected_sql": "`message`, `new_json`->'\"key\"' AS `k`, `count`"
+    },
+    {
+      "name": "json_path_with_transformer",
+      "input": "new_json.key|upper",
+      "expected_result": "success",
+      "expected_sql": "UPPER(`new_json`->'\"key\"') AS `new_json.key`"
+    },
+    {
+      "name": "json_path_with_transformer_and_alias",
+      "input": "new_json.key|upper as KEY",
+      "expected_result": "success",
+      "expected_sql": "UPPER(`new_json`->'\"key\"') AS `KEY`"
     }
   ]
 }

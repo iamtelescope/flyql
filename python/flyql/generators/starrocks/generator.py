@@ -1020,7 +1020,7 @@ def generate_select(
                 raise FlyqlError(f"invalid alias: {alias}")
             sql_expr = f"{sql_expr} AS `{alias}`"
         elif path:
-            alias = name
+            alias = key.raw.split("|")[0]
             if not VALID_ALIAS_PATTERN.match(alias):
                 raise FlyqlError(f"invalid alias: {alias}")
             sql_expr = f"{sql_expr} AS `{alias}`"

@@ -1,5 +1,6 @@
 import pytest
 from flyql.columns import parse, ParserError
+from flyql.core.range import Range
 from .helpers import (
     load_test_data,
     compare_columns,
@@ -54,3 +55,41 @@ def test_transformers_parsing(test_case):
 @pytest.mark.parametrize("test_case", _errors_data["tests"])
 def test_errors(test_case):
     run_test_case(test_case, _errors_data.get("default_capabilities"))
+
+
+def test_single_column_name_range():
+    result = parse("level", capabilities={"transformers": True})
+    assert result[0].name_range == Range(0, 5)
+
+
+def test_multiple_columns_name_ranges():
+    result = parse("level, service", capabilities={"transformers": True})
+    assert result[0].name_range == Range(0, 5)
+    assert result[1].name_range == Range(7, 14)
+
+
+def test_column_with_transformer_ranges():
+    result = parse("level|upper", capabilities={"transformers": True})
+    assert result[0].name_range == Range(0, 5)
+    assert len(result[0].transformer_ranges) == 1
+    assert result[0].transformer_ranges[0]["name_range"] == Range(6, 11)
+
+
+def test_transformer_argument_ranges():
+    result = parse('level|split(",")', capabilities={"transformers": True})
+    assert result[0].transformer_ranges[0]["name_range"] == Range(6, 11)
+    assert len(result[0].transformer_ranges[0]["argument_ranges"]) == 1
+    assert result[0].transformer_ranges[0]["argument_ranges"][0] == Range(12, 15)
+
+
+def test_chained_transformers_ranges():
+    result = parse("level|upper|len", capabilities={"transformers": True})
+    assert result[0].name_range == Range(0, 5)
+    assert len(result[0].transformer_ranges) == 2
+    assert result[0].transformer_ranges[0]["name_range"] == Range(6, 11)
+    assert result[0].transformer_ranges[1]["name_range"] == Range(12, 15)
+
+
+def test_column_with_alias_name_range():
+    result = parse("level as lvl", capabilities={"transformers": True})
+    assert result[0].name_range == Range(0, 5)

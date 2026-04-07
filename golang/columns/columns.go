@@ -24,14 +24,22 @@ type Transformer struct {
 	Arguments []any  `json:"arguments"`
 }
 
+// TransformerRange holds source ranges for a transformer name and its arguments.
+type TransformerRange struct {
+	NameRange      flyql.Range   `json:"-"`
+	ArgumentRanges []flyql.Range `json:"-"`
+}
+
 // ParsedColumn represents a fully parsed column with segments and metadata.
 type ParsedColumn struct {
-	Name         string        `json:"name"`
-	Transformers []Transformer `json:"transformers"`
-	Alias        *string       `json:"alias"`
-	Segments     []string      `json:"segments"`
-	IsSegmented  bool          `json:"is_segmented"`
-	DisplayName  string        `json:"display_name"`
+	Name              string             `json:"name"`
+	Transformers      []Transformer      `json:"transformers"`
+	Alias             *string            `json:"alias"`
+	Segments          []string           `json:"segments"`
+	IsSegmented       bool               `json:"is_segmented"`
+	DisplayName       string             `json:"display_name"`
+	NameRange         flyql.Range        `json:"-"`
+	TransformerRanges []TransformerRange `json:"-"`
 }
 
 type state int
@@ -63,10 +71,17 @@ var escapeSequences = map[byte]string{
 	'\\': "\\",
 }
 
+type transformerRangeData struct {
+	nameRange      flyql.Range
+	argumentRanges []flyql.Range
+}
+
 type columnData struct {
-	name         string
-	transformers []Transformer
-	alias        string
+	name              string
+	transformers      []Transformer
+	alias             string
+	nameRange         flyql.Range
+	transformerRanges []transformerRangeData
 }
 
 // Capabilities controls which parser features are enabled.
@@ -91,6 +106,11 @@ type parser struct {
 	transformers            []Transformer
 	transformerArguments    []any
 	columns                 []columnData
+	columnStart             int
+	transformerStart        int
+	transformerArgStart     int
+	transformerArgRanges    []flyql.Range
+	transformerRanges       []transformerRangeData
 }
 
 func newParser(capabilities Capabilities) *parser {
@@ -100,20 +120,25 @@ func newParser(capabilities Capabilities) *parser {
 		transformerArgumentType: "auto",
 		transformers:            []Transformer{},
 		transformerArguments:    []any{},
+		columnStart:             -1,
+		transformerStart:        -1,
+		transformerArgStart:     -1,
+		transformerArgRanges:    []flyql.Range{},
+		transformerRanges:       []transformerRangeData{},
 	}
 }
 
 func (p *parser) storeColumn() {
-	var alias *string
-	if p.alias != "" {
-		a := p.alias
-		alias = &a
+	var nameRange flyql.Range
+	if p.columnStart >= 0 {
+		nameRange = flyql.Range{Start: p.columnStart, End: p.columnStart + len(p.column)}
 	}
-	_ = alias // used below
 	p.columns = append(p.columns, columnData{
-		name:         p.column,
-		transformers: p.transformers,
-		alias:        p.alias,
+		name:              p.column,
+		transformers:      p.transformers,
+		alias:             p.alias,
+		nameRange:         nameRange,
+		transformerRanges: p.transformerRanges,
 	})
 	p.resetData()
 }
@@ -122,6 +147,18 @@ func (p *parser) storeTransformer() {
 	p.transformers = append(p.transformers, Transformer{
 		Name:      p.transformer,
 		Arguments: p.transformerArguments,
+	})
+	var nameRange flyql.Range
+	if p.transformerStart >= 0 {
+		nameRange = flyql.Range{Start: p.transformerStart, End: p.transformerStart + len(p.transformer)}
+	}
+	argRanges := p.transformerArgRanges
+	if argRanges == nil {
+		argRanges = []flyql.Range{}
+	}
+	p.transformerRanges = append(p.transformerRanges, transformerRangeData{
+		nameRange:      nameRange,
+		argumentRanges: argRanges,
 	})
 	p.resetTransformerData()
 }
@@ -136,6 +173,15 @@ func (p *parser) storeArgument() {
 		}
 	}
 	p.transformerArguments = append(p.transformerArguments, value)
+	if p.transformerArgStart >= 0 {
+		var end int
+		if p.transformerArgumentType == "str" {
+			end = p.charPos + 1
+		} else {
+			end = p.transformerArgStart + len(p.transformerArgument)
+		}
+		p.transformerArgRanges = append(p.transformerArgRanges, flyql.Range{Start: p.transformerArgStart, End: end})
+	}
 	p.resetTransformerArgument()
 }
 
@@ -143,11 +189,15 @@ func (p *parser) resetTransformerData() {
 	p.transformer = ""
 	p.transformerArguments = []any{}
 	p.transformerArgument = ""
+	p.transformerStart = -1
+	p.transformerArgStart = -1
+	p.transformerArgRanges = []flyql.Range{}
 }
 
 func (p *parser) resetTransformerArgument() {
 	p.transformerArgument = ""
 	p.transformerArgumentType = "auto"
+	p.transformerArgStart = -1
 }
 
 func (p *parser) resetData() {
@@ -159,6 +209,11 @@ func (p *parser) resetData() {
 	p.transformerArgument = ""
 	p.transformerArgumentType = "auto"
 	p.aliasOperator = ""
+	p.columnStart = -1
+	p.transformerStart = -1
+	p.transformerArgStart = -1
+	p.transformerArgRanges = []flyql.Range{}
+	p.transformerRanges = []transformerRangeData{}
 }
 
 func (p *parser) setErrorState(errorText string, errno int) {
@@ -336,6 +391,9 @@ func (p *parser) inStateExpectColumn() {
 	if p.charValue == " " {
 		return
 	} else if isColumnValue(p.charValue) {
+		if p.columnStart < 0 {
+			p.columnStart = p.charPos
+		}
 		p.column += p.charValue
 		p.state = stateColumn
 	} else {
@@ -347,6 +405,9 @@ func (p *parser) inStateColumn() {
 	if p.charValue == " " {
 		p.state = stateExpectAliasOperator
 	} else if isColumnValue(p.charValue) {
+		if p.columnStart < 0 {
+			p.columnStart = p.charPos
+		}
 		p.column += p.charValue
 	} else if p.charValue == "," {
 		p.state = stateExpectColumn
@@ -364,6 +425,9 @@ func (p *parser) inStateColumn() {
 
 func (p *parser) inStateExpectTransformer() {
 	if isTransformerValue(p.charValue) {
+		if p.transformerStart < 0 {
+			p.transformerStart = p.charPos
+		}
 		p.transformer += p.charValue
 		p.state = stateTransformer
 	} else {
@@ -373,6 +437,9 @@ func (p *parser) inStateExpectTransformer() {
 
 func (p *parser) inStateTransformer() {
 	if isTransformerValue(p.charValue) {
+		if p.transformerStart < 0 {
+			p.transformerStart = p.charPos
+		}
 		p.transformer += p.charValue
 	} else if p.charValue == "," {
 		p.storeTransformer()
@@ -402,11 +469,16 @@ func (p *parser) inStateExpectTransformerArgument() {
 	}
 	if p.charValue == "\"" {
 		p.transformerArgumentType = "str"
+		p.transformerArgStart = p.charPos
 		p.state = stateTransformerArgumentDoubleQuoted
 	} else if p.charValue == "'" {
 		p.transformerArgumentType = "str"
+		p.transformerArgStart = p.charPos
 		p.state = stateTransformerArgumentSingleQuoted
 	} else if isTransformerArgumentValue(p.charValue) {
+		if p.transformerArgStart < 0 {
+			p.transformerArgStart = p.charPos
+		}
 		p.transformerArgument += p.charValue
 		p.state = stateTransformerArgument
 	} else if p.charValue == ")" {
@@ -422,6 +494,9 @@ func (p *parser) inStateTransformerArgument() {
 		p.storeArgument()
 		p.state = stateExpectTransformerArgument
 	} else if isTransformerArgumentValue(p.charValue) {
+		if p.transformerArgStart < 0 {
+			p.transformerArgStart = p.charPos
+		}
 		p.transformerArgument += p.charValue
 	} else if p.charValue == ")" {
 		p.storeArgument()
@@ -539,7 +614,7 @@ func (p *parser) inStateExpectAlias() {
 	if p.charValue == " " {
 		return
 	} else if isColumnValue(p.charValue) {
-		p.alias += p.charValue
+		p.alias += p.charValue // alias doesn't need range tracking
 	} else if p.charValue == "," {
 		p.state = stateExpectColumn
 		p.storeColumn()
@@ -593,13 +668,26 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 			segments = []string{}
 		}
 
+		trRanges := make([]TransformerRange, len(col.transformerRanges))
+		for ri, rd := range col.transformerRanges {
+			argRanges := rd.argumentRanges
+			if argRanges == nil {
+				argRanges = []flyql.Range{}
+			}
+			trRanges[ri] = TransformerRange{
+				NameRange:      rd.nameRange,
+				ArgumentRanges: argRanges,
+			}
+		}
 		result = append(result, ParsedColumn{
-			Name:         col.name,
-			Transformers: transformers,
-			Alias:        alias,
-			Segments:     segments,
-			IsSegmented:  key.IsSegmented(),
-			DisplayName:  displayName,
+			Name:              col.name,
+			Transformers:      transformers,
+			Alias:             alias,
+			Segments:          segments,
+			IsSegmented:       key.IsSegmented(),
+			DisplayName:       displayName,
+			NameRange:         col.nameRange,
+			TransformerRanges: trRanges,
 		})
 	}
 

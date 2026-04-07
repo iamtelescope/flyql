@@ -920,6 +920,9 @@ export function generateSelect(text, columns, registry = null) {
         let sqlExpr = buildSelectExpr(identifier, column, path, pathQuoted)
         if (key.transformers.length) {
             validateTransformerChain(key.transformers, registry)
+            if (path.length > 0 && (column.isJSONB || column.jsonString)) {
+                sqlExpr = `(${sqlExpr})::text`
+            }
             sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql', registry)
         }
 
@@ -927,7 +930,7 @@ export function generateSelect(text, columns, registry = null) {
         if (alias) {
             sqlExpr = `${sqlExpr} AS ${escapeIdentifier(alias)}`
         } else if (path.length > 0) {
-            alias = raw.name
+            alias = key.raw.split('|')[0]
             sqlExpr = `${sqlExpr} AS ${escapeIdentifier(alias)}`
         }
 

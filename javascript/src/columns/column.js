@@ -1,10 +1,19 @@
 export class ParsedColumn {
-    constructor(name, transformers, alias, key = null, displayName = '') {
+    constructor(
+        name,
+        transformers,
+        alias,
+        key = null,
+        displayName = '',
+        { nameRange = null, transformerRanges = null } = {},
+    ) {
         this.name = name
         this.transformers = transformers
         this.alias = alias
         this.key = key
         this.displayName = displayName
+        this.nameRange = nameRange
+        this.transformerRanges = transformerRanges
     }
 
     get segments() {
@@ -18,7 +27,7 @@ export class ParsedColumn {
     asDict() {
         return {
             name: this.name,
-            transformers: this.transformers,
+            transformers: this.transformers.map((t) => ({ name: t.name, arguments: t.arguments })),
             alias: this.alias,
             segments: this.segments,
             is_segmented: this.isSegmented,

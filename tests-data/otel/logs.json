@@ -6,8 +6,8 @@
         { "name": "SeverityText", "type": "string" },
         { "name": "ServiceName", "type": "string" },
         { "name": "Body", "type": "string" },
-        { "name": "ResourceAttributes", "type": "json" },
-        { "name": "LogAttributes", "type": "json" }
+        { "name": "ResourceAttributes", "type": "object" },
+        { "name": "LogAttributes", "type": "object" }
     ],
     "editorColumns": {
         "Timestamp": { "type": "string", "suggest": true },

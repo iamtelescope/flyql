@@ -164,9 +164,9 @@ describe('ColumnsEngine', () => {
             expect(engine.suggestions[0].type).toBe('delimiter')
             expect(engine.suggestions[0].label).toBe(',')
             expect(engine.suggestions[0].detail).toBe('next column')
-            expect(engine.suggestions[1].type).toBe('delimiter')
+            expect(engine.suggestions[1].type).toBe('transformer')
             expect(engine.suggestions[1].label).toBe('|')
-            expect(engine.suggestions[1].detail).toBe('add transformer')
+            expect(engine.suggestions[1].detail).toBe('transformer (pipe)')
         })
 
         it('exact match still shows other matching columns below', async () => {
@@ -174,8 +174,8 @@ describe('ColumnsEngine', () => {
             engine.setQuery('host')
             engine.setCursorPosition(4)
             await engine.updateSuggestions()
-            expect(engine.suggestions[0].type).toBe('delimiter')
-            expect(engine.suggestions[1].type).toBe('delimiter')
+            expect(engine.suggestions[0].type).toBe('delimiter') // comma
+            expect(engine.suggestions[1].type).toBe('transformer') // pipe
         })
 
         it('partial match does NOT show delimiter/transformer-pipe', async () => {
@@ -197,8 +197,8 @@ describe('ColumnsEngine', () => {
             await engine.updateSuggestions()
             expect(engine.suggestionType).toBe('delimiter')
             const pipe = engine.suggestions.find((s) => s.label === '|')
-            expect(pipe.type).toBe('delimiter')
-            expect(pipe.detail).toBe('add transformer')
+            expect(pipe.type).toBe('transformer')
+            expect(pipe.detail).toBe('transformer (pipe)')
             const comma = engine.suggestions.find((s) => s.label === ',')
             expect(comma.type).toBe('delimiter')
             expect(comma.detail).toBe('next column')
@@ -228,7 +228,7 @@ describe('ColumnsEngine', () => {
             expect(engine.suggestions[1].label).toBe('()')
             expect(engine.suggestions[1].cursorOffset).toBe(-1)
             expect(engine.suggestions[2].label).toBe('|')
-            expect(engine.suggestions[2].detail).toBe('chain transformer')
+            expect(engine.suggestions[2].detail).toBe('transformer (pipe)')
         })
 
         it('partial transformer match does NOT show next steps', async () => {
@@ -255,7 +255,7 @@ describe('ColumnsEngine', () => {
         it('pipe delimiter suggestion inserts at cursor without replacing prefix', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
             const ctx = engine.buildContext('level')
-            const pipeSuggestion = { label: '|', insertText: '|', type: 'delimiter' }
+            const pipeSuggestion = { label: '|', insertText: '|', type: 'transformer' }
             const range = engine.getInsertRange(ctx, 'level', pipeSuggestion)
             expect(range.start).toBe(5)
             expect(range.end).toBe(5)
@@ -537,6 +537,94 @@ describe('ColumnsEngine', () => {
             const labels = engine.suggestions.map((s) => s.label)
             expect(labels).toContain(',')
             expect(labels).toContain('|')
+        })
+    })
+
+    describe('getDiagnostics', () => {
+        it('empty query returns empty', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('')
+            const diags = engine.getDiagnostics()
+            expect(diags).toEqual([])
+        })
+
+        it('valid columns return empty', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('level')
+            const diags = engine.getDiagnostics()
+            expect(diags).toEqual([])
+        })
+
+        it('unknown column returns diagnostic', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBeGreaterThan(0)
+            expect(diags[0].code).toBe('unknown_column')
+        })
+
+        it('unknown transformer returns diagnostic', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('level|nonexistent, service')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBeGreaterThan(0)
+            expect(diags[0].code).toBe('unknown_transformer')
+        })
+
+        it('smart suppression: partial column prefix at end is suppressed', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('lev')
+            const diags = engine.getDiagnostics()
+            expect(diags).toEqual([])
+        })
+
+        it('smart suppression: non-end diagnostic not suppressed', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBe(1)
+            expect(diags[0].code).toBe('unknown_column')
+        })
+
+        it('syntax error at end is suppressed', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('level|')
+            const diags = engine.getDiagnostics()
+            expect(diags).toEqual([])
+        })
+
+        it('stores diagnostics on engine', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            engine.getDiagnostics()
+            expect(engine.diagnostics.length).toBe(1)
+            expect(engine.diagnostics[0].code).toBe('unknown_column')
+        })
+    })
+
+    describe('getHighlightTokens with diagnostics', () => {
+        it('includes flyql-diagnostic class for errors', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            const diags = engine.getDiagnostics()
+            const html = engine.getHighlightTokens('foo, level', diags)
+            expect(html).toContain('flyql-diagnostic')
+        })
+
+        it('includes flyql-diagnostic--highlight when highlightDiagIndex matches', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            const diags = engine.getDiagnostics()
+            if (diags.length > 0) {
+                const html = engine.getHighlightTokens('foo, level', diags, 0)
+                expect(html).toContain('flyql-diagnostic--highlight')
+            }
+        })
+
+        it('no diagnostic classes when diagnostics is null', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            const html = engine.getHighlightTokens('level')
+            expect(html).not.toContain('flyql-diagnostic')
         })
     })
 

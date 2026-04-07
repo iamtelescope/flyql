@@ -171,7 +171,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 			}
 			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, quotedAlias)
 		} else if len(path) > 0 {
-			alias = raw.name
+			alias = strings.SplitN(key.Raw, "|", 2)[0]
 			if !validAliasPattern.MatchString(alias) {
 				return nil, fmt.Errorf("invalid alias: %s", alias)
 			}

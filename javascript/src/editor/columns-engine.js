@@ -6,12 +6,26 @@
  */
 
 import { Parser } from '../columns/parser.js'
-import { parse as parseColumns } from '../columns/index.js'
+import { parse as parseColumns, diagnose } from '../columns/index.js'
 import { State } from '../columns/state.js'
 import { CharType, TRANSFORMER_OPERATOR, COLUMNS_DELIMITER } from '../columns/constants.js'
 import { defaultRegistry } from '../transformers/index.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
+import { Column } from '../core/column.js'
+import { Diagnostic } from '../core/validator.js'
+import { Range } from '../core/range.js'
+import { TransformerType } from '../transformers/base.js'
+import { CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from '../core/validator.js'
+
+const EDITOR_TYPE_TO_NORMALIZED = {
+    enum: TransformerType.STRING,
+    string: TransformerType.STRING,
+    number: TransformerType.INT,
+    float: TransformerType.FLOAT,
+    boolean: TransformerType.BOOL,
+    array: TransformerType.ARRAY,
+}
 
 const COL_CHAR_TYPE_CLASS = {
     [CharType.COLUMN]: 'flyql-col-column',
@@ -64,6 +78,7 @@ export class ColumnsEngine {
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
+        this.registry = options.registry || null
         this.keyCache = {}
         this.state = new EditorState()
         this.context = null
@@ -71,6 +86,7 @@ export class ColumnsEngine {
         this.suggestionType = ''
         this.message = ''
         this.isLoading = false
+        this.diagnostics = []
         this._seq = 0
     }
 
@@ -262,7 +278,17 @@ export class ColumnsEngine {
             }
 
             if (hasExactMatch && prefix) {
-                // Exact match — show next-step actions first, then remaining columns
+                // Exact match — check if it has children (object/map column)
+                const matchedDef = resolveColumnDef(this.columns, ctx.column)
+                if (matchedDef && matchedDef.children && Object.keys(matchedDef.children).length > 0) {
+                    // Object column with children — show nested paths
+                    const nested = getNestedColumnSuggestions(this.columns, ctx.column + '.')
+                    this.suggestions = nested.filter((s) => !existing.includes(s.label))
+                    this.suggestionType = 'column'
+                    return { ctx, seq }
+                }
+
+                // Leaf column — show next-step actions first, then remaining columns
                 const nextSteps = [
                     {
                         label: COLUMNS_DELIMITER,
@@ -275,8 +301,8 @@ export class ColumnsEngine {
                     nextSteps.push({
                         label: TRANSFORMER_OPERATOR,
                         insertText: TRANSFORMER_OPERATOR,
-                        type: 'delimiter',
-                        detail: 'add transformer',
+                        type: 'transformer',
+                        detail: 'transformer (pipe)',
                     })
                 }
                 const otherColumns = columnSuggestions.filter((s) => s.label.toLowerCase() !== prefix)
@@ -323,8 +349,8 @@ export class ColumnsEngine {
                 nextSteps.push({
                     label: TRANSFORMER_OPERATOR,
                     insertText: TRANSFORMER_OPERATOR,
-                    type: 'delimiter',
-                    detail: 'chain transformer',
+                    type: 'transformer',
+                    detail: 'transformer (pipe)',
                 })
                 const otherMods = []
                 for (const mod of _colTransformerNames) {
@@ -369,8 +395,8 @@ export class ColumnsEngine {
                     items.push({
                         label: TRANSFORMER_OPERATOR,
                         insertText: TRANSFORMER_OPERATOR,
-                        type: 'delimiter',
-                        detail: 'add transformer',
+                        type: 'transformer',
+                        detail: 'transformer (pipe)',
                     })
                 }
                 items.push({
@@ -396,8 +422,8 @@ export class ColumnsEngine {
                 items.push({
                     label: TRANSFORMER_OPERATOR,
                     insertText: TRANSFORMER_OPERATOR,
-                    type: 'delimiter',
-                    detail: 'chain transformer',
+                    type: 'transformer',
+                    detail: 'transformer (pipe)',
                 })
             }
             this.suggestions = items
@@ -417,7 +443,7 @@ export class ColumnsEngine {
     /**
      * Generate highlight tokens as HTML string.
      */
-    getHighlightTokens(query) {
+    getHighlightTokens(query, diagnostics = null, highlightDiagIndex = -1) {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
@@ -433,12 +459,54 @@ export class ColumnsEngine {
             return escapeHtml(value)
         }
 
+        // Build per-position diagnostic map
+        let diagMap = null
+        let highlightSet = null
+        if (diagnostics && diagnostics.length > 0) {
+            diagMap = {}
+            for (let di = 0; di < diagnostics.length; di++) {
+                const d = diagnostics[di]
+                for (let j = d.range.start; j < d.range.end && j < value.length; j++) {
+                    if (!diagMap[j]) {
+                        diagMap[j] = { diag: d, index: di }
+                    }
+                }
+            }
+            if (highlightDiagIndex >= 0 && highlightDiagIndex < diagnostics.length) {
+                highlightSet = new Set()
+                const hd = diagnostics[highlightDiagIndex]
+                for (let j = hd.range.start; j < hd.range.end && j < value.length; j++) {
+                    highlightSet.add(j)
+                }
+            }
+        }
+
         // Build highlight using char positions — columns parser skips spaces
         // in some states, so typedChars count != value length. Use pos to align.
         let html = ''
         let currentType = null
         let currentText = ''
+        let currentDiag = null
+        let currentHighlight = false
         let lastPos = -1
+
+        const flushSpan = () => {
+            if (!currentText) return
+            const inner = wrapSpan(currentType, currentText)
+            if (currentDiag || currentHighlight) {
+                const classes = ['flyql-diagnostic']
+                if (currentDiag) {
+                    classes.push('flyql-diagnostic--' + (currentDiag.diag.severity === 'warning' ? 'warning' : 'error'))
+                }
+                if (currentHighlight) {
+                    classes.push('flyql-diagnostic--highlight')
+                }
+                const title = currentDiag ? ` title="${escapeHtml(currentDiag.diag.message)}"` : ''
+                html += `<span class="${classes.join(' ')}"${title}>${inner}</span>`
+            } else {
+                html += inner
+            }
+        }
 
         for (let i = 0; i < typedChars.length; i++) {
             const char = typedChars[i][0]
@@ -447,30 +515,51 @@ export class ColumnsEngine {
 
             // Fill any gap (untracked chars like spaces) as plain text
             if (pos > lastPos + 1) {
-                if (currentText) {
-                    html += wrapSpan(currentType, currentText)
-                    currentText = ''
-                    currentType = null
+                flushSpan()
+                currentText = ''
+                currentType = null
+                currentDiag = null
+                currentHighlight = false
+                // Render gap characters with diagnostic overlay
+                for (let gapPos = lastPos + 1; gapPos < pos; gapPos++) {
+                    const gapDiag = diagMap ? diagMap[gapPos] || null : null
+                    const gapHighlight = highlightSet ? highlightSet.has(gapPos) : false
+                    const gapCh = value[gapPos]
+                    if (gapDiag || gapHighlight) {
+                        const classes = ['flyql-diagnostic']
+                        if (gapDiag)
+                            classes.push(
+                                'flyql-diagnostic--' + (gapDiag.diag.severity === 'warning' ? 'warning' : 'error'),
+                            )
+                        if (gapHighlight) classes.push('flyql-diagnostic--highlight')
+                        const title = gapDiag ? ` title="${escapeHtml(gapDiag.diag.message)}"` : ''
+                        html += `<span class="${classes.join(' ')}"${title}>${escapeHtml(gapCh)}</span>`
+                    } else {
+                        html += escapeHtml(gapCh)
+                    }
                 }
-                const gap = value.substring(lastPos + 1, pos)
-                html += escapeHtml(gap)
             }
 
             const ch = value[pos] !== undefined ? value[pos] : char.value
-            if (charType === currentType && ch !== '\n') {
+            const newDiag = diagMap ? diagMap[pos] || null : null
+            const newHighlight = highlightSet ? highlightSet.has(pos) : false
+            if (
+                charType === currentType &&
+                newDiag === currentDiag &&
+                newHighlight === currentHighlight &&
+                ch !== '\n'
+            ) {
                 currentText += ch
             } else {
-                if (currentText) {
-                    html += wrapSpan(currentType, currentText)
-                }
+                flushSpan()
                 currentType = charType
+                currentDiag = newDiag
+                currentHighlight = newHighlight
                 currentText = ch
             }
             lastPos = pos
         }
-        if (currentText) {
-            html += wrapSpan(currentType, currentText)
-        }
+        flushSpan()
 
         // Render any remaining untracked characters after last typed char
         if (lastPos + 1 < value.length && parser.state !== State.ERROR) {
@@ -526,6 +615,100 @@ export class ColumnsEngine {
         return { valid: false, message: 'Incomplete expression' }
     }
 
+    _buildValidatorColumns() {
+        return Object.entries(this.columns).map(([name, def]) => {
+            const d = def || {}
+            const normalizedType = EDITOR_TYPE_TO_NORMALIZED[d.type] || d.type || null
+            return new Column(name, false, d.type || '', normalizedType, { matchName: name })
+        })
+    }
+
+    getDiagnostics() {
+        const value = this.state.query
+        if (!value) {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+
+        const parser = new Parser(this.capabilities)
+        let typedChars
+        try {
+            parser.parse(value, false, false)
+            typedChars = parser.typedChars
+        } catch (e) {
+            typedChars = parser.typedChars
+            const start = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos + 1 : 0
+            // Suppress syntax errors at end of input
+            if (start >= value.length - 1) {
+                this.diagnostics = []
+                return this.diagnostics
+            }
+            this.diagnostics = [
+                new Diagnostic(new Range(start, value.length), e.message || 'Parse error', 'error', 'syntax'),
+            ]
+            return this.diagnostics
+        }
+
+        if (parser.state === State.ERROR) {
+            const start = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos + 1 : 0
+            if (start >= value.length - 1) {
+                this.diagnostics = []
+                return this.diagnostics
+            }
+            this.diagnostics = [
+                new Diagnostic(new Range(start, value.length), parser.errorText || 'Parse error', 'error', 'syntax'),
+            ]
+            return this.diagnostics
+        }
+
+        let parsedColumns
+        try {
+            parsedColumns = parseColumns(value, this.capabilities)
+        } catch {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+
+        if (!parsedColumns || parsedColumns.length === 0) {
+            this.diagnostics = []
+            return this.diagnostics
+        }
+
+        const validatorColumns = this._buildValidatorColumns()
+        const reg = this.registry || _colRegistry
+
+        try {
+            this.diagnostics = diagnose(parsedColumns, validatorColumns, reg)
+        } catch {
+            this.diagnostics = []
+        }
+
+        // Smart suppression at end of input
+        if (this.diagnostics.length > 0) {
+            const queryLen = value.trimEnd().length
+            const transformerNames = reg.names()
+            const columnNames = Object.keys(this.columns).map((n) => n.toLowerCase())
+            this.diagnostics = this.diagnostics.filter((d) => {
+                if (d.range.end < queryLen) return true
+                if (d.code === CODE_UNKNOWN_TRANSFORMER) {
+                    const match = d.message.match(/^unknown transformer: '(.+)'$/)
+                    if (!match) return true
+                    const partial = match[1]
+                    return !transformerNames.some((n) => n.startsWith(partial) && n !== partial)
+                }
+                if (d.code === CODE_UNKNOWN_COLUMN) {
+                    const match = d.message.match(/^column '(.+)' is not defined$/)
+                    if (!match) return true
+                    const partial = match[1].toLowerCase()
+                    return !columnNames.some((n) => n.startsWith(partial) && n !== partial)
+                }
+                return true
+            })
+        }
+
+        return this.diagnostics
+    }
+
     getParseError() {
         if (this.context && this.context.expecting === 'error') {
             return this.context.error
@@ -543,20 +726,30 @@ export class ColumnsEngine {
 
         const cursor = context.textBeforeCursor.length
 
-        // Delimiter suggestions (, and |) insert at cursor, don't replace prefix
-        if (suggestion && suggestion.type === 'delimiter') {
+        // Calculate end position: include trailing word chars after cursor
+        let endPos = cursor
+        if (fullText) {
+            const afterCursor = fullText.substring(cursor)
+            const trailingMatch = afterCursor.match(/^[^\s,|()]+/)
+            if (trailingMatch) {
+                endPos = cursor + trailingMatch[0].length
+            }
+        }
+
+        // Delimiter and pipe suggestions insert at cursor, don't replace prefix
+        if (suggestion && (suggestion.type === 'delimiter' || suggestion.label === '|' || suggestion.label === '()')) {
             return { start: cursor, end: cursor }
         }
 
         if (context.expecting === 'column') {
             const prefix = context.column || ''
-            return { start: cursor - prefix.length, end: cursor }
+            return { start: cursor - prefix.length, end: endPos }
         }
         if (context.expecting === 'transformer') {
             const prefix = context.transformer || ''
-            return { start: cursor - prefix.length, end: cursor }
+            return { start: cursor - prefix.length, end: endPos }
         }
-        return { start: cursor, end: cursor }
+        return { start: cursor, end: endPos }
     }
 
     navigateUp() {
@@ -577,6 +770,17 @@ export class ColumnsEngine {
 
     getStateLabel() {
         return STATE_LABELS[this.suggestionType] || ''
+    }
+
+    getFooterInfo() {
+        if (!this.context) return null
+        const col = this.context.column || ''
+        if (!col) return null
+        const def = resolveColumnDef(this.columns, col)
+        if (def) {
+            return { column: col, type: def.type || '' }
+        }
+        return { column: col, type: '' }
     }
 
     clearKeyCache() {

@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	flyql "github.com/iamtelescope/flyql/golang"
 )
 
 func testDataPath(filename string) string {
@@ -260,4 +262,71 @@ func TestParseToJSON(t *testing.T) {
 	if columns[0].DisplayName != "MSG" {
 		t.Errorf("DisplayName = %q, want %q", columns[0].DisplayName, "MSG")
 	}
+}
+
+func TestRangeTracking(t *testing.T) {
+	t.Run("single column", func(t *testing.T) {
+		result, err := Parse("level", Capabilities{Transformers: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result[0].NameRange != (flyql.Range{Start: 0, End: 5}) {
+			t.Errorf("NameRange = %v, want {0, 5}", result[0].NameRange)
+		}
+	})
+
+	t.Run("multiple columns", func(t *testing.T) {
+		result, err := Parse("level, service", Capabilities{Transformers: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result[0].NameRange != (flyql.Range{Start: 0, End: 5}) {
+			t.Errorf("NameRange[0] = %v, want {0, 5}", result[0].NameRange)
+		}
+		if result[1].NameRange != (flyql.Range{Start: 7, End: 14}) {
+			t.Errorf("NameRange[1] = %v, want {7, 14}", result[1].NameRange)
+		}
+	})
+
+	t.Run("column with transformer", func(t *testing.T) {
+		result, err := Parse("level|upper", Capabilities{Transformers: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result[0].NameRange != (flyql.Range{Start: 0, End: 5}) {
+			t.Errorf("NameRange = %v, want {0, 5}", result[0].NameRange)
+		}
+		if len(result[0].TransformerRanges) != 1 {
+			t.Fatalf("TransformerRanges length = %d, want 1", len(result[0].TransformerRanges))
+		}
+		if result[0].TransformerRanges[0].NameRange != (flyql.Range{Start: 6, End: 11}) {
+			t.Errorf("TransformerRanges[0].NameRange = %v, want {6, 11}", result[0].TransformerRanges[0].NameRange)
+		}
+	})
+
+	t.Run("chained transformers", func(t *testing.T) {
+		result, err := Parse("level|upper|len", Capabilities{Transformers: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(result[0].TransformerRanges) != 2 {
+			t.Fatalf("TransformerRanges length = %d, want 2", len(result[0].TransformerRanges))
+		}
+		if result[0].TransformerRanges[0].NameRange != (flyql.Range{Start: 6, End: 11}) {
+			t.Errorf("TransformerRanges[0].NameRange = %v, want {6, 11}", result[0].TransformerRanges[0].NameRange)
+		}
+		if result[0].TransformerRanges[1].NameRange != (flyql.Range{Start: 12, End: 15}) {
+			t.Errorf("TransformerRanges[1].NameRange = %v, want {12, 15}", result[0].TransformerRanges[1].NameRange)
+		}
+	})
+
+	t.Run("column with alias", func(t *testing.T) {
+		result, err := Parse("level as lvl", Capabilities{Transformers: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result[0].NameRange != (flyql.Range{Start: 0, End: 5}) {
+			t.Errorf("NameRange = %v, want {0, 5}", result[0].NameRange)
+		}
+	})
 }

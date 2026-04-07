@@ -107,7 +107,31 @@
                         No suggestions
                     </div>
                 </div>
-                <div v-if="suggestions.length > 0" class="flyql-panel__spacer"></div>
+                <div v-if="diagnostics.length > 0" class="flyql-panel__diagnostics">
+                    <div class="flyql-panel__header">Diagnostics</div>
+                    <div
+                        v-for="(diag, idx) in diagnostics"
+                        :key="idx"
+                        :class="['flyql-panel__diagnostic-item', 'flyql-panel__diagnostic-item--' + diag.severity]"
+                        @mouseenter="hoveredDiagIndex = idx"
+                        @mouseleave="hoveredDiagIndex = -1"
+                    >
+                        <span
+                            class="flyql-panel__diagnostic-bullet"
+                            :class="'flyql-panel__diagnostic-bullet--' + diag.severity"
+                        ></span>
+                        <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
+                    </div>
+                </div>
+                <div class="flyql-panel__footer">
+                    <span v-if="footerInfo && footerInfo.column" class="flyql-panel__footer-col">{{
+                        footerInfo.column
+                    }}</span>
+                    <span v-if="footerInfo && footerInfo.type" class="flyql-panel__footer-label">{{
+                        footerInfo.type
+                    }}</span>
+                    <span v-if="!footerInfo" class="flyql-panel__footer-label">{{ stateLabel }}</span>
+                </div>
             </div>
         </Teleport>
     </div>
@@ -129,7 +153,15 @@ const props = defineProps({
     dark: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue', 'update:parsed', 'submit', 'parse-error', 'focus', 'blur'])
+const emit = defineEmits([
+    'update:modelValue',
+    'update:parsed',
+    'submit',
+    'parse-error',
+    'focus',
+    'blur',
+    'diagnostics',
+])
 
 const isLoading = ref(false)
 
@@ -162,7 +194,10 @@ const selectedIndex = ref(0)
 const message = ref('')
 const stateLabel = ref('')
 const context = ref(null)
+const footerInfo = ref(null)
 const lastParseError = ref(null)
+const diagnostics = ref([])
+const hoveredDiagIndex = ref(-1)
 
 const panelStyle = computed(() => ({
     left: panelLeft.value + 'px',
@@ -179,6 +214,8 @@ function syncFromEngine() {
     message.value = engine.message
     stateLabel.value = engine.getStateLabel()
     context.value = engine.context
+    footerInfo.value = engine.getFooterInfo()
+    diagnostics.value = engine.diagnostics
 
     const currentError = engine.getParseError()
     if (currentError !== lastParseError.value) {
@@ -193,7 +230,7 @@ function emitParsed() {
 }
 
 const highlightedHtml = computed(() => {
-    return engine.getHighlightTokens(props.modelValue)
+    return engine.getHighlightTokens(props.modelValue, diagnostics.value, hoveredDiagIndex.value)
 })
 
 function updatePanelPosition(ctx) {
@@ -261,12 +298,16 @@ async function triggerSuggestions() {
     try {
         const { ctx, seq } = await engine.updateSuggestions()
         if (engine.isStale(seq)) return
+        engine.getDiagnostics()
         syncFromEngine()
+        emit('diagnostics', engine.diagnostics)
         nextTick(() => {
             updatePanelPosition(ctx)
         })
     } catch {
+        engine.getDiagnostics()
         syncFromEngine()
+        emit('diagnostics', engine.diagnostics)
     }
 }
 
@@ -440,13 +481,17 @@ function acceptSuggestion(index) {
             .updateSuggestions()
             .then(({ ctx: nextCtx, seq }) => {
                 if (engine.isStale(seq)) return
+                engine.getDiagnostics()
                 syncFromEngine()
+                emit('diagnostics', engine.diagnostics)
                 nextTick(() => {
                     updatePanelPosition(nextCtx)
                 })
             })
             .catch(() => {
+                engine.getDiagnostics()
                 syncFromEngine()
+                emit('diagnostics', engine.diagnostics)
             })
     })
 }
@@ -548,6 +593,9 @@ watch(
     () => props.columns,
     (newColumns) => {
         engine.columns = newColumns || {}
+        engine.getDiagnostics()
+        diagnostics.value = engine.diagnostics
+        emit('diagnostics', engine.diagnostics)
     },
 )
 

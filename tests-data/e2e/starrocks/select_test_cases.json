@@ -325,6 +325,32 @@
         ["5", "error test",  "ERROR TEST",  "5"],
         ["6", "hello test",  "HELLO TEST",  "200"]
       ]
+    },
+    {
+      "name": "transformer_on_json_path",
+      "select_columns": "id, meta_json.region|upper",
+      "expected_column_names": ["id", "meta_json.region"],
+      "expected_rows": [
+        ["1", "US-EAST"],
+        ["2", "EU-WEST"],
+        ["3", "US-EAST"],
+        ["4", "null"],
+        ["5", "US-EAST"],
+        ["6", "EU-WEST"]
+      ]
+    },
+    {
+      "name": "transformer_on_json_path_with_alias",
+      "select_columns": "id, meta_json.region|upper as REGION",
+      "expected_column_names": ["id", "REGION"],
+      "expected_rows": [
+        ["1", "US-EAST"],
+        ["2", "EU-WEST"],
+        ["3", "US-EAST"],
+        ["4", "null"],
+        ["5", "US-EAST"],
+        ["6", "EU-WEST"]
+      ]
     }
   ]
 }

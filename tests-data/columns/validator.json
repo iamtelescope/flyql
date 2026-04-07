@@ -1,0 +1,170 @@
+{
+  "version": "1.0",
+  "description": "Shared columns validator test fixtures. Tests validate diagnose() output for column expressions against a column schema and default transformer registry.",
+  "test_suite": "columns_validator",
+  "tests": [
+    {
+      "name": "happy_path_single_column",
+      "input": "level",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "happy_path_multiple_columns",
+      "input": "level, service",
+      "capabilities": { "transformers": true },
+      "columns": [
+        { "name": "level", "normalized_type": "string" },
+        { "name": "service", "normalized_type": "string" }
+      ],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "happy_path_with_transformer",
+      "input": "level|upper",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "unknown_column",
+      "input": "foo",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [0, 3],
+          "message_contains": "foo"
+        }
+      ]
+    },
+    {
+      "name": "unknown_column_in_multi",
+      "input": "level, foo",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [7, 10],
+          "message_contains": "foo"
+        }
+      ]
+    },
+    {
+      "name": "unknown_transformer",
+      "input": "level|nonexistent",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_transformer",
+          "severity": "error",
+          "range": [6, 17],
+          "message_contains": "nonexistent"
+        }
+      ]
+    },
+    {
+      "name": "chain_type_mismatch",
+      "input": "level|len|upper",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "chain_type",
+          "severity": "error",
+          "range": [10, 15],
+          "message_contains": "upper"
+        }
+      ]
+    },
+    {
+      "name": "multiple_errors",
+      "input": "foo, bar",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [0, 3],
+          "message_contains": "foo"
+        },
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [5, 8],
+          "message_contains": "bar"
+        }
+      ]
+    },
+    {
+      "name": "empty_input",
+      "input": "",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "dotted_column_name_unknown",
+      "input": "resource.service.name",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "range": [0, 8],
+          "message_contains": "resource"
+        }
+      ]
+    },
+    {
+      "name": "dotted_column_name_known",
+      "input": "resource.service.name",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "resource", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "column_without_transformers",
+      "input": "level",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "arg_count_too_many",
+      "input": "level|upper(1)",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_count",
+          "severity": "error",
+          "range": [6, 11],
+          "message_contains": "upper"
+        }
+      ]
+    },
+    {
+      "name": "arg_type_mismatch",
+      "input": "level|split(42)",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        {
+          "code": "arg_type",
+          "severity": "error",
+          "range": [12, 14],
+          "message_contains": "split"
+        }
+      ]
+    }
+  ]
+}

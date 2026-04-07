@@ -178,4 +178,28 @@ describe('FlyqlColumns component', () => {
             expect(vueContent).toContain('emitParsed()')
         })
     })
+
+    describe('diagnostics panel', () => {
+        it('emits diagnostics event', () => {
+            expect(vueContent).toContain("'diagnostics'")
+        })
+
+        it('has diagnostics panel container', () => {
+            expect(vueContent).toContain('flyql-panel__diagnostics')
+        })
+
+        it('references hoveredDiagIndex', () => {
+            expect(vueContent).toContain('hoveredDiagIndex')
+        })
+
+        it('has mouseenter/mouseleave for diagnostic items', () => {
+            expect(vueContent).toContain('@mouseenter="hoveredDiagIndex = idx"')
+            expect(vueContent).toContain('@mouseleave="hoveredDiagIndex = -1"')
+        })
+
+        it('has diagnostic bullet and message spans', () => {
+            expect(vueContent).toContain('flyql-panel__diagnostic-bullet')
+            expect(vueContent).toContain('flyql-panel__diagnostic-msg')
+        })
+    })
 })

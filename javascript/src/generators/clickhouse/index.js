@@ -909,7 +909,7 @@ export function generateSelect(text, columns, registry = null) {
             const quotedAlias = alias.includes('.') ? `\`${alias}\`` : alias
             sqlExpr = `${sqlExpr} AS ${quotedAlias}`
         } else if (path.length > 0) {
-            alias = raw.name
+            alias = key.raw.split('|')[0]
             if (!validAliasPattern.test(alias)) {
                 throw new Error(`invalid alias: ${alias}`)
             }

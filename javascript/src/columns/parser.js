@@ -3,6 +3,7 @@ import { State } from './state.js'
 import { ParserError } from './exceptions.js'
 import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, CharType } from './constants.js'
 import { generateMonacoTokens as generateTokens } from './monaco.js'
+import { Range } from '../core/range.js'
 
 export class Parser {
     constructor(capabilities) {
@@ -25,6 +26,10 @@ export class Parser {
         this.columns = []
         this.text = ''
         this.typedChars = []
+        this._columnStart = -1
+        this._transformerStart = -1
+        this._transformerArgStart = -1
+        this._transformerArgRanges = []
     }
 
     generateMonacoTokens() {
@@ -42,18 +47,27 @@ export class Parser {
     }
 
     storeColumn() {
+        const nameRange =
+            this._columnStart >= 0 ? new Range(this._columnStart, this._columnStart + this.column.length) : null
         this.columns.push({
             name: this.column,
             transformers: this.transformers,
             alias: this.alias || null,
+            nameRange,
         })
         this.resetData()
     }
 
     storeTransformer() {
+        const nameRange =
+            this._transformerStart >= 0
+                ? new Range(this._transformerStart, this._transformerStart + this.transformer.length)
+                : null
         this.transformers.push({
             name: this.transformer,
             arguments: this.transformerArguments,
+            nameRange,
+            argumentRanges: this._transformerArgRanges,
         })
         this.resetTransformer()
     }
@@ -70,6 +84,16 @@ export class Parser {
             }
         }
         this.transformerArguments.push(value)
+        if (this._transformerArgStart >= 0) {
+            let end
+            if (this.transformerArgumentType === 'str') {
+                // Quoted argument: end after closing quote (char.pos is closing quote)
+                end = this.char ? this.char.pos + 1 : this._transformerArgStart + this.transformerArgument.length + 2
+            } else {
+                end = this._transformerArgStart + this.transformerArgument.length
+            }
+            this._transformerArgRanges.push(new Range(this._transformerArgStart, end))
+        }
         this.resetTransformerArgument()
     }
 
@@ -85,6 +109,9 @@ export class Parser {
         this.transformer = ''
         this.transformerArguments = []
         this.transformerArgument = ''
+        this._transformerStart = -1
+        this._transformerArgStart = -1
+        this._transformerArgRanges = []
     }
 
     resetColumn() {
@@ -106,6 +133,7 @@ export class Parser {
     resetTransformerArgument() {
         this.transformerArgument = ''
         this.transformerArgumentType = 'auto'
+        this._transformerArgStart = -1
     }
 
     resetData() {
@@ -114,6 +142,7 @@ export class Parser {
         this.resetTransformer()
         this.resetTransformers()
         this.resetAliasOperator()
+        this._columnStart = -1
     }
 
     setErrorState(errorText, errno) {
@@ -127,6 +156,9 @@ export class Parser {
 
     extendColumn() {
         if (this.char) {
+            if (this._columnStart < 0) {
+                this._columnStart = this.char.pos
+            }
             this.column += this.char.value
             this.trackChar(CharType.COLUMN)
         }
@@ -134,6 +166,9 @@ export class Parser {
 
     extendTransformer() {
         if (this.char) {
+            if (this._transformerStart < 0) {
+                this._transformerStart = this.char.pos
+            }
             this.transformer += this.char.value
             this.trackChar(CharType.TRANSFORMER)
         }
@@ -141,6 +176,9 @@ export class Parser {
 
     extendTransformerArgument() {
         if (this.char) {
+            if (this._transformerArgStart < 0) {
+                this._transformerArgStart = this.char.pos
+            }
             this.transformerArgument += this.char.value
             this.trackChar(CharType.ARGUMENT)
         }
@@ -372,9 +410,11 @@ export class Parser {
         }
         if (this.char.isDoubleQuote()) {
             this.transformerArgumentType = 'str'
+            this._transformerArgStart = this.char.pos
             this.setState(State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED)
         } else if (this.char.isSingleQuote()) {
             this.transformerArgumentType = 'str'
+            this._transformerArgStart = this.char.pos
             this.setState(State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED)
         } else if (this.char.isTransformerArgumentValue()) {
             this.extendTransformerArgument()

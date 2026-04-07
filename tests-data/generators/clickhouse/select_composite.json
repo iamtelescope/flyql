@@ -74,6 +74,36 @@
       "input": "message, new_json.key as k, count",
       "expected_result": "success",
       "expected_sql": "message, new_json.`key` AS k, count"
+    },
+    {
+      "name": "map_key_with_transformer",
+      "input": "metadata.key|upper",
+      "expected_result": "success",
+      "expected_sql": "upper(metadata['key']) AS `metadata.key`"
+    },
+    {
+      "name": "json_path_with_transformer",
+      "input": "new_json.key|lower",
+      "expected_result": "success",
+      "expected_sql": "lower(new_json.`key`) AS `new_json.key`"
+    },
+    {
+      "name": "jsonstring_path_with_transformer",
+      "input": "json_column.key|upper",
+      "expected_result": "success",
+      "expected_sql": "upper(JSONExtractString(json_column, 'key')) AS `json_column.key`"
+    },
+    {
+      "name": "map_key_with_transformer_and_alias",
+      "input": "metadata.key|upper as KEY",
+      "expected_result": "success",
+      "expected_sql": "upper(metadata['key']) AS KEY"
+    },
+    {
+      "name": "map_key_with_transformer_mixed",
+      "input": "metadata.key|upper, metadata.other",
+      "expected_result": "success",
+      "expected_sql": "upper(metadata['key']) AS `metadata.key`, metadata['other'] AS `metadata.other`"
     }
   ]
 }

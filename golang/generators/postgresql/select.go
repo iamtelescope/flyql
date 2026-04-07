@@ -167,6 +167,9 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 			if err := validateTransformerChain(key.Transformers, reg); err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
 			}
+			if len(path) > 0 && (col.IsJSONB || col.JSONString) {
+				sqlExpr = fmt.Sprintf("(%s)::text", sqlExpr)
+			}
 			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "postgresql", reg)
 			if err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
@@ -180,7 +183,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 			// Path access produces an unnamed expression in PostgreSQL (e.g. "?column?").
 			// Implicitly alias it using the full dotted reference so the column is
 			// addressable by name in the response.
-			alias = raw.name
+			alias = strings.SplitN(key.Raw, "|", 2)[0]
 			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, EscapeIdentifier(alias))
 		}
 

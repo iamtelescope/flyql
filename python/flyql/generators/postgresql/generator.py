@@ -928,6 +928,8 @@ def generate_select(
         sql_expr = _build_select_expr(identifier, column, path, path_quoted)
         if key.transformers:
             validate_transformer_chain(key.transformers, registry=registry)
+            if path and (column.is_jsonb or column.jsonstring):
+                sql_expr = f"({sql_expr})::text"
             sql_expr = apply_transformer_sql(
                 sql_expr, key.transformers, "postgresql", registry=registry
             )
@@ -935,7 +937,7 @@ def generate_select(
         if alias:
             sql_expr = f"{sql_expr} AS {escape_identifier(alias)}"
         elif path:
-            alias = name
+            alias = key.raw.split("|")[0]
             sql_expr = f"{sql_expr} AS {escape_identifier(alias)}"
 
         select_columns.append(

@@ -51,6 +51,13 @@
                                 />
                             </div>
                         </div>
+                        <div class="mt-2 ml-2 flex flex-wrap gap-2">
+                            <button v-for="(preset, i) in columnPresets" :key="i"
+                                class="px-3 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-full hover:border-gray-400 dark:hover:border-gray-400 transition-colors cursor-pointer"
+                                @click="selectExpr = preset.value"
+                                v-html="presetHighlights[i]"
+                            />
+                        </div>
 
                         <!-- Query editor -->
                         <div class="mt-3 rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
@@ -59,7 +66,6 @@
                                     <img :src="logoSvg" alt="" class="h-4 w-4" />
                                     <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Query</span>
                                 </div>
-                                <span v-if="query && canRun" class="text-xs font-medium text-green-500">&#10003; valid</span>
                             </div>
                             <div class="p-2">
                                 <FlyqlEditor
@@ -87,8 +93,8 @@
                         <!-- Run -->
                         <div class="mt-6 ml-2">
                             <button
-                                class="inline-flex items-center gap-2 px-4 py-1.5 text-sm bg-green-600 hover:bg-green-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white rounded-md font-medium transition-colors"
-                                :class="{ 'opacity-40 cursor-not-allowed': !canRun }"
+                                class="inline-flex items-center gap-2 px-4 py-1.5 text-sm bg-green-600 hover:bg-green-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white rounded-md font-medium transition-colors cursor-pointer active:scale-95"
+                                :class="{ 'opacity-40 !cursor-not-allowed': !canRun }"
                                 :disabled="!canRun"
                                 @click="runQuery"
                             >
@@ -101,14 +107,14 @@
                         <div class="mt-4">
                             <div class="flex gap-1 mb-3">
                                 <button
-                                    class="px-4 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2"
+                                    class="px-4 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 cursor-pointer"
                                     :class="outputTab === 'sql'
                                         ? 'border-green-600 dark:border-emerald-500 text-gray-900 dark:text-white'
                                         : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
                                     @click="outputTab = 'sql'"
                                 >Generate SQL</button>
                                 <button
-                                    class="px-4 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2"
+                                    class="px-4 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 cursor-pointer"
                                     :class="outputTab === 'filter'
                                         ? 'border-green-600 dark:border-emerald-500 text-gray-900 dark:text-white'
                                         : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
@@ -123,7 +129,7 @@
                             <div v-if="outputTab === 'sql'" class="rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
                                 <div class="flex border-b border-gray-200 dark:border-gray-800">
                                     <button v-for="(d, i) in dialects" :key="d.key"
-                                        class="flex items-center gap-2 px-4 py-2 text-xs font-medium transition-colors border-r border-gray-200 dark:border-gray-800 last:border-r-0"
+                                        class="flex items-center gap-2 px-4 py-2 text-xs font-medium transition-colors border-r border-gray-200 dark:border-gray-800 last:border-r-0 cursor-pointer"
                                         :class="dialectIdx === i
                                             ? 'bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white'
                                             : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'"
@@ -186,8 +192,8 @@
                             </div>
                             <div class="p-3 max-h-[60vh] overflow-y-auto">
                                 <div v-for="col in schemaColumns" :key="col.name" class="flex items-center justify-between py-0.5 px-1 text-sm font-mono">
-                                    <span class="text-blue-600 dark:text-blue-400">{{ col.name }}</span>
-                                    <span class="text-gray-500 dark:text-gray-500 text-xs">{{ col.type }}</span>
+                                    <span class="flyql-col-column">{{ col.name }}</span>
+                                    <span class="text-xs flyql-schema-type" :data-type="col.type">{{ col.type }}</span>
                                 </div>
                             </div>
                         </div>
@@ -214,6 +220,7 @@ import '@fontsource/inter/500.css'
 import { ref, computed, onMounted } from 'vue'
 import { FlyqlEditor, FlyqlColumns } from '../javascript/src/editor/index.js'
 import { EditorEngine } from '../javascript/src/editor/engine.js'
+import { ColumnsEngine } from '../javascript/src/editor/columns-engine.js'
 import { parse } from '../javascript/src/core/parser.js'
 import { generateWhere as generateClickHouse, generateSelect as chSelect, newColumn as chNewColumn } from '../javascript/src/generators/clickhouse/index.js'
 import { generateWhere as generatePostgreSQL, generateSelect as pgSelect, newColumn as pgNewColumn } from '../javascript/src/generators/postgresql/index.js'
@@ -241,10 +248,18 @@ const dialects = [
     { key: 'sr', name: 'StarRocks', icon: srIcon, iconDark: null },
 ]
 
+const columnPresets = [
+    { label: 'Timestamp, SeverityText, ServiceName, Body, LogAttributes', value: 'Timestamp, SeverityText, ServiceName, Body, LogAttributes' },
+    { label: 'All columns', value: schemaColumns.map((c) => c.name).join(', ') },
+]
+
 const examples = otelLogs.examples
 
 const highlightEngine = new EditorEngine(editorColumns)
 const exampleHighlights = examples.map((q) => highlightEngine.getHighlightTokens(q))
+
+const columnsHighlightEngine = new ColumnsEngine(editorColumns)
+const presetHighlights = columnPresets.map((p) => columnsHighlightEngine.getHighlightTokens(p.value) || p.label)
 
 // Resolve ResourceAttributes references from shared JSON (records store service name as string ref)
 const sampleRecords = otelLogs.records.map((r) => ({
@@ -254,7 +269,7 @@ const sampleRecords = otelLogs.records.map((r) => ({
 
 const isDark = ref(localStorage.getItem('flyql-dark') === 'true')
 // Apply dark class immediately (before mount) to avoid flash
-if (isDark.value) document.documentElement.classList.add('dark')
+if (isDark.value) document.documentElement.classList.add('dark', 'flyql-dark')
 const query = ref(otelLogs.defaults.query)
 const selectExpr = ref(otelLogs.defaults.selectExpr)
 const parsedColumnsCount = ref(5)
@@ -313,7 +328,7 @@ const hasRun = ref(false)
 const matchError = ref(null)
 const matchResults = ref(sampleRecords.map(() => null))
 
-const canRun = computed(() => query.value.length > 0 && !parseError.value)
+const canRun = computed(() => !parseError.value)
 const matchedCount = computed(() => matchResults.value.filter((m) => m === true).length)
 
 const highlightedSql = computed(() => {
@@ -344,6 +359,7 @@ function toggleDark() {
     isDark.value = !isDark.value
     localStorage.setItem('flyql-dark', isDark.value)
     document.documentElement.classList.toggle('dark', isDark.value)
+    document.documentElement.classList.toggle('flyql-dark', isDark.value)
 }
 
 function onParseError(err) { parseError.value = err }
@@ -352,40 +368,52 @@ function runQuery() {
     if (!canRun.value) return
     hasRun.value = true
     snapshotColumns.value = [...parsedColumns.value]
-    try {
-        const parsed = parse(query.value)
-        const results = []
-        for (const [name, cols, genWhere, genSelect] of [
-            ['ClickHouse', chColumns, generateClickHouse, chSelect],
-            ['PostgreSQL', pgColumns, generatePostgreSQL, pgSelect],
-            ['StarRocks', srColumns, generateStarRocks, srSelect],
-        ]) {
-            try {
-                const where = genWhere(parsed.root, cols)
-                let selectClause = '*'
-                if (selectExpr.value.trim()) {
-                    try {
-                        const selectResult = genSelect(selectExpr.value, cols)
-                        selectClause = selectResult.sql
-                    } catch { /* ignore select errors, show WHERE only */ }
-                }
-                const sql = `SELECT ${selectClause} FROM table ${where ? 'WHERE ' + where : ''}`
-                results.push({ dialect: name, sql })
-            } catch (e) {
-                results.push({ dialect: name, sql: '', error: e.message || String(e) })
-            }
+
+    const hasQuery = query.value.trim().length > 0
+    let parsed = null
+    if (hasQuery) {
+        try {
+            parsed = parse(query.value)
+        } catch (e) {
+            const err = e.message || String(e)
+            sqlResults.value = [
+                { dialect: 'ClickHouse', sql: '', error: err },
+                { dialect: 'PostgreSQL', sql: '', error: err },
+                { dialect: 'StarRocks', sql: '', error: err },
+            ]
+            matchResults.value = sampleRecords.map(() => null)
+            matchError.value = err
+            return
         }
-        sqlResults.value = results
-    } catch (e) {
-        const err = e.message || String(e)
-        sqlResults.value = [
-            { dialect: 'ClickHouse', sql: '', error: err },
-            { dialect: 'PostgreSQL', sql: '', error: err },
-            { dialect: 'StarRocks', sql: '', error: err },
-        ]
     }
+
+    const results = []
+    for (const [name, cols, genWhere, genSelect] of [
+        ['ClickHouse', chColumns, generateClickHouse, chSelect],
+        ['PostgreSQL', pgColumns, generatePostgreSQL, pgSelect],
+        ['StarRocks', srColumns, generateStarRocks, srSelect],
+    ]) {
+        try {
+            const where = parsed ? genWhere(parsed.root, cols) : ''
+            let selectClause = '*'
+            if (selectExpr.value.trim()) {
+                const selectResult = genSelect(selectExpr.value, cols)
+                selectClause = selectResult.sql
+            }
+            const sql = `SELECT ${selectClause} FROM table${where ? ' WHERE ' + where : ''}`
+            results.push({ dialect: name, sql })
+        } catch (e) {
+            results.push({ dialect: name, sql: '', error: e.message || String(e) })
+        }
+    }
+    sqlResults.value = results
+
     try {
-        matchResults.value = sampleRecords.map((r) => match(query.value, r))
+        if (hasQuery) {
+            matchResults.value = sampleRecords.map((r) => match(query.value, r))
+        } else {
+            matchResults.value = sampleRecords.map(() => true)
+        }
         matchError.value = null
     } catch (e) {
         matchError.value = e?.message || String(e)
@@ -415,17 +443,17 @@ body:where(.dark, .dark *) { background-color: #1c1c1c; color: #ffffff; }
 /* FlyQL editor transparent inside cards */
 .flyql-editor, .flyql-columns { background: transparent !important; border: none !important; }
 
-/* FlyQL syntax in example chips */
-.flyql-highlight .flyql-key { color: #0451a5; }
-.flyql-highlight .flyql-operator { color: #0089ab; }
+/* FlyQL syntax in example chips — use the same CSS vars as the editor */
+.flyql-highlight .flyql-key { color: var(--flyql-key-color); }
+.flyql-highlight .flyql-operator { color: var(--flyql-operator-color); }
 .flyql-highlight .flyql-value,
-.flyql-highlight .flyql-string { color: #8b0000; }
-.flyql-highlight .flyql-number { color: #098658; }
-:root.dark .flyql-highlight .flyql-key { color: #6e9fff; }
-:root.dark .flyql-highlight .flyql-operator { color: #0089ab; }
-:root.dark .flyql-highlight .flyql-value,
-:root.dark .flyql-highlight .flyql-string { color: #ce9178; }
-:root.dark .flyql-highlight .flyql-number { color: #b5cea8; }
+.flyql-highlight .flyql-string { color: var(--flyql-value-color); }
+.flyql-highlight .flyql-number { color: var(--flyql-number-color); }
+
+/* Schema sidebar type colors */
+.flyql-schema-type[data-type="string"] { color: var(--flyql-value-color); }
+.flyql-schema-type[data-type="number"] { color: var(--flyql-number-color); }
+.flyql-schema-type[data-type="object"] { color: var(--flyql-operator-color); }
 
 /* SQL syntax highlighting */
 .sql-hl-keyword { color: #0451a5; font-weight: 600; }

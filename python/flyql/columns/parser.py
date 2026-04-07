@@ -8,6 +8,7 @@ from .constants import (
     SINGLE_QUOTE,
     VALID_ALIAS_OPERATOR,
 )
+from flyql.core.range import Range
 
 
 class Parser:
@@ -32,25 +33,45 @@ class Parser:
         self.transformer_arguments: List[Any] = []
         self.columns: List[Dict[str, Any]] = []
         self.text = ""
+        self._column_start: int = -1
+        self._transformer_start: int = -1
+        self._transformer_arg_start: int = -1
+        self._transformer_arg_ranges: List[Range] = []
 
     def set_text(self, text: str) -> None:
         self.text = text
 
     def store_column(self) -> None:
+        name_range = (
+            Range(self._column_start, self._column_start + len(self.column))
+            if self._column_start >= 0
+            else None
+        )
         self.columns.append(
             {
                 "name": self.column,
                 "transformers": self.transformers,
                 "alias": self.alias if self.alias else None,
+                "name_range": name_range,
             }
         )
         self.reset_data()
 
     def store_transformer(self) -> None:
+        name_range = (
+            Range(
+                self._transformer_start,
+                self._transformer_start + len(self.transformer),
+            )
+            if self._transformer_start >= 0
+            else None
+        )
         self.transformers.append(
             {
                 "name": self.transformer,
                 "arguments": self.transformer_arguments,
+                "name_range": name_range,
+                "argument_ranges": list(self._transformer_arg_ranges),
             }
         )
         self.reset_transformer()
@@ -66,6 +87,18 @@ class Parser:
                 except ValueError:
                     pass
         self.transformer_arguments.append(value)
+        if self._transformer_arg_start >= 0:
+            if self.transformer_argument_type == "str":
+                end = (
+                    self.char.pos + 1
+                    if self.char
+                    else self._transformer_arg_start
+                    + len(self.transformer_argument)
+                    + 2
+                )
+            else:
+                end = self._transformer_arg_start + len(self.transformer_argument)
+            self._transformer_arg_ranges.append(Range(self._transformer_arg_start, end))
         self.reset_transformer_argument()
 
     def set_char(self, char: Char) -> None:
@@ -78,6 +111,9 @@ class Parser:
         self.transformer = ""
         self.transformer_arguments = []
         self.transformer_argument = ""
+        self._transformer_start = -1
+        self._transformer_arg_start = -1
+        self._transformer_arg_ranges = []
 
     def reset_column(self) -> None:
         self.column = ""
@@ -94,6 +130,7 @@ class Parser:
     def reset_transformer_argument(self) -> None:
         self.transformer_argument = ""
         self.transformer_argument_type = "auto"
+        self._transformer_arg_start = -1
 
     def reset_data(self) -> None:
         self.reset_column()
@@ -101,6 +138,7 @@ class Parser:
         self.reset_transformer()
         self.reset_transformers()
         self.reset_alias_operator()
+        self._column_start = -1
 
     def set_error_state(self, error_text: str, errno: int) -> None:
         self.state = State.ERROR
@@ -113,14 +151,20 @@ class Parser:
 
     def extend_column(self) -> None:
         if self.char:
+            if self._column_start < 0:
+                self._column_start = self.char.pos
             self.column += self.char.value
 
     def extend_transformer(self) -> None:
         if self.char:
+            if self._transformer_start < 0:
+                self._transformer_start = self.char.pos
             self.transformer += self.char.value
 
     def extend_transformer_argument(self) -> None:
         if self.char:
+            if self._transformer_arg_start < 0:
+                self._transformer_arg_start = self.char.pos
             self.transformer_argument += self.char.value
 
     def extend_alias(self) -> None:
@@ -324,9 +368,11 @@ class Parser:
             return
         if self.char.is_double_quote():
             self.transformer_argument_type = "str"
+            self._transformer_arg_start = self.char.pos
             self.set_state(State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED)
         elif self.char.is_single_quote():
             self.transformer_argument_type = "str"
+            self._transformer_arg_start = self.char.pos
             self.set_state(State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED)
         elif self.char.is_transformer_argument_value():
             self.extend_transformer_argument()

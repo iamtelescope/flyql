@@ -5,6 +5,7 @@ import { parseKey } from '../core/key.js'
 import { CharType, tokenTypes, TRANSFORMER_INFO } from './constants.js'
 import { generateMonacoTokens, getMonacoTokenProvider } from './monaco.js'
 import { validateColumns, validateColumnNames } from './validation.js'
+import { diagnose } from './validator.js'
 
 export function parse(text, capabilities) {
     const parser = new Parser(capabilities)
@@ -13,7 +14,16 @@ export function parse(text, capabilities) {
     for (const columnDict of parser.columns) {
         const key = parseKey(columnDict.name)
         const alias = columnDict.alias
-        columns.push(new ParsedColumn(columnDict.name, columnDict.transformers, alias, key, alias || ''))
+        const transformerRanges = columnDict.transformers.map((t) => ({
+            nameRange: t.nameRange || null,
+            argumentRanges: t.argumentRanges || [],
+        }))
+        columns.push(
+            new ParsedColumn(columnDict.name, columnDict.transformers, alias, key, alias || '', {
+                nameRange: columnDict.nameRange || null,
+                transformerRanges,
+            }),
+        )
     }
     return columns
 }
@@ -37,4 +47,5 @@ export {
     TRANSFORMER_INFO,
     validateColumns,
     validateColumnNames,
+    diagnose,
 }

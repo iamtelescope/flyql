@@ -401,6 +401,19 @@
         ["5", "error test",  "ERROR TEST",  "5"],
         ["6", "hello test",  "HELLO TEST",  "200"]
       ]
+    },
+    {
+      "name": "transformer_on_simple_column",
+      "select_columns": "id, message|upper as MSG",
+      "expected_column_names": ["id", "MSG"],
+      "expected_rows": [
+        ["1", "HELLO"],
+        ["2", "WORLD"],
+        ["3", "HELLO WORLD"],
+        ["4", ""],
+        ["5", "ERROR TEST"],
+        ["6", "HELLO TEST"]
+      ]
     }
   ]
 }

@@ -1,6 +1,7 @@
 import json
 from typing import List, Dict, Any, Optional
 from flyql.core.key import Key
+from flyql.core.range import Range
 
 
 class ParsedColumn:
@@ -11,12 +12,16 @@ class ParsedColumn:
         alias: Optional[str],
         key: Optional[Key] = None,
         display_name: str = "",
+        name_range: Optional[Range] = None,
+        transformer_ranges: Optional[List[Dict[str, Any]]] = None,
     ):
         self.name = name
         self.transformers = transformers
         self.alias = alias
         self.key = key
         self.display_name = display_name
+        self.name_range = name_range
+        self.transformer_ranges = transformer_ranges
 
     @property
     def segments(self) -> List[str]:
@@ -29,7 +34,10 @@ class ParsedColumn:
     def as_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "transformers": self.transformers,
+            "transformers": [
+                {"name": t["name"], "arguments": t["arguments"]}
+                for t in self.transformers
+            ],
             "alias": self.alias,
             "segments": self.segments,
             "is_segmented": self.is_segmented,

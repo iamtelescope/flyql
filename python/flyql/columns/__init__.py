@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 from .parser import Parser
 from .column import ParsedColumn
 from .exceptions import ParserError
+from .validator import diagnose
 from flyql.core.key import parse_key
 
 
@@ -36,6 +37,13 @@ def parse(
         # Parse the column name as a path with segments
         key = parse_key(column_dict["name"])
         alias = column_dict["alias"]
+        transformer_ranges = [
+            {
+                "name_range": t.get("name_range"),
+                "argument_ranges": t.get("argument_ranges", []),
+            }
+            for t in column_dict["transformers"]
+        ]
         columns.append(
             ParsedColumn(
                 name=column_dict["name"],
@@ -43,6 +51,8 @@ def parse(
                 alias=alias,
                 key=key,
                 display_name=alias if alias else "",
+                name_range=column_dict.get("name_range"),
+                transformer_ranges=transformer_ranges,
             )
         )
     return columns
@@ -65,4 +75,5 @@ __all__ = [
     "Parser",
     "ParsedColumn",
     "ParserError",
+    "diagnose",
 ]

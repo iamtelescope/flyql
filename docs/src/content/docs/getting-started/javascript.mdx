@@ -37,7 +37,7 @@ try {
 
 ## Generate SQL
 
-Use a generator to turn the AST into a parameterized WHERE clause. Each database dialect is a separate subpath import.
+Use a generator to turn the AST into a WHERE clause. Each database dialect is a separate subpath import.
 
 ### ClickHouse
 
@@ -135,7 +135,10 @@ See [Transformers](/syntax/transformers/) for the full syntax reference.
 | `flyql/generators/postgresql` | PostgreSQL SQL generator |
 | `flyql/generators/starrocks` | StarRocks SQL generator |
 | `flyql/matcher` | In-memory record matcher |
+| `flyql/transformers` | Transformer registry and built-ins |
+| `flyql/types` | ValueType constants |
 | `flyql/editor` | Web editor component (requires Vue 3) |
+| `flyql/highlight` | Syntax highlighting utilities |
 
 ## What's Next
 

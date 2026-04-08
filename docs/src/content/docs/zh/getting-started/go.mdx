@@ -56,7 +56,7 @@ func main() {
 		"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
 	}
 
-	sql, err := clickhouse.ToSQL(result.Root, columns)
+	sql, err := clickhouse.ToSQLWhere(result.Root, columns)
 	if err != nil {
 		panic(err)
 	}
@@ -145,7 +145,7 @@ func main() {
 		"message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
 	}
 
-	sql, err := clickhouse.ToSQL(result.Root, columns)
+	sql, err := clickhouse.ToSQLWhere(result.Root, columns)
 	if err != nil {
 		panic(err)
 	}

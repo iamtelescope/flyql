@@ -18,7 +18,7 @@ pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=
 ## क्वेरी पार्स करें
 
 ```python
-from flyql.core.parser import parse
+from flyql import parse
 
 result = parse("status = 200 and active")
 print(result.root)
@@ -33,8 +33,8 @@ AST को पैरामीटराइज़्ड WHERE क्लॉज़ �
 ### ClickHouse
 
 ```python
-from flyql.core.parser import parse
-from flyql.generators.clickhouse.generator import to_sql
+from flyql import parse
+from flyql.generators.clickhouse.generator import to_sql_where
 from flyql.generators.clickhouse.column import Column
 
 result = parse("status >= 400 and host = prod*")
@@ -44,7 +44,7 @@ columns = {
     "host": Column("host", False, "String"),
 }
 
-sql = to_sql(result.root, columns)
+sql = to_sql_where(result.root, columns)
 print(sql)
 ```
 
@@ -55,9 +55,9 @@ PostgreSQL और StarRocks जनरेटर समान पैटर्न �
 SQL उत्पन्न किए बिना डेटा रिकॉर्ड के विरुद्ध क्वेरी का मूल्यांकन करें:
 
 ```python
-from flyql.core.parser import parse
-from flyql.matcher.evaluator import Evaluator
-from flyql.matcher.record import Record
+from flyql import parse
+from flyql.matcher import Evaluator, Record
+
 
 result = parse("status = 200 and active")
 
@@ -97,15 +97,15 @@ print(json_str)
 ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:
 
 ```python
-from flyql.core.parser import parse
-from flyql.generators.clickhouse.generator import to_sql, Column
+from flyql import parse
+from flyql.generators.clickhouse.generator import to_sql_where, Column
 
 # Parse a transformer query
 result = parse("message|upper = 'ERROR'")
 
 # Generate SQL for ClickHouse
 columns = {"message": Column("message", False, "String")}
-sql = to_sql(result.root, columns)
+sql = to_sql_where(result.root, columns)
 print(sql)  # equals(upper(message), 'ERROR')
 ```
 

@@ -81,15 +81,15 @@ class SubstringTransformer(Transformer):
 Register and use:
 
 ```python
-from flyql.core.parser import parse
-from flyql.generators.postgresql.generator import to_sql, Column
+from flyql import parse
+from flyql.generators.postgresql.generator import to_sql_where, Column
 
 registry = default_registry()
 registry.register(FirstOctetTransformer())
 
 result = parse("src_ip|firstoctet > 192")
 columns = {"src_ip": Column("src_ip", "text")}
-sql = to_sql(result.root, columns, registry=registry)
+sql = to_sql_where(result.root, columns, registry=registry)
 # CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
 ```
 
@@ -261,7 +261,7 @@ Each diagnostic carries a `range` (source position), `message`, `severity` (`"er
 
 ```python
 # Python
-from flyql.core.parser import parse
+from flyql import parse
 from flyql.core.column import Column
 from flyql.core.validator import diagnose
 
@@ -295,4 +295,4 @@ Pass a custom registry as the third argument if you have custom transformers reg
 
 ## Security
 
-Custom transformers' `sql()` methods only receive column references (from the schema), never user-provided values. User values are escaped/parameterized by the generator. This preserves FlyQL's injection-proof guarantee — custom SQL wraps column names, not user input.
+Custom transformers' `sql()` methods only receive column references (from the schema), never user-provided values. User values are escaped by the generator. This preserves FlyQL's injection-proof guarantee — custom SQL wraps column names, not user input.

@@ -10,7 +10,7 @@ import { landingIntroQuery, landingQuickExampleQuery } from '../../data/flyql-ex
 
 Welcome to **FlyQL** project documentation. Current version is **1.0.0** ([changelog](/changelog)).
 
-FlyQL is a lightweight, human-readable query language designed for filtering data. It transpiles into injection-proof, parameterized SQL across **ClickHouse**, **PostgreSQL**, and **StarRocks** — with full implementations in **Go**, **Python**, and **JavaScript**. Write a query once, and FlyQL generates dialect-specific SQL for your database — or evaluates it in-memory against data records.
+FlyQL is a lightweight, human-readable query language designed for filtering data. It transpiles into injection-proof SQL across **ClickHouse**, **PostgreSQL**, and **StarRocks** — with full implementations in **Go**, **Python**, and **JavaScript**. Write a query once, and FlyQL generates dialect-specific SQL for your database — or evaluates it in-memory against data records.
 
 <FlyqlCode code={landingIntroQuery} />
 
@@ -18,7 +18,7 @@ This query works identically whether your backend is ClickHouse, PostgreSQL, Sta
 
 ## Key Features
 
-- **Injection-Proof by Design** — The grammar cannot express subqueries, JOINs, UNIONs, or DDL. Security is structural, not defensive. All generated SQL uses parameterized values.
+- **Injection-Proof by Design** — The grammar cannot express subqueries, JOINs, UNIONs, or DDL. Security is structural, not defensive. All values are escaped in the generated SQL.
 - **Multi-Dialect SQL** — One query language, dialect-specific output. Generates correct SQL for ClickHouse, PostgreSQL, and StarRocks with proper type handling (JSON paths, Map access, Array handling).
 - **Multi-Language** — Full implementations in Go, Python, and JavaScript. Parse on the frontend, validate on the backend, generate SQL anywhere — same query, same results.
 - **Zero Dependencies** — Hand-written state-machine parser with no external dependencies in any language. Trivial to integrate, nothing to conflict with.

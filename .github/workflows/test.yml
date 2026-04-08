@@ -52,6 +52,14 @@ jobs:
         run: cd python && mypy flyql/ --strict
       - name: Run tests
         run: cd python && pytest tests/ -v
+      - name: Smoke test - verify package imports
+        run: |
+          cd python
+          python -c "from flyql import parse, Node, Expression, Key, Column, Diagnostic, diagnose, ValueType"
+          python -c "from flyql.matcher import Evaluator, Record"
+          python -c "from flyql.generators.clickhouse.generator import to_sql_where"
+          python -c "from flyql.generators.postgresql.generator import to_sql_where"
+          python -c "from flyql.generators.starrocks.generator import to_sql_where"
 
   javascript:
     name: JavaScript Tests & Lint
@@ -72,3 +80,11 @@ jobs:
         run: cd javascript && pnpm lint
       - name: Run tests with coverage
         run: cd javascript && pnpm test:coverage
+      - name: Smoke test - verify package exports
+        run: |
+          cd javascript
+          node -e "import('flyql').then(m => { if (!m.parse) throw 'missing parse' })"
+          node -e "import('flyql/generators/clickhouse').then(m => { if (!m.generateWhere) throw 'missing generateWhere' })"
+          node -e "import('flyql/transformers').then(m => { if (!m.TransformerRegistry) throw 'missing TransformerRegistry' })"
+          node -e "import('flyql/types').then(m => { if (!m.ValueType) throw 'missing ValueType' })"
+          node -e "import('flyql/matcher').then(m => { if (!m.match) throw 'missing match' })"

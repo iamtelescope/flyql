@@ -19,7 +19,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from flyql.core.parser import parse  # noqa: E402
 from flyql.generators.starrocks.column import Column  # noqa: E402
-from flyql.generators.starrocks.generator import to_sql, generate_select  # noqa: E402
+from flyql.generators.starrocks.generator import (
+    to_sql_where,
+    to_sql_select,
+)  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TEST_DATA_DIR = REPO_ROOT / "tests-data" / "e2e"
@@ -236,7 +239,7 @@ def test_starrocks_where(
 
     try:
         parsed = parse(flyql)
-        sql_where = to_sql(parsed.current_node, columns)
+        sql_where = to_sql_where(parsed.current_node, columns)
         result["sql"] = sql_where
 
         query = f"SELECT id FROM flyql_e2e_test WHERE {sql_where} ORDER BY id"
@@ -287,7 +290,7 @@ def test_starrocks_select(
         return
 
     try:
-        select_result = generate_select(select_columns, columns)
+        select_result = to_sql_select(select_columns, columns)
         result["sql"] = select_result.sql
 
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test ORDER BY id"
@@ -355,7 +358,7 @@ def test_starrocks_join(
 
     try:
         parsed = parse(flyql)
-        sql_where = to_sql(parsed.current_node, join_columns)
+        sql_where = to_sql_where(parsed.current_node, join_columns)
         result["sql"] = sql_where
 
         query = f"SELECT t.id FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id WHERE {sql_where} ORDER BY t.id"
@@ -411,7 +414,7 @@ def test_starrocks_join_select(
         return
 
     try:
-        select_result = generate_select(select_columns, join_select_columns)
+        select_result = to_sql_select(select_columns, join_select_columns)
         result["sql"] = select_result.sql
 
         query = f"SELECT {select_result.sql} FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id ORDER BY t.id"

@@ -84,14 +84,14 @@ class TestCustomTransformerClickHouse:
     def test_where_clause(self) -> None:
         registry = _custom_registry()
         result = parse("src_ip|firstoctet > 192")
-        sql = ch_gen.to_sql(result.root, self.COLUMNS, registry=registry)
+        sql = ch_gen.to_sql_where(result.root, self.COLUMNS, registry=registry)
         assert "toUInt8(splitByChar('.', src_ip)[1])" in sql
         assert "> 192" in sql
 
     def test_default_registry_rejects_unknown(self) -> None:
         result = parse("src_ip|firstoctet > 192")
         with pytest.raises(Exception, match="unknown transformer"):
-            ch_gen.to_sql(result.root, self.COLUMNS)
+            ch_gen.to_sql_where(result.root, self.COLUMNS)
 
 
 class TestCustomTransformerPostgreSQL:
@@ -102,7 +102,7 @@ class TestCustomTransformerPostgreSQL:
     def test_where_clause(self) -> None:
         registry = _custom_registry()
         result = parse("src_ip|firstoctet > 192")
-        sql = pg_gen.to_sql(result.root, self.COLUMNS, registry=registry)
+        sql = pg_gen.to_sql_where(result.root, self.COLUMNS, registry=registry)
         assert "CAST(SPLIT_PART" in sql
         assert "> 192" in sql
 
@@ -115,7 +115,7 @@ class TestCustomTransformerStarRocks:
     def test_where_clause(self) -> None:
         registry = _custom_registry()
         result = parse("src_ip|firstoctet > 192")
-        sql = sr_gen.to_sql(result.root, self.COLUMNS, registry=registry)
+        sql = sr_gen.to_sql_where(result.root, self.COLUMNS, registry=registry)
         assert "CAST(SPLIT_PART" in sql
         assert "> 192" in sql
 

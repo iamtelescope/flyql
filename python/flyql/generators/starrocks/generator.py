@@ -141,7 +141,7 @@ def is_number(value: Any) -> bool:
         return True
 
 
-def truthy_expression_to_sql(
+def truthy_expression_to_sql_where(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
     """Generate SQL for truthy check (non-falsy value).
@@ -260,7 +260,7 @@ def truthy_expression_to_sql(
             return f"({col_id} IS NOT NULL)"
 
 
-def falsy_expression_to_sql(
+def falsy_expression_to_sql_where(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
     """Generate SQL for falsy check (null or falsy value).
@@ -375,7 +375,9 @@ def falsy_expression_to_sql(
             return f"({col_id} IS NULL)"
 
 
-def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+def in_expression_to_sql_where(
+    expression: Expression, columns: Mapping[str, Column]
+) -> str:
     column_name = expression.key.segments[0]
     if column_name not in columns:
         raise FlyqlError(f"unknown column: {column_name}")
@@ -479,7 +481,9 @@ def in_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) 
         return f"{col_ref} {sql_op} ({values_sql})"
 
 
-def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column]) -> str:
+def has_expression_to_sql_where(
+    expression: Expression, columns: Mapping[str, Column]
+) -> str:
     column_name = expression.key.segments[0]
     if column_name not in columns:
         raise FlyqlError(f"unknown column: {column_name}")
@@ -595,19 +599,19 @@ def has_expression_to_sql(expression: Expression, columns: Mapping[str, Column])
         )
 
 
-def expression_to_sql(
+def expression_to_sql_where(
     expression: Expression,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
 ) -> str:
     if expression.operator == Operator.TRUTHY.value:
-        return truthy_expression_to_sql(expression, columns)
+        return truthy_expression_to_sql_where(expression, columns)
 
     if expression.operator in (Operator.IN.value, Operator.NOT_IN.value):
-        return in_expression_to_sql(expression, columns)
+        return in_expression_to_sql_where(expression, columns)
 
     if expression.operator in (Operator.HAS.value, Operator.NOT_HAS.value):
-        return has_expression_to_sql(expression, columns)
+        return has_expression_to_sql_where(expression, columns)
 
     validate_operator(expression.operator)
     text = ""
@@ -841,7 +845,7 @@ def _find_single_leaf_expression(node: Optional[Node]) -> Optional[Expression]:
     return None
 
 
-def to_sql(
+def to_sql_where(
     root: Node,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
@@ -857,10 +861,12 @@ def to_sql(
     if root.expression is not None:
         # For negated truthy expressions, generate falsy SQL directly
         if is_negated and root.expression.operator == Operator.TRUTHY.value:
-            text = falsy_expression_to_sql(expression=root.expression, columns=columns)
+            text = falsy_expression_to_sql_where(
+                expression=root.expression, columns=columns
+            )
             is_negated = False  # Already handled
         else:
-            text = expression_to_sql(
+            text = expression_to_sql_where(
                 expression=root.expression, columns=columns, registry=registry
             )
     elif (
@@ -871,13 +877,13 @@ def to_sql(
         child = root.left if root.left is not None else root.right
         leaf_expr = _find_single_leaf_expression(child)
         if leaf_expr is not None and leaf_expr.operator == Operator.TRUTHY.value:
-            return falsy_expression_to_sql(expression=leaf_expr, columns=columns)
+            return falsy_expression_to_sql_where(expression=leaf_expr, columns=columns)
 
     if root.left is not None:
-        left = to_sql(root=root.left, columns=columns, registry=registry)
+        left = to_sql_where(root=root.left, columns=columns, registry=registry)
 
     if root.right is not None:
-        right = to_sql(root=root.right, columns=columns, registry=registry)
+        right = to_sql_where(root=root.right, columns=columns, registry=registry)
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)
@@ -994,7 +1000,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
     raise FlyqlError(f"path access on non-composite column type: {column.name}")
 
 
-def generate_select(
+def to_sql_select(
     text: str,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,

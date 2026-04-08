@@ -62,13 +62,13 @@ def test_matcher_subpackage_imports() -> None:
 
 def test_generator_dialect_imports() -> None:
     """AC #4: Generator dialect imports remain separate and work."""
-    from flyql.generators.clickhouse.generator import to_sql as ch_to_sql
-    from flyql.generators.postgresql.generator import to_sql as pg_to_sql
-    from flyql.generators.starrocks.generator import to_sql as sr_to_sql
+    from flyql.generators.clickhouse.generator import to_sql_where as ch_to_sql_where
+    from flyql.generators.postgresql.generator import to_sql_where as pg_to_sql_where
+    from flyql.generators.starrocks.generator import to_sql_where as sr_to_sql_where
 
-    assert callable(ch_to_sql)
-    assert callable(pg_to_sql)
-    assert callable(sr_to_sql)
+    assert callable(ch_to_sql_where)
+    assert callable(pg_to_sql_where)
+    assert callable(sr_to_sql_where)
 
 
 def test_columns_subpackage_imports() -> None:

@@ -3,6 +3,9 @@ name: Tests
 on:
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     name: Test
@@ -24,5 +27,3 @@ jobs:
           version: 10
       - name: Test
         run: make test-ci
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true

@@ -122,3 +122,20 @@ Double negation cancels out: `not not active` is equivalent to `active`.
 - **Without spaces** - If the value contains no spaces, you can write it directly (e.g., `status=200`).
 - **With spaces** - If the value includes spaces, enclose it in single (`'`) or double (`"`) quotes (e.g., `user="John Doe"` or `user='John Doe'`).
 - **Escaping quotes** - If the value itself contains quotes, these must be properly escaped (e.g. `user='John\'s Doe'`).
+
+## Compatibility
+
+| | Supported Versions |
+|---|---|
+| **Go** | 1.21+ |
+| **Python** | 3.10, 3.11, 3.12 |
+| **Node.js** | 16+ |
+| **SQL Dialects** | ClickHouse, PostgreSQL, StarRocks |
+
+## Documentation
+
+Full documentation: [docs.flyql.dev](https://docs.flyql.dev)
+
+## License
+
+MIT

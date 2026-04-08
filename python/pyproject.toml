@@ -11,7 +11,7 @@ license = { text = "MIT License" }
 authors = [
     { name = "Ilia (HumanUser) Khomutov" }
 ]
-description = "A simple query language with parser that transforms queries into Abstract Syntax Tree (AST)"
+description = "A lightweight, injection-proof query language for multi-dialect SQL generation"
 readme = "README.md"
 keywords = ["query", "parser", "ast", "sql", "clickhouse", "filter"]
 classifiers = [

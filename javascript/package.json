@@ -1,7 +1,7 @@
 {
   "name": "flyql",
   "version": "0.0.23",
-  "description": "A simple query language with parser that transforms queries into Abstract Syntax Tree (AST)",
+  "description": "A lightweight, injection-proof query language for multi-dialect SQL generation",
   "type": "module",
   "main": "./src/index.js",
   "exports": {

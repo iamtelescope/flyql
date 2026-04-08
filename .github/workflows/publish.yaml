@@ -7,6 +7,16 @@ on:
         description: 'Version to publish (e.g., 0.0.1). Must match versions in pyproject.toml and package.json and has no tag with this version.'
         required: true
         type: string
+      target:
+        description: 'What to publish'
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - python
+          - javascript
+          - golang
 
 jobs:
   validate:
@@ -25,6 +35,7 @@ jobs:
   python:
     name: Publish Python to PyPI
     needs: validate
+    if: inputs.target == 'all' || inputs.target == 'python'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -49,6 +60,7 @@ jobs:
   javascript:
     name: Publish JavaScript to npm
     needs: validate
+    if: inputs.target == 'all' || inputs.target == 'javascript'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -67,7 +79,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: javascript
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Publish to npm
         working-directory: javascript
@@ -76,6 +88,7 @@ jobs:
   golang:
     name: Tag Go modules
     needs: validate
+    if: inputs.target == 'all' || inputs.target == 'golang'
     runs-on: ubuntu-latest
     permissions:
       contents: write

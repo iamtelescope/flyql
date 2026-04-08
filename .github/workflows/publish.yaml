@@ -19,11 +19,15 @@ on:
           - javascript
           - golang
 
+permissions: {}
+
 jobs:
   validate-python:
     name: Validate Python
     if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'python'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - name: Validate
@@ -35,6 +39,8 @@ jobs:
     name: Validate JavaScript
     if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - name: Validate
@@ -46,6 +52,8 @@ jobs:
     name: Validate Go
     if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'golang'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
         with:

@@ -69,7 +69,7 @@ export class SplitTransformer extends Transformer {
 
     sql(dialect, columnRef, args = []) {
         const delimiter = args[0] || ','
-        const escaped = "'" + delimiter.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"
+        const escaped = "'" + delimiter.replace(/[\\']/g, (ch) => '\\' + ch) + "'"
         if (dialect === 'clickhouse') {
             if (delimiter.length === 1) {
                 return `splitByChar(${escaped}, ${columnRef})`

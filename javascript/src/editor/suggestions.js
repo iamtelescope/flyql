@@ -443,9 +443,31 @@ export function getInsertRange(ctx, fullText, suggestionType) {
     let endPos = cursorPos
     if (fullText) {
         const afterCursor = fullText.substring(cursorPos)
-        const trailingMatch = afterCursor.match(/^[^\s=!<>~&|()'"]+/)
-        if (trailingMatch) {
-            endPos = cursorPos + trailingMatch[0].length
+        let trailingLen = 0
+        for (let i = 0; i < afterCursor.length; i++) {
+            const c = afterCursor[i]
+            if (
+                c === ' ' ||
+                c === '\t' ||
+                c === '\n' ||
+                c === '\r' ||
+                c === '=' ||
+                c === '!' ||
+                c === '<' ||
+                c === '>' ||
+                c === '~' ||
+                c === '&' ||
+                c === '|' ||
+                c === '(' ||
+                c === ')' ||
+                c === "'" ||
+                c === '"'
+            )
+                break
+            trailingLen++
+        }
+        if (trailingLen > 0) {
+            endPos = cursorPos + trailingLen
         }
     }
 

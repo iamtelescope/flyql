@@ -27,7 +27,7 @@ export {
 }
 
 const typeRegexes = {
-    wrapper: /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)/i,
+    wrapper: /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\(/i,
     [NormalizedTypeString]: /^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)/i,
     [NormalizedTypeInt]: /^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)/i,
     [NormalizedTypeFloat]: /^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,
@@ -166,7 +166,9 @@ export function normalizeClickHouseType(chType) {
 
     const wrapperMatch = normalized.match(typeRegexes.wrapper)
     if (wrapperMatch) {
-        normalized = wrapperMatch[2].trim()
+        const afterKeyword = normalized.slice(wrapperMatch[0].length)
+        const lastParen = afterKeyword.lastIndexOf(')')
+        normalized = (lastParen >= 0 ? afterKeyword.slice(0, lastParen) : afterKeyword).trim()
     }
 
     if (typeRegexes[NormalizedTypeString].test(normalized)) {

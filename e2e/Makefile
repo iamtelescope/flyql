@@ -2,6 +2,7 @@ VERSION_FILE ?= versions/default.env
 JSON_REPORT  := $(CURDIR)/output/report.json
 LANGUAGES    ?= go,javascript,python
 DATABASES    ?= clickhouse,postgresql,starrocks
+PYTHON       ?= python3
 
 .PHONY: up down test-go test-js test-python test run install clean viewer
 
@@ -24,7 +25,7 @@ test-js:
 	cd ../javascript && npx vitest run --config vitest.e2e.config.js e2e/
 
 test-python:
-	cd ../python && .venv/bin/python3 -m pytest -v e2e/
+	cd ../python && $(PYTHON) -m pytest -v e2e/
 
 test: up
 	$(MAKE) -k test-go test-js test-python; rc=$$?; $(MAKE) down; exit $$rc

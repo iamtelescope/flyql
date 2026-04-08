@@ -3,6 +3,13 @@ name: Build and Push docs images
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'docs/**'
+      - 'python/snippets/**'
+      - 'javascript/snippets/**'
+      - 'javascript/src/**'
+      - 'golang/snippets/**'
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io

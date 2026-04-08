@@ -626,6 +626,19 @@ describe('ColumnsEngine', () => {
             const html = engine.getHighlightTokens('level')
             expect(html).not.toContain('flyql-diagnostic')
         })
+
+        it('escapes double quotes in diagnostic title attribute', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('foo, level')
+            const diags = engine.getDiagnostics()
+            expect(diags.length).toBeGreaterThan(0)
+            // Inject a message with double quotes to verify escaping
+            diags[0].message = 'column "foo" is unknown'
+            const html = engine.getHighlightTokens('foo, level', diags)
+            // Double quotes in the message must be escaped as &quot; in the title attribute
+            expect(html).toContain('&quot;foo&quot;')
+            expect(html).not.toContain('title="column "')
+        })
     })
 
     describe('framework independence', () => {

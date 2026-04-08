@@ -20,7 +20,7 @@ from flyql.generators.clickhouse.constants import (
 
 REGEX = {
     "wrapper": re.compile(
-        r"^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\s*\)"
+        r"^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)"
     ),
     NORMALIZED_TYPE_STRING: re.compile(r"^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)"),
     NORMALIZED_TYPE_INT: re.compile(

@@ -61,4 +61,10 @@ describe('highlight', () => {
         expect(html).not.toContain('<b>')
         expect(html).toContain('&lt;b&gt;')
     })
+
+    it('escapes double quotes in values', () => {
+        const html = highlight('a="hello"')
+        expect(html).not.toMatch(/="hello"/)
+        expect(html).toContain('&quot;')
+    })
 })

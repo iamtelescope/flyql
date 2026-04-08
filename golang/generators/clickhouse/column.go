@@ -8,7 +8,7 @@ import (
 )
 
 var typeRegexes = map[string]*regexp.Regexp{
-	"wrapper":            regexp.MustCompile(`(?i)^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\s*\)`),
+	"wrapper":            regexp.MustCompile(`(?i)^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)`),
 	NormalizedTypeString: regexp.MustCompile(`(?i)^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)`),
 	NormalizedTypeInt:    regexp.MustCompile(`(?i)^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)`),
 	NormalizedTypeFloat:  regexp.MustCompile(`(?i)^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)`),

@@ -72,7 +72,7 @@ func (Split) SQL(dialect, columnRef string, args []any) string {
 	if len(args) > 0 {
 		delimiter = fmt.Sprintf("%v", args[0])
 	}
-	escaped := "'" + strings.ReplaceAll(delimiter, "'", "\\'") + "'"
+	escaped := "'" + strings.ReplaceAll(strings.ReplaceAll(delimiter, "\\", "\\\\"), "'", "\\'") + "'"
 	if dialect == "clickhouse" {
 		if len(delimiter) == 1 {
 			return fmt.Sprintf("splitByChar(%s, %s)", escaped, columnRef)

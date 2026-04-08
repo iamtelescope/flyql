@@ -4,6 +4,7 @@ from flyql.transformers.base import TransformerType
 from flyql.transformers.builtins import (
     LenTransformer,
     LowerTransformer,
+    SplitTransformer,
     UpperTransformer,
 )
 
@@ -114,3 +115,21 @@ class TestSqlNesting:
         result = lower.sql("clickhouse", result)
         result = length.sql("clickhouse", result)
         assert result == "length(lower(field))"
+
+
+class TestSplitTransformerSQLEscaping:
+    def setup_method(self) -> None:
+        self.t = SplitTransformer()
+
+    def test_escapes_single_quotes(self) -> None:
+        sql = self.t.sql("clickhouse", "col", ["'"])
+        assert "\\'" in sql
+
+    def test_escapes_backslashes(self) -> None:
+        sql = self.t.sql("clickhouse", "col", ["\\"])
+        assert "\\\\" in sql
+
+    def test_escapes_backslash_before_quote(self) -> None:
+        sql = self.t.sql("clickhouse", "col", ["\\'"])
+        # Backslash escaped first (\\), then quote (\') => \\\'
+        assert "\\\\\\'" in sql

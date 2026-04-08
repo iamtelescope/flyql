@@ -231,6 +231,22 @@ describe('suggestions', () => {
             expect(range.start).toBe(12)
         })
 
+        it('handles boolOp range with long non-whitespace input efficiently', () => {
+            const longWord = 'a'.repeat(10000)
+            const ctx = { expecting: 'boolOp', textBeforeCursor: longWord }
+            const range = getInsertRange(ctx, longWord, 'boolOp')
+            expect(range.start).toBe(0)
+            expect(range.end).toBe(longWord.length)
+        })
+
+        it('handles boolOp range with trailing word after spaces', () => {
+            const spaces = ' '.repeat(5000)
+            const text = spaces + 'word'
+            const ctx = { expecting: 'boolOp', textBeforeCursor: text }
+            const range = getInsertRange(ctx, text, 'boolOp')
+            expect(range.start).toBe(text.length - 4)
+        })
+
         it('returns transformer range covering only prefix after pipe', () => {
             const ctx = { expecting: 'transformer', transformerPrefix: 'up', textBeforeCursor: 'host|up' }
             const range = getInsertRange(ctx, 'host|up', 'transformer')

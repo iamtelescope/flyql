@@ -27,7 +27,7 @@ export {
 }
 
 const typeRegexes = {
-    wrapper: /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\s*\)/i,
+    wrapper: /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)/i,
     [NormalizedTypeString]: /^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)/i,
     [NormalizedTypeInt]: /^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)/i,
     [NormalizedTypeFloat]: /^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,

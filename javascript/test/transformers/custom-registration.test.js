@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { parse } from '../../src/core/parser.js'
-import { Transformer, TransformerType, TransformerRegistry, defaultRegistry } from '../../src/transformers/index.js'
+import {
+    Transformer,
+    TransformerType,
+    TransformerRegistry,
+    defaultRegistry,
+    SplitTransformer,
+} from '../../src/transformers/index.js'
 import { generateWhere as chGenerateWhere, newColumn as chNewColumn } from '../../src/generators/clickhouse/index.js'
 import { generateWhere as pgGenerateWhere, newColumn as pgNewColumn } from '../../src/generators/postgresql/index.js'
 import { generateWhere as srGenerateWhere, newColumn as srNewColumn } from '../../src/generators/starrocks/index.js'
@@ -123,6 +129,32 @@ describe('Custom Transformer Registration', () => {
             const result = parse('src_ip|firstoctet > 192')
             const record = new Record({ src_ip: '10.0.0.1' })
             expect(() => evaluator.evaluate(result.root, record)).toThrow('unknown transformer')
+        })
+    })
+
+    describe('SplitTransformer SQL escaping', () => {
+        const split = new SplitTransformer()
+
+        it('escapes single quotes in delimiter', () => {
+            const sql = split.sql('clickhouse', 'col', ["'"])
+            expect(sql).toContain("\\'")
+            expect(sql).not.toMatch(/[^\\]''/)
+        })
+
+        it('escapes backslashes before single quotes', () => {
+            const sql = split.sql('clickhouse', 'col', ['\\'])
+            expect(sql).toContain('\\\\')
+        })
+
+        it('escapes backslash-quote sequence correctly', () => {
+            // Input delimiter is \' (backslash + single quote, 2 chars)
+            const sql = split.sql('clickhouse', 'col', ["\\'"])
+            // Backslash escaped first to \\, then quote to \' => content is \\\' (4 chars)
+            // Verify the escaped content between the wrapper quotes
+            const innerMatch = sql.match(/splitByString\('(.+)',/)
+            expect(innerMatch).not.toBeNull()
+            // Inner content should be exactly: \ \ \ ' (backslash, backslash, backslash, quote)
+            expect(innerMatch[1]).toBe("\\\\\\'")
         })
     })
 

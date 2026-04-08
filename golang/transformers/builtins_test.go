@@ -1,6 +1,7 @@
 package transformers
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -105,6 +106,40 @@ func TestLenTransformer(t *testing.T) {
 
 	if got := l.Apply("hello", nil); got != 5 {
 		t.Errorf("Apply(%q) = %v, want %d", "hello", got, 5)
+	}
+}
+
+func TestSplitTransformerSQLEscaping(t *testing.T) {
+	s := Split{}
+
+	tests := []struct {
+		name      string
+		delimiter string
+		wantSub   string
+	}{
+		{
+			name:      "escapes single quotes",
+			delimiter: "'",
+			wantSub:   "\\'",
+		},
+		{
+			name:      "escapes backslashes",
+			delimiter: "\\",
+			wantSub:   "\\\\",
+		},
+		{
+			name:      "escapes backslash before quote",
+			delimiter: "\\'",
+			wantSub:   "\\\\\\'",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := s.SQL("clickhouse", "col", []any{tt.delimiter})
+			if !strings.Contains(got, tt.wantSub) {
+				t.Errorf("SQL() = %q, want substring %q", got, tt.wantSub)
+			}
+		})
 	}
 }
 

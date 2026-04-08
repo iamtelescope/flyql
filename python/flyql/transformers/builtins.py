@@ -97,7 +97,7 @@ class SplitTransformer(Transformer):
     ) -> str:
         a = args or []
         delimiter = a[0] if a else ","
-        escaped = "'" + delimiter.replace("'", "\\'") + "'"
+        escaped = "'" + delimiter.replace("\\", "\\\\").replace("'", "\\'") + "'"
         if dialect == "clickhouse":
             if len(delimiter) == 1:
                 return f"splitByChar({escaped}, {column_ref})"

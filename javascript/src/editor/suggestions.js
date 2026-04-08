@@ -471,8 +471,12 @@ export function getInsertRange(ctx, fullText, suggestionType) {
         }
         return { start: cursorPos - valLen, end: valueEnd }
     } else if (ctx.expecting === 'boolOp') {
-        const match = ctx.textBeforeCursor.match(/(\S*)$/)
-        const wordLen = match ? match[1].length : 0
+        const text = ctx.textBeforeCursor
+        let wordLen = 0
+        for (let i = text.length - 1; i >= 0; i--) {
+            if (text[i] === ' ' || text[i] === '\t' || text[i] === '\n' || text[i] === '\r') break
+            wordLen++
+        }
         return { start: cursorPos - wordLen, end: endPos }
     }
 

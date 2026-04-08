@@ -9,6 +9,7 @@ import {
     Column,
     newColumn,
     escapeParam,
+    normalizeClickHouseType,
 } from '../../../src/generators/clickhouse/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -135,6 +136,26 @@ describe('escapeParam', () => {
 
     it('rejects -Infinity', () => {
         expect(() => escapeParam(-Infinity)).toThrow('unsupported numeric value')
+    })
+})
+
+describe('normalizeClickHouseType', () => {
+    it('unwraps Nullable wrapper', () => {
+        expect(normalizeClickHouseType('Nullable(String)')).toBe('string')
+    })
+
+    it('unwraps LowCardinality wrapper', () => {
+        expect(normalizeClickHouseType('LowCardinality(String)')).toBe('string')
+    })
+
+    it('handles wrapper with extra inner whitespace efficiently', () => {
+        const spaces = ' '.repeat(10000)
+        const type = `Nullable(${spaces}String${spaces})`
+        expect(normalizeClickHouseType(type)).toBe('string')
+    })
+
+    it('handles nested type in wrapper', () => {
+        expect(normalizeClickHouseType('Nullable(DateTime64(3))')).toBe('date')
     })
 })
 

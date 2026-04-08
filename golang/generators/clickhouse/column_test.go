@@ -1,6 +1,9 @@
 package clickhouse
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNewColumnDisplayName(t *testing.T) {
 	tests := []struct {
@@ -26,5 +29,22 @@ func TestNewColumnDisplayName(t *testing.T) {
 				t.Errorf("DisplayName = %q, want %q", col.DisplayName, tt.want)
 			}
 		})
+	}
+}
+
+func TestNormalizeClickHouseTypeWrapperWithSpaces(t *testing.T) {
+	// Regression: wrapper regex with ambiguous \s*(.+)\s*\) caused ReDoS
+	spaces := strings.Repeat(" ", 10000)
+	input := "Nullable(" + spaces + "String" + spaces + ")"
+	result := NormalizeClickHouseType(input)
+	if result != NormalizedTypeString {
+		t.Errorf("NormalizeClickHouseType(%q...) = %q, want %q", input[:30], result, NormalizedTypeString)
+	}
+}
+
+func TestNormalizeClickHouseTypeNestedWrapper(t *testing.T) {
+	result := NormalizeClickHouseType("Nullable(DateTime64(3))")
+	if result != NormalizedTypeDate {
+		t.Errorf("NormalizeClickHouseType(Nullable(DateTime64(3))) = %q, want %q", result, NormalizedTypeDate)
 	}
 }

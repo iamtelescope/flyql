@@ -138,3 +138,12 @@ class TestNormalizeClickhouseType:
     def test_normalize_type(self, input_type, expected):
         result = normalize_clickhouse_type(input_type)
         assert result == expected
+
+    def test_wrapper_with_many_spaces(self):
+        """Regression: wrapper regex with ambiguous \\s*(.+)\\s*\\) caused ReDoS"""
+        spaces = " " * 10000
+        input_type = f"Nullable({spaces}String{spaces})"
+        assert normalize_clickhouse_type(input_type) == "string"
+
+    def test_nested_wrapper(self):
+        assert normalize_clickhouse_type("Nullable(DateTime64(3))") == "date"

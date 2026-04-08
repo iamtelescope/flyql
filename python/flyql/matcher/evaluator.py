@@ -1,5 +1,4 @@
-from typing import Any, Optional, Dict, List, Literal, Final
-import re
+from typing import Any, Optional, Dict, List, Final
 
 import re2  # type: ignore[import-untyped]
 
@@ -12,12 +11,6 @@ from flyql.types import ValueType
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
 from flyql.transformers.registry import TransformerRegistry, default_registry
-
-# Regex engine constants
-REGEX_ENGINE_RE2: Final = "re2"
-REGEX_ENGINE_PYTHON_STD: Final = "python-std"
-
-RegexEngine = Literal["re2", "python-std"]  # Must match constants above
 
 REGEX_OPERATORS = {Operator.REGEX.value, Operator.NOT_REGEX.value}
 
@@ -34,11 +27,11 @@ def _like_to_regex(pattern: str) -> str:
         if ch == "\\" and i + 1 < n:
             next_ch = pattern[i + 1]
             if next_ch == "%":
-                parts.append(re.escape("%"))
+                parts.append(re2.escape("%"))
             elif next_ch == "_":
-                parts.append(re.escape("_"))
+                parts.append(re2.escape("_"))
             else:
-                parts.append(re.escape(next_ch))
+                parts.append(re2.escape(next_ch))
             i += 2
             continue
         if ch == "%":
@@ -46,7 +39,7 @@ def _like_to_regex(pattern: str) -> str:
         elif ch == "_":
             parts.append(".")
         else:
-            parts.append(re.escape(ch))
+            parts.append(re2.escape(ch))
         i += 1
     return "^" + "".join(parts) + "$"
 
@@ -76,19 +69,10 @@ def is_truthy(value: Any) -> bool:
 class Evaluator:
     def __init__(
         self,
-        regex_engine: RegexEngine = REGEX_ENGINE_RE2,
         registry: Optional[TransformerRegistry] = None,
     ) -> None:
         self.cache: Dict[str, Any] = {}
-        self.regex_engine = regex_engine
         self._registry = registry or default_registry()
-
-        # Select regex module
-        # REGEX_ENGINE_PYTHON_STD uses Python's standard re module
-        if regex_engine == REGEX_ENGINE_PYTHON_STD:
-            self._regex_module: Any = re
-        else:
-            self._regex_module = re2
 
     def evaluate(
         self,
@@ -135,7 +119,7 @@ class Evaluator:
         regex = self.cache.get(value)
         if regex is None:
             try:
-                regex = self._regex_module.compile(value)
+                regex = re2.compile(value)
             except Exception as err:
                 raise FlyqlError(f"invalid regex given: {value} -> {err}") from err
             else:

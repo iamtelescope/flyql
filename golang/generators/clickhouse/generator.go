@@ -192,7 +192,7 @@ func resolveRhsColumnRef(value string, columns map[string]*Column) (string, bool
 	return ref, true
 }
 
-func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
+func ExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	var reg *transformers.TransformerRegistry
 	if len(registry) > 0 && registry[0] != nil {
 		reg = registry[0]
@@ -200,13 +200,13 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 		reg = transformers.DefaultRegistry()
 	}
 	if expr.Operator == flyql.OpTruthy {
-		return truthyExpressionToSQL(expr, columns)
+		return truthyExpressionToSQLWhere(expr, columns)
 	}
 	if expr.Operator == flyql.OpIn || expr.Operator == flyql.OpNotIn {
-		return inExpressionToSQL(expr, columns)
+		return inExpressionToSQLWhere(expr, columns)
 	}
 	if expr.Operator == flyql.OpHas || expr.Operator == flyql.OpNotHas {
-		return hasExpressionToSQL(expr, columns)
+		return hasExpressionToSQLWhere(expr, columns)
 	}
 	if err := validateOperator(expr.Operator); err != nil {
 		return "", err
@@ -217,7 +217,7 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 	return expressionToSQLSimple(expr, columns, reg)
 }
 
-func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	isNotIn := expr.Operator == flyql.OpNotIn
 
 	if len(expr.Values) == 0 {
@@ -363,7 +363,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	return fmt.Sprintf("%s %s (%s)", colRef, sqlOp, valuesSQL), nil
 }
 
-func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	isNotHas := expr.Operator == flyql.OpNotHas
 
 	columnName := expr.Key.Segments[0]
@@ -530,7 +530,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	}
 }
 
-func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func truthyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	// Type-aware truthy checks:
 	// - String: column IS NOT NULL AND column != ''
 	// - Int/Float: column IS NOT NULL AND column != 0
@@ -657,7 +657,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 	}
 }
 
-func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+func falsyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	// Type-aware falsy checks (negation of truthy):
 	// - String: column IS NULL OR column = ''
 	// - Int/Float: column IS NULL OR column = 0
@@ -1158,7 +1158,7 @@ func findSingleLeafExpression(node *flyql.Node) *flyql.Expression {
 	return nil
 }
 
-func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
+func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
 	if root == nil {
 		return "", nil
 	}
@@ -1169,14 +1169,14 @@ func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transforme
 	if root.Expression != nil {
 		// For negated truthy expressions, generate falsy SQL directly
 		if isNegated && root.Expression.Operator == flyql.OpTruthy {
-			sql, err := falsyExpressionToSQL(root.Expression, columns)
+			sql, err := falsyExpressionToSQLWhere(root.Expression, columns)
 			if err != nil {
 				return "", err
 			}
 			text = sql
 			isNegated = false // Already handled
 		} else {
-			sql, err := ExpressionToSQL(root.Expression, columns, registry...)
+			sql, err := ExpressionToSQLWhere(root.Expression, columns, registry...)
 			if err != nil {
 				return "", err
 			}
@@ -1188,7 +1188,7 @@ func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transforme
 			child = root.Right
 		}
 		if leafExpr := findSingleLeafExpression(child); leafExpr != nil && leafExpr.Operator == flyql.OpTruthy {
-			return falsyExpressionToSQL(leafExpr, columns)
+			return falsyExpressionToSQLWhere(leafExpr, columns)
 		}
 	}
 
@@ -1196,14 +1196,14 @@ func ToSQL(root *flyql.Node, columns map[string]*Column, registry ...*transforme
 	var err error
 
 	if root.Left != nil {
-		left, err = ToSQL(root.Left, columns, registry...)
+		left, err = ToSQLWhere(root.Left, columns, registry...)
 		if err != nil {
 			return "", err
 		}
 	}
 
 	if root.Right != nil {
-		right, err = ToSQL(root.Right, columns, registry...)
+		right, err = ToSQLWhere(root.Right, columns, registry...)
 		if err != nil {
 			return "", err
 		}

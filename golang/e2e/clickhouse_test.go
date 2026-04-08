@@ -76,7 +76,7 @@ func TestClickHouseE2E(t *testing.T) {
 				t.Fatal(r.Error)
 			}
 
-			sqlWhere, err := clickhousegen.ToSQL(parsed.Root, columns)
+			sqlWhere, err := clickhousegen.ToSQLWhere(parsed.Root, columns)
 			if err != nil {
 				r.Error = fmt.Sprintf("generate SQL: %v", err)
 				addResult(r)
@@ -176,7 +176,7 @@ func TestClickHouseJoinE2E(t *testing.T) {
 				t.Fatal(r.Error)
 			}
 
-			sqlWhere, err := clickhousegen.ToSQL(parsed.Root, columns)
+			sqlWhere, err := clickhousegen.ToSQLWhere(parsed.Root, columns)
 			if err != nil {
 				r.Error = fmt.Sprintf("generate SQL: %v", err)
 				addResult(r)

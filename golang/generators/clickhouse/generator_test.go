@@ -92,7 +92,7 @@ func runTestCases(t *testing.T, filename string) {
 				t.Fatalf("parse error: %v", err)
 			}
 
-			sql, genErr := ToSQL(result.Root, columns)
+			sql, genErr := ToSQLWhere(result.Root, columns)
 
 			if tc.ExpectedResult == "error" {
 				if genErr == nil {

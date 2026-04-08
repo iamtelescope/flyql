@@ -176,6 +176,7 @@ export default defineConfig({
           items: [
             "advanced/ast",
             "advanced/custom-transformers",
+            "advanced/api-matrix",
           ],
         },
         {

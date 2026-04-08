@@ -1,0 +1,103 @@
+---
+title: 言語横断 API マトリクス
+description: Go、Python、JavaScript の公開 API 関数と型の完全なマッピング
+---
+
+FlyQL provides identical functionality across Go, Python, and JavaScript. This matrix maps every public API function and type across all three languages.
+
+## Naming Convention
+
+| Convention | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Functions | PascalCase | snake_case | camelCase |
+| Types/Classes | PascalCase | PascalCase | PascalCase |
+| Constants | PascalCase | UPPER_SNAKE (enum) | UPPER_SNAKE (frozen object) |
+
+**Rule:** Given an operation name and a language, the function name follows the convention above. For example, "parse key" → `ParseKey` (Go), `parse_key` (Python), `parseKey` (JavaScript).
+
+## Core — Parse & AST
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Parse query | `Parse(query)` | `parse(query)` | `parse(query)` |
+| Parse key | `ParseKey(key)` | `parse_key(key)` | `parseKey(key)` |
+| **Types** | | | |
+| AST node | `Node` | `Node` | `Node` |
+| Expression | `Expression` | `Expression` | `Expression` |
+| Key | `Key` | `Key` | `Key` |
+| Column | `Column` | `Column` | `Column` |
+| Range | `Range` | `Range` | `Range` |
+| Operators | string constants | `Operator`, `BoolOperator` (enums) | `Operator`, `BoolOperator` |
+| Value types | `types.Integer`, etc. | `ValueType.INTEGER`, etc. | `ValueType.INTEGER`, etc. |
+
+## Generators — WHERE Clause
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| AST → WHERE SQL | `ToSQLWhere(root, columns)` | `to_sql_where(root, columns)` | `generateWhere(root, columns)` |
+| Expression → SQL | `ExpressionToSQLWhere(expr, columns)` | `expression_to_sql_where(expr, columns)` | _(internal)_ |
+| Escape parameter | `EscapeParam(item)` | `escape_param(item)` | `escapeParam(item)` |
+| Escape identifier | `EscapeIdentifier(name)` _(PG only)_ | `escape_identifier(name)` _(PG only)_ | `escapeIdentifier(name)` _(PG only)_ |
+
+All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function names. Import from the dialect-specific subpath:
+
+| Dialect | Go | Python | JavaScript |
+|---------|------|--------|------------|
+| ClickHouse | `generators/clickhouse` | `flyql.generators.clickhouse.generator` | `flyql/generators/clickhouse` |
+| PostgreSQL | `generators/postgresql` | `flyql.generators.postgresql.generator` | `flyql/generators/postgresql` |
+| StarRocks | `generators/starrocks` | `flyql.generators.starrocks.generator` | `flyql/generators/starrocks` |
+
+## Generators — SELECT Clause
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Columns → SELECT SQL | `ToSQLSelect(text, columns)` | `to_sql_select(text, columns)` | `generateSelect(text, columns)` |
+| **Result types** | `SelectResult`, `SelectColumn` | `SelectResult`, `SelectColumn` | _(returned as object)_ |
+
+## Matcher
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Evaluate AST | `evaluator.Evaluate(root, record)` | `evaluator.evaluate(root, record)` | `evaluator.evaluate(root, record)` |
+| Convenience match | `Match(query, data)` | _(use Evaluator)_ | `match(query, data)` |
+| **Types** | | | |
+| Evaluator | `NewEvaluator()` | `Evaluator()` | `Evaluator()` |
+| Record | `NewRecord(data)` | `Record(data=data)` | `Record(data)` |
+
+## Columns (Schema Parser)
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Parse columns | `Parse(text)` | `parse(text)` | `parse(text)` |
+| Parse to dicts | _(N/A)_ | `parse_to_dicts(text)` | `parseToDicts(text)` |
+| Parse to JSON | `ParseToJSON(text)` | `parse_to_json(text)` | `parseToJson(text)` |
+| Validate | `Diagnose(columns)` | `diagnose(columns)` | `diagnose(columns)` |
+| **Types** | | | |
+| Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
+
+## Transformers
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Registry | `DefaultRegistry()` | `default_registry()` | `defaultRegistry()` |
+| **Types** | | | |
+| Transformer interface | `Transformer` (interface) | `Transformer` (ABC) | `Transformer` (class) |
+| Transformer type | `TransformerType` | `TransformerType` | `TransformerType` |
+| Arg spec | `ArgSpec` | `ArgSpec` | `ArgSpec` |
+| Registry type | `TransformerRegistry` | `TransformerRegistry` | `TransformerRegistry` |
+
+## Validator / Diagnostics
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Diagnose AST | `Diagnose(root, columns)` | `diagnose(root, columns)` | `diagnose(root, columns)` |
+| **Types** | | | |
+| Diagnostic | `Diagnostic` | `Diagnostic` | `Diagnostic` |
+
+## Top-Level Package Imports
+
+**Python** — `from flyql import parse, Node, Expression, Key, Column, Operator, Range, Diagnostic, diagnose, ValueType`
+
+**JavaScript** — `import { parse, Node, Expression, Key, Column, Operator, Range, ValueType } from 'flyql'`
+
+**Go** — `import "github.com/iamtelescope/flyql/golang"` (core), dialect-specific generator imports separately

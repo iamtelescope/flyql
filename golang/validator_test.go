@@ -101,26 +101,6 @@ func parseAST(t *testing.T, query string) *Node {
 	return result.Root
 }
 
-func countByCode(diags []Diagnostic, code string) int {
-	n := 0
-	for _, d := range diags {
-		if d.Code == code {
-			n++
-		}
-	}
-	return n
-}
-
-func filterByCode(diags []Diagnostic, code string) []Diagnostic {
-	var out []Diagnostic
-	for _, d := range diags {
-		if d.Code == code {
-			out = append(out, d)
-		}
-	}
-	return out
-}
-
 // ---------------------------------------------------------------------------
 // Shared fixture loading
 // ---------------------------------------------------------------------------

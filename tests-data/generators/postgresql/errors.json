@@ -43,13 +43,13 @@
       "name": "jsonb_invalid_path_starts_with_digit",
       "input": "jsonb_column.123column='test'",
       "expected_result": "error",
-      "expected_error_contains": "Invalid JSON path"
+      "expected_error_contains": "invalid JSON path"
     },
     {
       "name": "jsonb_empty_path_part",
       "input": "jsonb_column.user..column='test'",
       "expected_result": "error",
-      "expected_error_contains": "Invalid JSON path"
+      "expected_error_contains": "invalid JSON path"
     }
   ]
 }

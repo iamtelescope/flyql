@@ -118,13 +118,13 @@ func validateJSONPathPart(part string, quoted bool) error {
 		return nil
 	}
 	if part == "" {
-		return fmt.Errorf("Invalid JSON path part")
+		return fmt.Errorf("invalid JSON path part")
 	}
 	if idx, err := strconv.Atoi(part); err == nil && idx >= 0 {
 		return nil
 	}
 	if !jsonKeyPattern.MatchString(part) {
-		return fmt.Errorf("Invalid JSON path part")
+		return fmt.Errorf("invalid JSON path part")
 	}
 	return nil
 }

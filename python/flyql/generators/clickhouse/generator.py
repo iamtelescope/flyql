@@ -70,9 +70,9 @@ ESCAPE_CHARS_MAP = {
 
 def validate_json_path_part(part: str) -> None:
     if not part:
-        raise FlyqlError("Invalid JSON path part")
+        raise FlyqlError("invalid JSON path part")
     if not JSON_KEY_PATTERN.match(part):
-        raise FlyqlError("Invalid JSON path part")
+        raise FlyqlError("invalid JSON path part")
 
 
 def validate_operator(op: str) -> None:

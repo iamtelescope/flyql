@@ -83,10 +83,10 @@ var escapeCharsMap = map[rune]string{
 
 func validateJSONPathPart(part string) error {
 	if part == "" {
-		return fmt.Errorf("Invalid JSON path part")
+		return fmt.Errorf("invalid JSON path part")
 	}
 	if !jsonKeyPattern.MatchString(part) {
-		return fmt.Errorf("Invalid JSON path part")
+		return fmt.Errorf("invalid JSON path part")
 	}
 	return nil
 }

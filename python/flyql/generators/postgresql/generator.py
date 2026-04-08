@@ -58,7 +58,7 @@ def validate_json_path_part(part: str, quoted: bool) -> None:
     if quoted:
         return
     if not part:
-        raise FlyqlError("Invalid JSON path part")
+        raise FlyqlError("invalid JSON path part")
     try:
         idx = int(part)
         if idx >= 0 and str(idx) == part:
@@ -66,7 +66,7 @@ def validate_json_path_part(part: str, quoted: bool) -> None:
     except ValueError:
         pass
     if not JSON_KEY_PATTERN.match(part):
-        raise FlyqlError("Invalid JSON path part")
+        raise FlyqlError("invalid JSON path part")
 
 
 def validate_operator(op: str) -> None:

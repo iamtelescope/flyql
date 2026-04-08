@@ -37,13 +37,13 @@
       "name": "native_json_invalid_path_starts_with_digit",
       "input": "new_json.123column='test'",
       "expected_result": "error",
-      "expected_error_contains": "Invalid JSON path"
+      "expected_error_contains": "invalid JSON path"
     },
     {
       "name": "native_json_empty_path_part",
       "input": "new_json.user..column='test'",
       "expected_result": "error",
-      "expected_error_contains": "Invalid JSON path"
+      "expected_error_contains": "invalid JSON path"
     }
   ]
 }

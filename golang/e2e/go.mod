@@ -4,17 +4,17 @@ go 1.21.0
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.28.3
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/iamtelescope/flyql/golang v0.0.0
 	github.com/jackc/pgx/v5 v5.7.2
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/ClickHouse/ch-go v0.61.5 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
-	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

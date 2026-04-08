@@ -6,9 +6,9 @@ description: A lightweight, injection-proof query language for multi-dialect SQL
 import FlyqlCode from '../../components/FlyqlCode.astro'
 import FlyqlQuickExampleTable from '../../components/FlyqlQuickExampleTable.astro'
 import TechLabel from '../../components/TechLabel.astro'
-import { landingIntroQuery, landingQuickExampleQuery } from '../../data/flyql-examples'
+import { flyqlVersion, landingIntroQuery, landingQuickExampleQuery } from '../../data/flyql-examples'
 
-Welcome to **FlyQL** project documentation. Current version is **0.0.32** ([changelog](/changelog)).
+Welcome to **FlyQL** project documentation. Current version is **{flyqlVersion}** ([changelog](/changelog)).
 
 FlyQL is a lightweight, human-readable query language designed for filtering data. It transpiles into injection-proof SQL across **ClickHouse**, **PostgreSQL**, and **StarRocks** — with full implementations in **Go**, **Python**, and **JavaScript**. Write a query once, and FlyQL generates dialect-specific SQL for your database — or evaluates it in-memory against data records.
 

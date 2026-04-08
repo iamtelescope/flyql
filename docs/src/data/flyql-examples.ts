@@ -1,3 +1,5 @@
+export const flyqlVersion = '0.0.33'
+
 export const landingIntroQuery = 'status >= 400 and host = prod* and not debug'
 
 export const landingQuickExampleQuery =

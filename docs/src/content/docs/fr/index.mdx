@@ -6,9 +6,9 @@ description: Un langage de requete leger et anti-injection pour la generation SQ
 import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlQuickExampleTable from '../../../components/FlyqlQuickExampleTable.astro'
 import TechLabel from '../../../components/TechLabel.astro'
-import { landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
+import { flyqlVersion, landingIntroQuery, landingQuickExampleQuery } from '../../../data/flyql-examples'
 
-Bienvenue dans la documentation du projet **FlyQL**. Version actuelle : **0.0.32** ([journal des modifications](/fr/changelog)).
+Bienvenue dans la documentation du projet **FlyQL**. Version actuelle : **{flyqlVersion}** ([journal des modifications](/fr/changelog)).
 
 FlyQL est un langage de requete leger et lisible concu pour filtrer des donnees. Il transpile en SQL parametre et anti-injection pour **ClickHouse**, **PostgreSQL** et **StarRocks** — avec des implementations completes en **Go**, **Python** et **JavaScript**. Ecrivez une requete une seule fois, et FlyQL genere du SQL specifique au dialecte pour votre base de donnees — ou l'evalue en memoire par rapport a des enregistrements de donnees.
 

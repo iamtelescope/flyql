@@ -1,5 +1,5 @@
 #  Multi-stage build
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /repo/docs
 
@@ -9,6 +9,7 @@ RUN npm ci
 
 COPY python/snippets/ /repo/python/snippets/
 COPY javascript/snippets/ /repo/javascript/snippets/
+COPY javascript/src/ /repo/javascript/src/
 COPY golang/snippets/ /repo/golang/snippets/
 COPY docs/ .
 

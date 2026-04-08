@@ -60,6 +60,13 @@ jobs:
           python -c "from flyql.generators.clickhouse.generator import to_sql_where"
           python -c "from flyql.generators.postgresql.generator import to_sql_where"
           python -c "from flyql.generators.starrocks.generator import to_sql_where"
+      - name: Verify documented imports resolve
+        run: |
+          cd python
+          grep -h 'from flyql' ../docs/src/content/docs/getting-started/python.mdx | sed 's/^[[:space:]]*//' | grep -v '^#' | sort -u | while IFS= read -r line; do
+            echo "  Testing: $line"
+            python -c "$line" || { echo "FAIL: $line"; exit 1; }
+          done
 
   javascript:
     name: JavaScript Tests & Lint
@@ -88,3 +95,10 @@ jobs:
           node -e "import('flyql/transformers').then(m => { if (!m.TransformerRegistry) throw 'missing TransformerRegistry' })"
           node -e "import('flyql/types').then(m => { if (!m.ValueType) throw 'missing ValueType' })"
           node -e "import('flyql/matcher').then(m => { if (!m.match) throw 'missing match' })"
+      - name: Verify documented imports resolve
+        run: |
+          cd javascript
+          grep -ohE "from '(flyql[^']*)'" ../docs/src/content/docs/getting-started/javascript.mdx | sed "s/from '//; s/'$//" | sort -u | while IFS= read -r modpath; do
+            echo "  Testing: import('$modpath')"
+            node -e "import('$modpath').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })" || exit 1
+          done

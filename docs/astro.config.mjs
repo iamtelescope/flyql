@@ -4,6 +4,31 @@ import starlight from "@astrojs/starlight";
 import sitemap from "@astrojs/sitemap";
 import { resolve } from "node:path";
 
+const enableGA = process.env.ENABLE_GA === "true";
+const gaMeasurementId = process.env.GA_MEASUREMENT_ID;
+
+const gaHead =
+  enableGA && gaMeasurementId
+    ? [
+        {
+          tag: "script",
+          attrs: {
+            async: true,
+            src: `https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`,
+          },
+        },
+        {
+          tag: "script",
+          content: `
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${gaMeasurementId}');
+        `,
+        },
+      ]
+    : [];
+
 export default defineConfig({
   vite: {
     resolve: {
@@ -16,6 +41,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
+      head: gaHead,
       title: "FlyQL",
       favicon: "/icons/flyql.svg",
       logo: {

@@ -2,8 +2,18 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import sitemap from "@astrojs/sitemap";
+import { resolve } from "node:path";
 
 export default defineConfig({
+  vite: {
+    resolve: {
+      alias: {
+        "@snippets/python": resolve("../python/snippets"),
+        "@snippets/javascript": resolve("../javascript/snippets"),
+        "@snippets/go": resolve("../golang/snippets"),
+      },
+    },
+  },
   integrations: [
     starlight({
       title: "FlyQL",

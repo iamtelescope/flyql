@@ -151,7 +151,7 @@ func cmdGenerate(query, fieldsJSON, generator string) {
 		os.Exit(1)
 	}
 
-	sql, err := clickhouse.ToSQL(parser.Root, fields)
+	sql, err := clickhouse.ToSQLWhere(parser.Root, fields)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Generator error: %v\n", err)
 		os.Exit(1)
@@ -160,7 +160,7 @@ func cmdGenerate(query, fieldsJSON, generator string) {
 	fmt.Println(sql)
 }
 
-func parseFields(fieldsJSON string) (map[string]*clickhouse.Field, error) {
+func parseFields(fieldsJSON string) (map[string]*clickhouse.Column, error) {
 	var fieldsData map[string]struct {
 		Type       string   `json:"type"`
 		JSONString bool     `json:"jsonstring"`
@@ -171,13 +171,18 @@ func parseFields(fieldsJSON string) (map[string]*clickhouse.Field, error) {
 		return nil, fmt.Errorf("invalid fields JSON: %w", err)
 	}
 
-	fields := make(map[string]*clickhouse.Field)
+	fields := make(map[string]*clickhouse.Column)
 	for name, config := range fieldsData {
 		fieldType := config.Type
 		if fieldType == "" {
 			fieldType = "String"
 		}
-		fields[name] = clickhouse.NewField(name, config.JSONString, fieldType, config.Values)
+		fields[name] = clickhouse.NewColumn(clickhouse.ColumnDef{
+			Name:       name,
+			JSONString: config.JSONString,
+			Type:       fieldType,
+			Values:     config.Values,
+		})
 	}
 
 	return fields, nil

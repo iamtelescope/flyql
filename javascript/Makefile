@@ -1,4 +1,6 @@
 all: test
+install:
+	pnpm install
 fmt:
 	prettier --config .prettierrc --write src/ test/
 fmt-test:

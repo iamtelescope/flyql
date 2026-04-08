@@ -24,3 +24,8 @@
   width: 100%;
   table-layout: auto;
 }
+
+/* Wider content column */
+:root {
+  --sl-content-width: 55rem;
+}

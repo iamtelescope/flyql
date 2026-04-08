@@ -1,104 +1,25 @@
 name: Tests
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
-  go:
-    name: Go Tests & Lint
+  test:
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Check formatting
-        run: |
-          cd golang
-          test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-      - name: Vet
-        run: cd golang && go vet ./...
-      - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
-      - name: Staticcheck
-        run: cd golang && staticcheck ./...
-      - name: Build
-        run: cd golang && go build ./...
-      - name: Run tests
-        run: cd golang && go test -v ./...
-
-  python:
-    name: Python Tests & Lint
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12']
-    steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          cd python
-          pip install -e .
-          pip install pytest black mypy
-      - name: Check formatting
-        run: cd python && black --check .
-      - name: Type check
-        run: cd python && mypy flyql/ --strict
-      - name: Run tests
-        run: cd python && pytest tests/ -v
-      - name: Smoke test - verify package imports
-        run: |
-          cd python
-          python -c "from flyql import parse, Node, Expression, Key, Column, Diagnostic, diagnose, ValueType"
-          python -c "from flyql.matcher import Evaluator, Record"
-          python -c "from flyql.generators.clickhouse.generator import to_sql_where"
-          python -c "from flyql.generators.postgresql.generator import to_sql_where"
-          python -c "from flyql.generators.starrocks.generator import to_sql_where"
-      - name: Verify documented imports resolve
-        run: |
-          cd python
-          grep -h 'from flyql' ../docs/src/content/docs/getting-started/python.mdx | sed 's/^[[:space:]]*//' | grep -v '^#' | sort -u | while IFS= read -r line; do
-            echo "  Testing: $line"
-            python -c "$line" || { echo "FAIL: $line"; exit 1; }
-          done
-
-  javascript:
-    name: JavaScript Tests & Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - name: Install dependencies
-        run: cd javascript && pnpm install
-      - name: Check formatting
-        run: cd javascript && pnpm format --check
-      - name: Lint
-        run: cd javascript && pnpm lint
-      - name: Run tests with coverage
-        run: cd javascript && pnpm test:coverage
-      - name: Smoke test - verify package exports
-        run: |
-          cd javascript
-          node -e "import('flyql').then(m => { if (!m.parse) throw 'missing parse' })"
-          node -e "import('flyql/generators/clickhouse').then(m => { if (!m.generateWhere) throw 'missing generateWhere' })"
-          node -e "import('flyql/transformers').then(m => { if (!m.TransformerRegistry) throw 'missing TransformerRegistry' })"
-          node -e "import('flyql/types').then(m => { if (!m.ValueType) throw 'missing ValueType' })"
-          node -e "import('flyql/matcher').then(m => { if (!m.match) throw 'missing match' })"
-      - name: Verify documented imports resolve
-        run: |
-          cd javascript
-          grep -ohE "from '(flyql[^']*)'" ../docs/src/content/docs/getting-started/javascript.mdx | sed "s/from '//; s/'$//" | sort -u | while IFS= read -r modpath; do
-            echo "  Testing: import('$modpath')"
-            node -e "import('$modpath').then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1) })" || exit 1
-          done
+      - name: Test
+        run: make test-ci

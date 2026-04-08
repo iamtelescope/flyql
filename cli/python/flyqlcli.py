@@ -6,13 +6,13 @@ import sys
 from typing import Dict, Any, Optional
 
 from flyql.core.parser import parse, ParserError
-from flyql.matcher.evaluator import Evaluator, REGEX_ENGINE_PYTHON_STD
+from flyql.matcher.evaluator import Evaluator
 from flyql.matcher.record import Record
-from flyql.generators.clickhouse.generator import to_sql
-from flyql.generators.clickhouse.field import Field
+from flyql.generators.clickhouse.generator import to_sql_where
+from flyql.generators.clickhouse.column import Column
 
 
-def parse_fields(fields_json: str) -> Dict[str, Field]:
+def parse_fields(fields_json: str) -> Dict[str, Column]:
     """Parse fields JSON into Field objects."""
     try:
         fields_data = json.loads(fields_json)
@@ -25,7 +25,7 @@ def parse_fields(fields_json: str) -> Dict[str, Field]:
         field_type = config.get("type", "String")
         jsonstring = config.get("jsonstring", False)
         values = config.get("values", [])
-        fields[name] = Field(
+        fields[name] = Column(
             name=name,
             jsonstring=jsonstring,
             _type=field_type,
@@ -52,7 +52,7 @@ def node_to_dict(node) -> Optional[Dict[str, Any]]:
             result["expression"]["values_type"] = expr.values_type
         elif expr.operator != "truthy":
             result["expression"]["value"] = expr.value
-            result["expression"]["value_is_string"] = expr.value_is_string
+            result["expression"]["value_type"] = expr.value_type.value if expr.value_type else None
 
     if node.bool_operator:
         result["bool_operator"] = node.bool_operator
@@ -98,7 +98,7 @@ def cmd_generate(query: str, fields_json: str, generator: str) -> None:
     fields = parse_fields(fields_json)
 
     try:
-        sql = to_sql(parser.root, fields)
+        sql = to_sql_where(parser.root, fields)
         print(sql)
     except Exception as e:
         print(f"Generator error: {e}", file=sys.stderr)
@@ -113,7 +113,7 @@ def cmd_evaluate(query: str) -> None:
         print(f"Parse error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    evaluator = Evaluator(regex_engine=REGEX_ENGINE_PYTHON_STD)
+    evaluator = Evaluator()
 
     for line_num, line in enumerate(sys.stdin, 1):
         line = line.strip()

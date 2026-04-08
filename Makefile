@@ -1,10 +1,16 @@
-e2e-viewer:
-	cd e2e && make viewer
 all: test
 test:
 	cd python && make test
 	cd javascript && make test
 	cd golang && make test
+test-ci:
+	cd python && make install test
+	cd javascript && make install test
+	cd golang && make install test
+e2e-ci:
+	cd python && make install
+	cd javascript && make install
+	cd e2e && make test
 fmt:
 	cd python && make fmt
 	cd javascript && make fmt
@@ -22,6 +28,8 @@ e2e-venv:
 	cd e2e && make install
 e2e-clean:
 	cd e2e && make clean
+e2e-viewer:
+	cd e2e && make viewer
 run-demo:
 	cd demo && make dev
 docs-install:
@@ -30,3 +38,5 @@ docs-build:
 	cd docs && npm run build
 docs-dev:
 	cd docs && npm run dev
+run-docs:
+	cd docs && npm install && npm run dev

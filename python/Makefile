@@ -1,4 +1,7 @@
 all: test
+install:
+	pip install -e .
+	pip install pytest black mypy
 fmt:
 	black .
 fmt-test:

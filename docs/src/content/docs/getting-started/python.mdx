@@ -3,6 +3,13 @@ title: Python Quickstart
 description: Install and use FlyQL in a Python project
 ---
 
+import { Code } from '@astrojs/starlight/components'
+import parseSnippet from '@snippets/python/getting_started_parse.py?raw'
+import generateSnippet from '@snippets/python/getting_started_generate_clickhouse.py?raw'
+import matchSnippet from '@snippets/python/getting_started_match.py?raw'
+import columnsSnippet from '@snippets/python/getting_started_columns.py?raw'
+import transformersSnippet from '@snippets/python/getting_started_transformers.py?raw'
+
 ## Installation
 
 FlyQL for Python is installed from git (not published to PyPI):
@@ -17,12 +24,7 @@ This installs the `flyql` package along with its dependency `google-re2`.
 
 ## Parse a Query
 
-```python
-from flyql import parse
-
-result = parse("status = 200 and active")
-print(result.root)
-```
+<Code code={parseSnippet.trim()} lang="python" />
 
 `parse()` returns a `Parser` object with a `root` node representing the AST. It raises a `ParserError` on invalid input.
 
@@ -32,21 +34,7 @@ Use a generator to turn the AST into a WHERE clause. Each database dialect has i
 
 ### ClickHouse
 
-```python
-from flyql import parse
-from flyql.generators.clickhouse.generator import to_sql_where
-from flyql.generators.clickhouse.column import Column
-
-result = parse("status >= 400 and host = prod*")
-
-columns = {
-    "status": Column("status", False, "UInt32"),
-    "host": Column("host", False, "String"),
-}
-
-sql = to_sql_where(result.root, columns)
-print(sql)
-```
+<Code code={generateSnippet.trim()} lang="python" />
 
 PostgreSQL and StarRocks generators follow the same pattern — import from `flyql.generators.postgresql` or `flyql.generators.starrocks` instead.
 
@@ -54,60 +42,19 @@ PostgreSQL and StarRocks generators follow the same pattern — import from `fly
 
 Evaluate a query against a data record without generating SQL:
 
-```python
-from flyql import parse
-from flyql.matcher import Evaluator, Record
-
-result = parse("status = 200 and active")
-
-data = {
-    "status": 200,
-    "active": True,
-    "host": "prod-api-01",
-}
-
-evaluator = Evaluator()
-matches = evaluator.evaluate(result.root, Record(data))
-print(f"Matches: {matches}")  # True
-```
+<Code code={matchSnippet.trim()} lang="python" />
 
 ## Parse Column Expressions
 
 Parse a columns expression into structured data with segments, transformers, and aliases:
 
-```python
-from flyql.columns import parse, parse_to_json
-
-# Parse basic columns (transformers disabled by default)
-parsed = parse("message, status")
-for col in parsed:
-    print(f"{col.name} (display: {col.display_name!r}, segments: {col.segments})")
-
-# Enable transformers via capabilities
-with_transforms = parse("message|chars(25) as msg, status", capabilities={"transformers": True})
-
-# Or serialize directly to JSON for API responses
-json_str = parse_to_json("message, status|upper", capabilities={"transformers": True})
-print(json_str)
-```
+<Code code={columnsSnippet.trim()} lang="python" />
 
 ## Transformers in Queries
 
 Parse a query with transformers and generate SQL:
 
-```python
-from flyql import parse
-from flyql.generators.clickhouse.generator import to_sql_where
-from flyql.generators.clickhouse.column import Column
-
-# Parse a transformer query
-result = parse("message|upper = 'ERROR'")
-
-# Generate SQL for ClickHouse
-columns = {"message": Column("message", False, "String")}
-sql = to_sql_where(result.root, columns)
-print(sql)  # equals(upper(message), 'ERROR')
-```
+<Code code={transformersSnippet.trim()} lang="python" />
 
 See [Transformers](/syntax/transformers/) for the full syntax reference.
 

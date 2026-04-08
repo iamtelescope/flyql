@@ -1,6 +1,6 @@
 {
   "name": "flyql",
-  "version": "0.0.31",
+  "version": "0.0.32",
   "description": "A lightweight, injection-proof query language for multi-dialect SQL generation",
   "type": "module",
   "main": "./src/index.js",
@@ -81,7 +81,7 @@
   "bugs": {
     "url": "https://github.com/iamtelescope/flyql/issues"
   },
-  "homepage": "https://flyql.dev",
+  "homepage": "https://docs.flyql.dev",
   "engines": {
     "node": ">=16.0.0"
   },

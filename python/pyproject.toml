@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flyql"
-version = "0.0.31"
+version = "0.0.32"
 dependencies = ["google-re2>=1.1"]
 requires-python = ">=3.10"
 license = { text = "MIT License" }
@@ -12,6 +12,7 @@ authors = [
     { name = "Ilia (HumanUser) Khomutov" }
 ]
 description = "A lightweight, injection-proof query language for multi-dialect SQL generation"
+readme = "README.md"
 keywords = ["query", "parser", "ast", "sql", "clickhouse", "filter"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

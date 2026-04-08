@@ -1,7 +1,7 @@
 all: test
 install:
 	pip install -e .
-	pip install pytest black mypy
+	pip install pytest black==26.3.1 mypy
 fmt:
 	black .
 fmt-test:

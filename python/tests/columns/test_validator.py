@@ -13,7 +13,6 @@ from flyql.core.validator import (
     CODE_CHAIN_TYPE,
 )
 
-
 FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__),
     "..",

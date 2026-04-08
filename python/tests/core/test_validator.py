@@ -29,7 +29,6 @@ from flyql.core.validator import (
 from flyql.transformers.base import ArgSpec, Transformer, TransformerType
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture loading
 # ---------------------------------------------------------------------------

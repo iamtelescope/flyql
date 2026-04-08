@@ -8,7 +8,6 @@ import pytest
 from flyql.core.parser import Parser, ParserError
 from flyql.core.range import Range
 
-
 FIXTURES_DIR = os.path.abspath(
     os.path.join(
         os.path.dirname(__file__),

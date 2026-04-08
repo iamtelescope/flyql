@@ -16,7 +16,7 @@ Use <FlyqlToken type="operator">in</FlyqlToken> to check if a value is in a list
 ## Syntax Rules
 
 - Values are enclosed in square brackets <FlyqlToken type="operator">[ ]</FlyqlToken> and separated by commas
-- All values in a list must be the same type (all strings or all numbers)
+- Values can be mixed types: <FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - String values must be quoted: <FlyqlCode code={`['a', 'b', 'c']`} inline />
 - Numeric values are unquoted: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Spaces around commas and brackets are allowed
@@ -45,22 +45,15 @@ An empty <FlyqlToken type="operator">in</FlyqlToken> list is always false — no
 
 An empty <FlyqlToken type="operator">not in</FlyqlToken> list is always true — everything is "not in" an empty list.
 
-## Type Consistency
+## Mixed Types
 
-Lists **must** contain values of a uniform type — all strings or all numbers. Mixing types within a single list causes a parse error:
+Lists support heterogeneous values — you can mix strings, numbers, booleans, and null:
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-The following is invalid (mixed types — parse error):
+Each element carries its own type in the `valuesTypes` array on the parsed expression (e.g. `["integer", "string", "boolean", "null"]`). For empty lists, `valuesTypes` is `null`.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
-
-The parser tracks the type of the first value in the list and rejects any subsequent value of a different type. This is enforced at parse time, before the query reaches any generator or matcher.
-
-When a SQL generator processes a list, it additionally validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
-
-The `valuesType` field on the parsed expression indicates whether the list contains `"string"` or `"number"` values. For empty lists, `valuesType` is `null`.
+When a SQL generator processes a list, it validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
 
 ## Combined with Other Operators
 

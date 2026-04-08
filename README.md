@@ -56,7 +56,7 @@ env not in ['prod', 'staging']
 
 Rules:
 - Values are enclosed in square brackets `[]` and separated by commas
-- All values in the list must be the same type (all strings or all numbers)
+- Values can be mixed types: `[200, 'ok', true, null]`
 - String values must be quoted: `['a', 'b']`
 - Number values are unquoted: `[1, 2, 3]`
 - Empty list `[]` is allowed (`in []` is always false, `not in []` is always true)

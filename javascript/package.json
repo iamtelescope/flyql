@@ -11,8 +11,11 @@
     "./core": {
       "import": "./src/core/index.js"
     },
-    "./monaco": {
-      "import": "./src/monaco/index.js"
+    "./transformers": {
+      "import": "./src/transformers/index.js"
+    },
+    "./types": {
+      "import": "./src/types.js"
     },
     "./columns": {
       "import": "./src/columns/index.js"
@@ -78,7 +81,7 @@
   "bugs": {
     "url": "https://github.com/iamtelescope/flyql/issues"
   },
-  "homepage": "https://github.com/iamtelescope/flyql#readme",
+  "homepage": "https://flyql.dev",
   "engines": {
     "node": ">=16.0.0"
   },

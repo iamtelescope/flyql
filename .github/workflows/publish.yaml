@@ -93,12 +93,14 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
       - name: Install dependencies
         working-directory: javascript
         run: pnpm install

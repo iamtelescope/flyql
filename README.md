@@ -1,6 +1,9 @@
 # FlyQL
 
-A simple query language accompanied by a parser that transforms input queries into an Abstract Syntax Tree (AST). This AST represents the syntactic structure of the query and can later be used by generator modules to produce target code ,such as SQL, for filtering or processing data.
+[![Tests](https://github.com/iamtelescope/flyql/actions/workflows/test.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/test.yml)
+[![E2E](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml)
+
+A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, evaluates in-memory, and ships with a Vue 3 editor — with full cross-language parity in Go, Python, and JavaScript.
 
 ## Basic Query Structure
 

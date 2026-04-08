@@ -1,0 +1,48 @@
+name: E2E Tests
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # nightly at 3am UTC
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  e2e:
+    name: E2E Cross-Language Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Python dependencies
+        run: |
+          cd python
+          pip install -e .
+          pip install pytest
+
+      - name: Install JavaScript dependencies
+        run: cd javascript && pnpm install
+
+      - name: Start databases
+        run: cd e2e && make up
+
+      - name: Run E2E tests
+        run: cd e2e && make -k test-go test-js test-python
+
+      - name: Stop databases
+        if: always()
+        run: cd e2e && make down

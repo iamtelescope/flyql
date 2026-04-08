@@ -1,4 +1,4 @@
-name: publish
+name: Publish
 
 on:
   workflow_dispatch:
@@ -14,27 +14,50 @@ on:
         default: all
         options:
           - all
+          - validate
           - python
           - javascript
           - golang
 
 jobs:
-  validate:
-    name: Validate version
+  validate-python:
+    name: Validate Python
+    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'python'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 .github/scripts/validate_version.py "$VERSION" python
+
+  validate-javascript:
+    name: Validate JavaScript
+    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate
+        env:
+          VERSION: ${{ inputs.version }}
+        run: python3 .github/scripts/validate_version.py "$VERSION" javascript
+
+  validate-golang:
+    name: Validate Go
+    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'golang'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-tags: true
-
-      - name: Validate version
+      - name: Validate
         env:
           VERSION: ${{ inputs.version }}
-        run: python3 .github/scripts/validate_version.py "$VERSION"
+        run: python3 .github/scripts/validate_version.py "$VERSION" golang
 
   python:
     name: Publish Python to PyPI
-    needs: validate
+    needs: validate-python
     if: inputs.target == 'all' || inputs.target == 'python'
     runs-on: ubuntu-latest
     permissions:
@@ -59,7 +82,7 @@ jobs:
 
   javascript:
     name: Publish JavaScript to npm
-    needs: validate
+    needs: validate-javascript
     if: inputs.target == 'all' || inputs.target == 'javascript'
     runs-on: ubuntu-latest
     permissions:
@@ -87,7 +110,7 @@ jobs:
 
   golang:
     name: Tag Go modules
-    needs: validate
+    needs: validate-golang
     if: inputs.target == 'all' || inputs.target == 'golang'
     runs-on: ubuntu-latest
     permissions:

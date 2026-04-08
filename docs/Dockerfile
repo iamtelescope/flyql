@@ -1,13 +1,16 @@
 #  Multi-stage build
 FROM node:18-alpine as builder
 
-WORKDIR /app
+WORKDIR /repo/docs
 
-COPY package*.json ./
+COPY docs/package*.json ./
 
 RUN npm ci
 
-COPY . .
+COPY python/snippets/ /repo/python/snippets/
+COPY javascript/snippets/ /repo/javascript/snippets/
+COPY golang/snippets/ /repo/golang/snippets/
+COPY docs/ .
 
 ARG ENABLE_GA=false
 ARG GA_MEASUREMENT_ID=""
@@ -20,9 +23,9 @@ FROM nginx:alpine
 
 RUN rm /etc/nginx/conf.d/default.conf
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docs/nginx.conf /etc/nginx/conf.d/default.conf
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /repo/docs/dist /usr/share/nginx/html
 
 RUN mkdir -p /var/cache/nginx/client_temp \
     && mkdir -p /var/cache/nginx/proxy_temp \

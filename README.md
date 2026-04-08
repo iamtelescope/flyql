@@ -1,5 +1,4 @@
-<img src="docs/public/icons/flyql.svg" width="32" height="32" align="top" /> FlyQL
-===
+# <img src="docs/public/icons/flyql.svg" width="28" height="28" style="vertical-align: middle;" /> FlyQL
 
 [![Tests](https://github.com/iamtelescope/flyql/actions/workflows/test.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/test.yml)
 [![E2E](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml)

@@ -37,6 +37,7 @@ function reportPlugin() {
 }
 
 export default defineConfig({
+  base: process.env.VITE_BASE || "/",
   plugins: [vue(), tailwindcss(), reportPlugin()],
   build: {
     outDir: "dist",

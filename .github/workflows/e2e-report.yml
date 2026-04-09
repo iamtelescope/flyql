@@ -1,0 +1,106 @@
+name: E2E Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      clickhouse_version:
+        description: 'ClickHouse version'
+        required: false
+        default: '25.12'
+      postgresql_version:
+        description: 'PostgreSQL version'
+        required: false
+        default: '16'
+      starrocks_version:
+        description: 'StarRocks version'
+        required: false
+        default: '3.3-latest'
+      publish:
+        description: 'Publish report to GitHub Pages'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: e2e-report
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: |
+          cd python && make install
+          cd ../javascript && npm ci
+          cd ../e2e && make install
+
+      - name: Write version file
+        run: |
+          cat > e2e/versions/ci.env <<EOF
+          CLICKHOUSE_VERSION=${{ inputs.clickhouse_version }}
+          POSTGRESQL_VERSION=${{ inputs.postgresql_version }}
+          STARROCKS_VERSION=${{ inputs.starrocks_version }}
+          EOF
+
+      - name: Run E2E tests
+        run: cd e2e && VERSION_FILE=versions/ci.env make run
+
+      - name: Build viewer
+        run: |
+          cd e2e-viewer && npm ci
+          npx vite build
+          cp ../e2e/output/report.json dist/report.json
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: e2e-viewer/dist/
+
+      - name: Upload Pages artifact
+        if: ${{ inputs.publish }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: e2e-viewer/dist/
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: ${{ inputs.publish }}
+    needs: e2e
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

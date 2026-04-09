@@ -9,7 +9,7 @@ A lightweight, injection-proof query language that parses human-readable filter 
 
 A query consists of one or more conditions connected by boolean operators (**and**, **or**, **not**). Conditions can be comparisons or truthy checks.
 
-```
+```sql
 status=200 and active and not archived
 ```
 - `status=200` - `status` field equals `200`
@@ -17,7 +17,7 @@ status=200 and active and not archived
 - `not archived` - `archived` field is falsy (null, empty, zero, or false)
 
 More examples:
-```
+```sql
 service!=api or user="john doe"     # comparisons with or
 message~"error.*" and not debug     # regex match and negation
 (a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
@@ -52,7 +52,7 @@ FlyQL supports the following comparison operators:
 
 Use `in` and `not in` to check if a value is in a list:
 
-```
+```sql
 status in [200, 201, 204]
 env not in ['prod', 'staging']
 ```
@@ -68,7 +68,7 @@ Rules:
 
 Use `like` and `ilike` for SQL-style pattern matching:
 
-```
+```sql
 message like 'error%'         # starts with "error"
 host like '%prod%'            # contains "prod"
 path like '/api/_/status'     # _ matches any single character
@@ -85,7 +85,7 @@ Wildcards:
 
 A standalone key without an operator checks if the field has a truthy value:
 
-```
+```sql
 active
 message and status
 ```
@@ -102,7 +102,7 @@ Everything else is **truthy**.
 
 Use `not` to negate any expression:
 
-```
+```sql
 not active                  # field is falsy
 not status=200              # status is not 200
 not (a=1 and b=2)           # negates the grouped expression
@@ -120,7 +120,7 @@ Double negation cancels out: `not not active` is equivalent to `active`.
 
 FlyQL supports temporal function calls as values for time-relative filters:
 
-```
+```sql
 timestamp > ago(1h)                    # last 1 hour
 timestamp > ago(1h30m)                 # compound: 1 hour 30 minutes
 updated_at < now()                     # before current time

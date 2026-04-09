@@ -49,38 +49,33 @@ type Diagnostic struct {
 }
 
 // Diagnose walks a parser-produced AST and returns positioned diagnostics
-// based on the supplied column definitions and transformer registry. If
+// based on the supplied column schema and transformer registry. If
 // registry is nil, the default registry is used.
-func Diagnose(ast *Node, columns []Column, registry *transformers.TransformerRegistry) []Diagnostic {
+func Diagnose(ast *Node, schema *ColumnSchema, registry *transformers.TransformerRegistry) []Diagnostic {
 	if ast == nil {
 		return nil
 	}
 	if registry == nil {
 		registry = transformers.DefaultRegistry()
 	}
-	byName := make(map[string]Column)
-	// reversed iteration for first-wins on duplicates
-	for i := len(columns) - 1; i >= 0; i-- {
-		byName[strings.ToLower(columns[i].MatchName)] = columns[i]
-	}
-	return walk(ast, byName, registry)
+	return walk(ast, schema, registry)
 }
 
-func walk(node *Node, byName map[string]Column, registry *transformers.TransformerRegistry) []Diagnostic {
+func walk(node *Node, schema *ColumnSchema, registry *transformers.TransformerRegistry) []Diagnostic {
 	if node.Expression != nil {
-		return diagnoseExpression(node.Expression, byName, registry)
+		return diagnoseExpression(node.Expression, schema, registry)
 	}
 	var diags []Diagnostic
 	if node.Left != nil {
-		diags = append(diags, walk(node.Left, byName, registry)...)
+		diags = append(diags, walk(node.Left, schema, registry)...)
 	}
 	if node.Right != nil {
-		diags = append(diags, walk(node.Right, byName, registry)...)
+		diags = append(diags, walk(node.Right, schema, registry)...)
 	}
 	return diags
 }
 
-func diagnoseExpression(expr *Expression, byName map[string]Column, registry *transformers.TransformerRegistry) []Diagnostic {
+func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transformers.TransformerRegistry) []Diagnostic {
 	var diags []Diagnostic
 
 	// F15 guard: missing source ranges
@@ -94,22 +89,51 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 		return diags
 	}
 
-	baseName := expr.Key.Segments[0]
-	col, found := byName[strings.ToLower(baseName)]
-
 	var prevOutputType transformers.TransformerType
 	var hasPrevType bool
 
-	if !found {
+	// Nested traversal: walk all segments through schema
+	col := schema.Get(expr.Key.Segments[0])
+	if col == nil {
 		diags = append(diags, Diagnostic{
 			Range:    expr.Key.SegmentRanges[0],
 			Code:     CodeUnknownColumn,
 			Severity: SeverityError,
-			Message:  fmt.Sprintf("column '%s' is not defined", baseName),
+			Message:  fmt.Sprintf("column '%s' is not defined", expr.Key.Segments[0]),
 		})
 		hasPrevType = false
 	} else {
-		prevOutputType, hasPrevType = NormalizedToTransformerType(col.NormalizedType)
+		// Traverse remaining segments through children
+		for i := 1; i < len(expr.Key.Segments); i++ {
+			if expr.Key.Segments[i] == "" {
+				break // trailing dot — user still typing
+			}
+			if col.Children == nil {
+				diags = append(diags, Diagnostic{
+					Range:    expr.Key.SegmentRanges[i],
+					Code:     CodeUnknownColumn,
+					Severity: SeverityError,
+					Message:  fmt.Sprintf("column '%s' is not defined", expr.Key.Segments[i]),
+				})
+				col = nil
+				break
+			}
+			child := col.Children[strings.ToLower(expr.Key.Segments[i])]
+			if child == nil {
+				diags = append(diags, Diagnostic{
+					Range:    expr.Key.SegmentRanges[i],
+					Code:     CodeUnknownColumn,
+					Severity: SeverityError,
+					Message:  fmt.Sprintf("column '%s' is not defined", expr.Key.Segments[i]),
+				})
+				col = nil
+				break
+			}
+			col = child
+		}
+		if col != nil {
+			prevOutputType, hasPrevType = NormalizedToTransformerType(col.NormalizedType)
+		}
 	}
 
 	for _, tr := range expr.Key.Transformers {
@@ -200,14 +224,17 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 						Message:  fmt.Sprintf("invalid character in column name '%s'", v),
 					})
 				}
-			} else if _, found := byName[strings.ToLower(v)]; !found {
-				if expr.ValueRange != nil {
-					diags = append(diags, Diagnostic{
-						Range:    *expr.ValueRange,
-						Code:     CodeUnknownColumnValue,
-						Severity: SeverityError,
-						Message:  fmt.Sprintf("column '%s' is not defined", v),
-					})
+			} else {
+				colValSegments := strings.Split(v, ".")
+				if schema.Resolve(colValSegments) == nil {
+					if expr.ValueRange != nil {
+						diags = append(diags, Diagnostic{
+							Range:    *expr.ValueRange,
+							Code:     CodeUnknownColumnValue,
+							Severity: SeverityError,
+							Message:  fmt.Sprintf("column '%s' is not defined", v),
+						})
+					}
 				}
 			}
 		}
@@ -226,14 +253,17 @@ func diagnoseExpression(expr *Expression, byName map[string]Column, registry *tr
 							Message:  fmt.Sprintf("invalid character in column name '%s'", v),
 						})
 					}
-				} else if _, found := byName[strings.ToLower(v)]; !found {
-					if i < len(expr.ValueRanges) {
-						diags = append(diags, Diagnostic{
-							Range:    expr.ValueRanges[i],
-							Code:     CodeUnknownColumnValue,
-							Severity: SeverityError,
-							Message:  fmt.Sprintf("column '%s' is not defined", v),
-						})
+				} else {
+					colValSegments := strings.Split(v, ".")
+					if schema.Resolve(colValSegments) == nil {
+						if i < len(expr.ValueRanges) {
+							diags = append(diags, Diagnostic{
+								Range:    expr.ValueRanges[i],
+								Code:     CodeUnknownColumnValue,
+								Severity: SeverityError,
+								Message:  fmt.Sprintf("column '%s' is not defined", v),
+							})
+						}
 					}
 				}
 			}

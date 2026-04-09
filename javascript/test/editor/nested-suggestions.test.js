@@ -8,8 +8,9 @@ import {
     updateSuggestions,
 } from '../../src/editor/suggestions.js'
 import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
-const NESTED_COLUMNS = {
+const NESTED_COLUMNS_PLAIN = {
     level: { type: 'enum', suggest: true },
     service: { type: 'string', suggest: true },
     metadata: {
@@ -49,6 +50,8 @@ const NESTED_COLUMNS = {
         },
     },
 }
+
+const NESTED_COLUMNS = ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN)
 
 describe('getKeySuggestions — flat columns (AC #4)', () => {
     it('flat prefix returns top-level columns', () => {
@@ -163,7 +166,7 @@ describe('getKeySuggestions delegates to nested when dot present', () => {
 
 describe('ColumnsEngine nested suggestions (AC #5)', () => {
     it('typing metadata. in columns editor shows children', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN))
         engine.setQuery('metadata.')
         engine.setCursorPosition(9)
         await engine.updateSuggestions()
@@ -173,7 +176,7 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('typing metadata.labels. shows grandchildren', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN))
         engine.setQuery('metadata.labels.')
         engine.setCursorPosition(16)
         await engine.updateSuggestions()
@@ -183,7 +186,7 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('excludes already-selected nested columns', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN))
         engine.setQuery('metadata.labels.tier,metadata.labels.')
         engine.setCursorPosition(37)
         await engine.updateSuggestions()
@@ -193,7 +196,7 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('mixed flat + nested columns coexist (AC #4)', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN))
         engine.setQuery('')
         engine.setCursorPosition(0)
         await engine.updateSuggestions()
@@ -205,7 +208,9 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('exact nested leaf shows next-step delimiters (P2)', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS, { capabilities: { transformers: true } })
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN), {
+            capabilities: { transformers: true },
+        })
         engine.setQuery('metadata.labels.tier')
         engine.setCursorPosition(20)
         await engine.updateSuggestions()
@@ -215,7 +220,7 @@ describe('ColumnsEngine nested suggestions (AC #5)', () => {
     })
 
     it('intermediate nested node does not show next-step delimiters', async () => {
-        const engine = new ColumnsEngine(NESTED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(NESTED_COLUMNS_PLAIN))
         engine.setQuery('metadata.labels')
         engine.setCursorPosition(15)
         await engine.updateSuggestions()
@@ -243,18 +248,18 @@ describe('resolveColumnDef — nested column resolution (P1)', () => {
         expect(col.children).toBeDefined()
     })
 
-    it('returns undefined for unknown column', () => {
-        expect(resolveColumnDef(NESTED_COLUMNS, 'nonexistent')).toBeUndefined()
+    it('returns null for unknown column', () => {
+        expect(resolveColumnDef(NESTED_COLUMNS, 'nonexistent')).toBeNull()
     })
 
-    it('returns undefined for unknown nested path', () => {
-        expect(resolveColumnDef(NESTED_COLUMNS, 'metadata.nonexistent')).toBeUndefined()
+    it('returns null for unknown nested path', () => {
+        expect(resolveColumnDef(NESTED_COLUMNS, 'metadata.nonexistent')).toBeNull()
     })
 })
 
 describe('getOperatorSuggestions — nested columns (P1)', () => {
     it('type-filters operators for nested enum-type column', () => {
-        const ENUM_NESTED = {
+        const ENUM_NESTED = ColumnSchema.fromPlainObject({
             data: {
                 type: 'object',
                 suggest: true,
@@ -262,7 +267,7 @@ describe('getOperatorSuggestions — nested columns (P1)', () => {
                     status: { type: 'enum', suggest: true },
                 },
             },
-        }
+        })
         const ops = getOperatorSuggestions(ENUM_NESTED, 'data.status')
         const labels = ops.map((o) => o.label)
         expect(labels).toContain('=')
@@ -345,7 +350,7 @@ describe('resolveColumnDef — case-insensitive top-level (P1r2)', () => {
 })
 
 describe('getValueSuggestions — nested columns (P2r2)', () => {
-    const VALUED_NESTED = {
+    const VALUED_NESTED = ColumnSchema.fromPlainObject({
         data: {
             type: 'object',
             suggest: true,
@@ -354,7 +359,7 @@ describe('getValueSuggestions — nested columns (P2r2)', () => {
                 notes: { type: 'string', suggest: true, autocomplete: false },
             },
         },
-    }
+    })
 
     it('returns values for nested leaf with autocomplete + values', async () => {
         const result = await getValueSuggestions(VALUED_NESTED, 'data.status', '', null, null, {}, () => {})

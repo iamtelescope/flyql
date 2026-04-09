@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
-const TEST_COLUMNS = {
+const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true },
     service: { type: 'string', suggest: true },
     message: { type: 'string', suggest: true },
     status_code: { type: 'number', suggest: true },
     hidden: { type: 'string', suggest: false },
     host: { type: 'string', suggest: true },
-}
+})
 
 const TRANSFORMERS_OPTS = { capabilities: { transformers: true } }
 
@@ -16,13 +17,13 @@ describe('ColumnsEngine', () => {
     describe('constructor', () => {
         it('creates engine with columns', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
-            expect(engine.columns).toBe(TEST_COLUMNS)
+            expect(engine.columns).toBeInstanceOf(ColumnSchema)
             expect(engine.suggestions).toEqual([])
         })
 
         it('creates engine without columns', () => {
             const engine = new ColumnsEngine()
-            expect(engine.columns).toEqual({})
+            expect(engine.columns).toBeInstanceOf(ColumnSchema)
         })
     })
 

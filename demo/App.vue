@@ -226,7 +226,7 @@ import '@fontsource/inter'
 import '@fontsource/inter/500.css'
 
 import { ref, computed, onMounted } from 'vue'
-import { FlyqlEditor, FlyqlColumns } from '../javascript/src/editor/index.js'
+import { FlyqlEditor, FlyqlColumns, ColumnSchema } from '../javascript/src/editor/index.js'
 import { EditorEngine } from '../javascript/src/editor/engine.js'
 import { ColumnsEngine } from '../javascript/src/editor/columns-engine.js'
 import { parse } from '../javascript/src/core/parser.js'
@@ -247,7 +247,7 @@ import srIcon from './starrocks.svg'
 
 const schemaColumns = otelLogs.schemaColumns
 
-const editorColumns = otelLogs.editorColumns
+const editorColumns = ColumnSchema.fromPlainObject(otelLogs.editorColumns)
 
 const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, type]) => [name, chNewColumn(name, '', type)]))
 const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, type]) => [name, pgNewColumn(name, false, type)]))

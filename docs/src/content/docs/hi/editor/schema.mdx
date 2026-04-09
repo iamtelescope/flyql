@@ -8,12 +8,14 @@ description: FlyQL एडिटर के लिए कॉलम स्कीम
 ## मूल स्कीमा
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## कॉलम परिभाषा फ़ील्ड
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 ऑब्जेक्ट-प्रकार कॉलम पर `children` का उपयोग करके नेस्टेड संरचनाएँ परिभाषित करें:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 `metadata.` टाइप करने पर `labels` और `version` सुझाए जाते हैं। `metadata.labels.` टाइप करने पर `tier` और `env` सुझाए जाते हैं। गहराई की कोई सीमा नहीं है।
@@ -145,7 +147,7 @@ const columns = {
 ऑब्जेक्ट कॉलम के लिए जहाँ नेस्टेड कुंजियाँ स्कीमा परिभाषा समय पर ज्ञात नहीं हैं, `children` छोड़ें और `onKeyDiscovery` कॉलबैक प्रदान करें:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // no children — triggers discovery
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 जब उपयोगकर्ता `request.` टाइप करता है, तो कॉलबैक `('request', ['request'])` के साथ कॉल किया जाता है। खोजी गई कुंजियाँ प्रति सक्रियण सत्र कैश की जाती हैं।
@@ -163,7 +165,7 @@ async function onKeyDiscovery(columnName, segments) {
 ## पूर्ण उदाहरण
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // Enum with static values
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // Schemaless — nested keys discovered at runtime
     request: { type: 'object', suggest: true },
-}
+})
 ```

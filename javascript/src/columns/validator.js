@@ -19,32 +19,31 @@ function _jsToTransformerType(v) {
     return null
 }
 
-export function diagnose(parsedColumns, columns, registry = null) {
+export function diagnose(parsedColumns, schema, registry = null) {
     if (!parsedColumns || parsedColumns.length === 0) return []
     if (registry == null) registry = defaultRegistry()
-
-    const columnsByName = {}
-    for (let i = columns.length - 1; i >= 0; i--) {
-        columnsByName[columns[i].matchName.toLowerCase()] = columns[i]
-    }
 
     const diags = []
 
     for (const col of parsedColumns) {
-        const baseName = col.name.split('.')[0]
-        const matchedColumn = columnsByName[baseName.toLowerCase()] || null
+        // Use segments for nested traversal; strip empty trailing segment from trailing dot
+        const rawSegments = col.segments || col.name.split('.')
+        const segments =
+            rawSegments.length > 0 && rawSegments[rawSegments.length - 1] === ''
+                ? rawSegments.slice(0, -1)
+                : rawSegments
+        if (segments.length === 0) continue
+        const resolved = schema.resolve(segments)
 
         let prevOutputType
-        if (matchedColumn == null) {
+        if (resolved == null) {
             if (col.nameRange) {
-                const baseNameRange = new Range(col.nameRange.start, col.nameRange.start + baseName.length)
-                diags.push(
-                    new Diagnostic(baseNameRange, `column '${baseName}' is not defined`, 'error', CODE_UNKNOWN_COLUMN),
-                )
+                const { segment, range } = _findFailingSegment(col, schema, segments)
+                diags.push(new Diagnostic(range, `column '${segment}' is not defined`, 'error', CODE_UNKNOWN_COLUMN))
             }
             prevOutputType = null
         } else {
-            prevOutputType = normalizedToTransformerType(matchedColumn.normalizedType)
+            prevOutputType = normalizedToTransformerType(resolved.normalizedType)
         }
 
         const transformerRanges = col.transformerRanges || []
@@ -138,4 +137,25 @@ export function diagnose(parsedColumns, columns, registry = null) {
     }
 
     return diags
+}
+
+function _findFailingSegment(col, schema, segments) {
+    let current = null
+    for (let i = 0; i < segments.length; i++) {
+        if (i === 0) {
+            current = schema.get(segments[i])
+        } else if (current != null && current.children != null) {
+            current = current.children[segments[i].toLowerCase()] || null
+        } else {
+            current = null
+        }
+        if (current == null) {
+            let offset = col.nameRange.start
+            for (let j = 0; j < i; j++) {
+                offset += segments[j].length + 1
+            }
+            return { segment: segments[i], range: new Range(offset, offset + segments[i].length) }
+        }
+    }
+    return { segment: segments[0], range: new Range(col.nameRange.start, col.nameRange.start + segments[0].length) }
 }

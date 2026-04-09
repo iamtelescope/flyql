@@ -190,7 +190,7 @@ func TestValidatorShared(t *testing.T) {
 				ast = result.Root
 			}
 
-			diags := Diagnose(ast, cols, registry)
+			diags := Diagnose(ast, FromColumns(cols), registry)
 
 			if len(diags) != len(tc.ExpectedDiagnostics) {
 				t.Fatalf("expected %d diagnostics, got %d: %+v",
@@ -253,7 +253,7 @@ func TestDiagnoseInvalidASTGuard(t *testing.T) {
 		Expression:   expr,
 	}
 	cols := []Column{makeColumn("foo", "string")}
-	diags := Diagnose(node, cols, reg)
+	diags := Diagnose(node, FromColumns(cols), reg)
 	if len(diags) != 1 {
 		t.Fatalf("expected 1 diagnostic, got %d: %+v", len(diags), diags)
 	}
@@ -271,10 +271,11 @@ func TestDiagnoseDialectColumnSubclass(t *testing.T) {
 		Name:           "`1host`",
 		NormalizedType: "string",
 		MatchName:      "1host",
+		Suggest:        true,
 	}
 	ast := parseAST(t, "host='X'")
 	cols := []Column{makeColumn("host", "string"), col}
-	diags := Diagnose(ast, cols, reg)
+	diags := Diagnose(ast, FromColumns(cols), reg)
 	if len(diags) != 0 {
 		t.Errorf("expected no diagnostics, got %d: %+v", len(diags), diags)
 	}
@@ -282,7 +283,7 @@ func TestDiagnoseDialectColumnSubclass(t *testing.T) {
 
 func TestDiagnoseNilAST(t *testing.T) {
 	cols := []Column{makeColumn("host", "string")}
-	diags := Diagnose(nil, cols, nil)
+	diags := Diagnose(nil, FromColumns(cols), nil)
 	if diags != nil {
 		t.Errorf("expected nil for nil AST, got %+v", diags)
 	}

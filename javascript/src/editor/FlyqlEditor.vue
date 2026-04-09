@@ -201,7 +201,7 @@ import './flyql.css'
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
-    columns: { type: Object, default: () => ({}) },
+    columns: { type: Object, default: null },
     onAutocomplete: { type: Function, default: null },
     onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
@@ -277,7 +277,9 @@ function filterColumnValueDiagnostics() {
         if (engine.activeTab === 'values') {
             engine.diagnostics = engine.diagnostics.filter((d) => !columnValueCodes.has(d.code))
         } else {
-            const colNames = Object.keys(engine.columns).filter((n) => engine.columns[n]?.suggest !== false)
+            const colNames = Object.keys(engine.columns.columns).filter(
+                (n) => engine.columns.columns[n]?.suggest !== false,
+            )
             engine.diagnostics = engine.diagnostics.filter((d) => {
                 if (!columnValueCodes.has(d.code)) return true
                 const val = (ctx0.value || '').toLowerCase()

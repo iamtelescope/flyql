@@ -8,9 +8,10 @@ import {
 } from '../../src/editor/suggestions.js'
 import { EditorEngine } from '../../src/editor/engine.js'
 import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
 // Schema with both JSONSchema children and schemaless object columns
-const MIXED_COLUMNS = {
+const MIXED_COLUMNS_PLAIN = {
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
     service: { type: 'string', suggest: true },
     metadata: {
@@ -32,6 +33,8 @@ const MIXED_COLUMNS = {
     payload: { type: 'object', suggest: true }, // another schemaless
     flags: { type: 'string', suggest: true }, // not object — no discovery
 }
+
+const MIXED_COLUMNS = ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN)
 
 const MOCK_KEYS = {
     request: [
@@ -239,7 +242,7 @@ describe('updateSuggestions — routing integration (AC #1, #5, #10)', () => {
 describe('EditorEngine — key discovery integration', () => {
     it('engine passes onKeyDiscovery to updateSuggestions', async () => {
         const mockDiscovery = createMockDiscovery()
-        const engine = new EditorEngine(MIXED_COLUMNS, {
+        const engine = new EditorEngine(ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN), {
             debounceMs: 0,
             onKeyDiscovery: mockDiscovery,
         })
@@ -251,7 +254,7 @@ describe('EditorEngine — key discovery integration', () => {
     })
 
     it('clearKeyCache resets cache', () => {
-        const engine = new EditorEngine(MIXED_COLUMNS)
+        const engine = new EditorEngine(ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN))
         engine.keyCache['request'] = [{ name: 'method' }]
         engine.clearKeyCache()
         expect(engine.keyCache).toEqual({})
@@ -261,7 +264,9 @@ describe('EditorEngine — key discovery integration', () => {
 describe('ColumnsEngine — key discovery (AC #11)', () => {
     it('key discovery works in columns editor', async () => {
         const mockDiscovery = createMockDiscovery()
-        const engine = new ColumnsEngine(MIXED_COLUMNS, { onKeyDiscovery: mockDiscovery })
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN), {
+            onKeyDiscovery: mockDiscovery,
+        })
         engine.setQuery('request.')
         engine.setCursorPosition(8)
         await engine.updateSuggestions()
@@ -270,7 +275,7 @@ describe('ColumnsEngine — key discovery (AC #11)', () => {
     })
 
     it('clearKeyCache resets cache', () => {
-        const engine = new ColumnsEngine(MIXED_COLUMNS)
+        const engine = new ColumnsEngine(ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN))
         engine.keyCache['request'] = [{ name: 'method' }]
         engine.clearKeyCache()
         expect(engine.keyCache).toEqual({})
@@ -280,7 +285,10 @@ describe('ColumnsEngine — key discovery (AC #11)', () => {
 describe('mixed schema coexistence (AC #5, flat + JSONSchema + schemaless)', () => {
     it('flat columns, JSONSchema nested, and schemaless nested coexist', async () => {
         const mockDiscovery = createMockDiscovery()
-        const engine = new EditorEngine(MIXED_COLUMNS, { debounceMs: 0, onKeyDiscovery: mockDiscovery })
+        const engine = new EditorEngine(ColumnSchema.fromPlainObject(MIXED_COLUMNS_PLAIN), {
+            debounceMs: 0,
+            onKeyDiscovery: mockDiscovery,
+        })
 
         // Flat column — partial prefix
         engine.setQuery('le')
@@ -307,7 +315,7 @@ describe('mixed schema coexistence (AC #5, flat + JSONSchema + schemaless)', () 
 describe('operator suggestions for discovered keys (AC #10 analog)', () => {
     it('discovered key with type number gets numeric operators only', () => {
         // Simulate a schema where a discovered key was resolved
-        const numericCol = {
+        const numericCol = ColumnSchema.fromPlainObject({
             data: {
                 type: 'object',
                 suggest: true,
@@ -315,7 +323,7 @@ describe('operator suggestions for discovered keys (AC #10 analog)', () => {
                     count: { type: 'number', suggest: true },
                 },
             },
-        }
+        })
         const ops = getOperatorSuggestions(numericCol, 'data.count')
         const labels = ops.map((o) => o.label)
         expect(labels).toContain('=')

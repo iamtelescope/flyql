@@ -149,7 +149,7 @@ import './flyql.css'
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
-    columns: { type: Object, default: () => ({}) },
+    columns: { type: Object, default: null },
     capabilities: { type: Object, default: null },
     onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
@@ -605,7 +605,7 @@ watch(
 watch(
     () => props.columns,
     (newColumns) => {
-        engine.columns = newColumns || {}
+        engine.setColumns(newColumns)
         engine.getDiagnostics()
         diagnostics.value = engine.diagnostics
         emit('diagnostics', engine.diagnostics)

@@ -8,12 +8,14 @@ A prop `columns` define o esquema de dados que orienta as sugestões do editor. 
 ## Esquema Básico
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## Campos da Definição de Coluna
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 Defina estruturas aninhadas utilizando `children` em colunas do tipo object:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 Ao escrever `metadata.` são sugeridos `labels` e `version`. Ao escrever `metadata.labels.` são sugeridos `tier` e `env`. Não há limite de profundidade.
@@ -145,7 +147,7 @@ Ao escrever `metadata.` são sugeridos `labels` e `version`. Ao escrever `metada
 Para colunas object onde as chaves aninhadas não são conhecidas no momento da definição do esquema, omita `children` e forneça um callback `onKeyDiscovery`:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // sem filhos — aciona descoberta
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 Quando o utilizador escreve `request.`, o callback é chamado com `('request', ['request'])`. As chaves descobertas são mantidas em cache por sessão de ativação.
@@ -163,7 +165,7 @@ Se uma coluna tiver tanto `children` como `onKeyDiscovery`, os `children` estát
 ## Exemplo Completo
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // Enum com valores estáticos
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // Sem esquema — chaves aninhadas descobertas em tempo de execução
     request: { type: 'object', suggest: true },
-}
+})
 ```

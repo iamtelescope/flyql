@@ -1,5 +1,5 @@
 import { ValueType } from '../types.js'
-import { normalizedToTransformerType } from './column.js'
+import { normalizedToTransformerType, ColumnSchema } from './column.js'
 import { Range } from './range.js'
 import { TransformerType } from '../transformers/base.js'
 import { defaultRegistry } from '../transformers/registry.js'
@@ -24,28 +24,23 @@ export class Diagnostic {
     }
 }
 
-export function diagnose(ast, columns, registry = null) {
+export function diagnose(ast, schema, registry = null) {
     if (ast == null) return []
     if (registry == null) registry = defaultRegistry()
 
-    const columnsByName = {}
-    for (let i = columns.length - 1; i >= 0; i--) {
-        columnsByName[columns[i].matchName.toLowerCase()] = columns[i]
-    }
-
-    return _walk(ast, columnsByName, registry)
+    return _walk(ast, schema, registry)
 }
 
-function _walk(node, columnsByName, registry) {
+function _walk(node, schema, registry) {
     if (node.expression != null) {
-        return _diagnoseExpression(node.expression, columnsByName, registry)
+        return _diagnoseExpression(node.expression, schema, registry)
     }
     const diags = []
     if (node.left != null) {
-        diags.push(..._walk(node.left, columnsByName, registry))
+        diags.push(..._walk(node.left, schema, registry))
     }
     if (node.right != null) {
-        diags.push(..._walk(node.right, columnsByName, registry))
+        diags.push(..._walk(node.right, schema, registry))
     }
     return diags
 }
@@ -58,7 +53,7 @@ function _jsToTransformerType(v) {
     return null
 }
 
-function _diagnoseExpression(expression, columnsByName, registry) {
+function _diagnoseExpression(expression, schema, registry) {
     const diags = []
 
     if (!expression.key.segments || !expression.key.segmentRanges || expression.key.segmentRanges.length < 1) {
@@ -73,22 +68,52 @@ function _diagnoseExpression(expression, columnsByName, registry) {
         return diags
     }
 
-    const baseName = expression.key.segments[0]
-    const column = columnsByName[baseName.toLowerCase()] || null
-
+    // Nested traversal: walk all segments through schema
+    let col = schema.get(expression.key.segments[0])
     let prevOutputType
-    if (column == null) {
+
+    if (col == null) {
         diags.push(
             new Diagnostic(
                 expression.key.segmentRanges[0],
-                `column '${baseName}' is not defined`,
+                `column '${expression.key.segments[0]}' is not defined`,
                 'error',
                 CODE_UNKNOWN_COLUMN,
             ),
         )
         prevOutputType = null
     } else {
-        prevOutputType = normalizedToTransformerType(column.normalizedType)
+        for (let i = 1; i < expression.key.segments.length; i++) {
+            const seg = expression.key.segments[i]
+            if (seg === '') break // trailing dot — user still typing
+            if (col.children == null) {
+                diags.push(
+                    new Diagnostic(
+                        expression.key.segmentRanges[i],
+                        `column '${seg}' is not defined`,
+                        'error',
+                        CODE_UNKNOWN_COLUMN,
+                    ),
+                )
+                col = null
+                break
+            }
+            const child = col.children[seg.toLowerCase()] || null
+            if (child == null) {
+                diags.push(
+                    new Diagnostic(
+                        expression.key.segmentRanges[i],
+                        `column '${seg}' is not defined`,
+                        'error',
+                        CODE_UNKNOWN_COLUMN,
+                    ),
+                )
+                col = null
+                break
+            }
+            col = child
+        }
+        prevOutputType = col != null ? normalizedToTransformerType(col.normalizedType) : null
     }
 
     for (const transformer of expression.key.transformers) {
@@ -175,7 +200,7 @@ function _diagnoseExpression(expression, columnsByName, registry) {
                     ),
                 )
             }
-        } else if (columnsByName[expression.value.toLowerCase()] == null) {
+        } else if (schema.resolve(expression.value.split('.')) == null) {
             if (expression.valueRange != null) {
                 diags.push(
                     new Diagnostic(
@@ -205,7 +230,7 @@ function _diagnoseExpression(expression, columnsByName, registry) {
                             ),
                         )
                     }
-                } else if (columnsByName[val.toLowerCase()] == null) {
+                } else if (schema.resolve(val.split('.')) == null) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {
                         diags.push(
                             new Diagnostic(

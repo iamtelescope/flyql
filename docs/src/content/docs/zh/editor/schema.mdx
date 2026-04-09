@@ -8,12 +8,14 @@ description: FlyQL 编辑器使用的列结构说明
 ## 基础结构
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## 列定义字段
@@ -117,7 +119,7 @@ async function onAutocomplete(key, value) {
 对对象类型列，可以使用 `children` 定义嵌套结构：
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -133,7 +135,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 输入 `metadata.` 时会提示 `labels` 与 `version`；继续输入 `metadata.labels.` 时则会提示 `tier` 与 `env`。
@@ -143,7 +145,7 @@ const columns = {
 如果对象列的嵌套字段无法提前定义，可以省略 `children`，并通过 `onKeyDiscovery` 动态发现：
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true },
 }
 
@@ -151,7 +153,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys
-}
+})
 ```
 
 当用户输入 `request.` 时，回调会收到 `('request', ['request'])`。在同一次激活会话中，发现结果会被缓存。
@@ -161,7 +163,7 @@ async function onKeyDiscovery(columnName, segments) {
 ## 完整示例
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true, autocomplete: true, values: [200, 400, 500] },
@@ -182,5 +184,5 @@ const columns = {
         },
     },
     request: { type: 'object', suggest: true },
-}
+})
 ```

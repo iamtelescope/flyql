@@ -10,15 +10,15 @@ FlyQL editor는 schema 기반 쿼리 입력, autocomplete, syntax highlighting, 
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
 
 const query = ref('')
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     status: { type: 'number', suggest: true },
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     host: { type: 'string', suggest: true },
-}
+})
 
 function onSubmit() {
     console.log('Query submitted:', query.value)
@@ -134,13 +134,13 @@ function checkStatus() {
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
 
 const query = ref('')
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     service: { type: 'string', suggest: true, autocomplete: true },
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
-}
+})
 
 async function onAutocomplete(key, value) {
     const resp = await fetch(`/api/autocomplete?key=${encodeURIComponent(key)}`)

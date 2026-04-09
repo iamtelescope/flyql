@@ -9,13 +9,14 @@ import {
     getColumnSuggestionsForValue,
     getValueSuggestions,
 } from '../../src/editor/suggestions.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
-const TEST_COLUMNS = {
+const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     status: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info'] },
     host: { type: 'string', suggest: true, autocomplete: true },
     count: { type: 'number', suggest: true, autocomplete: false },
     hidden: { type: 'string', suggest: false, autocomplete: false },
-}
+})
 
 describe('suggestions', () => {
     describe('getKeySuggestions', () => {
@@ -360,10 +361,13 @@ describe('suggestions', () => {
         })
 
         it('insertText has no trailing dot', () => {
-            const columnsWithChildren = {
-                ...TEST_COLUMNS,
+            const columnsWithChildren = ColumnSchema.fromPlainObject({
+                status: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info'] },
+                host: { type: 'string', suggest: true, autocomplete: true },
+                count: { type: 'number', suggest: true, autocomplete: false },
+                hidden: { type: 'string', suggest: false, autocomplete: false },
                 meta: { type: 'object', suggest: true, children: { region: { type: 'string', suggest: true } } },
-            }
+            })
             const result = getColumnSuggestionsForValue(columnsWithChildren, 'me')
             const metaItem = result.find((s) => s.label === 'meta')
             expect(metaItem).toBeDefined()
@@ -383,13 +387,13 @@ describe('suggestions', () => {
         })
 
         it('returns nested column paths', () => {
-            const columnsWithChildren = {
+            const columnsWithChildren = ColumnSchema.fromPlainObject({
                 meta: {
                     type: 'object',
                     suggest: true,
                     children: { region: { type: 'string', suggest: true }, tier: { type: 'string', suggest: true } },
                 },
-            }
+            })
             const result = getColumnSuggestionsForValue(columnsWithChildren, 'meta.')
             expect(result.length).toBe(2)
             expect(result.map((s) => s.label)).toContain('meta.region')
@@ -402,7 +406,7 @@ describe('suggestions', () => {
     })
 
     describe('getValueSuggestions - temporal functions', () => {
-        const TEMPORAL_COLUMNS = {
+        const TEMPORAL_COLUMNS = ColumnSchema.fromPlainObject({
             timestamp: { type: 'datetime', suggest: true, autocomplete: true },
             created_at: { type: 'timestamp', suggest: true, autocomplete: true },
             level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
@@ -413,7 +417,7 @@ describe('suggestions', () => {
                 autocomplete: true,
                 values: ['2024-01-01', '2024-02-01'],
             },
-        }
+        })
         const noOp = () => {}
 
         it('returns temporal suggestions for datetime column', async () => {

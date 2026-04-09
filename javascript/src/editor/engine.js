@@ -5,7 +5,7 @@
  */
 
 import { Parser, CharType, State, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
-import { Column } from '../core/column.js'
+import { Column, ColumnSchema } from '../core/column.js'
 import { Diagnostic, diagnose, CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from '../core/validator.js'
 import { Range } from '../core/range.js'
 import { TransformerType } from '../transformers/base.js'
@@ -26,6 +26,17 @@ const EDITOR_TYPE_TO_NORMALIZED = {
     number: TransformerType.INT,
     float: TransformerType.FLOAT,
     boolean: TransformerType.BOOL,
+}
+
+function _applyEditorTypeNormalization(col) {
+    if (col.type && !col.normalizedType) {
+        col.normalizedType = EDITOR_TYPE_TO_NORMALIZED[col.type] || col.type || null
+    }
+    if (col.children) {
+        for (const child of Object.values(col.children)) {
+            if (child) _applyEditorTypeNormalization(child)
+        }
+    }
 }
 
 const CHAR_TYPE_CLASS = {
@@ -73,8 +84,11 @@ function wrapSpan(charType, text) {
 }
 
 export class EditorEngine {
-    constructor(columns, options = {}) {
-        this.columns = columns || {}
+    constructor(schema, options = {}) {
+        this.columns = schema || new ColumnSchema({})
+        for (const col of Object.values(this.columns.columns)) {
+            if (col) _applyEditorTypeNormalization(col)
+        }
         this.onAutocomplete = options.onAutocomplete || null
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
@@ -124,17 +138,17 @@ export class EditorEngine {
     /**
      * Set columns and invalidate the validator column cache.
      */
-    setColumns(columns) {
-        this.columns = columns || {}
+    setColumns(schema) {
+        this.columns = schema || new ColumnSchema({})
+        for (const col of Object.values(this.columns.columns)) {
+            if (col) _applyEditorTypeNormalization(col)
+        }
         this._validatorColumns = null
     }
 
     _buildValidatorColumns() {
-        this._validatorColumns = Object.entries(this.columns).map(([name, def]) => {
-            const d = def || {}
-            const normalizedType = EDITOR_TYPE_TO_NORMALIZED[d.type] || d.type || null
-            return new Column(name, false, d.type || '', normalizedType, { matchName: name })
-        })
+        // ColumnSchema is already typed — return it directly for the validator
+        this._validatorColumns = this.columns
         return this._validatorColumns
     }
 
@@ -203,7 +217,7 @@ export class EditorEngine {
         if (this.diagnostics.length > 0) {
             const queryLen = normalized.length
             const transformerNames = reg.names()
-            const columnNames = Object.keys(this.columns).map((n) => n.toLowerCase())
+            const columnNames = Object.keys(this.columns.columns).map((n) => n.toLowerCase())
             this.diagnostics = this.diagnostics.filter((d) => {
                 if (d.range.end < queryLen) return true
                 if (d.code === CODE_UNKNOWN_TRANSFORMER) {

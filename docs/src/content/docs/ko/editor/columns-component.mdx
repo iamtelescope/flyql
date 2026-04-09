@@ -10,15 +10,15 @@ description: 컬럼 표현식 편집용 FlyqlColumns 컴포넌트
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlColumns } from 'flyql/editor'
+import { FlyqlColumns, ColumnSchema } from 'flyql/editor'
 
 const expr = ref('')
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     status: { type: 'number', suggest: true },
     level: { type: 'enum', suggest: true },
     service: { type: 'string', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 
 function onParsed(parsed) {
     console.log('Parsed columns:', parsed)

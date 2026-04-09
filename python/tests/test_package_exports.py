@@ -38,6 +38,7 @@ def test_core_subpackage_imports() -> None:
         Expression,
         Key,
         Column,
+        ColumnSchema,
         Operator,
         BoolOperator,
         Range,

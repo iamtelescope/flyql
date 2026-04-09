@@ -510,11 +510,12 @@ import {
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
+  ColumnSchema,        // Column schema container with nested resolution
   Operator,            // Comparison operator constants
   BoolOperator,        // Boolean operator constants ("and", "or")
   FlyqlError,          // Base error class
   ParserError,         // Parse error (extends FlyqlError, includes errno)
-  diagnose,            // AST validator: diagnose(ast, columns, registry?) → Diagnostic[]
+  diagnose,            // AST validator: diagnose(ast, schema, registry?) → Diagnostic[]
   Diagnostic,          // Positioned diagnostic record
 } from 'flyql'
 ```
@@ -530,7 +531,9 @@ import flyql "github.com/iamtelescope/flyql/golang"
 // flyql.Key         — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
-// flyql.Diagnose(ast, columns, registry) []Diagnostic — AST validator
+// flyql.ColumnSchema — column schema container with nested resolution
+// flyql.FromColumns(cols) *ColumnSchema — build schema from flat column slice
+// flyql.Diagnose(ast, schema, registry) []Diagnostic — AST validator
 // flyql.Diagnostic  — positioned diagnostic record
 //
 // Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
@@ -545,7 +548,7 @@ from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key
 from flyql.core.range import Range
-from flyql.core.column import Column
+from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import diagnose, Diagnostic
 from flyql.core.constants import Operator, BoolOperator
 from flyql.core.exceptions import FlyqlError, ParserError

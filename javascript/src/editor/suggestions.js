@@ -40,7 +40,7 @@ const COLUMN_TYPE_TO_TRANSFORMER_TYPE = {
     float: TransformerType.FLOAT,
 }
 
-export function getTransformerSuggestions(columns, ctx, registry = null) {
+export function getTransformerSuggestions(schema, ctx, registry = null) {
     if (!registry) registry = defaultRegistry()
     const names = registry.names()
 
@@ -60,7 +60,7 @@ export function getTransformerSuggestions(columns, ctx, registry = null) {
         }
     } else {
         // First transformer: resolve column type
-        const colDef = resolveColumnDef(columns, ctx.transformerBaseKey)
+        const colDef = ctx.transformerBaseKey ? schema.resolve(ctx.transformerBaseKey.split('.')) : null
         if (colDef && colDef.type) {
             inputType = COLUMN_TYPE_TO_TRANSFORMER_TYPE[colDef.type.toLowerCase()] || null
         }
@@ -84,59 +84,35 @@ export function getTransformerSuggestions(columns, ctx, registry = null) {
 }
 
 /**
- * Traverse a column schema's children by dot-separated segments.
- * Returns { node, parentPath } where node is the schema node at the resolved path,
- * or null if the path doesn't resolve.
- */
-function resolveNestedNode(columns, segments) {
-    // Case-insensitive lookup: find matching key regardless of case
-    const findKey = (obj, target) => {
-        const lower = target.toLowerCase()
-        for (const key of Object.keys(obj)) {
-            if (key.toLowerCase() === lower) return key
-        }
-        return null
-    }
-
-    const rootKey = findKey(columns, segments[0])
-    if (!rootKey) return null
-    let node = columns[rootKey]
-    if (!node || node.suggest === false) return null
-    let parentPath = rootKey
-
-    for (let i = 1; i < segments.length; i++) {
-        if (!node.children) return null
-        const childKey = findKey(node.children, segments[i])
-        if (!childKey) return null
-        node = node.children[childKey]
-        if (!node || node.suggest === false) return null
-        parentPath += '.' + childKey
-    }
-    return { node, parentPath }
-}
-
-/**
  * Get nested column suggestions when prefix contains a dot.
- * Traverses children to suggest at the appropriate depth.
+ * Traverses children via ColumnSchema to suggest at the appropriate depth.
  */
-export function getNestedColumnSuggestions(columns, prefix) {
+export function getNestedColumnSuggestions(schema, prefix) {
     const dotIndex = prefix.lastIndexOf('.')
     const rawParentPath = prefix.substring(0, dotIndex)
     const childPrefix = prefix.substring(dotIndex + 1).toLowerCase()
 
-    // Split parent path into segments and traverse
     const segments = rawParentPath.split('.')
-    const resolved = resolveNestedNode(columns, segments)
-    if (!resolved || !resolved.node.children) return []
+    const resolved = schema.resolveWithPath(segments)
+    if (!resolved || !resolved.column.children) return []
 
-    // Use schema-normalized parentPath from resolveNestedNode (canonical casing)
+    // Check that all intermediate nodes along the path have suggest !== false
+    let check = schema.get(segments[0])
+    if (!check || check.suggest === false) return []
+    for (let i = 1; i < segments.length; i++) {
+        if (!check.children) return []
+        check = check.children[segments[i].toLowerCase()]
+        if (!check || check.suggest === false) return []
+    }
+
     const parentPath = resolved.parentPath
 
     const result = []
-    for (const [name, def] of Object.entries(resolved.node.children)) {
+    for (const [lowerKey, def] of Object.entries(resolved.column.children)) {
         if (!def || def.suggest === false) continue
-        if (childPrefix && !name.toLowerCase().startsWith(childPrefix)) continue
-        const fullPath = parentPath + '.' + name
+        const displayName = def.name || lowerKey
+        if (childPrefix && !displayName.toLowerCase().startsWith(childPrefix)) continue
+        const fullPath = parentPath + '.' + displayName
         const hasChildren = !!def.children
         result.push({
             label: fullPath,
@@ -150,40 +126,29 @@ export function getNestedColumnSuggestions(columns, prefix) {
 
 /**
  * Resolve a column definition by name, supporting dot-separated nested paths.
- * Returns the schema node for the column, or undefined if not found.
+ * Returns the Column or null if not found.
  */
-export function resolveColumnDef(columns, fieldName) {
-    if (!fieldName) return undefined
-    // Case-insensitive lookup for both flat and nested columns
-    const lower = fieldName.toLowerCase()
-    for (const key of Object.keys(columns)) {
-        if (key.toLowerCase() === lower) return columns[key]
-    }
-    if (!fieldName.includes('.')) return undefined
-    const segments = fieldName.split('.')
-    const resolved = resolveNestedNode(columns, segments)
-    return resolved ? resolved.node : undefined
+export function resolveColumnDef(schema, fieldName) {
+    if (!fieldName) return null
+    return schema.resolve(fieldName.split('.'))
 }
 
-export function getKeySuggestions(columns, prefix) {
+export function getKeySuggestions(schema, prefix) {
     // If prefix contains a dot, delegate to nested traversal
     if (prefix.includes('.')) {
-        const nested = getNestedColumnSuggestions(columns, prefix)
+        const nested = getNestedColumnSuggestions(schema, prefix)
         if (nested.length > 0) return nested
         // Check if this is a schemaless object column (no children) — signal async needed
         const dotIndex = prefix.lastIndexOf('.')
         const rawParentPath = prefix.substring(0, dotIndex)
         const segments = rawParentPath.split('.')
-        // Check root column first — for multi-level discovery, intermediate nodes
-        // are discovered keys (not in schema), so only root needs to be resolvable
-        const rootResolved = resolveNestedNode(columns, [segments[0]])
-        if (rootResolved && rootResolved.node.type === 'object') {
-            if (!rootResolved.node.children) {
+        const rootCol = schema.get(segments[0])
+        if (rootCol && rootCol.type === 'object') {
+            if (!rootCol.children) {
                 return null // root is schemaless object — signal async
             }
-            // Root has children — check if full path resolves through static children
-            const fullResolved = resolveNestedNode(columns, segments)
-            if (fullResolved && !fullResolved.node.children && fullResolved.node.type === 'object') {
+            const fullResolved = schema.resolve(segments)
+            if (fullResolved && !fullResolved.children && fullResolved.type === 'object') {
                 return null // reached a schemaless object deeper in static tree
             }
         }
@@ -192,8 +157,7 @@ export function getKeySuggestions(columns, prefix) {
 
     const result = []
     const lowerPrefix = prefix.toLowerCase()
-    for (const name of Object.keys(columns)) {
-        const col = columns[name]
+    for (const [name, col] of Object.entries(schema.columns)) {
         if (!col || col.suggest === false) continue
         if (lowerPrefix && !name.toLowerCase().startsWith(lowerPrefix)) continue
         const hasChildren = !!col.children
@@ -207,8 +171,8 @@ export function getKeySuggestions(columns, prefix) {
     return result
 }
 
-export function getOperatorSuggestions(columns, fieldName, registry = null) {
-    const col = resolveColumnDef(columns, fieldName)
+export function getOperatorSuggestions(schema, fieldName, registry = null) {
+    const col = resolveColumnDef(schema, fieldName)
     const result = []
 
     if (!registry) registry = defaultRegistry()
@@ -333,8 +297,8 @@ export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
         })
 }
 
-export async function getValueSuggestions(columns, key, value, quoteChar, onAutocomplete, setLoading) {
-    const col = resolveColumnDef(columns, key)
+export async function getValueSuggestions(schema, key, value, quoteChar, onAutocomplete, setLoading) {
+    const col = resolveColumnDef(schema, key)
     if (!col) {
         // For unresolved dotted keys (e.g., discovered paths like request.method),
         // fall through to onAutocomplete so the host app can provide value suggestions.
@@ -396,8 +360,8 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
     return { suggestions: [], incomplete: false, message: '' }
 }
 
-export function getColumnSuggestionsForValue(columns, filterPrefix, excludeKey = '') {
-    const result = getKeySuggestions(columns, filterPrefix)
+export function getColumnSuggestionsForValue(schema, filterPrefix, excludeKey = '') {
+    const result = getKeySuggestions(schema, filterPrefix)
     if (result === null) return [] // schemaless async — not supported in Columns tab
     const excludeLower = excludeKey.toLowerCase()
     return result
@@ -409,7 +373,7 @@ export function getColumnSuggestionsForValue(columns, filterPrefix, excludeKey =
         }))
 }
 
-export async function getKeyDiscoverySuggestions(columns, prefix, onKeyDiscovery, keyCache, setLoading) {
+export async function getKeyDiscoverySuggestions(schema, prefix, onKeyDiscovery, keyCache, setLoading) {
     if (!onKeyDiscovery) return []
 
     const dotIndex = prefix.lastIndexOf('.')
@@ -417,21 +381,18 @@ export async function getKeyDiscoverySuggestions(columns, prefix, onKeyDiscovery
     const childPrefix = prefix.substring(dotIndex + 1).toLowerCase()
     const segments = rawParentPath.split('.')
 
-    // Resolve the root column — for multi-level discovery, we only need the root
-    // to be a schemaless object. Intermediate segments are discovered keys, not schema nodes.
-    const resolved = resolveNestedNode(columns, [segments[0]])
-    if (!resolved) return []
+    // Resolve the root column
+    const rootCol = schema.get(segments[0])
+    if (!rootCol || rootCol.suggest === false) return []
 
     // If root node has children, check if the full path resolves through static children
-    if (resolved.node.children) {
-        const fullResolved = resolveNestedNode(columns, segments)
-        if (fullResolved && fullResolved.node.children) return [] // fully static path
-        if (fullResolved && fullResolved.node.type !== 'object') return [] // leaf node
-        // If fullResolved exists but has no children and is object type, proceed with discovery
-        // If fullResolved is null, segments go beyond static children — not discoverable from here
+    if (rootCol.children) {
+        const fullResolved = schema.resolve(segments)
+        if (fullResolved && fullResolved.children) return [] // fully static path
+        if (fullResolved && fullResolved.type !== 'object') return [] // leaf node
         if (!fullResolved) return []
     }
-    if (resolved.node.type !== 'object') return []
+    if (rootCol.type !== 'object') return []
 
     const parentPath = segments.join('.')
     const rootColumnName = segments[0]
@@ -549,7 +510,7 @@ export function getInsertRange(ctx, fullText, suggestionType) {
 
 export async function updateSuggestions(
     ctx,
-    columns,
+    schema,
     onAutocomplete,
     onKeyDiscovery,
     keyCache,
@@ -563,7 +524,7 @@ export async function updateSuggestions(
     let rawItems
 
     if (!ctx) {
-        suggestions = getKeySuggestions(columns, '')
+        suggestions = getKeySuggestions(schema, '')
         suggestionType = 'column'
         return { suggestions, suggestionType, incomplete, message }
     }
@@ -574,27 +535,27 @@ export async function updateSuggestions(
 
     if (ctx.expecting === 'column') {
         // Check for exact match: top-level key or resolved nested leaf
-        const resolvedCol = resolveColumnDef(columns, ctx.key)
+        const resolvedCol = resolveColumnDef(schema, ctx.key)
         const isExactLeaf = resolvedCol && !resolvedCol.children
         if (isExactLeaf) {
-            suggestions = getOperatorSuggestions(columns, ctx.key, registry)
+            suggestions = getOperatorSuggestions(schema, ctx.key, registry)
             suggestionType = 'operator'
         } else {
-            const keySuggestions = getKeySuggestions(columns, ctx.key)
+            const keySuggestions = getKeySuggestions(schema, ctx.key)
             if (keySuggestions === null) {
                 // Async key discovery needed
                 suggestionType = 'column'
-                suggestions = await getKeyDiscoverySuggestions(columns, ctx.key, onKeyDiscovery, keyCache, setLoading)
+                suggestions = await getKeyDiscoverySuggestions(schema, ctx.key, onKeyDiscovery, keyCache, setLoading)
             } else {
                 suggestions = keySuggestions
                 suggestionType = 'column'
             }
         }
     } else if (ctx.expecting === 'operatorOrBool') {
-        suggestions = [...getOperatorSuggestions(columns, ctx.key, registry), ...getBoolSuggestions()]
+        suggestions = [...getOperatorSuggestions(schema, ctx.key, registry), ...getBoolSuggestions()]
         suggestionType = 'operator'
     } else if (ctx.expecting === 'operatorPrefix') {
-        suggestions = getOperatorSuggestions(columns, ctx.key, registry).filter((op) =>
+        suggestions = getOperatorSuggestions(schema, ctx.key, registry).filter((op) =>
             op.label.startsWith(ctx.keyValueOperator),
         )
         suggestionType = 'operator'
@@ -603,7 +564,7 @@ export async function updateSuggestions(
         suggestionType = 'value'
     } else if (ctx.expecting === 'value') {
         suggestionType = 'value'
-        const result = await getValueSuggestions(columns, ctx.key, ctx.value, ctx.quoteChar, onAutocomplete, setLoading)
+        const result = await getValueSuggestions(schema, ctx.key, ctx.value, ctx.quoteChar, onAutocomplete, setLoading)
         suggestions = result.suggestions
         incomplete = result.incomplete
         rawItems = result.rawItems
@@ -641,7 +602,7 @@ export async function updateSuggestions(
                     suggestions.push({ label: '|', insertText: '|', type: 'transformer', detail: 'chain transformer' })
                 }
                 suggestions.push(
-                    ...getOperatorSuggestions(columns, ctx.transformerBaseKey, registry)
+                    ...getOperatorSuggestions(schema, ctx.transformerBaseKey, registry)
                         .filter((s) => s.label !== '|')
                         .map((s) => ({
                             ...s,
@@ -651,7 +612,7 @@ export async function updateSuggestions(
                 suggestionType = 'operator'
             }
         } else {
-            suggestions = getTransformerSuggestions(columns, ctx, registry)
+            suggestions = getTransformerSuggestions(schema, ctx, registry)
             suggestionType = 'transformer'
             if (suggestions.length === 0) {
                 message = 'No matching transformers'
@@ -660,7 +621,7 @@ export async function updateSuggestions(
     }
 
     if (suggestions.length === 0 && !suggestionType && ctx.expecting !== 'none') {
-        suggestions = getKeySuggestions(columns, '')
+        suggestions = getKeySuggestions(schema, '')
         suggestionType = 'column'
     }
 

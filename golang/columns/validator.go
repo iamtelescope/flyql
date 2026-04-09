@@ -26,7 +26,7 @@ func goToTransformerType(v any) (transformers.TransformerType, bool) {
 
 // Diagnose validates parsed columns against a column schema and transformer
 // registry, returning positioned diagnostics.
-func Diagnose(parsedColumns []ParsedColumn, columns []flyql.Column, registry *transformers.TransformerRegistry) []flyql.Diagnostic {
+func Diagnose(parsedColumns []ParsedColumn, schema *flyql.ColumnSchema, registry *transformers.TransformerRegistry) []flyql.Diagnostic {
 	if len(parsedColumns) == 0 {
 		return nil
 	}
@@ -34,40 +34,36 @@ func Diagnose(parsedColumns []ParsedColumn, columns []flyql.Column, registry *tr
 		registry = transformers.DefaultRegistry()
 	}
 
-	byName := make(map[string]flyql.Column)
-	for i := len(columns) - 1; i >= 0; i-- {
-		byName[strings.ToLower(columns[i].MatchName)] = columns[i]
-	}
-
 	var diags []flyql.Diagnostic
 
 	for _, col := range parsedColumns {
-		baseName := col.Name
-		if idx := strings.Index(baseName, "."); idx >= 0 {
-			baseName = baseName[:idx]
+		// Strip empty trailing segment from trailing dot (user still typing)
+		segments := col.Segments
+		if len(segments) > 0 && segments[len(segments)-1] == "" {
+			segments = segments[:len(segments)-1]
 		}
-
-		matchedCol, found := byName[strings.ToLower(baseName)]
+		if len(segments) == 0 {
+			continue
+		}
+		resolved := schema.Resolve(segments)
 
 		var prevOutputType transformers.TransformerType
 		var hasPrevType bool
 
-		if !found {
+		if resolved == nil {
+			// Find the first unresolvable segment for precise error reporting
 			if col.NameRange.End > 0 {
-				baseNameRange := flyql.Range{
-					Start: col.NameRange.Start,
-					End:   col.NameRange.Start + len(baseName),
-				}
+				failSegment, failRange := findFailingSegment(col, schema, segments)
 				diags = append(diags, flyql.Diagnostic{
-					Range:    baseNameRange,
-					Message:  fmt.Sprintf("column '%s' is not defined", baseName),
+					Range:    failRange,
+					Message:  fmt.Sprintf("column '%s' is not defined", failSegment),
 					Severity: flyql.SeverityError,
 					Code:     flyql.CodeUnknownColumn,
 				})
 			}
 			hasPrevType = false
 		} else {
-			prevOutputType, hasPrevType = flyql.NormalizedToTransformerType(matchedCol.NormalizedType)
+			prevOutputType, hasPrevType = flyql.NormalizedToTransformerType(resolved.NormalizedType)
 		}
 
 		for ti, transformer := range col.Transformers {
@@ -161,4 +157,33 @@ func Diagnose(parsedColumns []ParsedColumn, columns []flyql.Column, registry *tr
 	}
 
 	return diags
+}
+
+// findFailingSegment identifies the first unresolvable segment in a parsed column
+// and returns the segment name and its source range.
+func findFailingSegment(col ParsedColumn, schema *flyql.ColumnSchema, segments []string) (string, flyql.Range) {
+	var current *flyql.Column
+	for i, seg := range segments {
+		if i == 0 {
+			current = schema.Get(seg)
+		} else if current != nil && current.Children != nil {
+			current = current.Children[strings.ToLower(seg)]
+		} else {
+			current = nil
+		}
+		if current == nil {
+			offset := col.NameRange.Start
+			for j := 0; j < i; j++ {
+				offset += len(segments[j]) + 1 // +1 for dot separator
+			}
+			return seg, flyql.Range{
+				Start: offset,
+				End:   offset + len(seg),
+			}
+		}
+	}
+	return segments[0], flyql.Range{
+		Start: col.NameRange.Start,
+		End:   col.NameRange.Start + len(segments[0]),
+	}
 }

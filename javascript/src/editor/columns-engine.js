@@ -12,7 +12,7 @@ import { CharType, TRANSFORMER_OPERATOR, COLUMNS_DELIMITER } from '../columns/co
 import { defaultRegistry } from '../transformers/index.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
-import { Column } from '../core/column.js'
+import { Column, ColumnSchema } from '../core/column.js'
 import { Diagnostic } from '../core/validator.js'
 import { Range } from '../core/range.js'
 import { TransformerType } from '../transformers/base.js'
@@ -25,6 +25,17 @@ const EDITOR_TYPE_TO_NORMALIZED = {
     float: TransformerType.FLOAT,
     boolean: TransformerType.BOOL,
     array: TransformerType.ARRAY,
+}
+
+function _applyEditorTypeNormalization(col) {
+    if (col.type && !col.normalizedType) {
+        col.normalizedType = EDITOR_TYPE_TO_NORMALIZED[col.type] || col.type || null
+    }
+    if (col.children) {
+        for (const child of Object.values(col.children)) {
+            if (child) _applyEditorTypeNormalization(child)
+        }
+    }
 }
 
 const COL_CHAR_TYPE_CLASS = {
@@ -77,8 +88,11 @@ function wrapSpan(charType, text) {
 }
 
 export class ColumnsEngine {
-    constructor(columns, options = {}) {
-        this.columns = columns || {}
+    constructor(schema, options = {}) {
+        this.columns = schema || new ColumnSchema({})
+        for (const col of Object.values(this.columns.columns)) {
+            if (col) _applyEditorTypeNormalization(col)
+        }
         const capDefaults = { transformers: true }
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
@@ -93,6 +107,13 @@ export class ColumnsEngine {
         this.isLoading = false
         this.diagnostics = []
         this._seq = 0
+    }
+
+    setColumns(schema) {
+        this.columns = schema || new ColumnSchema({})
+        for (const col of Object.values(this.columns.columns)) {
+            if (col) _applyEditorTypeNormalization(col)
+        }
     }
 
     setQuery(text) {
@@ -268,7 +289,7 @@ export class ColumnsEngine {
 
             const columnSuggestions = []
             let hasExactMatch = false
-            for (const [name, def] of Object.entries(this.columns)) {
+            for (const [name, def] of Object.entries(this.columns.columns)) {
                 if (!def || def.suggest === false) continue
                 if (existing.includes(name)) continue
                 if (prefix && !name.toLowerCase().startsWith(prefix)) continue
@@ -621,11 +642,7 @@ export class ColumnsEngine {
     }
 
     _buildValidatorColumns() {
-        return Object.entries(this.columns).map(([name, def]) => {
-            const d = def || {}
-            const normalizedType = EDITOR_TYPE_TO_NORMALIZED[d.type] || d.type || null
-            return new Column(name, false, d.type || '', normalizedType, { matchName: name })
-        })
+        return this.columns
     }
 
     getDiagnostics() {
@@ -692,7 +709,7 @@ export class ColumnsEngine {
         if (this.diagnostics.length > 0) {
             const queryLen = value.trimEnd().length
             const transformerNames = reg.names()
-            const columnNames = Object.keys(this.columns).map((n) => n.toLowerCase())
+            const columnNames = Object.keys(this.columns.columns).map((n) => n.toLowerCase())
             this.diagnostics = this.diagnostics.filter((d) => {
                 if (d.range.end < queryLen) return true
                 if (d.code === CODE_UNKNOWN_TRANSFORMER) {

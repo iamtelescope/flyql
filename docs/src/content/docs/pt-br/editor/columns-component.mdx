@@ -10,15 +10,15 @@ O componente `FlyqlColumns` fornece um campo dedicado para expressões de coluna
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlColumns } from 'flyql/editor'
+import { FlyqlColumns, ColumnSchema } from 'flyql/editor'
 
 const expr = ref('')
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     status: { type: 'number', suggest: true },
     level: { type: 'enum', suggest: true },
     service: { type: 'string', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 
 function onParsed(parsed) {
     console.log('Parsed columns:', parsed)

@@ -514,7 +514,7 @@ import {
   BoolOperator,        // 불리언 operator 상수 ("and", "or")
   FlyqlError,          // 기본 에러 클래스
   ParserError,         // parse 에러 (FlyqlError를 확장하며 errno 포함)
-  diagnose,            // AST validator: diagnose(ast, columns, registry?) → Diagnostic[]
+  diagnose,            // AST validator: diagnose(ast, schema, registry?) → Diagnostic[]
   Diagnostic,          // 위치 포함 진단 레코드
 } from 'flyql'
 ```
@@ -530,7 +530,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 // flyql.Key         — 필드 경로 struct
 // flyql.Range       — 소스 위치 범위 [Start, End)
 // flyql.Column      — validator용 핵심 column 타입
-// flyql.Diagnose(ast, columns, registry) []Diagnostic — AST validator
+// flyql.Diagnose(ast, schema, registry) []Diagnostic — AST validator
 // flyql.Diagnostic  — 위치 포함 진단 레코드
 //
 // Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy 등
@@ -545,7 +545,7 @@ from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key
 from flyql.core.range import Range
-from flyql.core.column import Column
+from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import diagnose, Diagnostic
 from flyql.core.constants import Operator, BoolOperator
 from flyql.core.exceptions import FlyqlError, ParserError

@@ -6,7 +6,7 @@ transformer registry, returning Diagnostic objects with source ranges.
 
 from typing import Any, List, Optional
 
-from flyql.core.column import Column, normalized_to_transformer_type
+from flyql.core.column import Column, ColumnSchema, normalized_to_transformer_type
 from flyql.core.range import Range
 from flyql.core.validator import (
     CODE_ARG_COUNT,
@@ -37,7 +37,7 @@ def _python_to_transformer_type(v: Any) -> Optional[TransformerType]:
 
 def diagnose(
     parsed_columns: List[ParsedColumn],
-    columns: List[Column],
+    schema: ColumnSchema,
     registry: Optional[TransformerRegistry] = None,
 ) -> List[Diagnostic]:
     if not parsed_columns:
@@ -45,35 +45,33 @@ def diagnose(
     if registry is None:
         registry = default_registry()
 
-    columns_by_name: dict[str, Column] = {}
-    for c in reversed(columns):
-        columns_by_name[c.match_name.lower()] = c
-
     diags: List[Diagnostic] = []
 
     for col in parsed_columns:
-        base_name = col.name.split(".")[0]
-        matched_column = columns_by_name.get(base_name.lower())
+        # Strip empty trailing segment from trailing dot (user still typing)
+        segments = col.segments
+        if segments and segments[-1] == "":
+            segments = segments[:-1]
+        if not segments:
+            continue
+        resolved = schema.resolve(segments)
 
-        if matched_column is None:
+        if resolved is None:
             if col.name_range is not None:
-                base_name_range = Range(
-                    col.name_range.start,
-                    col.name_range.start + len(base_name),
+                fail_seg, fail_range = _find_failing_segment(
+                    col, schema, col.name_range, segments
                 )
                 diags.append(
                     Diagnostic(
-                        range=base_name_range,
-                        message=f"column '{base_name}' is not defined",
+                        range=fail_range,
+                        message=f"column '{fail_seg}' is not defined",
                         severity="error",
                         code=CODE_UNKNOWN_COLUMN,
                     )
                 )
             prev_output_type = None
         else:
-            prev_output_type = normalized_to_transformer_type(
-                matched_column.normalized_type
-            )
+            prev_output_type = normalized_to_transformer_type(resolved.normalized_type)
 
         transformer_ranges = col.transformer_ranges or []
 
@@ -161,3 +159,27 @@ def diagnose(
             prev_output_type = t.output_type
 
     return diags
+
+
+def _find_failing_segment(
+    col: ParsedColumn,
+    schema: ColumnSchema,
+    name_range: Range,
+    segments: Optional[List[str]] = None,
+) -> tuple[str, Range]:
+    """Find the first unresolvable segment and its source range."""
+    segs = segments if segments is not None else col.segments
+    current: Optional[Column] = None
+    for i, seg in enumerate(segs):
+        if i == 0:
+            current = schema.get(seg)
+        elif current is not None and current.children is not None:
+            current = current.children.get(seg.lower())
+        else:
+            current = None
+        if current is None:
+            offset = name_range.start
+            for j in range(i):
+                offset += len(segs[j]) + 1  # +1 for dot
+            return seg, Range(offset, offset + len(seg))
+    return segs[0], Range(name_range.start, name_range.start + len(segs[0]))

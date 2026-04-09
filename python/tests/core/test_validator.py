@@ -10,7 +10,7 @@ from typing import ClassVar, Tuple
 
 import pytest
 
-from flyql.core.column import Column
+from flyql.core.column import Column, ColumnSchema
 from flyql.core.expression import Expression
 from flyql.core.key import Key
 from flyql.core.parser import parse
@@ -215,7 +215,7 @@ def test_shared_validator(test_case: dict, registry: TransformerRegistry) -> Non
     else:
         ast = _parse_ast(query)
 
-    diags = diagnose(ast, cols, reg)
+    diags = diagnose(ast, ColumnSchema.from_columns(cols), reg)
 
     expected = test_case["expected_diagnostics"]
     assert len(diags) == len(
@@ -259,7 +259,7 @@ class TestDialectColumnSubclass:
 
         col = CHColumn("host", False, "String")
         ast = _parse_ast("host='X'")
-        assert diagnose(ast, [col], registry) == []
+        assert diagnose(ast, ColumnSchema.from_columns([col]), registry) == []
 
 
 class TestInvalidAstGuard:
@@ -278,7 +278,7 @@ class TestInvalidAstGuard:
             right=None,
         )
         cols = [make_column("foo", "string")]
-        diags = diagnose(node, cols, registry)
+        diags = diagnose(node, ColumnSchema.from_columns(cols), registry)
         assert len(diags) == 1
         assert diags[0].code == CODE_INVALID_AST
         assert diags[0].range == Range(0, 0)
@@ -293,4 +293,4 @@ class TestBacktickEscapedColumn:
         assert col.match_name == "1host"
         ast = _parse_ast("host='X'")
         cols = [make_column("host", "string")]
-        assert diagnose(ast, cols, registry) == []
+        assert diagnose(ast, ColumnSchema.from_columns(cols), registry) == []

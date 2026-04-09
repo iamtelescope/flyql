@@ -8,12 +8,14 @@ description: FlyQL editor를 위한 컬럼 schema 구조
 ## 기본 schema
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## 컬럼 정의 필드
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 object 타입 컬럼의 `children`을 사용해 중첩 구조를 정의합니다.
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 `metadata.`를 입력하면 `labels`와 `version`이 제안되고, `metadata.labels.`를 입력하면 `tier`와 `env`가 제안됩니다. 깊이 제한은 없습니다.
@@ -145,7 +147,7 @@ const columns = {
 Schema 정의 시점에 중첩 키를 알 수 없는 object 컬럼의 경우 `children`을 생략하고 `onKeyDiscovery` callback을 제공합니다.
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // 자식 없음 — discovery 트리거
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 사용자가 `request.`를 입력하면 callback은 `('request', ['request'])`로 호출됩니다. 탐색된 키는 활성 세션 단위로 캐시됩니다.
@@ -163,7 +165,7 @@ async function onKeyDiscovery(columnName, segments) {
 ## 전체 예제
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // 정적 값을 가진 enum
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // Schema-less — 중첩 키를 런타임에 탐색
     request: { type: 'object', suggest: true },
-}
+})
 ```

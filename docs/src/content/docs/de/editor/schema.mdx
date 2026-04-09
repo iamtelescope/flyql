@@ -8,12 +8,14 @@ Die Prop `columns` definiert das Datenschema, das die Vorschläge im Editor steu
 ## Grundschema
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## Felder der Spaltendefinition
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 Definiere verschachtelte Strukturen mit `children` bei Objektspalten:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 Bei `metadata.` werden `labels` und `version` vorgeschlagen. Bei `metadata.labels.` werden `tier` und `env` vorgeschlagen. Die Tiefe ist unbegrenzt.
@@ -145,7 +147,7 @@ Bei `metadata.` werden `labels` und `version` vorgeschlagen. Bei `metadata.label
 Bei Objektspalten, deren verschachtelte Schlüssel zur Schema-Definition noch nicht bekannt sind, lasse `children` weg und gib eine `onKeyDiscovery`-Callback-Funktion an:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // no children — triggers discovery
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 Wenn der Benutzer `request.` eingibt, wird der Callback mit `('request', ['request'])` aufgerufen. Entdeckte Schlüssel werden pro Aktivierungssitzung zwischengespeichert.
@@ -163,7 +165,7 @@ Wenn eine Spalte sowohl `children` als auch `onKeyDiscovery` hat, haben die stat
 ## Vollständiges Beispiel
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // Enum mit statischen Werten
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // Schemalos — verschachtelte Schlüssel werden zur Laufzeit erkannt
     request: { type: 'object', suggest: true },
-}
+})
 ```

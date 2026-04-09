@@ -3,17 +3,19 @@ title: Schema Configuration
 description: Column schema structure for the FlyQL editor
 ---
 
-The `columns` prop defines the data schema that drives editor suggestions. Keys are column names, values are column definitions.
+The `columns` prop accepts a `ColumnSchema` instance that drives editor suggestions, validation, and nested column resolution. Build one with `ColumnSchema.fromPlainObject()`:
 
 ## Basic Schema
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## Column Definition Fields
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 Define nested structures using `children` on object-type columns:
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 Typing `metadata.` suggests `labels` and `version`. Typing `metadata.labels.` suggests `tier` and `env`. There is no depth limit.
@@ -163,7 +165,9 @@ If a column has both `children` and `onKeyDiscovery`, the static `children` take
 ## Full Example
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     // Enum with static values
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +199,5 @@ const columns = {
 
     // Schemaless — nested keys discovered at runtime
     request: { type: 'object', suggest: true },
-}
+})
 ```

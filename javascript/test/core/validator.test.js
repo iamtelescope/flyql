@@ -19,6 +19,7 @@ import {
     CODE_INVALID_AST,
     Range,
 } from '../../src/index.js'
+import { ColumnSchema } from '../../src/core/column.js'
 import {
     ArgSpec,
     Transformer,
@@ -163,6 +164,7 @@ describe('Validator (shared fixtures)', () => {
     for (const tc of SHARED_CASES) {
         it(tc.name, () => {
             const cols = columnsFromSpec(tc.columns)
+            const schema = ColumnSchema.fromColumns(cols)
             const useDefault = tc.use_default_registry || false
             const reg = useDefault ? null : registry
 
@@ -171,7 +173,7 @@ describe('Validator (shared fixtures)', () => {
                 ast = parseAst(tc.query)
             }
 
-            const diags = diagnose(ast, cols, reg)
+            const diags = diagnose(ast, schema, reg)
 
             expect(diags).toHaveLength(tc.expected_diagnostics.length)
 
@@ -208,7 +210,7 @@ describe('Validator (language-specific)', () => {
 
     it('should return empty list for undefined AST', () => {
         const cols = [makeColumn('host', 'string')]
-        expect(diagnose(undefined, cols)).toEqual([])
+        expect(diagnose(undefined, ColumnSchema.fromColumns(cols))).toEqual([])
     })
 
     it('should report invalid AST when segment ranges are empty', () => {
@@ -216,7 +218,7 @@ describe('Validator (language-specific)', () => {
         const expr = new Expression(key, '=', 'X', true)
         const node = new Node('and', expr, null, null)
         const cols = [makeColumn('foo', 'string')]
-        const diags = diagnose(node, cols, registry)
+        const diags = diagnose(node, ColumnSchema.fromColumns(cols), registry)
         expect(diags).toHaveLength(1)
         expect(diags[0].code).toBe(CODE_INVALID_AST)
         expect(diags[0].range).toEqual(new Range(0, 0))
@@ -225,7 +227,7 @@ describe('Validator (language-specific)', () => {
     it('should accept ClickHouse Column with matchName', () => {
         const col = new CHColumn('host', false, 'String')
         const ast = parseAst("host='X'")
-        expect(diagnose(ast, [col], registry)).toEqual([])
+        expect(diagnose(ast, ColumnSchema.fromColumns([col]), registry)).toEqual([])
     })
 
     it('should use matchName for escaped identifiers', () => {

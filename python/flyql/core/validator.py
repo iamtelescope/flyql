@@ -22,7 +22,7 @@ edit to fix the error):
 from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Optional
 
-from flyql.core.column import Column, normalized_to_transformer_type
+from flyql.core.column import Column, ColumnSchema, normalized_to_transformer_type
 from flyql.core.expression import Expression
 from flyql.core.range import Range
 from flyql.core.tree import Node
@@ -83,38 +83,34 @@ __all__ = [
 
 def diagnose(
     ast: Optional[Node],
-    columns: List[Column],
+    schema: ColumnSchema,
     registry: Optional[TransformerRegistry] = None,
 ) -> List[Diagnostic]:
     if ast is None:
         return []
     if registry is None:
         registry = default_registry()
-    # reversed() + dict comprehension: first-wins on duplicate lowercased match_names
-    columns_by_name: Dict[str, Column] = {
-        c.match_name.lower(): c for c in reversed(columns)
-    }
-    return _walk(ast, columns_by_name, registry)
+    return _walk(ast, schema, registry)
 
 
 def _walk(
     node: Node,
-    columns_by_name: Dict[str, Column],
+    schema: ColumnSchema,
     registry: TransformerRegistry,
 ) -> List[Diagnostic]:
     if node.expression is not None:
-        return _diagnose_expression(node.expression, columns_by_name, registry)
+        return _diagnose_expression(node.expression, schema, registry)
     diags: List[Diagnostic] = []
     if node.left is not None:
-        diags.extend(_walk(node.left, columns_by_name, registry))
+        diags.extend(_walk(node.left, schema, registry))
     if node.right is not None:
-        diags.extend(_walk(node.right, columns_by_name, registry))
+        diags.extend(_walk(node.right, schema, registry))
     return diags
 
 
 def _diagnose_expression(
     expression: Expression,
-    columns_by_name: Dict[str, Column],
+    schema: ColumnSchema,
     registry: TransformerRegistry,
 ) -> List[Diagnostic]:
     diags: List[Diagnostic] = []
@@ -135,21 +131,51 @@ def _diagnose_expression(
         )
         return diags
 
-    base_name = expression.key.segments[0]
-    column = columns_by_name.get(base_name.lower())
-
-    if column is None:
+    # Nested traversal: walk all segments through schema
+    col = schema.get(expression.key.segments[0])
+    if col is None:
         diags.append(
             Diagnostic(
                 range=expression.key.segment_ranges[0],
                 code=CODE_UNKNOWN_COLUMN,
                 severity="error",
-                message=f"column '{base_name}' is not defined",
+                message=f"column '{expression.key.segments[0]}' is not defined",
             )
         )
         prev_output_type: Optional[TransformerType] = None
     else:
-        prev_output_type = normalized_to_transformer_type(column.normalized_type)
+        for i in range(1, len(expression.key.segments)):
+            seg = expression.key.segments[i]
+            if seg == "":
+                break  # trailing dot — user still typing
+            if col.children is None:
+                diags.append(
+                    Diagnostic(
+                        range=expression.key.segment_ranges[i],
+                        code=CODE_UNKNOWN_COLUMN,
+                        severity="error",
+                        message=f"column '{seg}' is not defined",
+                    )
+                )
+                col = None
+                break
+            child = col.children.get(seg.lower())
+            if child is None:
+                diags.append(
+                    Diagnostic(
+                        range=expression.key.segment_ranges[i],
+                        code=CODE_UNKNOWN_COLUMN,
+                        severity="error",
+                        message=f"column '{seg}' is not defined",
+                    )
+                )
+                col = None
+                break
+            col = child
+        if col is not None:
+            prev_output_type = normalized_to_transformer_type(col.normalized_type)
+        else:
+            prev_output_type = None
 
     for transformer in expression.key.transformers:
         t: Optional[TransformerDef] = registry.get(transformer.name)
@@ -236,7 +262,7 @@ def _diagnose_expression(
                         message=f"invalid character in column name '{expression.value}'",
                     )
                 )
-        elif expression.value.lower() not in columns_by_name:
+        elif schema.resolve(expression.value.split(".")) is None:
             if expression.value_range is not None:
                 diags.append(
                     Diagnostic(
@@ -264,7 +290,7 @@ def _diagnose_expression(
                                 message=f"invalid character in column name '{val}'",
                             )
                         )
-                elif val.lower() not in columns_by_name:
+                elif schema.resolve(val.split(".")) is None:
                     if expression.value_ranges is not None and i < len(
                         expression.value_ranges
                     ):

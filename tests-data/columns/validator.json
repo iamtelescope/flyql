@@ -125,10 +125,19 @@
       ]
     },
     {
-      "name": "dotted_column_name_known",
+      "name": "dotted_column_name_known_flat",
       "input": "resource.service.name",
       "capabilities": { "transformers": true },
       "columns": [{ "name": "resource", "normalized_type": "string" }],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error", "range": [9, 16], "message_contains": "service" }
+      ]
+    },
+    {
+      "name": "dotted_column_name_known_nested",
+      "input": "resource.service.name",
+      "capabilities": { "transformers": true },
+      "columns": [{ "name": "resource", "normalized_type": "object", "children": { "service": { "name": "service", "normalized_type": "object", "children": { "name": { "name": "name", "normalized_type": "string" } } } } }],
       "expected_diagnostics": []
     },
     {

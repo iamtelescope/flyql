@@ -8,12 +8,14 @@ La prop `columns` definit le schema de donnees qui pilote les suggestions de l'e
 ## Schema de base
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## Champs de definition de colonne
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 Definissez des structures imbriquees en utilisant `children` sur les colonnes de type objet :
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 Taper `metadata.` suggere `labels` et `version`. Taper `metadata.labels.` suggere `tier` et `env`. Il n'y a pas de limite de profondeur.
@@ -145,7 +147,7 @@ Taper `metadata.` suggere `labels` et `version`. Taper `metadata.labels.` sugger
 Pour les colonnes objet dont les cles imbriquees ne sont pas connues au moment de la definition du schema, omettez `children` et fournissez un callback `onKeyDiscovery` :
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // no children — triggers discovery
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 Quand l'utilisateur tape `request.`, le callback est appele avec `('request', ['request'])`. Les cles decouvertes sont mises en cache par session d'activation.
@@ -163,7 +165,7 @@ Si une colonne a a la fois `children` et `onKeyDiscovery`, les `children` statiq
 ## Exemple complet
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // Enum with static values
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // Schemaless — nested keys discovered at runtime
     request: { type: 'object', suggest: true },
-}
+})
 ```

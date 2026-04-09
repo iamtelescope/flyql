@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { EditorEngine } from '../../src/editor/engine.js'
 import { Diagnostic } from '../../src/core/validator.js'
 import { Range } from '../../src/core/range.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
-const TEST_COLUMNS = {
+const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     status: {
         type: 'enum',
         suggest: true,
@@ -25,13 +26,13 @@ const TEST_COLUMNS = {
         suggest: false,
         autocomplete: false,
     },
-}
+})
 
 describe('EditorEngine', () => {
     describe('constructor', () => {
         it('creates engine with columns', () => {
             const engine = new EditorEngine(TEST_COLUMNS)
-            expect(engine.columns).toBe(TEST_COLUMNS)
+            expect(engine.columns).toBeInstanceOf(ColumnSchema)
             expect(engine.suggestions).toEqual([])
             expect(engine.context).toBeNull()
             expect(engine.isLoading).toBe(false)
@@ -39,7 +40,7 @@ describe('EditorEngine', () => {
 
         it('creates engine with empty columns', () => {
             const engine = new EditorEngine()
-            expect(engine.columns).toEqual({})
+            expect(engine.columns).toBeInstanceOf(ColumnSchema)
         })
 
         it('accepts onAutocomplete option', () => {
@@ -905,10 +906,10 @@ describe('EditorEngine', () => {
 
         it('resets _valueState when key changes', async () => {
             let callCount = 0
-            const columns = {
+            const columns = ColumnSchema.fromPlainObject({
                 host: { type: 'string', suggest: true, autocomplete: true },
                 service: { type: 'string', suggest: true, autocomplete: true },
-            }
+            })
             const engine = new EditorEngine(columns, {
                 debounceMs: 0,
                 onAutocomplete: async (key) => {
@@ -1196,13 +1197,13 @@ describe('EditorEngine', () => {
 
     describe('getDiagnostics', () => {
         it('returns empty array for empty query', () => {
-            const engine = new EditorEngine({ status: { type: 'enum' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ status: { type: 'enum' } }))
             engine.setQuery('')
             expect(engine.getDiagnostics()).toEqual([])
         })
 
         it('returns syntax diagnostic when query has syntax error', () => {
-            const engine = new EditorEngine({ status: { type: 'enum' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ status: { type: 'enum' } }))
             engine.setQuery('=X')
             const diags = engine.getDiagnostics()
             expect(diags.length).toBe(1)
@@ -1210,13 +1211,13 @@ describe('EditorEngine', () => {
         })
 
         it('returns empty for incomplete query at end', () => {
-            const engine = new EditorEngine({ status: { type: 'enum' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ status: { type: 'enum' } }))
             engine.setQuery('status=info and ')
             expect(engine.getDiagnostics()).toEqual([])
         })
 
         it('returns unknown_column diagnostic for unrecognized column', () => {
-            const engine = new EditorEngine({ host: { type: 'string' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ host: { type: 'string' } }))
             engine.setQuery("hstt='X'")
             const diags = engine.getDiagnostics()
             expect(diags.length).toBe(1)
@@ -1226,47 +1227,52 @@ describe('EditorEngine', () => {
         })
 
         it('returns no diagnostics for valid query', () => {
-            const engine = new EditorEngine({ status: { type: 'enum', values: ['info'] } })
+            const engine = new EditorEngine(
+                ColumnSchema.fromPlainObject({ status: { type: 'enum', values: ['info'] } }),
+            )
             engine.setQuery("status='info'")
             expect(engine.getDiagnostics()).toEqual([])
         })
 
         it('column type mapping: enum → string', () => {
-            const engine = new EditorEngine({ status: { type: 'enum' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ status: { type: 'enum' } }))
             engine.setQuery('status=x')
             engine.getDiagnostics()
-            expect(engine._validatorColumns[0].normalizedType).toBe('string')
+            expect(engine._validatorColumns.get('status').type).toBe('enum')
+            expect(engine._validatorColumns.get('status').normalizedType).toBe('string')
         })
 
         it('column type mapping: number → int', () => {
-            const engine = new EditorEngine({ level: { type: 'number' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ level: { type: 'number' } }))
             engine.setQuery('level=1')
             engine.getDiagnostics()
-            expect(engine._validatorColumns[0].normalizedType).toBe('int')
+            expect(engine._validatorColumns.get('level').type).toBe('number')
+            expect(engine._validatorColumns.get('level').normalizedType).toBe('int')
         })
 
         it('column type mapping: unknown type passes through', () => {
-            const engine = new EditorEngine({ x: { type: 'custom' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ x: { type: 'custom' } }))
             engine.setQuery('x=1')
             engine.getDiagnostics()
-            expect(engine._validatorColumns[0].normalizedType).toBe('custom')
+            expect(engine._validatorColumns.get('x').type).toBe('custom')
+            expect(engine._validatorColumns.get('x').normalizedType).toBe('custom')
         })
 
         it('setColumns() invalidates validator column cache', () => {
-            const engine = new EditorEngine({ a: { type: 'string' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ a: { type: 'string' } }))
             engine.setQuery('a=1')
             engine.getDiagnostics()
             expect(engine._validatorColumns).not.toBeNull()
-            engine.setColumns({ b: { type: 'number' } })
+            engine.setColumns(ColumnSchema.fromPlainObject({ b: { type: 'number' } }))
             expect(engine._validatorColumns).toBeNull()
             engine.setQuery('b=1')
             engine.getDiagnostics()
             expect(engine._validatorColumns).not.toBeNull()
-            expect(engine._validatorColumns[0].name).toBe('b')
+            expect(engine._validatorColumns.get('b').name).toBe('b')
         })
 
         it('returns empty for whitespace-only query', () => {
-            const engine = new EditorEngine({ a: { type: 'string' } })
+            const engine = new EditorEngine(ColumnSchema.fromPlainObject({ a: { type: 'string' } }))
             engine.setQuery('   ')
             expect(engine.getDiagnostics()).toEqual([])
         })

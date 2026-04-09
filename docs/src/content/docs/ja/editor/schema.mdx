@@ -8,12 +8,14 @@ description: FlyQL editor 向けカラム schema の構造
 ## 基本 schema
 
 ```javascript
-const columns = {
+import { ColumnSchema } from 'flyql/editor'
+
+const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
     service: { type: 'string', suggest: true, autocomplete: true },
     status_code: { type: 'number', suggest: true },
     host: { type: 'string', suggest: true },
-}
+})
 ```
 
 ## カラム定義フィールド
@@ -119,7 +121,7 @@ async function onAutocomplete(key, value) {
 object 型カラムの `children` を使ってネスト構造を定義します。
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     metadata: {
         type: 'object',
         suggest: true,
@@ -135,7 +137,7 @@ const columns = {
             version: { type: 'string', suggest: true },
         },
     },
-}
+})
 ```
 
 `metadata.` と入力すると `labels` と `version` が候補に出ます。`metadata.labels.` と入力すると `tier` と `env` が候補になります。深さ制限はありません。
@@ -145,7 +147,7 @@ const columns = {
 schema 定義時点でネストキーが不明な object カラムでは、`children` を省略し、`onKeyDiscovery` callback を渡します。
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     request: { type: 'object', suggest: true }, // no children — triggers discovery
 }
 
@@ -153,7 +155,7 @@ async function onKeyDiscovery(columnName, segments) {
     const resp = await fetch(`/api/keys?column=${columnName}&path=${segments.join(',')}`)
     const data = await resp.json()
     return data.keys // Array<{ name: string, type?: string, hasChildren?: boolean }>
-}
+})
 ```
 
 ユーザーが `request.` と入力すると、callback は `('request', ['request'])` で呼ばれます。見つかったキーはアクティベーションセッションごとにキャッシュされます。
@@ -163,7 +165,7 @@ async function onKeyDiscovery(columnName, segments) {
 ## 完全な例
 
 ```javascript
-const columns = {
+const columns = ColumnSchema.fromPlainObject({
     // 静的値を持つ enum
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
 
@@ -195,5 +197,5 @@ const columns = {
 
     // スキーマレス — ネストしたキーは実行時に探索
     request: { type: 'object', suggest: true },
-}
+})
 ```

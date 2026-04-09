@@ -26,6 +26,7 @@ FlyQL provides identical functionality across Go, Python, and JavaScript. This m
 | Expression | `Expression` | `Expression` | `Expression` |
 | Key | `Key` | `Key` | `Key` |
 | Column | `Column` | `Column` | `Column` |
+| Column schema | `ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 | Range | `Range` | `Range` | `Range` |
 | Operators | string constants | `Operator`, `BoolOperator` (enums) | `Operator`, `BoolOperator` |
 | Value types | `types.Integer`, etc. | `ValueType.INTEGER`, etc. | `ValueType.INTEGER`, etc. |
@@ -71,7 +72,7 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | Parse columns | `Parse(text)` | `parse(text)` | `parse(text)` |
 | Parse to dicts | _(N/A)_ | `parse_to_dicts(text)` | `parseToDicts(text)` |
 | Parse to JSON | `ParseToJSON(text)` | `parse_to_json(text)` | `parseToJson(text)` |
-| Validate | `Diagnose(columns)` | `diagnose(columns)` | `diagnose(columns)` |
+| Validate | `Diagnose(parsed, schema)` | `diagnose(parsed, schema)` | `diagnose(parsed, schema)` |
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
@@ -90,14 +91,18 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 
 | Operation | Go | Python | JavaScript |
 |-----------|------|--------|------------|
-| Diagnose AST | `Diagnose(root, columns)` | `diagnose(root, columns)` | `diagnose(root, columns)` |
+| Diagnose AST | `Diagnose(root, schema)` | `diagnose(root, schema)` | `diagnose(root, schema)` |
+| Build schema from columns | `FromColumns(cols)` | `ColumnSchema.from_columns(cols)` | `ColumnSchema.fromColumns(cols)` |
+| Build schema from plain object | `FromPlainObject(obj)` | `ColumnSchema.from_plain_object(obj)` | `ColumnSchema.fromPlainObject(obj)` |
+| Resolve nested path | `schema.Resolve(segments)` | `schema.resolve(segments)` | `schema.resolve(segments)` |
 | **Types** | | | |
 | Diagnostic | `Diagnostic` | `Diagnostic` | `Diagnostic` |
+| Column schema | `*ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 
 ## Top-Level Package Imports
 
-**Python** — `from flyql import parse, Node, Expression, Key, Column, Operator, Range, Diagnostic, diagnose, ValueType`
+**Python** — `from flyql import parse, Node, Expression, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, ValueType`
 
-**JavaScript** — `import { parse, Node, Expression, Key, Column, Operator, Range, ValueType } from 'flyql'`
+**JavaScript** — `import { parse, Node, Expression, Key, Column, ColumnSchema, Operator, Range, ValueType } from 'flyql'`
 
 **Go** — `import "github.com/iamtelescope/flyql/golang"` (core), dialect-specific generator imports separately

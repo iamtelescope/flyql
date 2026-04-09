@@ -262,22 +262,22 @@ Each diagnostic carries a `range` (source position), `message`, `severity` (`"er
 ```python
 # Python
 from flyql import parse
-from flyql.core.column import Column
+from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import diagnose
 
 ast = parse("hstt|upper=X").root
-columns = [Column(name="host", jsonstring=False, _type="String", normalized_type="string")]
-diags = diagnose(ast, columns)
+columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, _type="String", normalized_type="string")])
+diags = diagnose(ast, columns)  # columns is a ColumnSchema
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = [new Column('host', false, 'String', 'string')]
-const diags = diagnose(ast, columns)
+const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
+const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
 
@@ -286,8 +286,8 @@ const diags = diagnose(ast, columns)
 import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
-columns := []flyql.Column{flyql.NewColumn("host", false, "String", "string")}
-diags := flyql.Diagnose(result.Root, columns, nil) // nil = default registry
+schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", false, "String", "string")})
+diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 

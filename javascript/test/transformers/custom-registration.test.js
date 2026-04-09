@@ -14,6 +14,7 @@ import { match } from '../../src/matcher/index.js'
 import { Evaluator } from '../../src/matcher/evaluator.js'
 import { Record } from '../../src/matcher/record.js'
 import { EditorEngine } from '../../src/editor/engine.js'
+import { ColumnSchema } from '../../src/core/column.js'
 
 class FirstOctetTransformer extends Transformer {
     get name() {
@@ -161,7 +162,9 @@ describe('Custom Transformer Registration', () => {
     describe('editor suggestions', () => {
         it('custom transformer appears in suggestions', async () => {
             const registry = customRegistry()
-            const columns = { src_ip: { type: 'string', suggest: true, autocomplete: false } }
+            const columns = ColumnSchema.fromPlainObject({
+                src_ip: { type: 'string', suggest: true, autocomplete: false },
+            })
             const engine = new EditorEngine(columns, { registry })
             engine.setQuery('src_ip|')
             engine.setCursorPosition(7)

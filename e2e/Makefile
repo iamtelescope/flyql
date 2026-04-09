@@ -34,7 +34,7 @@ run:
 	.venv/bin/python3 runner.py --languages $(LANGUAGES) --databases $(DATABASES) --json $(JSON_REPORT) --version-file $(VERSION_FILE) --down
 
 viewer:
-	cd ../e2e-viewer && E2E_REPORT_FILE=$(JSON_REPORT) npx vite
+	cd ../e2e-viewer && E2E_REPORT_FILE=$(JSON_REPORT) make dev
 
 clean: down
 	rm -f $(JSON_REPORT)

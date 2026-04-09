@@ -1,30 +1,72 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+html,
+body {
+  height: 100%;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body,
+nav,
+footer {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
 
 body {
-    min-width: 1480px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  background-color: #f9fafb;
+  color: #1f2937;
+}
+body:where(.dark, .dark *) {
+  background-color: #1c1c1c;
+  color: #ffffff;
 }
 
-html {
-    overflow-x: overlay;
-    scrollbar-gutter: stable;
+/* SQL syntax highlighting */
+.sql-hl-keyword {
+  color: #0451a5;
+  font-weight: 600;
+}
+.sql-hl-string {
+  color: #8b0000;
+}
+.sql-hl-number {
+  color: #098658;
+}
+.sql-hl-function {
+  color: #795e26;
+}
+:root.dark .sql-hl-keyword {
+  color: #569cd6;
+  font-weight: 600;
+}
+:root.dark .sql-hl-string {
+  color: #ce9178;
+}
+:root.dark .sql-hl-number {
+  color: #b5cea8;
+}
+:root.dark .sql-hl-function {
+  color: #dcdcaa;
 }
 
-/* Force visible scrollbars on macOS */
+/* Scrollbar styling */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
+  background: #c1c1c1;
+  border-radius: 4px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-    background: #a0a0a0;
+  background: #a0a0a0;
 }

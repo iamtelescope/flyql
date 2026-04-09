@@ -1,13 +1,11 @@
-fmt:
-	npx prettier --config .prettierrc --write src/ *.js *.html
-
-fmt-test:
-	npx prettier --config .prettierrc --check src/ *.js *.html
+install:
+	npm install
 
 dev:
-	E2E_REPORT_FILE=../e2e/output/report.json npx vite
+	npx vite
 
 build:
 	npx vite build
 
-.PHONY: fmt fmt-test dev build
+fmt:
+	npx prettier --write "**/*.{js,vue,css,html,json}"

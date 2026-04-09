@@ -29,7 +29,7 @@ e2e-venv:
 e2e-clean:
 	cd e2e && make clean
 e2e-viewer:
-	cd e2e && make viewer
+	cd e2e-viewer && E2E_REPORT_FILE=../e2e/output/report.json make dev
 run-demo:
 	cd demo && make dev
 docs-install:

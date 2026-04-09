@@ -2,8 +2,79 @@
 
 [![Tests](https://github.com/iamtelescope/flyql/actions/workflows/test.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/test.yml)
 [![E2E](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml)
+[![npm](https://img.shields.io/npm/v/flyql)](https://www.npmjs.com/package/flyql)
+[![PyPI](https://img.shields.io/pypi/v/flyql)](https://pypi.org/project/flyql/)
 
 A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, evaluates in-memory, and ships with a Vue 3 editor — with full cross-language parity in Go, Python, and JavaScript.
+
+## Installation
+
+**Go:**
+```bash
+go get github.com/iamtelescope/flyql/golang
+```
+
+**Python:**
+```bash
+pip install flyql
+# or
+uv add flyql
+```
+
+**JavaScript:**
+```bash
+npm install flyql
+```
+
+## Quick Start
+
+**Python:**
+```python
+from flyql import parse
+from flyql.generators.clickhouse.generator import to_sql_where
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status >= 400 and host = prod*")
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "host": Column("host", False, "String"),
+}
+
+sql = to_sql_where(result.root, columns)
+```
+
+**JavaScript:**
+```javascript
+import { parse } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse("status >= 400 and host = prod*")
+
+const columns = {
+    status: newColumn("status", false, "UInt32", null),
+    host: newColumn("host", false, "String", null),
+}
+
+const sql = generateWhere(result.root, columns)
+```
+
+**Go:**
+```go
+import (
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+result, err := flyql.Parse("status >= 400 and host = prod*")
+
+columns := map[string]*clickhouse.Column{
+	"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+	"host":   clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+}
+
+sql, err := clickhouse.ToSQLWhere(result.Root, columns)
+```
 
 ## Basic Query Structure
 
@@ -12,20 +83,32 @@ A query consists of one or more conditions connected by boolean operators (**and
 ```sql
 status=200 and active and not archived
 ```
-- `status=200` - `status` field equals `200`
-- `active` - `active` field has a truthy value
-- `not archived` - `archived` field is falsy (null, empty, zero, or false)
 
 More examples:
 ```sql
-service!=api or user="john doe"     # comparisons with or
-message~"error.*" and not debug     # regex match and negation
-(a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
-status in [200, 201] and method not in ['DELETE', 'PUT']  # list membership
-timestamp > ago(1h) and level = 'error'                  # temporal functions
-date = today('Europe/Berlin')                            # timezone-aware date
-created_at > startOf('week')                             # start of week
+-- comparisons with or
+service!=api or user="john doe"
+
+-- regex match and negation
+message~"error.*" and not debug
+
+-- grouped conditions
+(a=1 or b=2) and not (c=3 and d=4)
+
+-- list membership
+status in [200, 201] and method not in ['DELETE', 'PUT']
+
+-- temporal functions
+timestamp > ago(1h) and level = 'error'
+
+-- timezone-aware date
+date = today('Europe/Berlin')
+
+-- start of week
+created_at > startOf('week')
 ```
+
+For more examples, see the [E2E report](https://flyql.dev/e2e-report/).
 
 ## Syntax
 
@@ -33,20 +116,22 @@ created_at > startOf('week')                             # start of week
 
 FlyQL supports the following comparison operators:
 
-- **Equals** - `=`
-- **Not equals** - `!=`
-- **Regex match** - `~`
-- **Not regex match** - `!~`
-- **Greater than** - `>`
-- **Lower than** - `<`
-- **Greater or equals than** - `>=`
-- **Lower or equals than** - `<=`
-- **In list** - `in`
-- **Not in list** - `not in`
-- **Like pattern** - `like`
-- **Not like pattern** - `not like`
-- **Case-insensitive like** - `ilike`
-- **Case-insensitive not like** - `not ilike`
+| Operator | Syntax |
+|----------|--------|
+| Equals | `=` |
+| Not equals | `!=` |
+| Regex match | `~` |
+| Not regex match | `!~` |
+| Greater than | `>` |
+| Less than | `<` |
+| Greater or equal | `>=` |
+| Less or equal | `<=` |
+| In list | `in` |
+| Not in list | `not in` |
+| Like pattern | `like` |
+| Not like pattern | `not like` |
+| Case-insensitive like | `ilike` |
+| Case-insensitive not like | `not ilike` |
 
 ### List Operators
 
@@ -69,11 +154,20 @@ Rules:
 Use `like` and `ilike` for SQL-style pattern matching:
 
 ```sql
-message like 'error%'         # starts with "error"
-host like '%prod%'            # contains "prod"
-path like '/api/_/status'     # _ matches any single character
-message ilike '%Error%'       # case-insensitive
-host not like 'test%'         # negated
+-- starts with "error"
+message like 'error%'
+
+-- contains "prod"
+host like '%prod%'
+
+-- _ matches any single character
+path like '/api/_/status'
+
+-- case-insensitive
+message ilike '%Error%'
+
+-- negated
+host not like 'test%'
 ```
 
 Wildcards:
@@ -103,10 +197,17 @@ Everything else is **truthy**.
 Use `not` to negate any expression:
 
 ```sql
-not active                  # field is falsy
-not status=200              # status is not 200
-not (a=1 and b=2)           # negates the grouped expression
-active and not archived     # combine with other conditions
+-- field is falsy
+not active
+
+-- status is not 200
+not status=200
+
+-- negates the grouped expression
+not (a=1 and b=2)
+
+-- combine with other conditions
+active and not archived
 ```
 
 Double negation cancels out: `not not active` is equivalent to `active`.
@@ -121,20 +222,79 @@ Double negation cancels out: `not not active` is equivalent to `active`.
 FlyQL supports temporal function calls as values for time-relative filters:
 
 ```sql
-timestamp > ago(1h)                    # last 1 hour
-timestamp > ago(1h30m)                 # compound: 1 hour 30 minutes
-updated_at < now()                     # before current time
-date = today()                         # today's date
-date = today('Europe/Berlin')          # today in timezone
-created_at > startOf('day')            # start of today
-created_at > startOf('week')           # Monday 00:00
-created_at > startOf('month', 'UTC')   # first of month
+-- last 1 hour
+timestamp > ago(1h)
+
+-- compound: 1 hour 30 minutes
+timestamp > ago(1h30m)
+
+-- before current time
+updated_at < now()
+
+-- today's date
+date = today()
+
+-- today in timezone
+date = today('Europe/Berlin')
+
+-- start of today
+created_at > startOf('day')
+
+-- Monday 00:00
+created_at > startOf('week')
+
+-- first of month
+created_at > startOf('month', 'UTC')
 ```
 
 - **Duration units:** `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks)
 - **Timezones:** IANA timezone names (e.g., `'Europe/Berlin'`, `'Asia/Tokyo'`)
 - **Operators:** Only comparison operators (`=`, `!=`, `>`, `>=`, `<`, `<=`) work with functions
 - **Bare names:** `field=ago` (no parens) is a column reference, not a function
+
+### Nested Keys
+
+Use dot-separated paths to access nested fields in JSON, Map, or structured data:
+
+```sql
+request.url = "/api/users"
+response.headers.content_type = "application/json"
+metadata.labels.env = prod
+```
+
+When a key segment itself contains a dot, wrap it in quotes so the dot is not treated as a separator:
+
+```sql
+"app.config".debug = true
+metadata."dotted.key".value = 123
+```
+
+Nested keys work with all operators:
+
+```sql
+request.status >= 400 and response.body ~ "error" and not request.internal
+```
+
+### Transformers
+
+Transformers modify column values before comparison using the pipe (`|`) syntax. They can be chained left-to-right:
+
+```sql
+-- convert to uppercase before comparing
+message|upper = "ERROR"
+
+-- chain multiple transformers
+message|lower|len > 100
+```
+
+Built-in transformers:
+
+| Transformer | Input | Output | Example |
+|-------------|-------|--------|---------|
+| `upper` | string | string | `name\|upper = "ALICE"` |
+| `lower` | string | string | `name\|lower = "alice"` |
+| `len` | string | int | `message\|len > 100` |
+| `split(delimiter)` | string | array | `path\|split("/")` |
 
 ### General Query Syntax Rules
 - **Standalone keys** - A key without an operator is treated as a truthy check.
@@ -151,13 +311,37 @@ created_at > startOf('month', 'UTC')   # first of month
 | | Supported Versions |
 |---|---|
 | **Go** | 1.21+ |
-| **Python** | 3.10, 3.11, 3.12 |
+| **Python** | 3.10+ |
 | **Node.js** | 16+ |
-| **SQL Dialects** | ClickHouse, PostgreSQL, StarRocks |
+
+**SQL Dialects:** ClickHouse, PostgreSQL, StarRocks
+
+## Editor
+
+FlyQL ships with a Vue 3 editor component that provides syntax highlighting, autocomplete, and schema-driven value suggestions:
+
+```javascript
+import { FlyqlEditor } from 'flyql/editor'
+import 'flyql/editor/flyql.css'
+```
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :dark="true" @submit="onSubmit" />
+```
+
+See the [editor documentation](https://docs.flyql.dev/editor/) for the full API reference.
 
 ## Documentation
 
 Full documentation: [docs.flyql.dev](https://docs.flyql.dev)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines and requirements.
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 
 ## License
 

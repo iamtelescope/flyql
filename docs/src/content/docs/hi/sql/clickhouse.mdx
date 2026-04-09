@@ -18,7 +18,7 @@ ClickHouse SQL बिना कोट वाले कॉलम नाम, र�
 | <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
 
 ## बूलियन ऑपरेटर
 

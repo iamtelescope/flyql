@@ -67,8 +67,8 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 सूची ऑपरेटर किसी भी अन्य शर्त की तरह बूलियन ऑपरेटर के साथ संयोजित होते हैं:
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## उदाहरण
 

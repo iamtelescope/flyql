@@ -12,7 +12,7 @@ Utilisez des chemins separes par des points pour acceder aux champs imbriques da
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Chaque segment separe par un point traverse un niveau dans la structure imbriquee. Les generateurs SQL traduisent ces chemins dans la syntaxe correcte pour chaque dialecte de base de donnees (acces au chemin JSON, recherches dans les Map, etc.).
 
@@ -59,7 +59,7 @@ Les cles imbriquees fonctionnent avec tous les operateurs :
 
 ## Exemples
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

@@ -6,7 +6,7 @@ description: Value types, typed literals, and expressions in FlyQL
 import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../components/FlyqlToken.astro'
 
-FlyQL supports 7 value types: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, and **Array**. Each value in the AST carries an explicit `value_type` field.
+FlyQL supports 9 value types: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, and **Function**. Each value in the AST carries an explicit `value_type` field.
 
 ## Value Types
 
@@ -40,9 +40,9 @@ AST: `value_type: "float"`
 
 ### String
 
-Text values, quoted or unquoted:
+Text values **must be quoted** using single or double quotes. Unquoted values are interpreted as column references, not strings.
 
-<FlyqlCode code={`level = error`} />
+<FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />
 <FlyqlCode code={`message = 'hello world'`} />
 <FlyqlCode code={`count = '42'`} />
@@ -52,7 +52,7 @@ AST: `value_type: "string"`
 Escape quotes with backslash:
 
 ```
-user = 'John
+user = 'John\'s'
 message="said \"hello\""
 ```
 
@@ -66,7 +66,7 @@ The keywords <FlyqlToken type="boolean">true</FlyqlToken> and <FlyqlToken type="
 
 AST: `value_type: "boolean"`, value is native boolean.
 
-Capitalized variants (`True`, `FALSE`) are treated as strings.
+Capitalized variants (`True`, `FALSE`) are treated as column references, not booleans.
 
 **SQL generation:**
 | Dialect | FlyQL | Generated SQL |
@@ -87,11 +87,27 @@ The keyword <FlyqlToken type="null">null</FlyqlToken> (lowercase, case-sensitive
 
 AST: `value_type: "null"`, value is native null.
 
-Capitalized variants (`Null`, `NULL`) are treated as strings.
+Capitalized variants (`Null`, `NULL`) are treated as column references, not null.
 
 **Restrictions:** Only <FlyqlToken type="operator">=</FlyqlToken> and <FlyqlToken type="operator">!=</FlyqlToken> operators are valid with null. Using <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, or <FlyqlToken type="operator">{'!~'}</FlyqlToken> with null produces a parse error.
 
 **SQL generation:** <FlyqlCode code={`field = null`} inline /> emits `field IS NULL`, <FlyqlCode code={`field != null`} inline /> emits `field IS NOT NULL` (all dialects).
+
+### Column Reference
+
+Any unquoted value that is not a number, boolean, null, or temporal function is treated as a **column reference** — a pointer to another column for column-to-column comparisons:
+
+<FlyqlCode code={`price > min_price`} />
+<FlyqlCode code={`updated_at > created_at`} />
+<FlyqlCode code={`field = otherfield`} />
+
+AST: `value_type: "column"`
+
+If you intend to match a string value, you **must** use quotes:
+
+<FlyqlCode code={`level = 'error'`} />
+
+Without quotes, <FlyqlCode code={`level = error`} inline /> treats `error` as a reference to a column named `error`.
 
 ### Array
 
@@ -222,3 +238,5 @@ If upgrading from a previous FlyQL version:
 - **New:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> are parsed as typed literals (not strings)
 - **New:** `values_types` array on IN-list expressions provides per-element types
 - **New:** `flyql.types` module exports canonical type constants
+- **Breaking:** Unquoted non-numeric values are now parsed as `value_type: "column"` (column references), not `"string"`. To match a string, wrap the value in quotes: `field = 'value'`
+- **New:** Temporal function values (`ago()`, `now()`, `today()`, `startOf()`) with `value_type: "function"`

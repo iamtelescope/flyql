@@ -13,7 +13,7 @@ FlyQL usa tres operadores booleanos para combinar condiciones:
 | Operador | Significado | Ejemplo |
 |----------|-------------|---------|
 | <FlyqlToken type="operator">and</FlyqlToken> | Ambas condiciones deben ser true | <FlyqlCode code={`status = 200 and active`} inline /> |
-| <FlyqlToken type="operator">or</FlyqlToken> | Cualquiera de las dos condiciones puede ser true | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | Cualquiera de las dos condiciones puede ser true | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
 | <FlyqlToken type="operator">not</FlyqlToken> | Niega una expresión | <FlyqlCode code={`not archived`} inline /> |
 
 ### Negación combinada
@@ -21,7 +21,7 @@ FlyQL usa tres operadores booleanos para combinar condiciones:
 <FlyqlToken type="operator">not</FlyqlToken> puede combinarse con <FlyqlToken type="operator">and</FlyqlToken> y <FlyqlToken type="operator">or</FlyqlToken>:
 
 <FlyqlCode code={`active and not archived`} />
-<FlyqlCode code={`level = error or not healthy`} />
+<FlyqlCode code={`level = 'error' or not healthy`} />
 
 ## Precedencia de operadores
 
@@ -39,15 +39,15 @@ Para cambiar la precedencia, usa paréntesis de forma explícita.
 
 Usa paréntesis para controlar el orden de evaluación:
 
-<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
 Sin paréntesis, <FlyqlToken type="operator">and</FlyqlToken> tendría mayor precedencia:
 
-<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
 es equivalente a:
 
-<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
+<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
 
 ### Agrupación anidada
 
@@ -76,8 +76,8 @@ La doble negación se cancela: <FlyqlCode code={`not not active`} inline /> es e
 
 ## Ejemplos
 
-<FlyqlCode code={`status = 200 and service = api`} />
-<FlyqlCode code={`level = error or level = critical`} />
-<FlyqlCode code={`status >= 400 or level = error and service = api`} />
-<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
-<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />
+<FlyqlCode code={`status = 200 and service = 'api'`} />
+<FlyqlCode code={`level = 'error' or level = 'critical'`} />
+<FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
+<FlyqlCode code={`(status >= 500 and host = 'prod') or (level = 'error' and not service = 'healthcheck')`} />

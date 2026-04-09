@@ -18,7 +18,7 @@ O SQL do ClickHouse utiliza nomes de colunas sem aspas, `match()` para regex e `
 | <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
 
 ## Operadores Booleanos
 

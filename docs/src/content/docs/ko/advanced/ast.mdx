@@ -177,7 +177,7 @@ Node (leaf, negated: true)
 
 ### 괄호가 있는 중첩 불리언
 
-Query: <FlyqlCode code="env=prod and (status=500 or level = error)" inline />
+Query: <FlyqlCode code="env='prod' and (status=500 or level = 'error')" inline />
 
 ```
 Node (branch, boolOperator: "and")

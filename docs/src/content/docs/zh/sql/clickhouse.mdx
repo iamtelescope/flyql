@@ -18,7 +18,7 @@ ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，
 | <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
 
 ## 布尔操作符
 

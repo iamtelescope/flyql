@@ -177,7 +177,7 @@ Node (leaf, negated: true)
 
 ### 带括号的嵌套布尔
 
-查询：<FlyqlCode code="env=prod and (status=500 or level = error)" inline />
+查询：<FlyqlCode code="env='prod' and (status=500 or level = 'error')" inline />
 
 ```
 Node (branch, boolOperator: "and")

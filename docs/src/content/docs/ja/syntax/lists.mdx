@@ -67,8 +67,8 @@ parse 済み expression の `valuesType` フィールドは、そのリストが
 リスト演算子は、他の条件と同様にブール演算子と組み合わせて使えます。
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## 例
 

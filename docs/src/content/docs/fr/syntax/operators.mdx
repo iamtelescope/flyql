@@ -13,7 +13,7 @@ FlyQL prend en charge les operateurs de comparaison suivants :
 | Operateur | Nom | Exemple |
 |-----------|-----|---------|
 | <FlyqlToken type="operator">=</FlyqlToken> | Egal | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | Different | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Different | <FlyqlCode code={`env != 'prod'`} inline /> |
 
 <FlyqlCode code={`status = 200`} />
 <FlyqlCode code={`service != "api-gateway"`} />
@@ -106,7 +106,7 @@ L'operateur <FlyqlToken type="operator">has</FlyqlToken> effectue une verificati
 | Operateur | Nom | Exemple |
 |-----------|-----|---------|
 | <FlyqlToken type="operator">=</FlyqlToken> | Egal | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | Different | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Different | <FlyqlCode code={`env != 'prod'`} inline /> |
 | <FlyqlToken type="operator">{'>'}</FlyqlToken> | Superieur a | <FlyqlCode code={`count > 10`} inline /> |
 | <FlyqlToken type="operator">{'>='}</FlyqlToken> | Superieur ou egal | <FlyqlCode code={`count >= 10`} inline /> |
 | <FlyqlToken type="operator">{'<'}</FlyqlToken> | Inferieur a | <FlyqlCode code={`count < 100`} inline /> |

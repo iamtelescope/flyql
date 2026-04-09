@@ -12,7 +12,7 @@ Verwende punktgetrennte Pfade, um auf verschachtelte Felder in JSON, Map oder st
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Jedes punktgetrennte Segment traversiert eine Ebene in der verschachtelten Struktur. Die SQL-Generatoren übersetzen diese Pfade in die korrekte Syntax für jeden Datenbankdialekt (JSON-Pfad-Zugriff, Map-Lookups usw.).
 
@@ -59,7 +59,7 @@ Verschachtelte Schlüssel funktionieren mit allen Operatoren:
 
 ## Beispiele
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

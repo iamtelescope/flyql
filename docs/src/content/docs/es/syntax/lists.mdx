@@ -67,8 +67,8 @@ El campo `valuesType` de la expresión parseada indica si la lista contiene valo
 Los operadores de lista se combinan con los operadores booleanos como cualquier otra condición:
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## Ejemplos
 

@@ -67,8 +67,8 @@ Le champ `valuesType` de l'expression analysee indique si la liste contient des 
 Les operateurs de liste se combinent avec les operateurs booleens comme toute autre condition :
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## Exemples
 

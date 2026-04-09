@@ -13,7 +13,7 @@ FlyQL 支持以下比较操作符：
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
 | <FlyqlToken type="operator">=</FlyqlToken> | 等于 | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != 'prod'`} inline /> |
 
 <FlyqlCode code={`status = 200`} />
 <FlyqlCode code={`service != "api-gateway"`} />
@@ -106,7 +106,7 @@ SQL 风格的模式匹配，支持两个通配符：
 | 操作符 | 名称 | 示例 |
 |--------|------|------|
 | <FlyqlToken type="operator">=</FlyqlToken> | 等于 | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | 不等于 | <FlyqlCode code={`env != 'prod'`} inline /> |
 | <FlyqlToken type="operator">{'>'}</FlyqlToken> | 大于 | <FlyqlCode code={`count > 10`} inline /> |
 | <FlyqlToken type="operator">{'>='}</FlyqlToken> | 大于等于 | <FlyqlCode code={`count >= 10`} inline /> |
 | <FlyqlToken type="operator">{'<'}</FlyqlToken> | 小于 | <FlyqlCode code={`count < 100`} inline /> |

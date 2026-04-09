@@ -13,7 +13,7 @@ FlyQL 使用三个布尔操作符组合条件：
 | 操作符 | 含义 | 示例 |
 |--------|------|------|
 | <FlyqlToken type="operator">and</FlyqlToken> | 两个条件都必须为真 | <FlyqlCode code={`status = 200 and active`} inline /> |
-| <FlyqlToken type="operator">or</FlyqlToken> | 任意一个条件为真即可 | <FlyqlCode code={`level = error or level = critical`} inline /> |
+| <FlyqlToken type="operator">or</FlyqlToken> | 任意一个条件为真即可 | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
 | <FlyqlToken type="operator">not</FlyqlToken> | 取反一个表达式 | <FlyqlCode code={`not archived`} inline /> |
 
 ### 与取反组合
@@ -21,7 +21,7 @@ FlyQL 使用三个布尔操作符组合条件：
 <FlyqlToken type="operator">not</FlyqlToken> 可以与 <FlyqlToken type="operator">and</FlyqlToken>、<FlyqlToken type="operator">or</FlyqlToken> 组合使用：
 
 <FlyqlCode code={`active and not archived`} />
-<FlyqlCode code={`level = error or not healthy`} />
+<FlyqlCode code={`level = 'error' or not healthy`} />
 
 ## 操作符优先级
 
@@ -39,15 +39,15 @@ FlyQL 使用三个布尔操作符组合条件：
 
 括号可以控制表达式的计算顺序：
 
-<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
 如果不加括号，<FlyqlToken type="operator">and</FlyqlToken> 会先绑定：
 
-<FlyqlCode code={`status >= 400 or level = error and service = api`} />
+<FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
 等价于：
 
-<FlyqlCode code={`status >= 400 or (level = error and service = api)`} />
+<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
 
 ### 嵌套分组
 
@@ -76,8 +76,8 @@ FlyQL 使用三个布尔操作符组合条件：
 
 ## 示例
 
-<FlyqlCode code={`status = 200 and service = api`} />
-<FlyqlCode code={`level = error or level = critical`} />
-<FlyqlCode code={`status >= 400 or level = error and service = api`} />
-<FlyqlCode code={`(status >= 400 or level = error) and service = api`} />
-<FlyqlCode code={`(status >= 500 and host = prod*) or (level = error and not service = healthcheck)`} />
+<FlyqlCode code={`status = 200 and service = 'api'`} />
+<FlyqlCode code={`level = 'error' or level = 'critical'`} />
+<FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
+<FlyqlCode code={`(status >= 500 and host = 'prod') or (level = 'error' and not service = 'healthcheck')`} />

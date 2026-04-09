@@ -12,7 +12,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 每一个 `.` 都表示向下进入一层嵌套结构。SQL 生成器会根据目标数据库，把这些路径转换为对应的访问语法。
 
@@ -60,7 +60,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 ## 示例
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

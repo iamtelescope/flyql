@@ -60,8 +60,8 @@ When a SQL generator processes a list, it validates that the list value types ar
 List operators combine with boolean operators like any other condition:
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## Examples
 

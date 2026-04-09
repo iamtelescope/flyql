@@ -18,7 +18,7 @@ O SQL do PostgreSQL usa identificadores entre aspas duplas, <FlyqlToken type="op
 | <FlyqlCode code={`count <= 100`} inline /> | `"count" <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `"message" ~ 'error.*'` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `"message" !~ 'test.*'` |
-| <FlyqlCode code={`host = prod*`} inline /> | `"host" LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `"host" = 'prod'` |
 
 ## Operadores Booleanos
 

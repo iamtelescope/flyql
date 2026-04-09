@@ -12,7 +12,7 @@ Use dot-separated paths to access nested fields in JSON, Map, or structured data
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Each dot-separated segment traverses one level into the nested structure. The SQL generators translate these paths into the correct syntax for each database dialect (JSON path access, Map lookups, etc.).
 
@@ -59,7 +59,7 @@ Nested keys work with all operators:
 
 ## Examples
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

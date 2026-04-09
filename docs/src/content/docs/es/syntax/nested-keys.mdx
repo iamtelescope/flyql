@@ -12,7 +12,7 @@ Usa rutas separadas por puntos para acceder a campos anidados en JSON, Map o dat
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Cada segmento separado por puntos recorre un nivel dentro de la estructura anidada. Los generadores SQL traducen estas rutas a la sintaxis correcta para cada dialecto de base de datos: acceso a rutas JSON, búsquedas en Map, etc.
 
@@ -59,7 +59,7 @@ Las claves anidadas funcionan con todos los operadores:
 
 ## Ejemplos
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

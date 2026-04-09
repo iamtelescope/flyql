@@ -67,8 +67,8 @@ Parse된 expression의 `valuesType` 필드는 리스트가 `"string"` 값인지 
 리스트 연산자는 다른 조건과 마찬가지로 불리언 연산자와 결합할 수 있습니다.
 
 <FlyqlCode code={`status in [200, 201] and method in ['GET', 'POST']`} />
-<FlyqlCode code={`level = error or status not in [200, 201, 204]`} />
-<FlyqlCode code={`(status in [500, 502, 503] or level = critical) and env=prod`} />
+<FlyqlCode code={`level = 'error' or status not in [200, 201, 204]`} />
+<FlyqlCode code={`(status in [500, 502, 503] or level = 'critical') and env='prod'`} />
 
 ## 예제
 

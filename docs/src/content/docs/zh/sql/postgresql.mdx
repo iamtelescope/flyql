@@ -18,7 +18,7 @@ PostgreSQL 生成的 SQL 使用双引号包裹标识符，正则使用 <FlyqlTok
 | <FlyqlCode code={`count <= 100`} inline /> | `"count" <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `"message" ~ 'error.*'` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `"message" !~ 'test.*'` |
-| <FlyqlCode code={`host = prod*`} inline /> | `"host" LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `"host" = 'prod'` |
 
 ## 布尔操作符
 

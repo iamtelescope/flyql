@@ -12,7 +12,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Каждый сегмент после точки означает переход на один уровень глубже во вложенную структуру. SQL-генераторы преобразуют эти пути в корректный синтаксис для каждого диалекта базы данных (доступ по JSON-пути, поиск в Map и т. д.).
 
@@ -59,7 +59,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 ## Примеры
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

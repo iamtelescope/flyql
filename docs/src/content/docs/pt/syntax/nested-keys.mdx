@@ -12,7 +12,7 @@ Utilize caminhos separados por pontos para aceder a campos aninhados em JSON, Ma
 
 <FlyqlCode code={`request.url = "/api/users"`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
-<FlyqlCode code={`metadata.labels.env = prod`} />
+<FlyqlCode code={`metadata.labels.env = 'prod'`} />
 
 Cada segmento separado por ponto percorre um nivel na estrutura aninhada. Os geradores SQL traduzem estes caminhos para a sintaxe correcta de cada dialecto de base de dados (acesso a caminhos JSON, consultas em Map, etc.).
 
@@ -59,7 +59,7 @@ As chaves aninhadas funcionam com todos os operadores:
 
 ## Exemplos
 
-<FlyqlCode code={`request.method = GET`} />
+<FlyqlCode code={`request.method = 'GET'`} />
 <FlyqlCode code={`response.headers.content_type = "application/json"`} />
 <FlyqlCode code={`"app.config".debug = true`} />
 <FlyqlCode code={`request.status >= 400 and response.body ~ "error" and not request.internal`} />

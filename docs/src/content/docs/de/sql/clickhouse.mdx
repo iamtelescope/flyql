@@ -18,7 +18,7 @@ ClickHouse-SQL verwendet unquotierte Spaltennamen, `match()` für Regex und `LIK
 | <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
 | <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
 | <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = prod*`} inline /> | `host LIKE 'prod%'` |
+| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
 
 ## Boolesche Operatoren
 

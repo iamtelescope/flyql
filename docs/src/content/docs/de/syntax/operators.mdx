@@ -13,7 +13,7 @@ FlyQL unterstützt die folgenden Vergleichsoperatoren:
 | Operator | Name | Beispiel |
 |----------|------|----------|
 | <FlyqlToken type="operator">=</FlyqlToken> | Gleich | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | Ungleich | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Ungleich | <FlyqlCode code={`env != 'prod'`} inline /> |
 
 <FlyqlCode code={`status = 200`} />
 <FlyqlCode code={`service != "api-gateway"`} />
@@ -106,7 +106,7 @@ Der <FlyqlToken type="operator">has</FlyqlToken> Operator führt eine typabhäng
 | Operator | Name | Beispiel |
 |----------|------|----------|
 | <FlyqlToken type="operator">=</FlyqlToken> | Gleich | <FlyqlCode code={`status = 200`} inline /> |
-| <FlyqlToken type="operator">!=</FlyqlToken> | Ungleich | <FlyqlCode code={`env != prod`} inline /> |
+| <FlyqlToken type="operator">!=</FlyqlToken> | Ungleich | <FlyqlCode code={`env != 'prod'`} inline /> |
 | <FlyqlToken type="operator">{'>'}</FlyqlToken> | Größer als | <FlyqlCode code={`count > 10`} inline /> |
 | <FlyqlToken type="operator">{'>='}</FlyqlToken> | Größer oder gleich | <FlyqlCode code={`count >= 10`} inline /> |
 | <FlyqlToken type="operator">{'<'}</FlyqlToken> | Kleiner als | <FlyqlCode code={`count < 100`} inline /> |

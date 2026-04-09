@@ -7,6 +7,18 @@ import (
 	"github.com/iamtelescope/flyql/golang/types"
 )
 
+type Duration struct {
+	Value int64
+	Unit  string
+}
+
+type FunctionCall struct {
+	Name         string
+	DurationArgs []Duration
+	Unit         string
+	Timezone     string
+}
+
 type Expression struct {
 	Key           Key
 	Operator      string
@@ -55,6 +67,15 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) (
 	}
 
 	return expr, nil
+}
+
+func NewFunctionCallExpression(key Key, operator string, fc *FunctionCall) *Expression {
+	return &Expression{
+		Key:       key,
+		Operator:  operator,
+		Value:     fc,
+		ValueType: types.Function,
+	}
 }
 
 func NewInExpression(key Key, operator string, values []any, valuesType *string, valuesTypes []types.ValueType) *Expression {

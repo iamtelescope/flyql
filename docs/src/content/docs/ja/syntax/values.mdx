@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## テンポラル関数
+
+FlyQL は比較式の右辺の値としてテンポラル関数呼び出しをサポートしています。タイムスタンプをハードコーディングせずに、時間相対フィルターを実現できます。
+
+AST: `value_type: "function"`、`value` は `FunctionCall` オブジェクトです。
+
+### `ago(duration)`
+
+現在時刻からの相対タイムスタンプを返します。複合的な期間指定に対応しています。
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**期間の単位:** `s`（秒）、`m`（分）、`h`（時間）、`d`（日）、`w`（週）
+
+### `now()`
+
+現在のタイムスタンプを返します。
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+今日の日付を返します。オプションで IANA タイムゾーン引数を指定できます。
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+現在の日、週（月曜日）、または月の開始時刻を返します。オプションでタイムゾーンを指定できます。
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**有効な単位:** `'day'`、`'week'`、`'month'`
+
+### 演算子の制約
+
+テンポラル関数は比較演算子のみで使用できます: `=`、`!=`、`>`、`>=`、`<`、`<=`。
+
+テンポラル関数に `~` や `!~` を使うと parse error になります。`in`、`has`、`like`、`ilike` などの演算子は別の解析パスを使用するため、関数値とは互換性がありません。
+
+### 括弧なしのカラム参照
+
+括弧のない関数名はカラム参照として扱われ、関数呼び出しにはなりません。
+
+<FlyqlCode code={`field = ago`} />
+
+これは `value_type: "column"` を生成し、関数呼び出しにはなりません。
+
 ## 移行時の注意
 
 以前の FlyQL バージョンからアップグレードする場合:

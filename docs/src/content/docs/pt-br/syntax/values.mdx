@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## Funções Temporais
+
+O FlyQL suporta chamadas de funções temporais como valores no lado direito de expressões de comparação. Elas permitem filtros relativos ao tempo sem a necessidade de codificar timestamps.
+
+AST: `value_type: "function"`, `value` é um objeto `FunctionCall`.
+
+### `ago(duration)`
+
+Retorna um timestamp relativo ao momento atual. Suporta durações compostas.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**Unidades de duração:** `s` (segundos), `m` (minutos), `h` (horas), `d` (dias), `w` (semanas)
+
+### `now()`
+
+Retorna o timestamp atual.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+Retorna a data de hoje. Aceita um argumento opcional de fuso horário IANA.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+Retorna o início do dia, semana (segunda-feira) ou mês atual. Aceita um fuso horário opcional.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**Unidades válidas:** `'day'`, `'week'`, `'month'`
+
+### Restrições de Operadores
+
+Funções temporais só podem ser usadas com operadores de comparação: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+Usar `~` ou `!~` com uma função temporal produz um erro de análise. Operadores como `in`, `has`, `like` e `ilike` utilizam caminhos de análise separados e não são compatíveis com valores de função.
+
+### Referência de Coluna Sem Parênteses
+
+Nomes de função sem parênteses são tratados como referências de coluna, não como chamadas de função:
+
+<FlyqlCode code={`field = ago`} />
+
+Isso produz `value_type: "column"`, não uma chamada de função.
+
 ## Notas de Migração
 
 Se estiver atualizando de uma versão anterior do FlyQL:

@@ -4,6 +4,22 @@ import { VALID_KEY_VALUE_OPERATORS, Operator } from './constants.js'
 import { Key } from './key.js'
 import { ValueType } from '../types.js'
 
+export class Duration {
+    constructor(value, unit) {
+        this.value = value
+        this.unit = unit
+    }
+}
+
+export class FunctionCall {
+    constructor(name, durationArgs = [], unit = '', timezone = '') {
+        this.name = name
+        this.durationArgs = durationArgs
+        this.unit = unit
+        this.timezone = timezone
+    }
+}
+
 export class Expression {
     constructor(
         key,

@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
+from flyql.core.expression import FunctionCall
+
 
 def get_expression(node):
     """Helper to get expression from node (handles different AST structures)"""
@@ -51,10 +53,20 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
     }
 
     if node.expression is not None:
+        value = node.expression.value
+        if isinstance(value, FunctionCall):
+            value = {
+                "name": value.name,
+                "duration_args": [
+                    {"value": d.value, "unit": d.unit} for d in value.duration_args
+                ],
+                "unit": value.unit,
+                "timezone": value.timezone,
+            }
         expr = {
             "key": node.expression.key.raw,
             "operator": node.expression.operator,
-            "value": node.expression.value,
+            "value": value,
             "value_type": (
                 node.expression.value_type.value
                 if node.expression.value_type is not None

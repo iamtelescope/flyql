@@ -7,6 +7,7 @@ import {
     getInsertRange,
     getTransformerSuggestions,
     getColumnSuggestionsForValue,
+    getValueSuggestions,
 } from '../../src/editor/suggestions.js'
 
 const TEST_COLUMNS = {
@@ -397,6 +398,64 @@ describe('suggestions', () => {
                 expect(item.type).toBe('columnRef')
                 expect(item.insertText).not.toMatch(/\.$/)
             }
+        })
+    })
+
+    describe('getValueSuggestions - temporal functions', () => {
+        const TEMPORAL_COLUMNS = {
+            timestamp: { type: 'datetime', suggest: true, autocomplete: true },
+            created_at: { type: 'timestamp', suggest: true, autocomplete: true },
+            level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
+            name: { type: 'string', suggest: true, autocomplete: true },
+            ts_with_values: {
+                type: 'datetime',
+                suggest: true,
+                autocomplete: true,
+                values: ['2024-01-01', '2024-02-01'],
+            },
+        }
+        const noOp = () => {}
+
+        it('returns temporal suggestions for datetime column', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'timestamp', '', null, null, noOp)
+            const labels = result.suggestions.map((s) => s.label)
+            expect(labels).toContain('ago(1h)')
+            expect(labels).toContain('now()')
+            expect(labels).toContain('today()')
+            expect(labels).toContain("startOf('day')")
+        })
+
+        it('returns temporal suggestions for timestamp column', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'created_at', '', null, null, noOp)
+            const labels = result.suggestions.map((s) => s.label)
+            expect(labels).toContain('ago(1h)')
+        })
+
+        it('does NOT return temporal suggestions for enum column', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'level', '', null, null, noOp)
+            const types = result.suggestions.map((s) => s.type)
+            expect(types).not.toContain('function')
+        })
+
+        it('does NOT return temporal suggestions for string column', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'name', '', null, null, noOp)
+            const types = result.suggestions.map((s) => s.type)
+            expect(types).not.toContain('function')
+        })
+
+        it('temporal suggestions are NOT quoted', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'timestamp', '', null, null, noOp)
+            const agoSuggestion = result.suggestions.find((s) => s.label === 'ago(1h)')
+            expect(agoSuggestion).toBeDefined()
+            expect(agoSuggestion.insertText).toBe('ago(1h)')
+            expect(agoSuggestion.type).toBe('function')
+        })
+
+        it('temporal suggestions appear alongside user-defined values', async () => {
+            const result = await getValueSuggestions(TEMPORAL_COLUMNS, 'ts_with_values', '', null, null, noOp)
+            const types = result.suggestions.map((s) => s.type)
+            expect(types).toContain('function')
+            expect(types).toContain('value')
         })
     })
 })

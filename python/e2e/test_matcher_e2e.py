@@ -40,6 +40,10 @@ def load_test_cases() -> list[dict[str, Any]]:
                 "hello*'",
                 "'*@",
                 "created_at<=",
+                "ago(",
+                "now()",
+                "today()",
+                "startOf(",
             ]
         )
     ]

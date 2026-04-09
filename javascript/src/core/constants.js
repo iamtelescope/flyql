@@ -61,6 +61,11 @@ export const State = Object.freeze({
     IN_LIST_DOUBLE_QUOTED_VALUE: 'InListDoubleQuotedValue',
     EXPECT_LIST_COMMA_OR_END: 'ExpectListCommaOrEnd',
     EXPECT_LIKE_KEYWORD: 'ExpectLikeKeyword',
+    FUNCTION_ARGS: 'FunctionArgs',
+    FUNCTION_DURATION: 'FunctionDuration',
+    FUNCTION_QUOTED_ARG: 'FunctionQuotedArg',
+    FUNCTION_EXPECT_COMMA_OR_CLOSE: 'FunctionExpectCommaOrClose',
+    FUNCTION_EXPECT_ARG: 'FunctionExpectArg',
 })
 
 export const BoolOperator = Object.freeze({
@@ -112,6 +117,13 @@ export const VALID_KEY_VALUE_OPERATORS = [
     Operator.ILIKE,
     Operator.NOT_ILIKE,
 ]
+
+export const KNOWN_FUNCTIONS = new Set(['ago', 'now', 'today', 'startOf'])
+
+export const ERR_UNKNOWN_FUNCTION = 70
+export const ERR_INVALID_FUNCTION_ARGS = 71
+export const ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR = 72
+export const ERR_INVALID_DURATION = 73
 
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]
 

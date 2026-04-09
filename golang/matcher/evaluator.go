@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/transformers"
@@ -11,8 +12,9 @@ import (
 )
 
 type Evaluator struct {
-	regexCache map[string]*regexp.Regexp
-	registry   *transformers.TransformerRegistry
+	regexCache      map[string]*regexp.Regexp
+	registry        *transformers.TransformerRegistry
+	DefaultTimezone string
 }
 
 func NewEvaluator() *Evaluator {
@@ -24,8 +26,9 @@ func NewEvaluatorWithRegistry(registry *transformers.TransformerRegistry) *Evalu
 		registry = transformers.DefaultRegistry()
 	}
 	return &Evaluator{
-		regexCache: make(map[string]*regexp.Regexp),
-		registry:   registry,
+		regexCache:      make(map[string]*regexp.Regexp),
+		registry:        registry,
+		DefaultTimezone: "UTC",
 	}
 }
 
@@ -151,6 +154,29 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 			if _, exists := record.data[rhsKey.Value]; exists {
 				exprValue = record.GetValue(rhsKey)
 			}
+		}
+	}
+
+	// Resolve FUNCTION-typed RHS values to milliseconds since epoch
+	if expr.ValueType == types.Function {
+		fc, ok := expr.Value.(*flyql.FunctionCall)
+		if !ok {
+			return false, fmt.Errorf("expected FunctionCall value for function type")
+		}
+		defaultTz := e.DefaultTimezone
+		if defaultTz == "" {
+			defaultTz = "UTC"
+		}
+		ms, err := evaluateFunctionCall(fc, defaultTz)
+		if err != nil {
+			return false, err
+		}
+		exprValue = ms
+
+		// Coerce the LHS record value to milliseconds for comparison
+		value = coerceToMillis(value)
+		if value == nil {
+			return false, nil
 		}
 	}
 
@@ -500,4 +526,106 @@ func valueInList(value any, list []any) bool {
 		}
 	}
 	return false
+}
+
+var durationUnitToMs = map[string]int64{
+	"s": 1000,
+	"m": 60000,
+	"h": 3600000,
+	"d": 86400000,
+	"w": 604800000,
+}
+
+func sumDurations(durations []flyql.Duration) int64 {
+	var total int64
+	for _, d := range durations {
+		multiplier, ok := durationUnitToMs[d.Unit]
+		if ok {
+			total += d.Value * multiplier
+		}
+	}
+	return total
+}
+
+func evaluateFunctionCall(fc *flyql.FunctionCall, defaultTz string) (int64, error) {
+	switch fc.Name {
+	case "now":
+		return time.Now().UnixMilli(), nil
+
+	case "ago":
+		offset := sumDurations(fc.DurationArgs)
+		return time.Now().UnixMilli() - offset, nil
+
+	case "today":
+		tz := fc.Timezone
+		if tz == "" {
+			tz = defaultTz
+		}
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return 0, fmt.Errorf("invalid timezone %q: %w", tz, err)
+		}
+		now := time.Now().In(loc)
+		midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+		return midnight.UnixMilli(), nil
+
+	case "startOf":
+		tz := fc.Timezone
+		if tz == "" {
+			tz = defaultTz
+		}
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return 0, fmt.Errorf("invalid timezone %q: %w", tz, err)
+		}
+		now := time.Now().In(loc)
+
+		switch fc.Unit {
+		case "day":
+			midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+			return midnight.UnixMilli(), nil
+		case "week":
+			weekday := now.Weekday()
+			daysFromMonday := (int(weekday) + 6) % 7
+			monday := now.AddDate(0, 0, -daysFromMonday)
+			start := time.Date(monday.Year(), monday.Month(), monday.Day(), 0, 0, 0, 0, loc)
+			return start.UnixMilli(), nil
+		case "month":
+			start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+			return start.UnixMilli(), nil
+		default:
+			return 0, fmt.Errorf("unsupported startOf unit: %s", fc.Unit)
+		}
+
+	default:
+		return 0, fmt.Errorf("unsupported function: %s", fc.Name)
+	}
+}
+
+func coerceToMillis(value any) any {
+	if value == nil {
+		return nil
+	}
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case uint64:
+		return int64(v)
+	case float64:
+		return int64(v)
+	case string:
+		t, err := time.Parse(time.RFC3339, v)
+		if err != nil {
+			// Try RFC3339Nano as well
+			t, err = time.Parse(time.RFC3339Nano, v)
+			if err != nil {
+				return nil
+			}
+		}
+		return t.UnixMilli()
+	default:
+		return nil
+	}
 }

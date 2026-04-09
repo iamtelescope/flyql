@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## 시간 함수
+
+FlyQL은 비교 표현식의 오른쪽 값으로 시간 함수 호출을 지원합니다. 타임스탬프를 하드코딩하지 않고도 시간 기준 필터를 사용할 수 있습니다.
+
+AST: `value_type: "function"`, `value`는 `FunctionCall` 객체입니다.
+
+### `ago(duration)`
+
+현재 시간 기준 상대적인 타임스탬프를 반환합니다. 복합 기간을 지원합니다.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**기간 단위:** `s` (초), `m` (분), `h` (시간), `d` (일), `w` (주)
+
+### `now()`
+
+현재 타임스탬프를 반환합니다.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+오늘 날짜를 반환합니다. 선택적으로 IANA 타임존 인수를 받습니다.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+현재 일, 주(월요일), 또는 월의 시작 시점을 반환합니다. 선택적으로 타임존을 받습니다.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**유효한 단위:** `'day'`, `'week'`, `'month'`
+
+### 연산자 제한
+
+시간 함수는 비교 연산자에서만 사용할 수 있습니다: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+시간 함수와 함께 `~` 또는 `!~`를 사용하면 parse error가 발생합니다. `in`, `has`, `like`, `ilike` 같은 연산자는 별도의 파싱 경로를 사용하며 함수 값과 호환되지 않습니다.
+
+### 괄호 없는 컬럼 참조
+
+괄호 없는 함수 이름은 함수 호출이 아닌 컬럼 참조로 처리됩니다.
+
+<FlyqlCode code={`field = ago`} />
+
+이는 함수 호출이 아닌 `value_type: "column"`을 생성합니다.
+
 ## 마이그레이션 참고
 
 이전 FlyQL 버전에서 업그레이드하는 경우:

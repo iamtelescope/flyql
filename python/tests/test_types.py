@@ -15,13 +15,14 @@ class TestValueType:
             (ValueType.NULL, "null"),
             (ValueType.ARRAY, "array"),
             (ValueType.COLUMN, "column"),
+            (ValueType.FUNCTION, "function"),
         ],
     )
     def test_value_type_values(self, member: ValueType, expected_value: str) -> None:
         assert member.value == expected_value
 
     def test_value_type_count(self) -> None:
-        assert len(ValueType) == 8
+        assert len(ValueType) == 9
 
     @pytest.mark.parametrize(
         "member, expected_value",

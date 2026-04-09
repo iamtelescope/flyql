@@ -1,0 +1,736 @@
+{
+  "version": "1.0",
+  "description": "Temporal function call test cases",
+  "test_suite": "functions",
+  "tests": [
+    {
+      "name": "ago_1h",
+      "input": "timestamp>ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 1, "unit": "h"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_1h_whitespace",
+      "input": "timestamp > ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 1, "unit": "h"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_30s",
+      "input": "timestamp>ago(30s)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 30, "unit": "s"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_30m",
+      "input": "timestamp>ago(30m)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 30, "unit": "m"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_7d",
+      "input": "timestamp>ago(7d)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 7, "unit": "d"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_2w",
+      "input": "timestamp>ago(2w)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 2, "unit": "w"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_compound_1h30m",
+      "input": "timestamp>ago(1h30m)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 1, "unit": "h"}, {"value": 30, "unit": "m"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_compound_1d12h",
+      "input": "timestamp>ago(1d12h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 1, "unit": "d"}, {"value": 12, "unit": "h"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_compound_zero_component",
+      "input": "timestamp>ago(0h30m)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "timestamp",
+          "operator": ">",
+          "value": {
+            "name": "ago",
+            "duration_args": [{"value": 0, "unit": "h"}, {"value": 30, "unit": "m"}],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "now",
+      "input": "updated_at<now()",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "updated_at",
+          "operator": "<",
+          "value": {
+            "name": "now",
+            "duration_args": [],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "today_no_args",
+      "input": "date=today()",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "date",
+          "operator": "=",
+          "value": {
+            "name": "today",
+            "duration_args": [],
+            "unit": "",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "today_with_timezone",
+      "input": "date=today('Europe/Berlin')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "date",
+          "operator": "=",
+          "value": {
+            "name": "today",
+            "duration_args": [],
+            "unit": "",
+            "timezone": "Europe/Berlin"
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "startOf_day",
+      "input": "created_at>startOf('day')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created_at",
+          "operator": ">",
+          "value": {
+            "name": "startOf",
+            "duration_args": [],
+            "unit": "day",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "startOf_week",
+      "input": "created_at>startOf('week')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created_at",
+          "operator": ">",
+          "value": {
+            "name": "startOf",
+            "duration_args": [],
+            "unit": "week",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "startOf_month",
+      "input": "created_at>startOf('month')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created_at",
+          "operator": ">",
+          "value": {
+            "name": "startOf",
+            "duration_args": [],
+            "unit": "month",
+            "timezone": ""
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "startOf_day_with_timezone",
+      "input": "created_at>startOf('day', 'Asia/Tokyo')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created_at",
+          "operator": ">",
+          "value": {
+            "name": "startOf",
+            "duration_args": [],
+            "unit": "day",
+            "timezone": "Asia/Tokyo"
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "startOf_week_with_timezone",
+      "input": "created_at>startOf('week', 'Europe/Berlin')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created_at",
+          "operator": ">",
+          "value": {
+            "name": "startOf",
+            "duration_args": [],
+            "unit": "week",
+            "timezone": "Europe/Berlin"
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "ago_with_and_boolean",
+      "input": "timestamp>ago(1h) and level='error'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "timestamp",
+            "operator": ">",
+            "value": {
+              "name": "ago",
+              "duration_args": [{"value": 1, "unit": "h"}],
+              "unit": "",
+              "timezone": ""
+            },
+            "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "level",
+            "operator": "=",
+            "value": "error",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ago_with_in_list",
+      "input": "timestamp>ago(7d) and status in [500, 502]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "timestamp",
+            "operator": ">",
+            "value": {
+              "name": "ago",
+              "duration_args": [{"value": 7, "unit": "d"}],
+              "unit": "",
+              "timezone": ""
+            },
+            "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "in",
+            "value": null,
+            "value_type": null,
+            "values": [500, 502],
+            "values_type": null,
+            "values_types": ["integer", "integer"]
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "or_two_functions",
+      "input": "date=today() or date=today('Europe/Berlin')",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "date",
+            "operator": "=",
+            "value": {
+              "name": "today",
+              "duration_args": [],
+              "unit": "",
+              "timezone": ""
+            },
+            "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "date",
+            "operator": "=",
+            "value": {
+              "name": "today",
+              "duration_args": [],
+              "unit": "",
+              "timezone": "Europe/Berlin"
+            },
+            "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "all_comparison_operators_eq",
+      "input": "ts=ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": "=",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "all_comparison_operators_neq",
+      "input": "ts!=ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": "!=",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "all_comparison_operators_gt",
+      "input": "ts>ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": ">",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "all_comparison_operators_gte",
+      "input": "ts>=ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": ">=",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "all_comparison_operators_lt",
+      "input": "ts<ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": "<",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "all_comparison_operators_lte",
+      "input": "ts<=ago(1h)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "ts",
+          "operator": "<=",
+          "value": {"name": "ago", "duration_args": [{"value": 1, "unit": "h"}], "unit": "", "timezone": ""},
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "bare_ago_is_column",
+      "input": "field=ago",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "field",
+          "operator": "=",
+          "value": "ago",
+          "value_type": "column"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "function_in_group",
+      "input": "(timestamp>ago(1h)) and level='error'",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "level",
+            "operator": "=",
+            "value": "error",
+            "value_type": "string"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "timestamp",
+            "operator": ">",
+            "value": {
+              "name": "ago",
+              "duration_args": [{"value": 1, "unit": "h"}],
+              "unit": "",
+              "timezone": ""
+            },
+            "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "error_regex_operator",
+      "input": "timestamp~ago(1h)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 72,
+        "message_contains": "operator '~' is not valid with a temporal function"
+      }
+    },
+    {
+      "name": "error_not_regex_operator",
+      "input": "timestamp!~ago(1h)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 72,
+        "message_contains": "operator '!~' is not valid with a temporal function"
+      }
+    },
+    {
+      "name": "error_unknown_function",
+      "input": "timestamp>unknown(1h)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 70,
+        "message_contains": "unknown function"
+      }
+    },
+    {
+      "name": "error_ago_empty",
+      "input": "timestamp>ago()",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "requires a duration"
+      }
+    },
+    {
+      "name": "error_ago_string_arg",
+      "input": "timestamp>ago('Europe/Berlin')",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "requires a duration"
+      }
+    },
+    {
+      "name": "error_now_with_args",
+      "input": "timestamp>now(1h)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "does not accept arguments"
+      }
+    },
+    {
+      "name": "error_startOf_no_args",
+      "input": "timestamp>startOf()",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "requires a unit argument"
+      }
+    },
+    {
+      "name": "error_startOf_invalid_unit",
+      "input": "timestamp>startOf('year')",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "invalid unit 'year'"
+      }
+    },
+    {
+      "name": "error_invalid_duration_unit",
+      "input": "timestamp>ago(1x)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "invalid duration unit"
+      }
+    },
+    {
+      "name": "error_unclosed_function_1",
+      "input": "timestamp>ago(1h",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 71,
+        "message_contains": "unclosed function call"
+      }
+    },
+    {
+      "name": "error_unclosed_function_2",
+      "input": "timestamp>ago(",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 71,
+        "message_contains": "unclosed function call"
+      }
+    },
+    {
+      "name": "error_today_too_many_args",
+      "input": "timestamp>today('Europe/Berlin', 'extra')",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "accepts at most one argument"
+      }
+    }
+  ]
+}

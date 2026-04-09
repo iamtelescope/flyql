@@ -46,6 +46,10 @@ Numeric comparison operators work on numeric values. When used with string value
 
 Regex patterns follow the syntax of the target database or runtime. See [Pattern Matching](/syntax/pattern-matching/) for regex flags and details.
 
+:::note
+The `~` and `!~` operators cannot be used with temporal function values (e.g., `ago(1h)`, `now()`). Doing so produces a parse error. Similarly, `in`, `has`, `like`, and `ilike` operators are not compatible with function values.
+:::
+
 ## List Membership
 
 | Operator | Name | Example |

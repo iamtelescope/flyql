@@ -1,14 +1,26 @@
 from typing import List, Optional, Union, Any
 
 from flyql.core.tree import Node
-from flyql.core.expression import Expression, convert_unquoted_value
+from flyql.core.expression import (
+    Expression,
+    FunctionCall,
+    Duration,
+    convert_unquoted_value,
+)
 from flyql.core.char import Char
 from flyql.types import ValueType
 from flyql.core.state import State
 from flyql.core.exceptions import FlyqlError, KeyParseError
 from flyql.core.range import Range
-from flyql.core.constants import VALID_BOOL_OPERATORS
-from flyql.core.constants import VALID_KEY_VALUE_OPERATORS
+from flyql.core.constants import (
+    VALID_BOOL_OPERATORS,
+    VALID_KEY_VALUE_OPERATORS,
+    KNOWN_FUNCTIONS,
+    ERR_UNKNOWN_FUNCTION,
+    ERR_INVALID_FUNCTION_ARGS,
+    ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
+    ERR_INVALID_DURATION,
+)
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
 from flyql.core.constants import NOT_KEYWORD
@@ -90,6 +102,11 @@ class Parser:
         self._in_list_value_end: int = -1
         self._in_list_value_ranges: List[Range] = []
         self._error_range: Optional[Range] = None
+        self._function_name: str = ""
+        self._function_duration_buf: str = ""
+        self._function_args: List[str] = []
+        self._function_durations: List[Duration] = []
+        self._function_current_arg: str = ""
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -878,6 +895,16 @@ class Parser:
             self.reset_data()
             self.reset_bool_operator()
             self.store_typed_char(CharType.SPACE)
+        elif self.char.is_group_open():
+            if self.value in KNOWN_FUNCTIONS:
+                self._function_name = self.value
+                self.value = ""
+                self.set_state(State.FUNCTION_ARGS)
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self.set_error_state(
+                    f"unknown function '{self.value}'", ERR_UNKNOWN_FUNCTION
+                )
         elif self.char.is_group_close():
             if not self.nodes_stack:
                 self.set_error_state("unmatched parenthesis", 9)
@@ -1450,9 +1477,248 @@ class Parser:
         else:
             self.set_error_state("expected ',' or ']'", 46)
 
+    def _reset_function_data(self) -> None:
+        self._function_name = ""
+        self._function_duration_buf = ""
+        self._function_args = []
+        self._function_durations = []
+        self._function_current_arg = ""
+
+    def _parse_duration_buf(self) -> bool:
+        buf = self._function_duration_buf
+        if not buf:
+            return False
+        num_buf = ""
+        for c in buf:
+            if c.isdigit():
+                num_buf += c
+            else:
+                if c not in ("s", "m", "h", "d", "w"):
+                    self.set_error_state(
+                        f"invalid duration unit '{c}' — expected s, m, h, d, or w",
+                        ERR_INVALID_DURATION,
+                    )
+                    return False
+                if not num_buf:
+                    self.set_error_state(
+                        "invalid duration format", ERR_INVALID_DURATION
+                    )
+                    return False
+                self._function_durations.append(Duration(value=int(num_buf), unit=c))
+                num_buf = ""
+        if num_buf:
+            self.set_error_state(
+                "invalid duration format — missing unit", ERR_INVALID_DURATION
+            )
+            return False
+        return True
+
+    def _complete_function_call(self) -> None:
+        name = self._function_name
+
+        if self.key_value_operator in (Operator.REGEX.value, Operator.NOT_REGEX.value):
+            self.set_error_state(
+                f"operator '{self.key_value_operator}' is not valid with a temporal function",
+                ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
+            )
+            return
+
+        fc: Optional[FunctionCall] = None
+
+        if name == "ago":
+            if self._function_args:
+                self.set_error_state(
+                    "ago() requires a duration, not a string argument",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            if not self._parse_duration_buf():
+                if self.state != State.ERROR:
+                    self.set_error_state(
+                        "ago() requires a duration argument", ERR_INVALID_DURATION
+                    )
+                return
+            if not self._function_durations:
+                self.set_error_state(
+                    "ago() requires a duration argument", ERR_INVALID_DURATION
+                )
+                return
+            fc = FunctionCall(name="ago", duration_args=list(self._function_durations))
+        elif name == "now":
+            if self._function_args or self._function_duration_buf:
+                self.set_error_state(
+                    "now() does not accept arguments", ERR_INVALID_DURATION
+                )
+                return
+            fc = FunctionCall(name="now")
+        elif name == "today":
+            if self._function_duration_buf:
+                self.set_error_state(
+                    "today() does not accept duration arguments", ERR_INVALID_DURATION
+                )
+                return
+            if len(self._function_args) > 1:
+                self.set_error_state(
+                    "today() accepts at most one argument (timezone)",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            tz = self._function_args[0] if self._function_args else ""
+            fc = FunctionCall(name="today", timezone=tz)
+        elif name == "startOf":
+            if self._function_duration_buf:
+                self.set_error_state(
+                    "startOf() does not accept duration arguments", ERR_INVALID_DURATION
+                )
+                return
+            if not self._function_args:
+                self.set_error_state(
+                    "startOf() requires a unit argument ('day', 'week', or 'month')",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            unit = self._function_args[0]
+            if unit not in ("day", "week", "month"):
+                self.set_error_state(
+                    f"invalid unit '{unit}' — expected 'day', 'week', or 'month'",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            if len(self._function_args) > 2:
+                self.set_error_state(
+                    "startOf() accepts at most two arguments (unit, timezone)",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            tz = self._function_args[1] if len(self._function_args) == 2 else ""
+            fc = FunctionCall(name="startOf", unit=unit, timezone=tz)
+
+        if fc is None:
+            return
+
+        assert self.char is not None
+        key_range = Range(self._key_start, self._key_end)
+        key = self._parse_key_with_range(key_range)
+        expr_range = Range(self._expr_start, self.char.pos + 1)
+        operator_range = Range(self._operator_start, self._operator_end)
+        value_range = Range(self._value_start, self.char.pos + 1)
+
+        expr = Expression(
+            key=key,
+            operator=self.key_value_operator,
+            value=fc,
+            value_is_string=False,
+            range=expr_range,
+            operator_range=operator_range,
+            value_range=value_range,
+            value_type=ValueType.FUNCTION,
+        )
+
+        self.extend_tree(expr)
+        self.reset_data()
+        self._reset_function_data()
+        self.reset_bool_operator()
+        self.set_state(State.EXPECT_BOOL_OP)
+
+    def in_state_function_args(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_group_close():
+            self.store_typed_char(CharType.VALUE)
+            self._complete_function_call()
+        elif self.char.value.isdigit():
+            self._function_duration_buf += self.char.value
+            self.set_state(State.FUNCTION_DURATION)
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_single_quote():
+            self._function_current_arg = ""
+            self.set_state(State.FUNCTION_QUOTED_ARG)
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+        else:
+            self.set_error_state("invalid function argument", ERR_INVALID_FUNCTION_ARGS)
+
+    def in_state_function_duration(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.value.isdigit():
+            self._function_duration_buf += self.char.value
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.value in ("s", "m", "h", "d", "w"):
+            self._function_duration_buf += self.char.value
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_group_close():
+            self.store_typed_char(CharType.VALUE)
+            self._complete_function_call()
+        else:
+            self.set_error_state(
+                f"invalid duration unit '{self.char.value}' — expected s, m, h, d, or w",
+                ERR_INVALID_DURATION,
+            )
+
+    def in_state_function_quoted_arg(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_single_quote():
+            prev_pos = self.char.pos - 1
+            if prev_pos >= 0 and self.text[prev_pos] == "\\":
+                self._function_current_arg += self.char.value
+                self.store_typed_char(CharType.VALUE)
+            else:
+                self._function_args.append(self._function_current_arg)
+                self.set_state(State.FUNCTION_EXPECT_COMMA_OR_CLOSE)
+                self.store_typed_char(CharType.VALUE)
+        else:
+            self._function_current_arg += self.char.value
+            self.store_typed_char(CharType.VALUE)
+
+    def in_state_function_expect_comma_or_close(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_group_close():
+            self.store_typed_char(CharType.VALUE)
+            self._complete_function_call()
+        elif self.char.value == ",":
+            self.set_state(State.FUNCTION_EXPECT_ARG)
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+        else:
+            self.set_error_state(
+                "expected ',' or ')' in function call", ERR_INVALID_FUNCTION_ARGS
+            )
+
+    def in_state_function_expect_arg(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.is_single_quote():
+            self._function_current_arg = ""
+            self.set_state(State.FUNCTION_QUOTED_ARG)
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_delimiter():
+            self.store_typed_char(CharType.SPACE)
+        else:
+            self.set_error_state(
+                "expected quoted argument in function call", ERR_INVALID_FUNCTION_ARGS
+            )
+
     def in_state_last_char(self) -> None:
         if self.state == State.INITIAL and not self.nodes_stack:
             self.set_error_state("empty input", 24)
+        elif self.state in (
+            State.FUNCTION_ARGS,
+            State.FUNCTION_DURATION,
+            State.FUNCTION_QUOTED_ARG,
+            State.FUNCTION_EXPECT_COMMA_OR_CLOSE,
+            State.FUNCTION_EXPECT_ARG,
+        ):
+            self.set_error_state("unclosed function call", ERR_INVALID_FUNCTION_ARGS)
         elif self.state in (
             State.INITIAL,
             State.SINGLE_QUOTED_KEY,
@@ -1563,6 +1829,16 @@ class Parser:
                     self.in_state_in_list_double_quoted_value()
                 case State.EXPECT_LIST_COMMA_OR_END:
                     self.in_state_expect_list_comma_or_end()
+                case State.FUNCTION_ARGS:
+                    self.in_state_function_args()
+                case State.FUNCTION_DURATION:
+                    self.in_state_function_duration()
+                case State.FUNCTION_QUOTED_ARG:
+                    self.in_state_function_quoted_arg()
+                case State.FUNCTION_EXPECT_COMMA_OR_CLOSE:
+                    self.in_state_function_expect_comma_or_close()
+                case State.FUNCTION_EXPECT_ARG:
+                    self.in_state_function_expect_arg()
                 case _:
                     self.set_error_state(f"Unknown state: {self.state}", 1)  # type: ignore[unreachable]
 

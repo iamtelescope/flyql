@@ -10,3 +10,4 @@ class ValueType(str, Enum):
     NULL = "null"
     ARRAY = "array"
     COLUMN = "column"
+    FUNCTION = "function"

@@ -71,6 +71,13 @@ ILIKE_KEYWORD = "ilike"
 
 NOT_KEYWORD = "not"
 
+KNOWN_FUNCTIONS = {"ago", "now", "today", "startOf"}
+
+ERR_UNKNOWN_FUNCTION = 70
+ERR_INVALID_FUNCTION_ARGS = 71
+ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR = 72
+ERR_INVALID_DURATION = 73
+
 VALID_BOOL_OPERATORS = (
     BoolOperator.AND.value,
     BoolOperator.OR.value,

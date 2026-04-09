@@ -1,9 +1,11 @@
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List, Final
+from zoneinfo import ZoneInfo
 
 import re2  # type: ignore[import-untyped]
 
 from flyql.core.constants import Operator, BoolOperator
-from flyql.core.expression import Expression
+from flyql.core.expression import Expression, FunctionCall, Duration
 from flyql.core.exceptions import FlyqlError
 from flyql.core.tree import Node
 from flyql.types import ValueType
@@ -11,6 +13,99 @@ from flyql.types import ValueType
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
 from flyql.transformers.registry import TransformerRegistry, default_registry
+
+_DURATION_UNIT_MS: Dict[str, int] = {
+    "s": 1_000,
+    "m": 60_000,
+    "h": 3_600_000,
+    "d": 86_400_000,
+    "w": 604_800_000,
+}
+
+
+def _sum_durations(durations: List[Duration]) -> int:
+    """Sum a list of Duration objects into total milliseconds."""
+    total = 0
+    for d in durations:
+        multiplier = _DURATION_UNIT_MS.get(d.unit)
+        if multiplier is None:
+            raise FlyqlError(f"unknown duration unit: {d.unit}")
+        total += d.value * multiplier
+    return total
+
+
+def _evaluate_function_call(fc: FunctionCall, default_tz: str) -> int:
+    """Resolve a FunctionCall to milliseconds since epoch."""
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+
+    if fc.name == "now":
+        return now_ms
+
+    if fc.name == "ago":
+        return now_ms - _sum_durations(fc.duration_args)
+
+    tz_name = fc.timezone or default_tz
+    try:
+        tz = ZoneInfo(tz_name)
+    except (KeyError, Exception):
+        raise ValueError(f"invalid timezone '{tz_name}'")
+
+    if fc.name == "today":
+        midnight = datetime.now(tz).replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        return int(midnight.timestamp() * 1000)
+
+    if fc.name == "startOf":
+        now_local = datetime.now(tz)
+        if fc.unit == "day":
+            start = now_local.replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+        elif fc.unit == "week":
+            days_since_monday = now_local.weekday()
+            start = (now_local - timedelta(days=days_since_monday)).replace(
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+        elif fc.unit == "month":
+            start = now_local.replace(
+                day=1,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+            )
+        else:
+            raise FlyqlError(f"unsupported startOf unit: {fc.unit}")
+        return int(start.timestamp() * 1000)
+
+    raise FlyqlError(f"unknown function: {fc.name}")
+
+
+def _resolve_record_value_as_ms(value: Any) -> Optional[int]:
+    """Convert a record value to milliseconds since epoch for temporal comparison.
+
+    Returns None if the value cannot be interpreted as a timestamp.
+    """
+    if isinstance(value, (int, float)):
+        return int(value)
+    if isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value)
+            return int(dt.timestamp() * 1000)
+        except (ValueError, OSError):
+            return None
+    return None
+
 
 REGEX_OPERATORS = {Operator.REGEX.value, Operator.NOT_REGEX.value}
 
@@ -70,9 +165,11 @@ class Evaluator:
     def __init__(
         self,
         registry: Optional[TransformerRegistry] = None,
+        default_timezone: str = "UTC",
     ) -> None:
         self.cache: Dict[str, Any] = {}
         self._registry = registry or default_registry()
+        self._default_timezone = default_timezone
 
     def evaluate(
         self,
@@ -155,6 +252,18 @@ class Evaluator:
                 rhs_key = None
             if rhs_key is not None and rhs_key.value in record.data:
                 expr_value = record.get_value(rhs_key)
+
+        # Resolve FUNCTION-typed RHS values to milliseconds since epoch
+        if expression.value_type == ValueType.FUNCTION and isinstance(
+            expr_value, FunctionCall
+        ):
+            threshold_ms = _evaluate_function_call(expr_value, self._default_timezone)
+            record_ms = _resolve_record_value_as_ms(value)
+            if record_ms is None:
+                return False
+            # Replace both sides with numeric ms values for the comparison below
+            value = record_ms
+            expr_value = threshold_ms
 
         regex: Optional[Any] = None
         if expression.operator in REGEX_OPERATORS:

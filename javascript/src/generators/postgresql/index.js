@@ -1,5 +1,6 @@
 import { Operator, BoolOperator, VALID_KEY_VALUE_OPERATORS, VALID_BOOL_OPERATORS } from '../../core/constants.js'
 import { ValueType } from '../../types.js'
+import { FunctionCall } from '../../core/expression.js'
 import { parseKey } from '../../core/key.js'
 import {
     Column,
@@ -83,6 +84,62 @@ function validateJSONPathPart(part, quoted) {
     }
     if (!jsonKeyPattern.test(part)) {
         throw new Error('Invalid JSON path part')
+    }
+}
+
+const durationUnitMap = {
+    s: 'seconds',
+    m: 'minutes',
+    h: 'hours',
+    d: 'days',
+}
+
+function functionCallToSQL(fc, tz) {
+    const resolveTz = (explicit) => explicit || tz || 'UTC'
+
+    switch (fc.name) {
+        case 'now':
+            return 'NOW()'
+        case 'today': {
+            const timezone = resolveTz(fc.timezone)
+            return `(NOW() AT TIME ZONE ${escapeParam(timezone)})::date`
+        }
+        case 'startOf': {
+            const timezone = resolveTz(fc.timezone)
+            const escapedTz = escapeParam(timezone)
+            switch (fc.unit) {
+                case 'day':
+                    return `date_trunc('day', NOW() AT TIME ZONE ${escapedTz}) AT TIME ZONE ${escapedTz}`
+                case 'week':
+                    return `date_trunc('week', NOW() AT TIME ZONE ${escapedTz}) AT TIME ZONE ${escapedTz}`
+                case 'month':
+                    return `date_trunc('month', NOW() AT TIME ZONE ${escapedTz}) AT TIME ZONE ${escapedTz}`
+                default:
+                    throw new Error(`unsupported startOf unit: ${fc.unit}`)
+            }
+        }
+        case 'ago': {
+            if (!fc.durationArgs || fc.durationArgs.length === 0) {
+                throw new Error('ago() requires at least one duration argument')
+            }
+            const intervals = []
+            for (const dur of fc.durationArgs) {
+                let value = dur.value
+                let unit = dur.unit
+                if (unit === 'w') {
+                    value = value * 7
+                    unit = 'd'
+                }
+                const sqlUnit = durationUnitMap[unit]
+                if (!sqlUnit) {
+                    throw new Error(`unsupported duration unit: ${unit}`)
+                }
+                intervals.push(`INTERVAL '${value} ${sqlUnit}'`)
+            }
+            return `(NOW() - ${intervals.join(' - ')})`
+        }
+        default:
+            throw new Error(`unsupported function: ${fc.name}`)
     }
 }
 
@@ -208,11 +265,30 @@ function buildJSONBPathRaw(identifier, pathParts, quoted) {
     return result
 }
 
-function expressionToSQLSimple(expr, columns, registry = null) {
+function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) {
         throw new Error(`unknown column: ${columnName}`)
+    }
+
+    if (expr.valueType === ValueType.FUNCTION) {
+        if (expr.key.isSegmented) {
+            throw new Error('temporal functions are not supported with segmented keys')
+        }
+        if (column.normalizedType && column.normalizedType !== NormalizedTypeDate) {
+            throw new Error(
+                `temporal function '${expr.value.name}' is not valid for column '${columnName}' of type '${column.normalizedType}'`,
+            )
+        }
+        const fc = expr.value
+        const sqlValue = functionCallToSQL(fc, options.defaultTimezone)
+        let colRef = getIdentifier(column)
+        if (expr.key.transformers.length) {
+            validateTransformerChain(expr.key.transformers, registry)
+            colRef = applyTransformerSQL(colRef, expr.key.transformers, 'postgresql', registry)
+        }
+        return `${colRef} ${expr.operator} ${sqlValue}`
     }
 
     let rhsRef = null
@@ -760,7 +836,7 @@ function validateBoolOperator(op) {
     }
 }
 
-function expressionToSQL(expr, columns, registry = null) {
+function expressionToSQL(expr, columns, registry = null, options = {}) {
     validateOperator(expr.operator)
     if (expr.operator === Operator.TRUTHY) {
         return truthyExpressionToSQL(expr, columns)
@@ -774,7 +850,7 @@ function expressionToSQL(expr, columns, registry = null) {
     if (expr.key.isSegmented) {
         return expressionToSQLSegmented(expr, columns)
     }
-    return expressionToSQLSimple(expr, columns, registry)
+    return expressionToSQLSimple(expr, columns, registry, options)
 }
 
 function findSingleLeafExpression(node) {
@@ -786,7 +862,7 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns, registry = null) {
+export function generateWhere(root, columns, registry = null, options = {}) {
     if (!root) {
         return ''
     }
@@ -799,7 +875,7 @@ export function generateWhere(root, columns, registry = null) {
             text = falsyExpressionToSQL(root.expression, columns)
             isNegated = false
         } else {
-            text = expressionToSQL(root.expression, columns, registry)
+            text = expressionToSQL(root.expression, columns, registry, options)
         }
     } else if (isNegated && !root.expression && !(root.left && root.right)) {
         const child = root.left || root.right
@@ -813,11 +889,11 @@ export function generateWhere(root, columns, registry = null) {
     let right = ''
 
     if (root.left) {
-        left = generateWhere(root.left, columns, registry)
+        left = generateWhere(root.left, columns, registry, options)
     }
 
     if (root.right) {
-        right = generateWhere(root.right, columns, registry)
+        right = generateWhere(root.right, columns, registry, options)
     }
 
     if (left && right) {

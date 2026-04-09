@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { FunctionCall } from '../src/core/expression.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -25,10 +26,19 @@ export function astToDict(node) {
     }
 
     if (node.expression !== null) {
+        let value = node.expression.value
+        if (value instanceof FunctionCall) {
+            value = {
+                name: value.name,
+                duration_args: value.durationArgs.map((d) => ({ value: d.value, unit: d.unit })),
+                unit: value.unit,
+                timezone: value.timezone,
+            }
+        }
         result.expression = {
             key: node.expression.key.raw,
             operator: node.expression.operator,
-            value: node.expression.value,
+            value: value,
             value_type: node.expression.valueType,
             value_bigint: typeof node.expression.value === 'bigint',
         }
@@ -164,7 +174,14 @@ function compareExpressions(actual, expected) {
             return actual.value.toString() === String(expected.value)
         }
 
-        if (actual.value !== expected.value) return false
+        // Function call values are objects — compare by JSON serialization
+        if (
+            actual.value_type === 'function' &&
+            typeof actual.value === 'object' &&
+            typeof expected.value === 'object'
+        ) {
+            if (JSON.stringify(actual.value) !== JSON.stringify(expected.value)) return false
+        } else if (actual.value !== expected.value) return false
     } else {
         if (actual.values === undefined) return false
         if (actual.values_type !== expected.values_type) return false

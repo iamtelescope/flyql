@@ -30,3 +30,17 @@ const InKeyword = "in"
 const HasKeyword = "has"
 const LikeKeyword = "like"
 const ILikeKeyword = "ilike"
+
+var knownFunctions = map[string]bool{
+	"ago":     true,
+	"now":     true,
+	"today":   true,
+	"startOf": true,
+}
+
+const (
+	errUnknownFunction                = 70
+	errInvalidFunctionArgs            = 71
+	errFunctionNotAllowedWithOperator = 72
+	errInvalidDuration                = 73
+)

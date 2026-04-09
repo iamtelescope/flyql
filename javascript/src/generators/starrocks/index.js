@@ -1,5 +1,6 @@
 import { Operator, BoolOperator, VALID_KEY_VALUE_OPERATORS, VALID_BOOL_OPERATORS } from '../../core/constants.js'
 import { ValueType } from '../../types.js'
+import { FunctionCall } from '../../core/expression.js'
 import { parseKey } from '../../core/key.js'
 import {
     Column,
@@ -108,6 +109,60 @@ export function quoteJsonPathPart(part) {
     return result + '"\''
 }
 
+const durationUnitMap = {
+    s: 'SECOND',
+    m: 'MINUTE',
+    h: 'HOUR',
+    d: 'DAY',
+}
+
+function functionCallToSQL(fc, tz) {
+    switch (fc.name) {
+        case 'now':
+            return 'NOW()'
+        case 'today': {
+            const timezone = fc.timezone || tz || 'UTC'
+            return `DATE(CONVERT_TZ(NOW(), 'UTC', ${escapeParam(timezone)}))`
+        }
+        case 'startOf': {
+            const timezone = fc.timezone || tz || 'UTC'
+            const escapedTz = escapeParam(timezone)
+            switch (fc.unit) {
+                case 'day':
+                    return `DATE_FORMAT(CONVERT_TZ(NOW(), 'UTC', ${escapedTz}), '%Y-%m-%d 00:00:00')`
+                case 'week':
+                    return `DATE_TRUNC('WEEK', CONVERT_TZ(NOW(), 'UTC', ${escapedTz}))`
+                case 'month':
+                    return `DATE_TRUNC('MONTH', CONVERT_TZ(NOW(), 'UTC', ${escapedTz}))`
+                default:
+                    throw new Error(`unsupported startOf unit: ${fc.unit}`)
+            }
+        }
+        case 'ago': {
+            if (!fc.durationArgs || fc.durationArgs.length === 0) {
+                throw new Error('ago() requires at least one duration argument')
+            }
+            const intervals = []
+            for (const dur of fc.durationArgs) {
+                let value = dur.value
+                let unit = dur.unit
+                if (unit === 'w') {
+                    value = value * 7
+                    unit = 'd'
+                }
+                const sqlUnit = durationUnitMap[unit]
+                if (!sqlUnit) {
+                    throw new Error(`unsupported duration unit: ${unit}`)
+                }
+                intervals.push(`INTERVAL ${value} ${sqlUnit}`)
+            }
+            return `(NOW() - ${intervals.join(' - ')})`
+        }
+        default:
+            throw new Error(`unsupported function: ${fc.name}`)
+    }
+}
+
 function isNumber(value) {
     if (typeof value === 'number') return true
     if (typeof value === 'bigint') return true
@@ -117,10 +172,29 @@ function isNumber(value) {
     return false
 }
 
-function expressionToSQLSimple(expr, columns, registry = null) {
+function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
+
+    if (expr.valueType === ValueType.FUNCTION) {
+        if (expr.key.isSegmented) {
+            throw new Error('temporal functions are not supported with segmented keys')
+        }
+        if (column.normalizedType && column.normalizedType !== NormalizedTypeDate) {
+            throw new Error(
+                `temporal function '${expr.value.name}' is not valid for column '${columnName}' of type '${column.normalizedType}'`,
+            )
+        }
+        const fc = expr.value
+        const sqlValue = functionCallToSQL(fc, options.defaultTimezone)
+        let colRef = getIdentifier(column)
+        if (expr.key.transformers.length) {
+            validateTransformerChain(expr.key.transformers, registry)
+            colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
+        }
+        return `${colRef} ${expr.operator} ${sqlValue}`
+    }
 
     const rhsRef = expr.valueType === ValueType.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
 
@@ -656,7 +730,7 @@ function hasExpressionToSQL(expr, columns) {
     throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
 }
 
-function expressionToSQL(expr, columns, registry = null) {
+function expressionToSQL(expr, columns, registry = null, options = {}) {
     if (expr.operator === Operator.TRUTHY) return truthyExpressionToSQL(expr, columns)
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) return inExpressionToSQL(expr, columns)
     if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) return hasExpressionToSQL(expr, columns)
@@ -664,7 +738,7 @@ function expressionToSQL(expr, columns, registry = null) {
         throw new Error(`invalid operator: ${expr.operator}`)
     }
     if (expr.key.isSegmented) return expressionToSQLSegmented(expr, columns)
-    return expressionToSQLSimple(expr, columns, registry)
+    return expressionToSQLSimple(expr, columns, registry, options)
 }
 
 function findSingleLeafExpression(node) {
@@ -676,7 +750,7 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns, registry = null) {
+export function generateWhere(root, columns, registry = null, options = {}) {
     if (!root) return ''
 
     let text = ''
@@ -687,7 +761,7 @@ export function generateWhere(root, columns, registry = null) {
             text = falsyExpressionToSQL(root.expression, columns)
             isNegated = false
         } else {
-            text = expressionToSQL(root.expression, columns, registry)
+            text = expressionToSQL(root.expression, columns, registry, options)
         }
     } else if (isNegated && !root.expression && !(root.left && root.right)) {
         const child = root.left || root.right
@@ -699,8 +773,8 @@ export function generateWhere(root, columns, registry = null) {
 
     let left = ''
     let right = ''
-    if (root.left) left = generateWhere(root.left, columns, registry)
-    if (root.right) right = generateWhere(root.right, columns, registry)
+    if (root.left) left = generateWhere(root.left, columns, registry, options)
+    if (root.right) right = generateWhere(root.right, columns, registry, options)
 
     if (left && right) {
         if (!VALID_BOOL_OPERATORS.includes(root.boolOperator)) {

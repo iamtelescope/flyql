@@ -2,6 +2,7 @@ package flyql
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/iamtelescope/flyql/golang/types"
@@ -88,6 +89,11 @@ type Parser struct {
 	inListValueStart           int
 	inListValueEnd             int
 	inListValueRanges          []Range
+	functionName               string
+	functionDurationBuf        string
+	functionArgs               []string
+	functionDurations          []Duration
+	functionCurrentArg         string
 }
 
 func NewParser() *Parser {
@@ -937,6 +943,15 @@ func (p *Parser) inStateValue() {
 		p.resetData()
 		p.resetBoolOperator()
 		p.storeTypedChar(CharTypeSpace)
+	} else if p.char.isGroupOpen() {
+		if knownFunctions[p.value] {
+			p.functionName = p.value
+			p.value = ""
+			p.state = stateFunctionArgs
+			p.storeTypedChar(CharTypeValue)
+		} else {
+			p.setErrorState(fmt.Sprintf("unknown function '%s'", p.value), errUnknownFunction)
+		}
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
 			p.setErrorState("unmatched parenthesis", 9)
@@ -954,6 +969,242 @@ func (p *Parser) inStateValue() {
 		p.storeTypedChar(CharTypeOperator)
 	} else {
 		p.setErrorState("invalid character", 10)
+	}
+}
+
+func (p *Parser) resetFunctionData() {
+	p.functionName = ""
+	p.functionDurationBuf = ""
+	p.functionArgs = nil
+	p.functionDurations = nil
+	p.functionCurrentArg = ""
+}
+
+func (p *Parser) parseDurationBuf() bool {
+	buf := p.functionDurationBuf
+	if buf == "" {
+		return false
+	}
+	numBuf := ""
+	for i := 0; i < len(buf); i++ {
+		c := buf[i]
+		if c >= '0' && c <= '9' {
+			numBuf += string(c)
+		} else {
+			unit := string(c)
+			if unit != "s" && unit != "m" && unit != "h" && unit != "d" && unit != "w" {
+				p.setErrorState(fmt.Sprintf("invalid duration unit '%s' — expected s, m, h, d, or w", unit), errInvalidDuration)
+				return false
+			}
+			if numBuf == "" {
+				p.setErrorState("invalid duration format", errInvalidDuration)
+				return false
+			}
+			val, err := strconv.ParseInt(numBuf, 10, 64)
+			if err != nil {
+				p.setErrorState(fmt.Sprintf("invalid duration value '%s'", numBuf), errInvalidDuration)
+				return false
+			}
+			p.functionDurations = append(p.functionDurations, Duration{Value: val, Unit: unit})
+			numBuf = ""
+		}
+	}
+	if numBuf != "" {
+		p.setErrorState("invalid duration format — missing unit", errInvalidDuration)
+		return false
+	}
+	return true
+}
+
+func (p *Parser) completeFunctionCall() {
+	name := p.functionName
+
+	if p.keyValueOperator == OpRegex || p.keyValueOperator == OpNotRegex {
+		p.setErrorState(fmt.Sprintf("operator '%s' is not valid with a temporal function", p.keyValueOperator), errFunctionNotAllowedWithOperator)
+		return
+	}
+
+	var fc *FunctionCall
+
+	switch name {
+	case "ago":
+		if len(p.functionArgs) > 0 {
+			p.setErrorState("ago() requires a duration, not a string argument", errInvalidDuration)
+			return
+		}
+		if !p.parseDurationBuf() {
+			if p.state != stateError {
+				p.setErrorState("ago() requires a duration argument", errInvalidDuration)
+			}
+			return
+		}
+		if len(p.functionDurations) == 0 {
+			p.setErrorState("ago() requires a duration argument", errInvalidDuration)
+			return
+		}
+		fc = &FunctionCall{Name: "ago", DurationArgs: p.functionDurations}
+	case "now":
+		if len(p.functionArgs) > 0 || p.functionDurationBuf != "" {
+			p.setErrorState("now() does not accept arguments", errInvalidDuration)
+			return
+		}
+		fc = &FunctionCall{Name: "now"}
+	case "today":
+		if p.functionDurationBuf != "" {
+			p.setErrorState("today() does not accept duration arguments", errInvalidDuration)
+			return
+		}
+		if len(p.functionArgs) > 1 {
+			p.setErrorState("today() accepts at most one argument (timezone)", errInvalidDuration)
+			return
+		}
+		tz := ""
+		if len(p.functionArgs) == 1 {
+			tz = p.functionArgs[0]
+		}
+		fc = &FunctionCall{Name: "today", Timezone: tz}
+	case "startOf":
+		if p.functionDurationBuf != "" {
+			p.setErrorState("startOf() does not accept duration arguments", errInvalidDuration)
+			return
+		}
+		if len(p.functionArgs) == 0 {
+			p.setErrorState("startOf() requires a unit argument ('day', 'week', or 'month')", errInvalidDuration)
+			return
+		}
+		unit := p.functionArgs[0]
+		if unit != "day" && unit != "week" && unit != "month" {
+			p.setErrorState(fmt.Sprintf("invalid unit '%s' — expected 'day', 'week', or 'month'", unit), errInvalidDuration)
+			return
+		}
+		tz := ""
+		if len(p.functionArgs) > 2 {
+			p.setErrorState("startOf() accepts at most two arguments (unit, timezone)", errInvalidDuration)
+			return
+		}
+		if len(p.functionArgs) == 2 {
+			tz = p.functionArgs[1]
+		}
+		fc = &FunctionCall{Name: "startOf", Unit: unit, Timezone: tz}
+	}
+
+	if fc == nil {
+		return
+	}
+
+	keyEnd := p.keyEnd
+	keyRange := Range{Start: p.keyStart, End: keyEnd}
+	key, _ := p.parseKeyWithRange(keyRange)
+	exprRange := Range{Start: p.exprStart, End: p.char.pos + 1}
+	operatorRange := &Range{Start: p.operatorStart, End: p.operatorEnd}
+	valueRange := &Range{Start: p.valueStart, End: p.char.pos + 1}
+
+	expr := NewFunctionCallExpression(key, p.keyValueOperator, fc)
+	expr.Range = exprRange
+	expr.OperatorRange = operatorRange
+	expr.ValueRange = valueRange
+
+	p.extendTreeWithExpression(expr)
+	p.resetData()
+	p.resetFunctionData()
+	p.resetBoolOperator()
+	p.state = stateExpectBoolOp
+}
+
+func (p *Parser) inStateFunctionArgs() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isGroupClose() {
+		p.storeTypedChar(CharTypeValue)
+		p.completeFunctionCall()
+	} else if p.char.value >= '0' && p.char.value <= '9' {
+		p.functionDurationBuf += string(p.char.value)
+		p.state = stateFunctionDuration
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isSingleQuote() {
+		p.functionCurrentArg = ""
+		p.state = stateFunctionQuotedArg
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
+	} else {
+		p.setErrorState("invalid function argument", errInvalidFunctionArgs)
+	}
+}
+
+func (p *Parser) inStateFunctionDuration() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.value >= '0' && p.char.value <= '9' {
+		p.functionDurationBuf += string(p.char.value)
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.value == 's' || p.char.value == 'm' || p.char.value == 'h' || p.char.value == 'd' || p.char.value == 'w' {
+		p.functionDurationBuf += string(p.char.value)
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isGroupClose() {
+		p.storeTypedChar(CharTypeValue)
+		p.completeFunctionCall()
+	} else {
+		p.setErrorState(fmt.Sprintf("invalid duration unit '%s' — expected s, m, h, d, or w", string(p.char.value)), errInvalidDuration)
+	}
+}
+
+func (p *Parser) inStateFunctionQuotedArg() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isSingleQuote() {
+		prevPos := p.char.pos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.functionCurrentArg += string(p.char.value)
+			p.storeTypedChar(CharTypeValue)
+		} else {
+			p.functionArgs = append(p.functionArgs, p.functionCurrentArg)
+			p.state = stateFunctionExpectCommaOrClose
+			p.storeTypedChar(CharTypeValue)
+		}
+	} else {
+		p.functionCurrentArg += string(p.char.value)
+		p.storeTypedChar(CharTypeValue)
+	}
+}
+
+func (p *Parser) inStateFunctionExpectCommaOrClose() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isGroupClose() {
+		p.storeTypedChar(CharTypeValue)
+		p.completeFunctionCall()
+	} else if p.char.value == ',' {
+		p.state = stateFunctionExpectArg
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
+	} else {
+		p.setErrorState("expected ',' or ')' in function call", errInvalidFunctionArgs)
+	}
+}
+
+func (p *Parser) inStateFunctionExpectArg() {
+	if p.char == nil {
+		return
+	}
+
+	if p.char.isSingleQuote() {
+		p.functionCurrentArg = ""
+		p.state = stateFunctionQuotedArg
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isDelimiter() {
+		p.storeTypedChar(CharTypeSpace)
+	} else {
+		p.setErrorState("expected quoted argument in function call", errInvalidFunctionArgs)
 	}
 }
 
@@ -1569,6 +1820,12 @@ func (p *Parser) inStateExpectListCommaOrEnd() {
 func (p *Parser) inStateLastChar() {
 	if p.state == stateInitial && len(p.nodesStack) == 0 {
 		p.setErrorState("empty input", 24)
+	} else if p.state == stateFunctionArgs ||
+		p.state == stateFunctionDuration ||
+		p.state == stateFunctionQuotedArg ||
+		p.state == stateFunctionExpectCommaOrClose ||
+		p.state == stateFunctionExpectArg {
+		p.setErrorState("unclosed function call", errInvalidFunctionArgs)
 	} else if p.state == stateInitial ||
 		p.state == stateSingleQuotedKey ||
 		p.state == stateDoubleQuotedKey ||
@@ -1689,6 +1946,16 @@ func (p *Parser) Parse(text string) error {
 			p.inStateInListDoubleQuotedValue()
 		case stateExpectListCommaOrEnd:
 			p.inStateExpectListCommaOrEnd()
+		case stateFunctionArgs:
+			p.inStateFunctionArgs()
+		case stateFunctionDuration:
+			p.inStateFunctionDuration()
+		case stateFunctionQuotedArg:
+			p.inStateFunctionQuotedArg()
+		case stateFunctionExpectCommaOrClose:
+			p.inStateFunctionExpectCommaOrClose()
+		case stateFunctionExpectArg:
+			p.inStateFunctionExpectArg()
 		default:
 			p.setErrorState("unknown state", 1)
 		}

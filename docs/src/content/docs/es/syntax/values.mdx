@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## Funciones temporales
+
+FlyQL admite llamadas a funciones temporales como valores en el lado derecho de expresiones de comparación. Estas permiten filtros relativos al tiempo sin necesidad de codificar marcas de tiempo.
+
+AST: `value_type: "function"`, `value` es un objeto `FunctionCall`.
+
+### `ago(duration)`
+
+Devuelve una marca de tiempo relativa al momento actual. Admite duraciones compuestas.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**Unidades de duración:** `s` (segundos), `m` (minutos), `h` (horas), `d` (días), `w` (semanas)
+
+### `now()`
+
+Devuelve la marca de tiempo actual.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+Devuelve la fecha de hoy. Acepta un argumento opcional de zona horaria IANA.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+Devuelve el inicio del día, la semana (lunes) o el mes actual. Acepta una zona horaria opcional.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**Unidades válidas:** `'day'`, `'week'`, `'month'`
+
+### Restricciones de operadores
+
+Las funciones temporales solo pueden usarse con operadores de comparación: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+Usar `~` o `!~` con una función temporal produce un error de parseo. Los operadores como `in`, `has`, `like` e `ilike` utilizan rutas de análisis separadas y no son compatibles con valores de función.
+
+### Referencia a columna sin paréntesis
+
+Los nombres de función sin paréntesis se tratan como referencias a columnas, no como llamadas a funciones:
+
+<FlyqlCode code={`field = ago`} />
+
+Esto produce `value_type: "column"`, no una llamada a función.
+
 ## Notas de migración
 
 Si actualizas desde una versión anterior de FlyQL:

@@ -46,6 +46,10 @@ Los operadores de comparación numérica funcionan sobre valores numéricos. Si 
 
 Los patrones regex siguen la sintaxis del runtime o la base de datos de destino. Consulta [Coincidencia de patrones](/es/syntax/pattern-matching/) para flags regex y detalles.
 
+:::note
+Los operadores `~` y `!~` no pueden usarse con valores de funciones temporales (p. ej., `ago(1h)`, `now()`). Hacerlo produce un error de parseo. De manera similar, los operadores `in`, `has`, `like` e `ilike` no son compatibles con valores de función.
+:::
+
 ## Pertenencia a listas
 
 | Operador | Nombre | Ejemplo |

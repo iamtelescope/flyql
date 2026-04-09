@@ -27,7 +27,11 @@ function loadTestCases() {
         !tc.flyql.includes('meta_json.') &&
         !tc.flyql.includes("hello*'") &&
         !tc.flyql.includes("'*@") &&
-        !tc.flyql.includes('created_at<=')
+        !tc.flyql.includes('created_at<=') &&
+        !tc.flyql.includes('ago(') &&
+        !tc.flyql.includes('now()') &&
+        !tc.flyql.includes('today()') &&
+        !tc.flyql.includes('startOf(')
     )
 }
 

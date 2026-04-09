@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## Temporal Functions
+
+FlyQL supports temporal function calls as values on the right-hand side of comparison expressions. These enable time-relative filters without hardcoding timestamps.
+
+AST: `value_type: "function"`, `value` is a `FunctionCall` object.
+
+### `ago(duration)`
+
+Returns a timestamp relative to the current time. Supports compound durations.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**Duration units:** `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks)
+
+### `now()`
+
+Returns the current timestamp.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+Returns today's date. Accepts an optional IANA timezone argument.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+Returns the start of the current day, week (Monday), or month. Accepts an optional timezone.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**Valid units:** `'day'`, `'week'`, `'month'`
+
+### Operator Restrictions
+
+Temporal functions can only be used with comparison operators: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+Using `~` or `!~` with a temporal function produces a parse error. Operators like `in`, `has`, `like`, and `ilike` use separate parsing paths and are not compatible with function values.
+
+### Column Reference Without Parens
+
+Bare function names without parentheses are treated as column references, not function calls:
+
+<FlyqlCode code={`field = ago`} />
+
+This produces `value_type: "column"`, not a function call.
+
 ## Migration Notes
 
 If upgrading from a previous FlyQL version:

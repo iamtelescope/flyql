@@ -22,6 +22,9 @@ service!=api or user="john doe"     # comparisons with or
 message~"error.*" and not debug     # regex match and negation
 (a=1 or b=2) and not (c=3 and d=4)  # grouped conditions
 status in [200, 201] and method not in ['DELETE', 'PUT']  # list membership
+timestamp > ago(1h) and level = 'error'                  # temporal functions
+date = today('Europe/Berlin')                            # timezone-aware date
+created_at > startOf('week')                             # start of week
 ```
 
 ## Syntax
@@ -112,6 +115,26 @@ Double negation cancels out: `not not active` is equivalent to `active`.
 - **Boolean operators** - Use `and` to require all conditions to be true and `or` to allow for either condition.
 - **Negation** - Use `not` before any expression to negate it.
 - **Parentheses** - Use `(` and `)` to group conditions and set the precedence of operations (parentheses must be matched on both sides to avoid errors).
+
+### Temporal Functions
+
+FlyQL supports temporal function calls as values for time-relative filters:
+
+```
+timestamp > ago(1h)                    # last 1 hour
+timestamp > ago(1h30m)                 # compound: 1 hour 30 minutes
+updated_at < now()                     # before current time
+date = today()                         # today's date
+date = today('Europe/Berlin')          # today in timezone
+created_at > startOf('day')            # start of today
+created_at > startOf('week')           # Monday 00:00
+created_at > startOf('month', 'UTC')   # first of month
+```
+
+- **Duration units:** `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks)
+- **Timezones:** IANA timezone names (e.g., `'Europe/Berlin'`, `'Asia/Tokyo'`)
+- **Operators:** Only comparison operators (`=`, `!=`, `>`, `>=`, `<`, `<=`) work with functions
+- **Bare names:** `field=ago` (no parens) is a column reference, not a function
 
 ### General Query Syntax Rules
 - **Standalone keys** - A key without an operator is treated as a truthy check.

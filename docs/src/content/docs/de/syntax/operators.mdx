@@ -46,6 +46,10 @@ Numerische Vergleichsoperatoren arbeiten mit numerischen Werten. Bei Strings wir
 
 Regex-Muster folgen der Syntax der Zieldatenbank oder der Laufzeitumgebung. Siehe [Musterabgleich](/de/syntax/pattern-matching/) für Regex-Flags und Details.
 
+:::note
+Die Operatoren `~` und `!~` können nicht mit temporalen Funktionswerten verwendet werden (z.B. `ago(1h)`, `now()`). Dies erzeugt einen Parse-Fehler. Ebenso sind die Operatoren `in`, `has`, `like` und `ilike` nicht mit Funktionswerten kompatibel.
+:::
+
 ## Listenzugehörigkeit
 
 | Operator | Name | Beispiel |

@@ -129,6 +129,90 @@ func validateJSONPathPart(part string, quoted bool) error {
 	return nil
 }
 
+type GeneratorOptions struct {
+	DefaultTimezone string
+}
+
+func NewGeneratorOptions() *GeneratorOptions {
+	return &GeneratorOptions{DefaultTimezone: "UTC"}
+}
+
+var durationUnitToPostgreSQL = map[string]string{
+	"s": "seconds",
+	"m": "minutes",
+	"h": "hours",
+	"d": "days",
+}
+
+func escapeStringValue(s string) string {
+	var sb strings.Builder
+	sb.WriteRune('\'')
+	for _, c := range s {
+		if escaped, ok := escapeCharsMap[c]; ok {
+			sb.WriteString(escaped)
+		} else {
+			sb.WriteRune(c)
+		}
+	}
+	sb.WriteRune('\'')
+	return sb.String()
+}
+
+func functionCallToPostgreSQLSQL(fc *flyql.FunctionCall, defaultTz string) (string, error) {
+	resolveTz := func(explicit string) string {
+		if explicit != "" {
+			return explicit
+		}
+		if defaultTz != "" {
+			return defaultTz
+		}
+		return "UTC"
+	}
+
+	switch fc.Name {
+	case "ago":
+		var parts []string
+		for _, d := range fc.DurationArgs {
+			val := d.Value
+			unit := d.Unit
+			if unit == "w" {
+				val = val * 7
+				unit = "d"
+			}
+			pgUnit, ok := durationUnitToPostgreSQL[unit]
+			if !ok {
+				return "", fmt.Errorf("unsupported duration unit: %s", unit)
+			}
+			parts = append(parts, fmt.Sprintf("INTERVAL '%d %s'", val, pgUnit))
+		}
+		return "(NOW() - " + strings.Join(parts, " - ") + ")", nil
+
+	case "now":
+		return "NOW()", nil
+
+	case "today":
+		tz := resolveTz(fc.Timezone)
+		return fmt.Sprintf("(NOW() AT TIME ZONE %s)::date", escapeStringValue(tz)), nil
+
+	case "startOf":
+		tz := resolveTz(fc.Timezone)
+		escapedTz := escapeStringValue(tz)
+		switch fc.Unit {
+		case "day":
+			return fmt.Sprintf("date_trunc('day', NOW() AT TIME ZONE %s) AT TIME ZONE %s", escapedTz, escapedTz), nil
+		case "week":
+			return fmt.Sprintf("date_trunc('week', NOW() AT TIME ZONE %s) AT TIME ZONE %s", escapedTz, escapedTz), nil
+		case "month":
+			return fmt.Sprintf("date_trunc('month', NOW() AT TIME ZONE %s) AT TIME ZONE %s", escapedTz, escapedTz), nil
+		default:
+			return "", fmt.Errorf("unsupported startOf unit: %s", fc.Unit)
+		}
+
+	default:
+		return "", fmt.Errorf("unsupported function: %s", fc.Name)
+	}
+}
+
 func escapeLikeParam(value string) string {
 	runes := []rune(value)
 	var likeEscaped strings.Builder
@@ -239,6 +323,10 @@ func resolveRhsColumnRef(value string, columns map[string]*Column) (string, bool
 }
 
 func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
+	return ExpressionToSQLWithOptions(expr, columns, nil, registry...)
+}
+
+func ExpressionToSQLWithOptions(expr *flyql.Expression, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
 	var reg *transformers.TransformerRegistry
 	if len(registry) > 0 && registry[0] != nil {
 		reg = registry[0]
@@ -260,7 +348,7 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 	if expr.Key.IsSegmented() {
 		return expressionToSQLSegmented(expr, columns)
 	}
-	return expressionToSQLSimple(expr, columns, reg)
+	return expressionToSQLSimpleWithOptions(expr, columns, reg, options)
 }
 
 func buildJSONBPath(identifier string, pathParts []string, quoted []bool) string {
@@ -787,6 +875,9 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 }
 
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
+	if expr.ValueType == types.Function {
+		return "", fmt.Errorf("temporal functions are not supported with segmented keys")
+	}
 	columnName := expr.Key.Segments[0]
 
 	column, ok := columns[columnName]
@@ -985,12 +1076,41 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 	}
 }
 
-func expressionToSQLSimple(expr *flyql.Expression, columns map[string]*Column, registry *transformers.TransformerRegistry) (string, error) {
+func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string]*Column, registry *transformers.TransformerRegistry, options *GeneratorOptions) (string, error) {
 	columnName := expr.Key.Segments[0]
 
 	column, ok := columns[columnName]
 	if !ok {
 		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	if expr.ValueType == types.Function {
+		fc, ok := expr.Value.(*flyql.FunctionCall)
+		if !ok {
+			return "", fmt.Errorf("expected FunctionCall value for function type")
+		}
+		if column.NormalizedType != "" && column.NormalizedType != NormalizedTypeDate {
+			return "", fmt.Errorf("temporal function '%s' is not valid for column '%s' of type '%s'", fc.Name, columnName, column.NormalizedType)
+		}
+		defaultTz := "UTC"
+		if options != nil && options.DefaultTimezone != "" {
+			defaultTz = options.DefaultTimezone
+		}
+		value, err := functionCallToPostgreSQLSQL(fc, defaultTz)
+		if err != nil {
+			return "", err
+		}
+		colRef := getIdentifier(column)
+		if len(expr.Key.Transformers) > 0 {
+			if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+				return "", err
+			}
+			colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "postgresql", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s %s %s", colRef, expr.Operator, value), nil
 	}
 
 	if len(column.Values) > 0 {
@@ -1125,7 +1245,15 @@ func findSingleLeafExpression(node *flyql.Node) *flyql.Expression {
 	return nil
 }
 
+func ToSQLWhereWithOptions(root *flyql.Node, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
+	return toSQLWhereInternal(root, columns, options, registry...)
+}
+
 func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
+	return toSQLWhereInternal(root, columns, nil, registry...)
+}
+
+func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
 	if root == nil {
 		return "", nil
 	}
@@ -1142,7 +1270,7 @@ func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*trans
 			text = sql
 			isNegated = false
 		} else {
-			sql, err := ExpressionToSQL(root.Expression, columns, registry...)
+			sql, err := ExpressionToSQLWithOptions(root.Expression, columns, options, registry...)
 			if err != nil {
 				return "", err
 			}
@@ -1162,14 +1290,14 @@ func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*trans
 	var err error
 
 	if root.Left != nil {
-		left, err = ToSQLWhere(root.Left, columns, registry...)
+		left, err = toSQLWhereInternal(root.Left, columns, options, registry...)
 		if err != nil {
 			return "", err
 		}
 	}
 
 	if root.Right != nil {
-		right, err = ToSQLWhere(root.Right, columns, registry...)
+		right, err = toSQLWhereInternal(root.Right, columns, options, registry...)
 		if err != nil {
 			return "", err
 		}

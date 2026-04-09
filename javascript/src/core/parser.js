@@ -1,5 +1,5 @@
 import { Char } from './char.js'
-import { Expression } from './expression.js'
+import { Expression, FunctionCall, Duration } from './expression.js'
 import { Node } from './tree.js'
 import { ParserError, KeyParseError } from './exceptions.js'
 import { parseKey, Key } from './key.js'
@@ -19,6 +19,11 @@ import {
     HAS_KEYWORD,
     LIKE_KEYWORD,
     ILIKE_KEYWORD,
+    KNOWN_FUNCTIONS,
+    ERR_UNKNOWN_FUNCTION,
+    ERR_INVALID_FUNCTION_ARGS,
+    ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
+    ERR_INVALID_DURATION,
 } from './constants.js'
 
 export class Parser {
@@ -72,6 +77,11 @@ export class Parser {
         this._inListValueEnd = -1
         this._inListValueRanges = []
         this._errorRange = null
+        this._functionName = ''
+        this._functionDurationBuf = ''
+        this._functionArgs = []
+        this._functionDurations = []
+        this._functionCurrentArg = ''
     }
 
     setState(state) {
@@ -1001,6 +1011,15 @@ export class Parser {
             this.resetData()
             this.resetBoolOperator()
             this.storeTypedChar(CharType.SPACE)
+        } else if (this.char.isGroupOpen()) {
+            if (KNOWN_FUNCTIONS.has(this.value)) {
+                this._functionName = this.value
+                this.value = ''
+                this.setState(State.FUNCTION_ARGS)
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this.setErrorState(`unknown function '${this.value}'`, ERR_UNKNOWN_FUNCTION)
+            }
         } else if (this.char.isGroupClose()) {
             if (!this.nodesStack.length) {
                 this.setErrorState('unmatched parenthesis', 9)
@@ -1019,6 +1038,232 @@ export class Parser {
             }
         } else {
             this.setErrorState('invalid character', 10)
+        }
+    }
+
+    resetFunctionData() {
+        this._functionName = ''
+        this._functionDurationBuf = ''
+        this._functionArgs = []
+        this._functionDurations = []
+        this._functionCurrentArg = ''
+    }
+
+    parseDurationBuf() {
+        const buf = this._functionDurationBuf
+        if (!buf) return false
+        let numBuf = ''
+        for (let i = 0; i < buf.length; i++) {
+            const c = buf[i]
+            if (c >= '0' && c <= '9') {
+                numBuf += c
+            } else {
+                if (!['s', 'm', 'h', 'd', 'w'].includes(c)) {
+                    this.setErrorState(`invalid duration unit '${c}' — expected s, m, h, d, or w`, ERR_INVALID_DURATION)
+                    return false
+                }
+                if (!numBuf) {
+                    this.setErrorState('invalid duration format', ERR_INVALID_DURATION)
+                    return false
+                }
+                this._functionDurations.push(new Duration(parseInt(numBuf, 10), c))
+                numBuf = ''
+            }
+        }
+        if (numBuf) {
+            this.setErrorState('invalid duration format — missing unit', ERR_INVALID_DURATION)
+            return false
+        }
+        return true
+    }
+
+    completeFunctionCall() {
+        const name = this._functionName
+
+        if (this.keyValueOperator === Operator.REGEX || this.keyValueOperator === Operator.NOT_REGEX) {
+            this.setErrorState(
+                `operator '${this.keyValueOperator}' is not valid with a temporal function`,
+                ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
+            )
+            return
+        }
+
+        let fc = null
+
+        if (name === 'ago') {
+            if (this._functionArgs.length > 0) {
+                this.setErrorState('ago() requires a duration, not a string argument', ERR_INVALID_DURATION)
+                return
+            }
+            if (!this.parseDurationBuf()) {
+                if (this.state !== State.ERROR) {
+                    this.setErrorState('ago() requires a duration argument', ERR_INVALID_DURATION)
+                }
+                return
+            }
+            if (this._functionDurations.length === 0) {
+                this.setErrorState('ago() requires a duration argument', ERR_INVALID_DURATION)
+                return
+            }
+            fc = new FunctionCall('ago', [...this._functionDurations])
+        } else if (name === 'now') {
+            if (this._functionArgs.length > 0 || this._functionDurationBuf) {
+                this.setErrorState('now() does not accept arguments', ERR_INVALID_DURATION)
+                return
+            }
+            fc = new FunctionCall('now')
+        } else if (name === 'today') {
+            if (this._functionDurationBuf) {
+                this.setErrorState('today() does not accept duration arguments', ERR_INVALID_DURATION)
+                return
+            }
+            if (this._functionArgs.length > 1) {
+                this.setErrorState('today() accepts at most one argument (timezone)', ERR_INVALID_DURATION)
+                return
+            }
+            const tz = this._functionArgs.length === 1 ? this._functionArgs[0] : ''
+            fc = new FunctionCall('today', [], '', tz)
+        } else if (name === 'startOf') {
+            if (this._functionDurationBuf) {
+                this.setErrorState('startOf() does not accept duration arguments', ERR_INVALID_DURATION)
+                return
+            }
+            if (this._functionArgs.length === 0) {
+                this.setErrorState(
+                    "startOf() requires a unit argument ('day', 'week', or 'month')",
+                    ERR_INVALID_DURATION,
+                )
+                return
+            }
+            const unit = this._functionArgs[0]
+            if (unit !== 'day' && unit !== 'week' && unit !== 'month') {
+                this.setErrorState(`invalid unit '${unit}' — expected 'day', 'week', or 'month'`, ERR_INVALID_DURATION)
+                return
+            }
+            if (this._functionArgs.length > 2) {
+                this.setErrorState('startOf() accepts at most two arguments (unit, timezone)', ERR_INVALID_DURATION)
+                return
+            }
+            const tz = this._functionArgs.length === 2 ? this._functionArgs[1] : ''
+            fc = new FunctionCall('startOf', [], unit, tz)
+        }
+
+        if (fc === null) return
+
+        const keyRange = new Range(this._keyStart, this._keyEnd)
+        const key = this._parseKeyWithRange(keyRange)
+        const exprRange = new Range(this._exprStart, this.char.pos + 1)
+        const operatorRange = new Range(this._operatorStart, this._operatorEnd)
+        const valueRange = new Range(this._valueStart, this.char.pos + 1)
+
+        const expr = new Expression(
+            key,
+            this.keyValueOperator,
+            fc,
+            false,
+            null,
+            null,
+            null,
+            ValueType.FUNCTION,
+            exprRange,
+            operatorRange,
+            valueRange,
+        )
+
+        this.extendTreeWithExpression(expr)
+        this.resetData()
+        this.resetFunctionData()
+        this.resetBoolOperator()
+        this.setState(State.EXPECT_BOOL_OP)
+    }
+
+    inStateFunctionArgs() {
+        if (!this.char) return
+
+        if (this.char.isGroupClose()) {
+            this.storeTypedChar(CharType.VALUE)
+            this.completeFunctionCall()
+        } else if (this.char.value >= '0' && this.char.value <= '9') {
+            this._functionDurationBuf += this.char.value
+            this.setState(State.FUNCTION_DURATION)
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isSingleQuote()) {
+            this._functionCurrentArg = ''
+            this.setState(State.FUNCTION_QUOTED_ARG)
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+        } else {
+            this.setErrorState('invalid function argument', ERR_INVALID_FUNCTION_ARGS)
+        }
+    }
+
+    inStateFunctionDuration() {
+        if (!this.char) return
+
+        if (this.char.value >= '0' && this.char.value <= '9') {
+            this._functionDurationBuf += this.char.value
+            this.storeTypedChar(CharType.VALUE)
+        } else if (['s', 'm', 'h', 'd', 'w'].includes(this.char.value)) {
+            this._functionDurationBuf += this.char.value
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isGroupClose()) {
+            this.storeTypedChar(CharType.VALUE)
+            this.completeFunctionCall()
+        } else {
+            this.setErrorState(
+                `invalid duration unit '${this.char.value}' — expected s, m, h, d, or w`,
+                ERR_INVALID_DURATION,
+            )
+        }
+    }
+
+    inStateFunctionQuotedArg() {
+        if (!this.char) return
+
+        if (this.char.isSingleQuote()) {
+            const prevPos = this.char.pos - 1
+            if (prevPos >= 0 && this.text[prevPos] === '\\') {
+                this._functionCurrentArg += this.char.value
+                this.storeTypedChar(CharType.VALUE)
+            } else {
+                this._functionArgs.push(this._functionCurrentArg)
+                this.setState(State.FUNCTION_EXPECT_COMMA_OR_CLOSE)
+                this.storeTypedChar(CharType.VALUE)
+            }
+        } else {
+            this._functionCurrentArg += this.char.value
+            this.storeTypedChar(CharType.VALUE)
+        }
+    }
+
+    inStateFunctionExpectCommaOrClose() {
+        if (!this.char) return
+
+        if (this.char.isGroupClose()) {
+            this.storeTypedChar(CharType.VALUE)
+            this.completeFunctionCall()
+        } else if (this.char.value === ',') {
+            this.setState(State.FUNCTION_EXPECT_ARG)
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+        } else {
+            this.setErrorState("expected ',' or ')' in function call", ERR_INVALID_FUNCTION_ARGS)
+        }
+    }
+
+    inStateFunctionExpectArg() {
+        if (!this.char) return
+
+        if (this.char.isSingleQuote()) {
+            this._functionCurrentArg = ''
+            this.setState(State.FUNCTION_QUOTED_ARG)
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDelimiter()) {
+            this.storeTypedChar(CharType.SPACE)
+        } else {
+            this.setErrorState('expected quoted argument in function call', ERR_INVALID_FUNCTION_ARGS)
         }
     }
 
@@ -1571,6 +1816,14 @@ export class Parser {
         if (this.state === State.INITIAL && !this.nodesStack.length) {
             this.setErrorState('empty input', 24)
         } else if (
+            this.state === State.FUNCTION_ARGS ||
+            this.state === State.FUNCTION_DURATION ||
+            this.state === State.FUNCTION_QUOTED_ARG ||
+            this.state === State.FUNCTION_EXPECT_COMMA_OR_CLOSE ||
+            this.state === State.FUNCTION_EXPECT_ARG
+        ) {
+            this.setErrorState('unclosed function call', ERR_INVALID_FUNCTION_ARGS)
+        } else if (
             this.state === State.INITIAL ||
             this.state === State.SINGLE_QUOTED_KEY ||
             this.state === State.DOUBLE_QUOTED_KEY ||
@@ -1700,6 +1953,21 @@ export class Parser {
                     break
                 case State.EXPECT_LIST_COMMA_OR_END:
                     this.inStateExpectListCommaOrEnd()
+                    break
+                case State.FUNCTION_ARGS:
+                    this.inStateFunctionArgs()
+                    break
+                case State.FUNCTION_DURATION:
+                    this.inStateFunctionDuration()
+                    break
+                case State.FUNCTION_QUOTED_ARG:
+                    this.inStateFunctionQuotedArg()
+                    break
+                case State.FUNCTION_EXPECT_COMMA_OR_CLOSE:
+                    this.inStateFunctionExpectCommaOrClose()
+                    break
+                case State.FUNCTION_EXPECT_ARG:
+                    this.inStateFunctionExpectArg()
                     break
                 default:
                     this.setErrorState(`Unknown state: ${this.state}`, 1)

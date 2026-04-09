@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import List, Mapping, Optional, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
-from flyql.core.expression import Expression
+from flyql.core.expression import Expression, FunctionCall
 from flyql.types import ValueType
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
@@ -599,10 +599,62 @@ def has_expression_to_sql_where(
         )
 
 
+_DURATION_UNIT_TO_STARROCKS = {
+    "s": "SECOND",
+    "m": "MINUTE",
+    "h": "HOUR",
+    "d": "DAY",
+}
+
+
+def _function_call_to_sql(fc: FunctionCall, default_tz: str) -> str:
+    def resolve_tz(explicit: str) -> str:
+        if explicit:
+            return explicit
+        if default_tz:
+            return default_tz
+        return "UTC"
+
+    if fc.name == "ago":
+        parts: list[str] = []
+        for d in fc.duration_args:
+            val = d.value
+            unit = d.unit
+            if unit == "w":
+                val = val * 7
+                unit = "d"
+            sr_unit = _DURATION_UNIT_TO_STARROCKS.get(unit)
+            if sr_unit is None:
+                raise FlyqlError(f"unsupported duration unit: {unit}")
+            parts.append(f"INTERVAL {val} {sr_unit}")
+        return "(NOW() - " + " - ".join(parts) + ")"
+
+    if fc.name == "now":
+        return "NOW()"
+
+    if fc.name == "today":
+        tz = resolve_tz(fc.timezone)
+        return f"DATE(CONVERT_TZ(NOW(), 'UTC', {escape_param(tz)}))"
+
+    if fc.name == "startOf":
+        tz = resolve_tz(fc.timezone)
+        escaped_tz = escape_param(tz)
+        if fc.unit == "day":
+            return f"DATE_FORMAT(CONVERT_TZ(NOW(), 'UTC', {escaped_tz}), '%Y-%m-%d 00:00:00')"
+        if fc.unit == "week":
+            return f"DATE_TRUNC('WEEK', CONVERT_TZ(NOW(), 'UTC', {escaped_tz}))"
+        if fc.unit == "month":
+            return f"DATE_TRUNC('MONTH', CONVERT_TZ(NOW(), 'UTC', {escaped_tz}))"
+        raise FlyqlError(f"unsupported startOf unit: {fc.unit}")
+
+    raise FlyqlError(f"unsupported function: {fc.name}")
+
+
 def expression_to_sql_where(
     expression: Expression,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
 ) -> str:
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql_where(expression, columns)
@@ -612,6 +664,33 @@ def expression_to_sql_where(
 
     if expression.operator in (Operator.HAS.value, Operator.NOT_HAS.value):
         return has_expression_to_sql_where(expression, columns)
+
+    if expression.value_type == ValueType.FUNCTION:
+        if expression.key.is_segmented:
+            raise FlyqlError("temporal functions are not supported with segmented keys")
+        fc = expression.value
+        if not isinstance(fc, FunctionCall):
+            raise FlyqlError("expected FunctionCall value for function type")
+        column_name = expression.key.segments[0]
+        if column_name not in columns:
+            raise FlyqlError(f"unknown column: {column_name}")
+        column = columns[column_name]
+        if column.normalized_type and column.normalized_type != NORMALIZED_TYPE_DATE:
+            raise FlyqlError(
+                f"temporal function '{fc.name}' is not valid for column "
+                f"'{column_name}' of type '{column.normalized_type}'"
+            )
+        value = _function_call_to_sql(fc, default_timezone)
+        col_ref = get_identifier(column)
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers, registry=registry)
+            col_ref = apply_transformer_sql(
+                col_ref,
+                expression.key.transformers,
+                "starrocks",
+                registry=registry,
+            )
+        return f"{col_ref} {expression.operator} {value}"
 
     validate_operator(expression.operator)
     text = ""
@@ -849,6 +928,7 @@ def to_sql_where(
     root: Node,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
 ) -> str:
     """
     Returns Starrocks WHERE clause for given tree and columns
@@ -867,7 +947,10 @@ def to_sql_where(
             is_negated = False  # Already handled
         else:
             text = expression_to_sql_where(
-                expression=root.expression, columns=columns, registry=registry
+                expression=root.expression,
+                columns=columns,
+                registry=registry,
+                default_timezone=default_timezone,
             )
     elif (
         is_negated
@@ -880,10 +963,20 @@ def to_sql_where(
             return falsy_expression_to_sql_where(expression=leaf_expr, columns=columns)
 
     if root.left is not None:
-        left = to_sql_where(root=root.left, columns=columns, registry=registry)
+        left = to_sql_where(
+            root=root.left,
+            columns=columns,
+            registry=registry,
+            default_timezone=default_timezone,
+        )
 
     if root.right is not None:
-        right = to_sql_where(root=root.right, columns=columns, registry=registry)
+        right = to_sql_where(
+            root=root.right,
+            columns=columns,
+            registry=registry,
+            default_timezone=default_timezone,
+        )
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)

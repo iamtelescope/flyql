@@ -275,6 +275,41 @@ export function getBoolSuggestions() {
     ]
 }
 
+const TEMPORAL_TYPES = new Set([
+    'datetime',
+    'timestamp',
+    'date',
+    'time',
+    'datetime64',
+    'timestamptz',
+    'timestamp without time zone',
+    'timestamp with time zone',
+])
+
+const TEMPORAL_FUNCTION_SUGGESTIONS = [
+    { label: 'ago(1h)', insertText: 'ago(1h)', type: 'function', detail: 'Last 1 hour' },
+    { label: 'ago(30m)', insertText: 'ago(30m)', type: 'function', detail: 'Last 30 minutes' },
+    { label: 'ago(1d)', insertText: 'ago(1d)', type: 'function', detail: 'Last 1 day' },
+    { label: 'ago(7d)', insertText: 'ago(7d)', type: 'function', detail: 'Last 7 days' },
+    { label: 'ago(2w)', insertText: 'ago(2w)', type: 'function', detail: 'Last 2 weeks' },
+    { label: 'now()', insertText: 'now()', type: 'function', detail: 'Current time' },
+    { label: 'today()', insertText: 'today()', type: 'function', detail: 'Today' },
+    { label: "startOf('day')", insertText: "startOf('day')", type: 'function', detail: 'Start of day' },
+    { label: "startOf('week')", insertText: "startOf('week')", type: 'function', detail: 'Start of week' },
+    { label: "startOf('month')", insertText: "startOf('month')", type: 'function', detail: 'Start of month' },
+]
+
+function getTemporalFunctionSuggestions(col, filterPrefix) {
+    if (!col.type || !TEMPORAL_TYPES.has(col.type.toLowerCase())) {
+        return []
+    }
+    const lowerPrefix = filterPrefix ? filterPrefix.toLowerCase() : ''
+    return TEMPORAL_FUNCTION_SUGGESTIONS.filter((s) => {
+        if (!lowerPrefix) return true
+        return s.label.toLowerCase().startsWith(lowerPrefix)
+    })
+}
+
 export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
     const quoted = !!quoteChar
     const defaultQuote = quoteChar || '"'
@@ -328,8 +363,11 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
         return { suggestions: [], incomplete: false, message: 'Autocompletion is disabled for this column' }
     }
 
+    const temporalSuggestions = getTemporalFunctionSuggestions(col, value)
+
     if (col.values && col.values.length > 0) {
-        return { suggestions: prepareSuggestionValues(col.values, quoteChar, value), incomplete: false, message: '' }
+        const valueSuggestions = prepareSuggestionValues(col.values, quoteChar, value)
+        return { suggestions: [...temporalSuggestions, ...valueSuggestions], incomplete: false, message: '' }
     }
 
     if (onAutocomplete) {
@@ -339,8 +377,9 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
         try {
             const result = await onAutocomplete(key, value)
             if (result && result.items) {
+                const valueSuggestions = prepareSuggestionValues(result.items, quoteChar, value)
                 return {
-                    suggestions: prepareSuggestionValues(result.items, quoteChar, value),
+                    suggestions: [...temporalSuggestions, ...valueSuggestions],
                     rawItems: result.items,
                     incomplete: !!result.incomplete,
                     message: '',
@@ -350,6 +389,9 @@ export async function getValueSuggestions(columns, key, value, quoteChar, onAuto
             clearTimeout(loadingTimer)
             setLoading(false)
         }
+    }
+    if (temporalSuggestions.length > 0) {
+        return { suggestions: temporalSuggestions, incomplete: false, message: '' }
     }
     return { suggestions: [], incomplete: false, message: '' }
 }

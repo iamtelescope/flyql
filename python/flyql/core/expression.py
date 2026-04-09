@@ -1,9 +1,25 @@
+from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple
 from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.key import Key
 from flyql.core.range import Range
 from flyql.types import ValueType
+
+
+@dataclass
+class Duration:
+    value: int
+    unit: str
+
+
+@dataclass
+class FunctionCall:
+    name: str
+    duration_args: list["Duration"] = field(default_factory=list)
+    unit: str = ""
+    timezone: str = ""
+
 
 INT64_MIN = -(2**63)
 INT64_MAX = 2**63 - 1
@@ -30,7 +46,7 @@ class Expression:
         self,
         key: Key,
         operator: str,
-        value: str | int | float | bool | None,
+        value: "str | int | float | bool | None | FunctionCall",
         value_is_string: bool | None,
         range: Optional[Range] = None,
         operator_range: Optional[Range] = None,
@@ -63,7 +79,11 @@ class Expression:
         elif operator in (Operator.IN.value, Operator.NOT_IN.value):
             self.value = None
             self.value_type = None
-        elif not value_is_string and value is not None:
+        elif (
+            not value_is_string
+            and value is not None
+            and not isinstance(value, FunctionCall)
+        ):
             self.value, self.value_type = convert_unquoted_value(value)
         else:
             self.value = value

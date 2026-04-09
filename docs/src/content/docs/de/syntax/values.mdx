@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## Temporale Funktionen
+
+FlyQL unterstützt temporale Funktionsaufrufe als Werte auf der rechten Seite von Vergleichsausdrücken. Diese ermöglichen zeitrelative Filter, ohne Zeitstempel fest codieren zu müssen.
+
+AST: `value_type: "function"`, `value` ist ein `FunctionCall`-Objekt.
+
+### `ago(duration)`
+
+Gibt einen Zeitstempel relativ zur aktuellen Zeit zurück. Unterstützt zusammengesetzte Dauern.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**Dauereinheiten:** `s` (Sekunden), `m` (Minuten), `h` (Stunden), `d` (Tage), `w` (Wochen)
+
+### `now()`
+
+Gibt den aktuellen Zeitstempel zurück.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+Gibt das heutige Datum zurück. Akzeptiert ein optionales IANA-Zeitzonenargument.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+Gibt den Beginn des aktuellen Tages, der Woche (Montag) oder des Monats zurück. Akzeptiert eine optionale Zeitzone.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**Gültige Einheiten:** `'day'`, `'week'`, `'month'`
+
+### Operatoreinschränkungen
+
+Temporale Funktionen können nur mit Vergleichsoperatoren verwendet werden: `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+Die Verwendung von `~` oder `!~` mit einer temporalen Funktion erzeugt einen Parse-Fehler. Operatoren wie `in`, `has`, `like` und `ilike` verwenden separate Parsing-Pfade und sind nicht mit Funktionswerten kompatibel.
+
+### Spaltenreferenz ohne Klammern
+
+Nackte Funktionsnamen ohne Klammern werden als Spaltenreferenzen behandelt, nicht als Funktionsaufrufe:
+
+<FlyqlCode code={`field = ago`} />
+
+Dies erzeugt `value_type: "column"`, keinen Funktionsaufruf.
+
 ## Hinweise zur Migration
 
 Beim Upgrade von einer früheren FlyQL-Version:

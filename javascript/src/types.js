@@ -7,4 +7,5 @@ export const ValueType = Object.freeze({
     NULL: 'null',
     ARRAY: 'array',
     COLUMN: 'column',
+    FUNCTION: 'function',
 })

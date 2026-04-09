@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## Fonctions temporelles
+
+FlyQL prend en charge les appels de fonctions temporelles comme valeurs du cote droit des expressions de comparaison. Elles permettent des filtres relatifs au temps sans coder en dur les horodatages.
+
+AST : `value_type: "function"`, `value` est un objet `FunctionCall`.
+
+### `ago(duration)`
+
+Renvoie un horodatage relatif a l'heure actuelle. Prend en charge les durees composees.
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**Unites de duree :** `s` (secondes), `m` (minutes), `h` (heures), `d` (jours), `w` (semaines)
+
+### `now()`
+
+Renvoie l'horodatage actuel.
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+Renvoie la date du jour. Accepte un argument optionnel de fuseau horaire IANA.
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+Renvoie le debut du jour, de la semaine (lundi) ou du mois en cours. Accepte un fuseau horaire optionnel.
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**Unites valides :** `'day'`, `'week'`, `'month'`
+
+### Restrictions sur les operateurs
+
+Les fonctions temporelles ne peuvent etre utilisees qu'avec les operateurs de comparaison : `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+L'utilisation de `~` ou `!~` avec une fonction temporelle produit une erreur d'analyse. Les operateurs comme `in`, `has`, `like` et `ilike` utilisent des chemins d'analyse separes et ne sont pas compatibles avec les valeurs de fonction.
+
+### Reference de colonne sans parentheses
+
+Les noms de fonctions sans parentheses sont traites comme des references de colonne, pas comme des appels de fonction :
+
+<FlyqlCode code={`field = ago`} />
+
+Cela produit `value_type: "column"`, pas un appel de fonction.
+
 ## Notes de migration
 
 Si vous mettez a jour depuis une version precedente de FlyQL :

@@ -26,3 +26,8 @@ class State(Enum):
     EXPECT_LIST_COMMA_OR_END = "ExpectListCommaOrEnd"
     EXPECT_LIST_VALUE = "ExpectListValue"
     EXPECT_LIKE_KEYWORD = "ExpectLikeKeyword"
+    FUNCTION_ARGS = "FunctionArgs"
+    FUNCTION_DURATION = "FunctionDuration"
+    FUNCTION_QUOTED_ARG = "FunctionQuotedArg"
+    FUNCTION_EXPECT_COMMA_OR_CLOSE = "FunctionExpectCommaOrClose"
+    FUNCTION_EXPECT_ARG = "FunctionExpectArg"

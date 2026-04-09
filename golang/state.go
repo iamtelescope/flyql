@@ -27,4 +27,9 @@ const (
 	stateInListDoubleQuotedValue
 	stateExpectListCommaOrEnd
 	stateExpectLikeKeyword
+	stateFunctionArgs
+	stateFunctionDuration
+	stateFunctionQuotedArg
+	stateFunctionExpectCommaOrClose
+	stateFunctionExpectArg
 )

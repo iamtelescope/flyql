@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, List, Mapping, Optional, Tuple
 
 from flyql.core.exceptions import FlyqlError
-from flyql.core.expression import Expression
+from flyql.core.expression import Expression, FunctionCall
 from flyql.types import ValueType
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
@@ -77,6 +77,53 @@ def validate_operator(op: str) -> None:
 def validate_bool_operator(op: str) -> None:
     if op not in VALID_BOOL_OPERATORS:
         raise FlyqlError(f"invalid bool operator: {op}")
+
+
+DURATION_UNIT_TO_PG = {
+    "s": "seconds",
+    "m": "minutes",
+    "h": "hours",
+    "d": "days",
+}
+
+
+def _function_call_to_sql(fc: FunctionCall, default_timezone: str = "UTC") -> str:
+    def resolve_tz(explicit: str) -> str:
+        if explicit:
+            return explicit
+        return default_timezone or "UTC"
+
+    if fc.name == "ago":
+        parts = []
+        for d in fc.duration_args:
+            val = d.value
+            unit = d.unit
+            if unit == "w":
+                val = val * 7
+                unit = "d"
+            pg_unit = DURATION_UNIT_TO_PG.get(unit)
+            if pg_unit is None:
+                raise FlyqlError(f"unsupported duration unit: {unit}")
+            parts.append(f"INTERVAL '{val} {pg_unit}'")
+        return "(NOW() - " + " - ".join(parts) + ")"
+    elif fc.name == "now":
+        return "NOW()"
+    elif fc.name == "today":
+        tz = resolve_tz(fc.timezone)
+        return f"(NOW() AT TIME ZONE {escape_param(tz)})::date"
+    elif fc.name == "startOf":
+        tz = resolve_tz(fc.timezone)
+        escaped_tz = escape_param(tz)
+        if fc.unit == "day":
+            return f"date_trunc('day', NOW() AT TIME ZONE {escaped_tz}) AT TIME ZONE {escaped_tz}"
+        elif fc.unit == "week":
+            return f"date_trunc('week', NOW() AT TIME ZONE {escaped_tz}) AT TIME ZONE {escaped_tz}"
+        elif fc.unit == "month":
+            return f"date_trunc('month', NOW() AT TIME ZONE {escaped_tz}) AT TIME ZONE {escaped_tz}"
+        else:
+            raise FlyqlError(f"unsupported startOf unit: {fc.unit}")
+    else:
+        raise FlyqlError(f"unsupported function: {fc.name}")
 
 
 def _escape_like_param(value: str) -> str:
@@ -173,12 +220,36 @@ def expression_to_sql_simple(
     expression: Expression,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
 ) -> str:
     column_name = expression.key.segments[0]
     if column_name not in columns:
         raise FlyqlError(f"unknown column: {column_name}")
 
     column = columns[column_name]
+
+    if expression.value_type == ValueType.FUNCTION:
+        if expression.key.is_segmented:
+            raise FlyqlError("temporal functions are not supported with segmented keys")
+        fc = expression.value
+        if not isinstance(fc, FunctionCall):
+            raise FlyqlError("expected FunctionCall value for function type")
+        if (
+            column.normalized_type is not None
+            and column.normalized_type != NORMALIZED_TYPE_DATE
+        ):
+            raise FlyqlError(
+                f"temporal function '{fc.name}' is not valid for column "
+                f"'{column_name}' of type '{column.normalized_type}'"
+            )
+        value = _function_call_to_sql(fc, default_timezone)
+        identifier = get_identifier(column)
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers, registry=registry)
+            identifier = apply_transformer_sql(
+                identifier, expression.key.transformers, "postgresql", registry=registry
+            )
+        return f"{identifier} {expression.operator} {value}"
 
     rhs_ref = None
     if expression.value_type == ValueType.COLUMN:
@@ -744,6 +815,7 @@ def expression_to_sql_where(
     expression: Expression,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
 ) -> str:
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql_where(expression, columns)
@@ -754,7 +826,9 @@ def expression_to_sql_where(
     validate_operator(expression.operator)
     if expression.key.is_segmented:
         return expression_to_sql_segmented(expression, columns)
-    return expression_to_sql_simple(expression, columns, registry=registry)
+    return expression_to_sql_simple(
+        expression, columns, registry=registry, default_timezone=default_timezone
+    )
 
 
 def _find_single_leaf_expression(node: Optional[Node]) -> Optional[Expression]:
@@ -775,6 +849,7 @@ def to_sql_where(
     root: Node,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
 ) -> str:
     """Returns PostgreSQL WHERE clause for given tree and columns."""
     left = ""
@@ -790,7 +865,10 @@ def to_sql_where(
             is_negated = False
         else:
             text = expression_to_sql_where(
-                expression=root.expression, columns=columns, registry=registry
+                expression=root.expression,
+                columns=columns,
+                registry=registry,
+                default_timezone=default_timezone,
             )
     elif (
         is_negated
@@ -803,10 +881,20 @@ def to_sql_where(
             return falsy_expression_to_sql_where(expression=leaf_expr, columns=columns)
 
     if root.left is not None:
-        left = to_sql_where(root=root.left, columns=columns, registry=registry)
+        left = to_sql_where(
+            root=root.left,
+            columns=columns,
+            registry=registry,
+            default_timezone=default_timezone,
+        )
 
     if root.right is not None:
-        right = to_sql_where(root=root.right, columns=columns, registry=registry)
+        right = to_sql_where(
+            root=root.right,
+            columns=columns,
+            registry=registry,
+            default_timezone=default_timezone,
+        )
 
     if len(left) > 0 and len(right) > 0:
         validate_bool_operator(root.bool_operator)

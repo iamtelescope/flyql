@@ -46,6 +46,10 @@ Les operateurs de comparaison numerique fonctionnent sur les valeurs numeriques.
 
 Les motifs regex suivent la syntaxe de la base de donnees ou du runtime cible. Consultez [Correspondance de motifs](/fr/syntax/pattern-matching/) pour les drapeaux regex et les details.
 
+:::note
+Les operateurs `~` et `!~` ne peuvent pas etre utilises avec des valeurs de fonctions temporelles (par ex., `ago(1h)`, `now()`). Cela produit une erreur d'analyse. De meme, les operateurs `in`, `has`, `like` et `ilike` ne sont pas compatibles avec les valeurs de fonction.
+:::
+
 ## Appartenance a une liste
 
 | Operateur | Nom | Exemple |

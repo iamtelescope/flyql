@@ -62,10 +62,23 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 	}
 
 	if node.Expression != nil {
+		var value any = node.Expression.Value
+		if fc, ok := node.Expression.Value.(*FunctionCall); ok {
+			durationArgs := make([]map[string]any, len(fc.DurationArgs))
+			for i, d := range fc.DurationArgs {
+				durationArgs[i] = map[string]any{"value": d.Value, "unit": d.Unit}
+			}
+			value = map[string]any{
+				"name":          fc.Name,
+				"duration_args": durationArgs,
+				"unit":          fc.Unit,
+				"timezone":      fc.Timezone,
+			}
+		}
 		expr := &expectedExpression{
 			Key:       node.Expression.Key.Raw,
 			Operator:  node.Expression.Operator,
-			Value:     node.Expression.Value,
+			Value:     value,
 			ValueType: string(node.Expression.ValueType),
 		}
 		if node.Expression.Values != nil {
@@ -218,6 +231,13 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 					t.Errorf("%s: Value mismatch: got %q, want %q", path, gv, wv)
 				}
 			}
+		case map[string]any:
+			gv, ok := got.Expression.Value.(map[string]any)
+			if !ok {
+				t.Errorf("%s: Value type mismatch: got %T, want map[string]any", path, got.Expression.Value)
+			} else {
+				compareFunctionCallMaps(t, gv, wv, path)
+			}
 		}
 
 		if want.Expression.Values != nil {
@@ -280,6 +300,22 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 	compareExpectedASTs(t, got.Right, want.Right, path+".Right")
 }
 
+func compareFunctionCallMaps(t *testing.T, got, want map[string]any, path string) {
+	t.Helper()
+	for key, wantVal := range want {
+		gotVal, ok := got[key]
+		if !ok {
+			t.Errorf("%s.Value[%q]: missing key", path, key)
+			continue
+		}
+		wantJSON, _ := json.Marshal(wantVal)
+		gotJSON, _ := json.Marshal(gotVal)
+		if string(wantJSON) != string(gotJSON) {
+			t.Errorf("%s.Value[%q]: got %s, want %s", path, key, gotJSON, wantJSON)
+		}
+	}
+}
+
 func TestParser(t *testing.T) {
 	files := []string{
 		"parser/basic.json",
@@ -297,6 +333,7 @@ func TestParser(t *testing.T) {
 		"parser/types.json",
 		"parser/null_errors.json",
 		"parser/like.json",
+		"parser/functions.json",
 	}
 
 	for _, file := range files {

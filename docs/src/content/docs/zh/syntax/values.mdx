@@ -159,6 +159,59 @@ import { ValueType } from 'flyql/types'
 // ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
 ```
 
+## 时间函数
+
+FlyQL 支持在比较表达式的右侧使用时间函数调用作为值。这些函数可以实现基于时间的相对过滤，无需硬编码时间戳。
+
+AST：`value_type: "function"`，`value` 是 `FunctionCall` 对象。
+
+### `ago(duration)`
+
+返回相对于当前时间的时间戳。支持复合时间段。
+
+<FlyqlCode code={`timestamp > ago(1h)`} />
+<FlyqlCode code={`created_at >= ago(7d)`} />
+<FlyqlCode code={`updated_at > ago(1h30m)`} />
+
+**时间段单位：** `s`（秒）、`m`（分钟）、`h`（小时）、`d`（天）、`w`（周）
+
+### `now()`
+
+返回当前时间戳。
+
+<FlyqlCode code={`expires_at < now()`} />
+
+### `today()`
+
+返回今天的日期。接受可选的 IANA 时区参数。
+
+<FlyqlCode code={`date = today()`} />
+<FlyqlCode code={`date = today('Europe/Berlin')`} />
+
+### `startOf(unit)`
+
+返回当前日、周（周一）或月的起始时间。接受可选的时区参数。
+
+<FlyqlCode code={`created_at > startOf('day')`} />
+<FlyqlCode code={`created_at > startOf('week')`} />
+<FlyqlCode code={`created_at > startOf('month', 'Asia/Tokyo')`} />
+
+**有效单位：** `'day'`、`'week'`、`'month'`
+
+### 操作符限制
+
+时间函数只能与比较操作符配合使用：`=`、`!=`、`>`、`>=`、`<`、`<=`。
+
+对时间函数使用 `~` 或 `!~` 会产生解析错误。`in`、`has`、`like` 和 `ilike` 等操作符使用不同的解析路径，与函数值不兼容。
+
+### 无括号的列引用
+
+不带括号的函数名会被视为列引用，而非函数调用：
+
+<FlyqlCode code={`field = ago`} />
+
+这会生成 `value_type: "column"`，而不是函数调用。
+
 ## 迁移说明
 
 如果从旧版本 FlyQL 升级：

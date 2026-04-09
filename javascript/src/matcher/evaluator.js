@@ -1,8 +1,17 @@
 import { Operator, BoolOperator } from '../core/constants.js'
 import { FlyqlError } from '../core/exceptions.js'
 import { ValueType } from '../types.js'
+import { FunctionCall } from '../core/expression.js'
 import { parseKey } from '../core/key.js'
 import { defaultRegistry } from '../transformers/index.js'
+
+const DURATION_UNIT_MS = Object.freeze({
+    s: 1000,
+    m: 60_000,
+    h: 3_600_000,
+    d: 86_400_000,
+    w: 604_800_000,
+})
 
 function isFalsy(value) {
     if (value === null || value === undefined) return true
@@ -130,9 +139,10 @@ function likeToRegex(pattern) {
 }
 
 export class Evaluator {
-    constructor(registry = null) {
+    constructor(registry = null, { defaultTimezone = 'UTC' } = {}) {
         this.regexCache = new Map()
         this._registry = registry || defaultRegistry()
+        this._defaultTimezone = defaultTimezone
     }
 
     getRegex(pattern) {
@@ -226,6 +236,10 @@ export class Evaluator {
         let exprValue = expr.value
         if (expr.valueType === ValueType.COLUMN && typeof exprValue === 'string') {
             exprValue = this._resolveColumnValue(exprValue, record)
+        } else if (expr.valueType === ValueType.FUNCTION && exprValue instanceof FunctionCall) {
+            exprValue = this._evaluateFunctionCall(exprValue, this._defaultTimezone)
+            value = this._coerceToMs(value)
+            if (value === null) return false
         }
 
         switch (expr.operator) {
@@ -280,6 +294,174 @@ export class Evaluator {
                 return !evalHas(value, exprValue)
             default:
                 throw new FlyqlError(`Unknown expression operator: ${expr.operator}`)
+        }
+    }
+
+    _coerceToMs(value) {
+        if (typeof value === 'number') return value
+        if (typeof value === 'string') {
+            const ms = new Date(value).getTime()
+            return Number.isNaN(ms) ? null : ms
+        }
+        return null
+    }
+
+    _sumDurations(durations) {
+        let total = 0
+        for (const dur of durations) {
+            const factor = DURATION_UNIT_MS[dur.unit]
+            if (!factor) throw new FlyqlError(`unknown duration unit: ${dur.unit}`)
+            total += dur.value * factor
+        }
+        return total
+    }
+
+    _midnightInTz(tz) {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        })
+        const parts = {}
+        for (const p of fmt.formatToParts(new Date())) {
+            parts[p.type] = p.value
+        }
+        const iso = `${parts.year}-${parts.month}-${parts.day}T00:00:00`
+        // Build a Date that represents midnight in the given timezone
+        // by computing the offset between UTC and the tz at that date.
+        const utcGuess = new Date(iso + 'Z')
+        const fmtFull = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        })
+        // Iteratively find the UTC ms that corresponds to midnight in tz
+        const targetParts = {}
+        for (const p of fmtFull.formatToParts(utcGuess)) {
+            targetParts[p.type] = p.value
+        }
+        const hourInTz = parseInt(targetParts.hour === '24' ? '0' : targetParts.hour, 10)
+        const minuteInTz = parseInt(targetParts.minute, 10)
+        const secondInTz = parseInt(targetParts.second, 10)
+        const offsetMs = (hourInTz * 3600 + minuteInTz * 60 + secondInTz) * 1000
+        let midnight = utcGuess.getTime() - offsetMs
+        // Verify the date didn't shift (DST edge case)
+        const checkFmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        })
+        const checkParts = {}
+        for (const p of checkFmt.formatToParts(new Date(midnight))) {
+            checkParts[p.type] = p.value
+        }
+        if (checkParts.day !== parts.day) {
+            midnight += 86_400_000
+        }
+        return midnight
+    }
+
+    _midnightOfDateInTz(tz, year, month, day) {
+        const iso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`
+        const utcGuess = new Date(iso + 'Z')
+        const fmtFull = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+        })
+        const targetParts = {}
+        for (const p of fmtFull.formatToParts(utcGuess)) {
+            targetParts[p.type] = p.value
+        }
+        const hourInTz = parseInt(targetParts.hour === '24' ? '0' : targetParts.hour, 10)
+        const minuteInTz = parseInt(targetParts.minute, 10)
+        const secondInTz = parseInt(targetParts.second, 10)
+        const offsetMs = (hourInTz * 3600 + minuteInTz * 60 + secondInTz) * 1000
+        let midnight = utcGuess.getTime() - offsetMs
+        const checkFmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            day: '2-digit',
+        })
+        const checkParts = {}
+        for (const p of checkFmt.formatToParts(new Date(midnight))) {
+            checkParts[p.type] = p.value
+        }
+        if (parseInt(checkParts.day, 10) !== day) {
+            midnight += 86_400_000
+        }
+        return midnight
+    }
+
+    _startOfWeekInTz(tz) {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            weekday: 'short',
+        })
+        const parts = {}
+        for (const p of fmt.formatToParts(new Date())) {
+            parts[p.type] = p.value
+        }
+        const dayMap = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }
+        const dayOffset = dayMap[parts.weekday] ?? 0
+        // Use calendar-aware date subtraction to avoid DST issues
+        const d = new Date(`${parts.year}-${parts.month}-${parts.day}T12:00:00Z`)
+        d.setUTCDate(d.getUTCDate() - dayOffset)
+        return this._midnightOfDateInTz(tz, d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+    }
+
+    _startOfMonthInTz(tz) {
+        const fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone: tz,
+            year: 'numeric',
+            month: '2-digit',
+        })
+        const parts = {}
+        for (const p of fmt.formatToParts(new Date())) {
+            parts[p.type] = p.value
+        }
+        return this._midnightOfDateInTz(tz, parseInt(parts.year, 10), parseInt(parts.month, 10), 1)
+    }
+
+    _evaluateFunctionCall(fc, defaultTz) {
+        const tz = fc.timezone || defaultTz || 'UTC'
+        const name = fc.name.toLowerCase()
+
+        switch (name) {
+            case 'now':
+                return Date.now()
+
+            case 'ago': {
+                if (!fc.durationArgs || fc.durationArgs.length === 0) {
+                    throw new FlyqlError('ago() requires at least one duration argument')
+                }
+                return Date.now() - this._sumDurations(fc.durationArgs)
+            }
+
+            case 'today':
+                return this._midnightInTz(tz)
+
+            case 'startof': {
+                const unit = fc.unit.toLowerCase()
+                if (unit === 'day') return this._midnightInTz(tz)
+                if (unit === 'week') return this._startOfWeekInTz(tz)
+                if (unit === 'month') return this._startOfMonthInTz(tz)
+                throw new FlyqlError(`unsupported startOf unit: ${fc.unit}`)
+            }
+
+            default:
+                throw new FlyqlError(`unknown temporal function: ${fc.name}`)
         }
     }
 }

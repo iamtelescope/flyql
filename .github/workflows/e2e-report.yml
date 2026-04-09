@@ -3,6 +3,10 @@ name: E2E Report
 on:
   workflow_dispatch:
     inputs:
+      flyql_version:
+        description: 'FlyQL version to test (leave empty for local source)'
+        required: false
+        default: ''
       clickhouse_version:
         description: 'ClickHouse version'
         required: false
@@ -19,7 +23,7 @@ on:
         description: 'Publish report to GitHub Pages'
         required: false
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -54,15 +58,53 @@ jobs:
         with:
           version: 10
 
-      - name: Install dependencies
+      - name: Install FlyQL from package managers
+        if: ${{ inputs.flyql_version != '' }}
+        env:
+          FLYQL_VERSION: ${{ inputs.flyql_version }}
+        run: |
+          echo "Installing FlyQL v${FLYQL_VERSION} from package managers"
+
+          # Python: install from PyPI (overrides local)
+          pip install "flyql==${FLYQL_VERSION}"
+
+          # Python E2E: remove sys.path hack so it uses the pip-installed version
+          for f in python/e2e/test_*.py; do
+            sed -i '/sys.path.insert/d' "$f"
+          done
+
+          # JavaScript: install published package
+          cd javascript && npm install "flyql@${FLYQL_VERSION}" && cd ..
+
+          # JavaScript E2E: rewrite relative imports to use the installed package
+          for f in javascript/e2e/*.test.js; do
+            sed -i "s|from '\.\./src/core/parser\.js'|from 'flyql/core'|g" "$f"
+            sed -i "s|from '\.\./src/generators/clickhouse/index\.js'|from 'flyql/generators/clickhouse'|g" "$f"
+            sed -i "s|from '\.\./src/generators/postgresql/index\.js'|from 'flyql/generators/postgresql'|g" "$f"
+            sed -i "s|from '\.\./src/generators/starrocks/index\.js'|from 'flyql/generators/starrocks'|g" "$f"
+            sed -i "s|from '\.\./src/matcher/index\.js'|from 'flyql/matcher'|g" "$f"
+            sed -i "s|from '\.\./src/highlight\.js'|from 'flyql/highlight'|g" "$f"
+          done
+
+          # Go: point e2e module at the published version
+          cd golang/e2e
+          sed -i '/^replace /d' go.mod
+          go get "github.com/iamtelescope/flyql/golang@v${FLYQL_VERSION}"
+          go mod tidy
+          cd ../..
+
+      - name: Install FlyQL from local source
+        if: ${{ inputs.flyql_version == '' }}
         run: |
           cd python && make install
           cd ../javascript && npm ci
-          cd ../e2e && make install
+
+      - name: Install E2E dependencies
+        run: cd e2e && make install
 
       - name: Write version file
         run: |
-          cat > e2e/versions/ci.env <<EOF
+          cat > e2e/versions/ci.env <<'EOF'
           CLICKHOUSE_VERSION=${{ inputs.clickhouse_version }}
           POSTGRESQL_VERSION=${{ inputs.postgresql_version }}
           STARROCKS_VERSION=${{ inputs.starrocks_version }}
@@ -74,7 +116,7 @@ jobs:
       - name: Build viewer
         run: |
           cd e2e-viewer && npm ci
-          npx vite build
+          VITE_BASE=/flyql/ npx vite build
           cp ../e2e/output/report.json dist/report.json
 
       - name: Upload report artifact

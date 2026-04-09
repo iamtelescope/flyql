@@ -65,7 +65,7 @@ jobs:
         run: |
           echo "Installing FlyQL v${FLYQL_VERSION} from package managers"
 
-          pip install "flyql==${FLYQL_VERSION}"
+          cd python && python3 -m venv .venv && .venv/bin/pip install "flyql==${FLYQL_VERSION}" && .venv/bin/pip install pytest && cd ..
           for f in python/e2e/test_*.py; do
             sed -i '/sys.path.insert/d' "$f"
           done
@@ -89,7 +89,7 @@ jobs:
       - name: Install FlyQL from local source
         if: ${{ inputs.flyql_version == '' }}
         run: |
-          cd python && make install
+          cd python && python3 -m venv .venv && .venv/bin/pip install -e . && .venv/bin/pip install pytest
           cd ../javascript && npm ci
 
       - name: Install E2E dependencies

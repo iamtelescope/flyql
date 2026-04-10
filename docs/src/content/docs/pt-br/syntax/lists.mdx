@@ -62,6 +62,15 @@ Quando um gerador SQL processa uma lista, ele também valida que os tipos dos va
 
 O campo `valuesType` na expressão analisada indica se a lista contém valores `"string"` ou `"number"`. Para listas vazias, `valuesType` é `null`.
 
+## Parâmetros em Listas
+
+Placeholders de parâmetros podem aparecer dentro de listas IN, misturados livremente com valores literais:
+
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+Os objetos `Parameter` permanecem no array `values` até que `bindParams()` os resolva. Veja [Parâmetros](/pt-br/syntax/parameters/) para a referência completa.
+
 ## Combinado com Outros Operadores
 
 Os operadores de lista combinam com operadores booleanos como qualquer outra condição:

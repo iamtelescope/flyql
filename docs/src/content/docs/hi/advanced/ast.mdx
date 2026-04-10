@@ -34,10 +34,10 @@ AST तीन प्रकारों से बनता है: **Node** (ट
 |-------|------|-------------|
 | `key` | `Key` | परीक्षित फ़ील्ड (जैसे <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>)। |
 | `operator` | `string` | इनमें से एक: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>। |
-| `value` | `any` | तुलना मान। स्केलर ऑपरेटरों के लिए स्ट्रिंग, संख्या, बूलियन, या null। <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> के लिए खाली। |
-| `valueType` | `string` या `null` | `value` का स्पष्ट प्रकार: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, या `"null"`। <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> के लिए `null`। |
-| `values` | `array` या `null` | <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> ऑपरेटरों के लिए मानों की सूची। विषम हो सकती है। अन्य ऑपरेटरों के लिए `null`। |
-| `valuesTypes` | `string[]` या `null` | `values` के समानांतर प्रति-तत्व प्रकार ऐरे। प्रत्येक तत्व प्रकार स्थिरांकों में से एक है। जब `values` का उपयोग नहीं होता तो `null`। |
+| `value` | `any` | तुलना मान। स्केलर ऑपरेटरों के लिए स्ट्रिंग, संख्या, बूलियन, null, `FunctionCall`, या `Parameter`। <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> के लिए खाली। |
+| `valueType` | `string` या `null` | `value` का स्पष्ट प्रकार: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"`, या `"parameter"`। <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> के लिए `null`। |
+| `values` | `array` या `null` | <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> ऑपरेटरों के लिए मानों की सूची। विषम हो सकती है और इसमें `Parameter` प्रविष्टियाँ हो सकती हैं। अन्य ऑपरेटरों के लिए `null`। |
+| `valuesTypes` | `string[]` या `null` | `values` के समानांतर प्रति-तत्व प्रकार ऐरे। प्रत्येक तत्व प्रकार स्थिरांकों में से एक है (`"parameter"` सहित)। जब `values` का उपयोग नहीं होता तो `null`। |
 
 ### Key
 
@@ -48,6 +48,34 @@ AST तीन प्रकारों से बनता है: **Node** (ट
 | `segments` | `string[]` | पथ खंड। सरल कुंजी के लिए `["status"]`, नेस्टेड के लिए `["user", "metadata", "role"]`। |
 | `raw` | `string` | क्वेरी में लिखी गई मूल कुंजी स्ट्रिंग। |
 | `isSegmented` | `boolean` | `true` यदि कुंजी में एक से अधिक खंड हैं (अर्थात डॉट नोटेशन का उपयोग करती है)। |
+
+### Parameter
+
+एक `Parameter` एक अनसुलझे प्लेसहोल्डर (`$name` या `$1`) का प्रतिनिधित्व करता है जिसे SQL जनरेशन या मैचिंग से पहले `bindParams()` द्वारा प्रतिस्थापित किया जाएगा।
+
+| फ़ील्ड | प्रकार | विवरण |
+|-------|------|-------------|
+| `name` | `string` | `$` उपसर्ग के बिना प्लेसहोल्डर पहचानकर्ता। नामित: `"code"`। स्थितीय: `"1"`। |
+| `positional` | `boolean` | `true` यदि पैरामीटर स्थितीय है (केवल अंकों वाला नाम)। |
+
+एक `Parameter` इनमें दिखाई दे सकता है:
+- `expression.value` `valueType === "parameter"` के साथ (स्केलर स्थिति)
+- `expression.values` के अंदर एक प्रविष्टि (IN-सूची स्थिति)
+- `FunctionCall.parameterArgs` के अंदर एक प्रविष्टि (टेम्पोरल फ़ंक्शन तर्क स्थिति)
+
+`bindParams()` द्वारा उन्हें हल करने के बाद, AST में कोई भी `Parameter` इंस्टेंस नहीं बचता।
+
+### FunctionCall
+
+एक `FunctionCall` एक टेम्पोरल फ़ंक्शन मान (`ago(...)`, `now()`, `today(...)`, `startOf(...)`) का प्रतिनिधित्व करता है।
+
+| फ़ील्ड | प्रकार | विवरण |
+|-------|------|-------------|
+| `name` | `string` | इनमें से एक: `"ago"`, `"now"`, `"today"`, `"startOf"`। |
+| `durationArgs` | `Duration[]` | पार्स किए गए अवधि तर्क (जैसे `[{value: 5, unit: "m"}]`)। |
+| `unit` | `string` | `startOf` के लिए यूनिट तर्क (`"day"`, `"week"`, या `"month"`)। |
+| `timezone` | `string` | `today` और `startOf` के लिए टाइमज़ोन तर्क। |
+| `parameterArgs` | `Parameter[]` | पैरामीटर प्लेसहोल्डर जो बाइंड समय पर `durationArgs`/`unit`/`timezone` को भरेंगे। |
 
 ### ऑपरेटर
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### पैरामीटर प्लेसहोल्डर
+
+क्वेरी: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+`bindParams(node, { code: 200 })` के बाद:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### IN-सूची के अंदर पैरामीटर
+
+क्वेरी: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### टेम्पोरल फ़ंक्शन के अंदर पैरामीटर
+
+क्वेरी: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### नेस्टेड कुंजी
@@ -504,9 +585,12 @@ print(es_query)
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +610,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

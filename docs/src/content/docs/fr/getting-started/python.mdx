@@ -92,6 +92,29 @@ json_str = parse_to_json("message, status|upper", capabilities={"transformers": 
 print(json_str)
 ```
 
+## Requetes parametrees
+
+Utilisez les espaces reserves `$name` et `$1`, puis resolvez-les a l'execution avec `bind_params()` :
+
+```python
+from flyql import parse, bind_params
+from flyql.generators.clickhouse.generator import to_sql_where
+from flyql.generators.clickhouse.column import Column
+
+result = parse("status = $code and env = $env")
+bind_params(result.root, {"code": 200, "env": "prod"})
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "env": Column("env", False, "String"),
+}
+
+sql = to_sql_where(result.root, columns)
+print(sql)
+```
+
+Voir [Parametres](/fr/syntax/parameters/) pour la reference complete.
+
 ## Transformateurs dans les requetes
 
 Analysez une requete avec des transformateurs et generez du SQL :

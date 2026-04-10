@@ -21,6 +21,7 @@ Cette requete fonctionne de maniere identique que votre backend soit ClickHouse,
 - **Anti-injection par conception** — La grammaire ne peut pas exprimer de sous-requetes, JOINs, UNIONs ou DDL. La securite est structurelle, pas defensive. Tout le SQL genere utilise des valeurs parametrees.
 - **SQL multi-dialectes** — Un seul langage de requete, une sortie specifique au dialecte. Genere du SQL correct pour ClickHouse, PostgreSQL et StarRocks avec une gestion correcte des types (chemins JSON, acces Map, gestion des tableaux).
 - **Multi-langage** — Implementations completes en Go, Python et JavaScript. Analysez cote frontend, validez cote backend, generez du SQL n'importe ou — meme requete, memes resultats.
+- **Requetes parametrees** — Espaces reserves `$name` et `$1` resolus a l'execution via `bindParams()`. Modelisez une requete une seule fois, liez les valeurs en toute securite plus tard — pas de concatenation de chaines, pas d'echappement manuel.
 - **Zero dependance** — Parseur a machine d'etats ecrit a la main, sans dependance externe dans aucun langage. Trivial a integrer, rien de conflictuel.
 
 ## Exemple rapide

@@ -151,6 +151,7 @@ export default defineConfig({
             "syntax/values",
             "syntax/nested-keys",
             "syntax/transformers",
+            "syntax/parameters",
           ],
         },
         {

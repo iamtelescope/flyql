@@ -1,0 +1,286 @@
+---
+title: パラメータ
+description: FlyQL クエリで $name と $1 のプレースホルダを使い、bindParams() で実行時に解決する
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL は **パラメータプレースホルダ** をサポートしています。`$name`（名前付き）と `$1`（位置指定）の 2 種類があり、リテラル値が書ける場所ならどこにでも使えます。パラメータは実行時に `bindParams()` を呼ぶことで解決され、SQL 生成やメモリ上での評価の前に具体的な値に置き換えられます。
+
+これはクエリをテンプレート化する安全な方法です。クエリ本文は静的なまま保ち、後から具体的な値をバインドします。文字列連結もエスケープも不要で、インジェクションのリスクもありません。
+
+## パラメータを使う理由
+
+典型的なユースケースは、同じ形のクエリを異なる入力で実行するツールやダッシュボードです。
+
+<FlyqlCode code={`status = $code and env = $env`} />
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+パラメータ値は、フォーム入力、API リクエスト、その他あらゆる実行時の入力元から供給できます。クエリ文字列を再構築する必要はありません。
+
+## 構文
+
+### 名前付きパラメータ
+
+名前付きパラメータは、`$` の後に英字またはアンダースコアが続き、その後に英字、数字、アンダースコアの任意の組み合わせが続きます。
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`env = $my_env`} />
+<FlyqlCode code={`user = $_internal`} />
+
+パラメータ名には `$` プレフィックスは **含まれません**。`$code` は `code` という名前のパラメータを参照します。
+
+### 位置パラメータ
+
+位置パラメータは、`$` の後に数字のみが続きます。位置パラメータは **1 始まり** です（SQL の `$1` と同様）。
+
+<FlyqlCode code={`a = $1 and b = $2`} />
+
+`$0` は使えません。`$1abc`（数字の後に英字が続く形）も使えません。
+
+## パラメータを使える場所
+
+パラメータは、リテラル値が有効なあらゆる位置で使用できます。
+
+### 比較値
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`age >= $min_age`} />
+<FlyqlCode code={`name != $banned`} />
+<FlyqlCode code={`score > $1`} />
+
+### `has`, `like`, `ilike`
+
+<FlyqlCode code={`message has $needle`} />
+<FlyqlCode code={`path like $pattern`} />
+<FlyqlCode code={`title ilike $search`} />
+<FlyqlCode code={`tags not has $excluded`} />
+
+### IN リスト
+
+パラメータは `in` や `not in` のリスト内で、リテラル値と自由に混在させることができます。
+
+<FlyqlCode code={`status in [$x, $y]`} />
+<FlyqlCode code={`env in [$current, 'staging', 'dev']`} />
+<FlyqlCode code={`code not in [$banned, 401, 403]`} />
+
+### テンポラル関数の引数
+
+パラメータは `ago()` の duration 値、`today()` や `startOf()` のタイムゾーン引数の位置でも使えます。
+
+<FlyqlCode code={`created > ago($duration)`} />
+<FlyqlCode code={`date = today($tz)`} />
+<FlyqlCode code={`created > startOf('day', $tz)`} />
+
+`ago()` のパラメータにバインドする値は、`"5m"`、`"1h"`、`"7d"` のような duration 文字列である必要があります。
+
+### Transformer の引数
+
+パラメータは transformer の引数位置にも使えます。
+
+<FlyqlCode code={`tags|split($sep) has $needle`} />
+
+## bindParams()
+
+parse のあとに `bindParams()` を呼ぶと、パラメータプレースホルダを具体的な値で置き換えられます。この関数は AST をインプレースで走査し、見つけたすべての `Parameter` ノードを置換します。
+
+### Python
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+### JavaScript
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+ast, _ := flyql.Parse(`status = $code and env = $env`)
+err := flyql.BindParams(ast.Root, map[string]any{
+    "code": 200,
+    "env":  "prod",
+})
+```
+
+### API
+
+| 言語 | シグネチャ |
+|------|-----------|
+| Python | `bind_params(node, params: dict) -> Node` |
+| JavaScript | `bindParams(node, params: object): Node` |
+| Go | `BindParams(node *Node, params map[string]any) error` |
+
+- **`node`**: `parse()` が返すルート `Node`
+- **`params`**: パラメータ名を具体的な値にマップする dict / object / map。名前付きパラメータはその名前をキーにします（例: `"code"`）。位置パラメータは数字のみの文字列キーを使います（例: `"1"`、`"2"`）。名前付きと位置の混在も可能です。
+- **戻り値**: Python と JS は同じ `Node`（インプレースで変更）を返し、チェーン呼び出しが可能です。Go は `error` を返します。
+
+### 型のマッピング
+
+バインドした値のネイティブ型によって、AST 内の `value_type` が決まります。
+
+| ネイティブ型 | 生成される `value_type` |
+|--------------|------------------------|
+| `string` | `"string"` |
+| `int`（int64 の範囲内） | `"integer"` |
+| `int`（int64 の範囲外） | `"bigint"` |
+| `float` | `"float"` |
+| `bool` | `"boolean"` |
+| `null` / `None` / `nil` | `"null"` |
+
+型はバインドした値の **実行時の型** によって決まります。文字列として parse されるわけではありません。`"200"` をバインドすると string になり、integer にはなりません。
+
+```python
+bind_params(parse("a = $x").root, {"x": "200"})
+# expression.value      → "200"
+# expression.value_type → "string"
+
+bind_params(parse("a = $x").root, {"x": 200})
+# expression.value      → 200
+# expression.value_type → "integer"
+```
+
+サポートされていない型（`Decimal`、`BigInt`、カスタムオブジェクト、`undefined` など）はエラーになります。
+
+```
+unsupported parameter value type: Decimal
+```
+
+## 厳密な検証
+
+`bindParams()` は、不足しているパラメータにも余分なパラメータにも **厳密** です。
+
+### 不足しているパラメータ
+
+クエリが参照しているパラメータが dict に含まれていない場合、エラーになります。
+
+```python
+bind_params(parse("a = $x").root, {})
+# FlyqlError: unbound parameter: $x
+```
+
+### 余分なパラメータ
+
+クエリで参照されていないパラメータが dict に含まれている場合も、エラーになります。
+
+```python
+bind_params(parse("a = $x").root, {"x": 1, "y": 2})
+# FlyqlError: unused parameter: y
+```
+
+これは、パラメータ検証をクエリ実行時まで遅らせる一般的な SQL ドライバよりも厳しい挙動です。バインド時にエラーを捕捉することで、ミスを早期に可視化します。
+
+### 位置パラメータ
+
+位置パラメータでは、`1` から参照されている最大インデックスまでのすべてのインデックスを指定する必要があります。途中を飛ばすことはできません。
+
+```python
+bind_params(parse("a = $1 and b = $3").root, {"1": 1, "3": 3})
+# FlyqlError: unbound parameter: $2
+```
+
+## メモリ上のマッチング
+
+パラメータは matcher でも同じように動作します。先にバインドしてから評価します。
+
+```python
+from flyql import parse, bind_params
+from flyql.matcher.evaluator import Evaluator
+
+ast = parse("status = $code")
+bind_params(ast.root, {"code": 200})
+
+result = Evaluator().evaluate(ast.root, {"status": 200})
+```
+
+評価前に `bind_params()` を呼び忘れた場合、matcher は明確なエラーを送出します。
+
+```
+unbound parameter '$code' — call bind_params() before evaluating
+```
+
+同じガードがすべての SQL generator にも存在するため、未解決のパラメータを含む SQL を誤って生成することはありません。
+
+## AST での表現
+
+パラメータは AST 内では、`value_type: "parameter"` を持つ `Expression` として表され、値は `Parameter` オブジェクトになります。
+
+クエリ: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    value_type: "parameter"
+```
+
+IN リスト内のパラメータの場合、`Parameter` オブジェクトは `expression.values` 配列内に現れます。
+
+クエリ: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    values_types: ["parameter", "string"]
+```
+
+テンポラル関数内のパラメータは、`FunctionCall.parameter_args` に現れます。
+
+クエリ: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      duration_args: []
+      parameter_args: [{ name: "d", positional: false }]
+    value_type: "function"
+```
+
+`bindParams()` でこれらを解決すると、`Parameter` プレースホルダは具体的な値に置き換えられ、AST は通常の parse 済みクエリと同じ形になります。
+
+## エラー
+
+| エラー | Errno | 発生条件 |
+|--------|-------|----------|
+| `empty parameter name` | 74 | クエリに名前のない `$` が含まれる場合（例: `status = $`） |
+| `invalid parameter name` | 75 | 数字で始まり、数字以外が続く名前（例: `$1abc`） |
+| `positional parameters are 1-indexed` | 76 | 位置パラメータに `$0` を使った場合（例: `status = $0`） |
+
+`bindParams()` は次の場合に `FlyqlError` を送出します（Go では error を返します）。
+
+- `unbound parameter: $name`: クエリから参照されているが dict に存在しない
+- `unused parameter: name`: dict に存在するがクエリから参照されていない
+- `unsupported parameter value type: <type>`: バインドした値がサポートされていない型
+
+## 関連項目
+
+- [値と型](/ja/syntax/values/): パラメータが解決される値型
+- [リスト](/ja/syntax/lists/): IN リストの構文（パラメータはリスト値内にも使えます）
+- [AST とカスタム Generator](/ja/advanced/ast/): パラメータが AST でどう表現されるか

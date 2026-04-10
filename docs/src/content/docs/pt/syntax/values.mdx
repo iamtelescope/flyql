@@ -6,7 +6,7 @@ description: Tipos de valores, literais tipados e expressoes no FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-O FlyQL suporta 7 tipos de valores: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** e **Array**. Cada valor no AST possui um campo `value_type` explicito.
+O FlyQL suporta 10 tipos de valores: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function** e **Parameter**. Cada valor no AST possui um campo `value_type` explicito.
 
 ## Tipos de Valores
 
@@ -212,6 +212,18 @@ Nomes de funcao sem parenteses sao tratados como referencias de coluna, nao como
 
 Isto produz `value_type: "column"`, nao uma chamada de funcao.
 
+## Parameter
+
+Os marcadores de parâmetros (`$name` para nomeados, `$1` para posicionais) substituem valores que serão resolvidos em tempo de execução por `bindParams()`. Podem aparecer em qualquer posição onde um valor literal seja válido — incluindo listas IN, argumentos de funções temporais e argumentos de transformadores.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`, o valor é um objeto `Parameter` com os campos `name` e `positional`.
+
+Consulte [Parâmetros](/pt/syntax/parameters/) para a referência completa.
+
 ## Notas de Migracao
 
 Se estiver a actualizar a partir de uma versao anterior do FlyQL:
@@ -222,3 +234,6 @@ Se estiver a actualizar a partir de uma versao anterior do FlyQL:
 - **Novo:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> sao analisados como literais tipados (nao como strings)
 - **Novo:** O array `values_types` nas expressoes IN-list fornece tipos por elemento
 - **Novo:** O modulo `flyql.types` exporta constantes de tipo canonicas
+- **Incompativel:** Valores nao numericos sem aspas sao agora analisados como `value_type: "column"` (referencias de coluna), e nao `"string"`. Para corresponder a uma string, coloque o valor entre aspas: `field = 'value'`
+- **Novo:** Valores de funcoes temporais (`ago()`, `now()`, `today()`, `startOf()`) com `value_type: "function"`
+- **Novo:** Marcadores de parametros (`$name`, `$1`) com `value_type: "parameter"`, resolvidos por `bindParams()` em tempo de execucao

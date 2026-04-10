@@ -89,6 +89,27 @@ json_str = parse_to_json("message, status|upper", capabilities={"transformers": 
 print(json_str)
 ```
 
+## 参数化查询
+
+使用 `$name` 和 `$1` 占位符，然后在运行时通过 `bind_params()` 解析它们：
+
+```python
+from flyql import parse, bind_params
+from flyql.generators.clickhouse.generator import to_sql_where, Column
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "env": Column("env", False, "String"),
+}
+sql = to_sql_where(ast.root, columns)
+print(sql)
+```
+
+完整参考见[参数](/zh/syntax/parameters/)。
+
 ## 带转换器的查询
 
 ```python

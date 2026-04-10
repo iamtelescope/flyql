@@ -10,6 +10,7 @@ import generateSnippet from '@snippets/javascript/getting-started-generate-click
 import matchSnippet from '@snippets/javascript/getting-started-match.mjs?raw'
 import columnsSnippet from '@snippets/javascript/getting-started-columns.mjs?raw'
 import transformersSnippet from '@snippets/javascript/getting-started-transformers.mjs?raw'
+import parametersSnippet from '@snippets/javascript/getting-started-parameters.mjs?raw'
 
 ## Installation
 
@@ -57,6 +58,14 @@ Evaluate a query against a data record without generating SQL:
 Parse a columns expression into structured data with segments, transformers, and aliases:
 
 <Code code={columnsSnippet.trim()} lang="javascript" />
+
+## Parameterized Queries
+
+Use `$name` and `$1` placeholders, then resolve them at runtime with `bindParams()`:
+
+<Code code={parametersSnippet.trim()} lang="javascript" />
+
+See [Parameters](/syntax/parameters/) for the full reference.
 
 ## Transformers in Queries
 

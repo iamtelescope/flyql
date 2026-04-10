@@ -105,6 +105,19 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## Consultas Parametrizadas
+
+Use placeholders `$name` e `$1`, e depois resolva-os em tempo de execução com `bindParams()`:
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+Veja [Parâmetros](/pt-br/syntax/parameters/) para a referência completa.
+
 ## Transformadores em Consultas
 
 Parseie uma consulta com transformadores e gere SQL:

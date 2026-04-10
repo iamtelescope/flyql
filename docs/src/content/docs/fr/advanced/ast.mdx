@@ -34,10 +34,10 @@ Une `Expression` represente une condition unique — une cle, un operateur et un
 |-------|------|-------------|
 | `key` | `Key` | Le champ teste (par ex. <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | L'un de : <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
-| `value` | `any` | La valeur de comparaison. Une chaine, un nombre, un booleen ou null pour les operateurs scalaires. Vide pour <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` ou `null` | Le type explicite de `value` : `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` ou `"null"`. `null` pour <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
-| `values` | `array` ou `null` | Liste de valeurs pour les operateurs <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken>. Peut etre heterogene. `null` pour les autres operateurs. |
-| `valuesTypes` | `string[]` ou `null` | Tableau de types par element, parallele a `values`. Chaque element est l'une des constantes de type. `null` lorsque `values` n'est pas utilise. |
+| `value` | `any` | La valeur de comparaison. Une chaine, un nombre, un booleen, null, un `FunctionCall` ou un `Parameter` pour les operateurs scalaires. Vide pour <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` ou `null` | Le type explicite de `value` : `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` ou `"parameter"`. `null` pour <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `values` | `array` ou `null` | Liste de valeurs pour les operateurs <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken>. Peut etre heterogene et peut contenir des entrees `Parameter`. `null` pour les autres operateurs. |
+| `valuesTypes` | `string[]` ou `null` | Tableau de types par element, parallele a `values`. Chaque element est l'une des constantes de type (y compris `"parameter"`). `null` lorsque `values` n'est pas utilise. |
 
 ### Key
 
@@ -48,6 +48,34 @@ Un `Key` represente le chemin du champ interroge.
 | `segments` | `string[]` | Segments du chemin. `["status"]` pour une cle simple, `["user", "metadata", "role"]` pour une cle imbriquee. |
 | `raw` | `string` | La chaine de cle originale telle qu'ecrite dans la requete. |
 | `isSegmented` | `boolean` | `true` si la cle a plus d'un segment (c'est-a-dire utilise la notation par points). |
+
+### Parameter
+
+Un `Parameter` represente un espace reserve non resolu (`$name` ou `$1`) qui sera substitue par `bindParams()` avant la generation SQL ou le matching.
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | L'identifiant de l'espace reserve sans le prefixe `$`. Nomme : `"code"`. Positionnel : `"1"`. |
+| `positional` | `boolean` | `true` si le parametre est positionnel (nom compose uniquement de chiffres). |
+
+Un `Parameter` peut apparaitre comme :
+- `expression.value` avec `valueType === "parameter"` (position scalaire)
+- Une entree dans `expression.values` (position de liste IN)
+- Une entree dans `FunctionCall.parameterArgs` (position d'argument de fonction temporelle)
+
+Apres que `bindParams()` les ait resolus, plus aucune instance de `Parameter` ne subsiste dans l'AST.
+
+### FunctionCall
+
+Un `FunctionCall` represente une valeur de fonction temporelle (`ago(...)`, `now()`, `today(...)`, `startOf(...)`).
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | L'un de `"ago"`, `"now"`, `"today"`, `"startOf"`. |
+| `durationArgs` | `Duration[]` | Arguments de duree analyses (par ex. `[{value: 5, unit: "m"}]`). |
+| `unit` | `string` | L'argument d'unite pour `startOf` (`"day"`, `"week"` ou `"month"`). |
+| `timezone` | `string` | L'argument de fuseau horaire pour `today` et `startOf`. |
+| `parameterArgs` | `Parameter[]` | Espaces reserves de parametres qui rempliront `durationArgs`/`unit`/`timezone` au moment du binding. |
 
 ### Operateurs
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### Espace reserve de parametre
+
+Requete : <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+Apres `bindParams(node, { code: 200 })` :
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### Parametre dans une liste IN
+
+Requete : <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### Parametre dans une fonction temporelle
+
+Requete : <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### Cle imbriquee
@@ -504,9 +585,12 @@ La difference cle avec un generateur personnalise est que les generateurs SQL va
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +610,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

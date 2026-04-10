@@ -21,6 +21,7 @@ Esta consulta funciona igual tanto si tu backend usa ClickHouse, PostgreSQL, Sta
 - **Resistente a inyecciones por diseño**: la gramática no puede expresar subconsultas, `JOIN`, `UNION` ni DDL. La seguridad es estructural, no defensiva. Todo el SQL generado usa valores parametrizados.
 - **SQL para varios dialectos**: un solo lenguaje de consultas con salida específica por dialecto. Genera SQL correcto para ClickHouse, PostgreSQL y StarRocks con el manejo de tipos adecuado para JSON, Map y Array.
 - **Multilenguaje**: implementaciones completas en Go, Python y JavaScript. Puedes parsear en el frontend, validar en el backend y generar SQL en cualquier parte: misma consulta, mismos resultados.
+- **Consultas parametrizadas**: marcadores `$name` y `$1` que se resuelven en tiempo de ejecución mediante `bindParams()`. Plantilla una consulta una sola vez y asocia los valores de forma segura más tarde — sin concatenación de strings ni escapado manual.
 - **Sin dependencias**: parser escrito a mano como máquina de estados, sin dependencias externas en ningún lenguaje. Es fácil de integrar y no introduce conflictos.
 
 ## Ejemplo rápido

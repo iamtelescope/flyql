@@ -92,6 +92,32 @@ json_str = parse_to_json("message, status|upper", capabilities={"transformers": 
 print(json_str)
 ```
 
+## Parametrisierte Abfragen
+
+Verwende `$name`- und `$1`-Platzhalter und löse sie zur Laufzeit mit `bind_params()` auf:
+
+```python
+from flyql import parse, bind_params
+from flyql.generators.clickhouse.generator import to_sql_where
+from flyql.generators.clickhouse.column import Column
+
+# Eine Abfrage mit Parameter-Platzhaltern parsen
+result = parse("status = $code and env in [$env, 'staging']")
+
+# Konkrete Werte an die Parameter binden
+bind_params(result.root, {"code": 200, "env": "prod"})
+
+# SQL generieren
+columns = {
+    "status": Column("status", False, "Int32"),
+    "env": Column("env", False, "String"),
+}
+sql = to_sql_where(result.root, columns)
+print(sql)
+```
+
+Siehe [Parameter](/de/syntax/parameters/) für die vollständige Referenz.
+
 ## Transformers in Abfragen
 
 Parse eine Abfrage mit Transformern und generiere SQL:

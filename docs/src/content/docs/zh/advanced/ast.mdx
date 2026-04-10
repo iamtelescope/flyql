@@ -34,10 +34,10 @@ AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条
 |------|------|------|
 | `key` | `Key` | 被测试的字段（例如 <FlyqlToken type="key">status</FlyqlToken>、<FlyqlToken type="key">user.metadata.role</FlyqlToken>）。 |
 | `operator` | `string` | 以下之一：<FlyqlToken type="operator">=</FlyqlToken>、<FlyqlToken type="operator">!=</FlyqlToken>、<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>、<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>、<FlyqlToken type="operator">truthy</FlyqlToken>、<FlyqlToken type="operator">in</FlyqlToken>、<FlyqlToken type="operator">not in</FlyqlToken>、<FlyqlToken type="operator">has</FlyqlToken>、<FlyqlToken type="operator">not has</FlyqlToken>。 |
-| `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean 或 Null。对于 <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 为空。 |
-| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"` 或 `"null"`。<FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> 时为 `null`。 |
-| `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 操作符的值列表。可以是异构的。其他操作符时为 `null`。 |
-| `valuesTypes` | `string[]` or `null` | 与 `values` 平行的逐元素类型数组。每个元素是类型常量之一。未使用 `values` 时为 `null`。 |
+| `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean、Null、`FunctionCall` 或 `Parameter`。对于 <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 为空。 |
+| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"`、`"null"`、`"function"` 或 `"parameter"`。<FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> 时为 `null`。 |
+| `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 操作符的值列表。可以是异构的，并且可以包含 `Parameter` 条目。其他操作符时为 `null`。 |
+| `valuesTypes` | `string[]` or `null` | 与 `values` 平行的逐元素类型数组。每个元素是类型常量之一（包括 `"parameter"`）。未使用 `values` 时为 `null`。 |
 
 ### Key
 
@@ -48,6 +48,34 @@ AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条
 | `segments` | `string[]` | 路径片段。简单键为 `["status"]`，嵌套键为 `["user", "metadata", "role"]`。 |
 | `raw` | `string` | 查询中原始书写的键字符串。 |
 | `isSegmented` | `boolean` | 如果键有多个片段（即使用了点号表示法），则为 `true`。 |
+
+### Parameter
+
+`Parameter` 表示一个未解析的占位符（`$name` 或 `$1`），将在 SQL 生成或匹配之前由 `bindParams()` 替换。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | `string` | 不含 `$` 前缀的占位符标识符。命名参数：`"code"`。位置参数：`"1"`。 |
+| `positional` | `boolean` | 如果参数是位置参数（名称只包含数字），则为 `true`。 |
+
+`Parameter` 可以出现在：
+- `expression.value`，此时 `valueType === "parameter"`（标量位置）
+- `expression.values` 中的某个元素（IN 列表位置）
+- `FunctionCall.parameterArgs` 中的某个元素（时间函数参数位置）
+
+在 `bindParams()` 解析之后，AST 中将不再存在 `Parameter` 实例。
+
+### FunctionCall
+
+`FunctionCall` 表示一个时间函数值（`ago(...)`、`now()`、`today(...)`、`startOf(...)`）。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `name` | `string` | `"ago"`、`"now"`、`"today"` 或 `"startOf"` 之一。 |
+| `durationArgs` | `Duration[]` | 解析后的时间段参数（例如 `[{value: 5, unit: "m"}]`）。 |
+| `unit` | `string` | `startOf` 的单位参数（`"day"`、`"week"` 或 `"month"`）。 |
+| `timezone` | `string` | `today` 和 `startOf` 的时区参数。 |
+| `parameterArgs` | `Parameter[]` | 将在绑定时填充 `durationArgs`/`unit`/`timezone` 的参数占位符。 |
 
 ### 操作符
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### 参数占位符
+
+查询：<FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+在 `bindParams(node, { code: 200 })` 之后：
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### IN 列表中的参数
+
+查询：<FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### 时间函数中的参数
+
+查询：<FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### 嵌套键
@@ -504,9 +585,12 @@ print(es_query)
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +610,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

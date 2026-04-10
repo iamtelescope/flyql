@@ -131,6 +131,43 @@ func main() {
 }
 ```
 
+## पैरामीटराइज़्ड क्वेरी
+
+`$name` और `$1` प्लेसहोल्डर का उपयोग करें, फिर रनटाइम पर `BindParams()` के साथ उन्हें हल करें:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	// Named parameters
+	ast, err := flyql.Parse("status = $code and env = $env")
+	if err != nil {
+		panic(err)
+	}
+	if err := flyql.BindParams(ast.Root, map[string]any{
+		"code": 200,
+		"env":  "prod",
+	}); err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"env":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "env", Type: "String"}),
+	}
+	sql, _ := clickhouse.ToSQLWhere(ast.Root, columns)
+	fmt.Println(sql)
+}
+```
+
+पूर्ण संदर्भ के लिए [पैरामीटर](/hi/syntax/parameters/) देखें।
+
 ## क्वेरी में ट्रांसफ़ॉर्मर
 
 ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:

@@ -11,3 +11,4 @@ class ValueType(str, Enum):
     ARRAY = "array"
     COLUMN = "column"
     FUNCTION = "function"
+    PARAMETER = "parameter"

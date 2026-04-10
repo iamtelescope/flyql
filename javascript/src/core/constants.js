@@ -17,6 +17,7 @@ export const DOUBLE_QUOTE = '"'
 export const SINGLE_QUOTE = "'"
 export const PIPE = '|'
 export const NEWLINE = '\n'
+export const DOLLAR = '$'
 
 export const CharType = Object.freeze({
     KEY: 'flyqlKey',
@@ -34,6 +35,7 @@ export const CharType = Object.freeze({
     ARGUMENT_NUMBER: 'flyqlArgumentNumber',
     WILDCARD: 'flyqlWildcard',
     COLUMN: 'flyqlColumn',
+    PARAMETER: 'flyqlParameter',
 })
 
 export const State = Object.freeze({
@@ -66,6 +68,9 @@ export const State = Object.freeze({
     FUNCTION_QUOTED_ARG: 'FunctionQuotedArg',
     FUNCTION_EXPECT_COMMA_OR_CLOSE: 'FunctionExpectCommaOrClose',
     FUNCTION_EXPECT_ARG: 'FunctionExpectArg',
+    PARAMETER: 'Parameter',
+    IN_LIST_PARAMETER: 'InListParameter',
+    FUNCTION_PARAMETER: 'FunctionParameter',
 })
 
 export const BoolOperator = Object.freeze({
@@ -124,6 +129,10 @@ export const ERR_UNKNOWN_FUNCTION = 70
 export const ERR_INVALID_FUNCTION_ARGS = 71
 export const ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR = 72
 export const ERR_INVALID_DURATION = 73
+export const ERR_EMPTY_PARAMETER_NAME = 74
+export const ERR_INVALID_PARAMETER_NAME = 75
+export const ERR_PARAMETER_ZERO_INDEX = 76
+export const ERR_PARAMETER_IN_LIST = 77
 
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]
 

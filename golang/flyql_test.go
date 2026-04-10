@@ -63,16 +63,30 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 
 	if node.Expression != nil {
 		var value any = node.Expression.Value
-		if fc, ok := node.Expression.Value.(*FunctionCall); ok {
-			durationArgs := make([]map[string]any, len(fc.DurationArgs))
-			for i, d := range fc.DurationArgs {
+		switch v := node.Expression.Value.(type) {
+		case *FunctionCall:
+			durationArgs := make([]map[string]any, len(v.DurationArgs))
+			for i, d := range v.DurationArgs {
 				durationArgs[i] = map[string]any{"value": d.Value, "unit": d.Unit}
 			}
-			value = map[string]any{
-				"name":          fc.Name,
+			fcMap := map[string]any{
+				"name":          v.Name,
 				"duration_args": durationArgs,
-				"unit":          fc.Unit,
-				"timezone":      fc.Timezone,
+				"unit":          v.Unit,
+				"timezone":      v.Timezone,
+			}
+			if len(v.ParameterArgs) > 0 {
+				paramArgs := make([]any, len(v.ParameterArgs))
+				for i, p := range v.ParameterArgs {
+					paramArgs[i] = map[string]any{"name": p.Name, "positional": p.Positional}
+				}
+				fcMap["parameter_args"] = paramArgs
+			}
+			value = fcMap
+		case *Parameter:
+			value = map[string]any{
+				"name":       v.Name,
+				"positional": v.Positional,
 			}
 		}
 		expr := &expectedExpression{
@@ -82,7 +96,16 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 			ValueType: string(node.Expression.ValueType),
 		}
 		if node.Expression.Values != nil {
-			expr.Values = node.Expression.Values
+			serializedValues := make([]any, 0, len(node.Expression.Values))
+			for _, vv := range node.Expression.Values {
+				switch pv := vv.(type) {
+				case *Parameter:
+					serializedValues = append(serializedValues, map[string]any{"name": pv.Name, "positional": pv.Positional})
+				default:
+					serializedValues = append(serializedValues, vv)
+				}
+			}
+			expr.Values = serializedValues
 			if node.Expression.ValuesType != nil {
 				expr.ValuesType = *node.Expression.ValuesType
 			}
@@ -184,59 +207,58 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 			if got.Expression.ValueType != want.Expression.ValueType {
 				t.Errorf("%s: ValueType mismatch: got %v, want %v", path, got.Expression.ValueType, want.Expression.ValueType)
 			}
-		}
-
-		switch wv := want.Expression.Value.(type) {
-		case float64:
-			switch gv := got.Expression.Value.(type) {
+			switch wv := want.Expression.Value.(type) {
 			case float64:
-				if gv != wv {
-					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
-				}
-			case int64:
-				if float64(gv) != wv {
-					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
-				}
-			case uint64:
-				if float64(gv) != wv {
-					t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
-				}
-			default:
-				t.Errorf("%s: Value type mismatch: got %T, want float64", path, got.Expression.Value)
-			}
-		case string:
-			// A string expected value with numeric value_type means a large integer
-			// stored as string to avoid JSON float64 precision loss.
-			if want.Expression.ValueType == "integer" || want.Expression.ValueType == "bigint" {
-				var gotStr string
 				switch gv := got.Expression.Value.(type) {
-				case int64:
-					gotStr = strconv.FormatInt(gv, 10)
-				case uint64:
-					gotStr = strconv.FormatUint(gv, 10)
 				case float64:
-					gotStr = strconv.FormatFloat(gv, 'f', -1, 64)
+					if gv != wv {
+						t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+					}
+				case int64:
+					if float64(gv) != wv {
+						t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+					}
+				case uint64:
+					if float64(gv) != wv {
+						t.Errorf("%s: Value mismatch: got %v, want %v", path, gv, wv)
+					}
 				default:
-					t.Errorf("%s: Value type mismatch: got %T, want numeric", path, got.Expression.Value)
-					return
+					t.Errorf("%s: Value type mismatch: got %T, want float64", path, got.Expression.Value)
 				}
-				if gotStr != wv {
-					t.Errorf("%s: Value mismatch: got %q, want %q", path, gotStr, wv)
+			case string:
+				// A string expected value with numeric value_type means a large integer
+				// stored as string to avoid JSON float64 precision loss.
+				if want.Expression.ValueType == "integer" || want.Expression.ValueType == "bigint" {
+					var gotStr string
+					switch gv := got.Expression.Value.(type) {
+					case int64:
+						gotStr = strconv.FormatInt(gv, 10)
+					case uint64:
+						gotStr = strconv.FormatUint(gv, 10)
+					case float64:
+						gotStr = strconv.FormatFloat(gv, 'f', -1, 64)
+					default:
+						t.Errorf("%s: Value type mismatch: got %T, want numeric", path, got.Expression.Value)
+						return
+					}
+					if gotStr != wv {
+						t.Errorf("%s: Value mismatch: got %q, want %q", path, gotStr, wv)
+					}
+				} else {
+					gv, ok := got.Expression.Value.(string)
+					if !ok {
+						t.Errorf("%s: Value type mismatch: got %T, want string", path, got.Expression.Value)
+					} else if gv != wv {
+						t.Errorf("%s: Value mismatch: got %q, want %q", path, gv, wv)
+					}
 				}
-			} else {
-				gv, ok := got.Expression.Value.(string)
+			case map[string]any:
+				gv, ok := got.Expression.Value.(map[string]any)
 				if !ok {
-					t.Errorf("%s: Value type mismatch: got %T, want string", path, got.Expression.Value)
-				} else if gv != wv {
-					t.Errorf("%s: Value mismatch: got %q, want %q", path, gv, wv)
+					t.Errorf("%s: Value type mismatch: got %T, want map[string]any", path, got.Expression.Value)
+				} else {
+					compareFunctionCallMaps(t, gv, wv, path)
 				}
-			}
-		case map[string]any:
-			gv, ok := got.Expression.Value.(map[string]any)
-			if !ok {
-				t.Errorf("%s: Value type mismatch: got %T, want map[string]any", path, got.Expression.Value)
-			} else {
-				compareFunctionCallMaps(t, gv, wv, path)
 			}
 		}
 
@@ -334,6 +356,7 @@ func TestParser(t *testing.T) {
 		"parser/null_errors.json",
 		"parser/like.json",
 		"parser/functions.json",
+		"parser/parameters.json",
 	}
 
 	for _, file := range files {

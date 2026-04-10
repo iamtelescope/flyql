@@ -31,6 +31,7 @@ const QUERY_CLASS = {
     [QueryCharType.ARGUMENT]: 'flyql-argument',
     [QueryCharType.WILDCARD]: 'flyql-wildcard',
     [QueryCharType.COLUMN]: 'flyql-column',
+    [QueryCharType.PARAMETER]: 'flyql-parameter',
 }
 
 const COLUMNS_CLASS = {

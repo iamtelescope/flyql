@@ -16,7 +16,7 @@ Verwende <FlyqlToken type="operator">in</FlyqlToken>, um zu prüfen, ob ein Wert
 ## Syntaxregeln
 
 - Werte werden in eckige Klammern <FlyqlToken type="operator">[ ]</FlyqlToken> eingeschlossen und durch Kommas getrennt
-- Alle Werte in einer Liste müssen denselben Typ haben (entweder nur Strings oder nur Zahlen)
+- Werte dürfen gemischte Typen haben: <FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - String-Werte müssen in Anführungszeichen stehen: <FlyqlCode code={`['a', 'b', 'c']`} inline />
 - Numerische Werte stehen ohne Anführungszeichen: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Leerzeichen um Kommas und Klammern sind erlaubt
@@ -45,22 +45,24 @@ Eine leere <FlyqlToken type="operator">in</FlyqlToken>-Liste ist immer false —
 
 Eine leere <FlyqlToken type="operator">not in</FlyqlToken>-Liste ist immer true — alles ist „not in" einer leeren Liste.
 
-## Typkonsistenz
+## Gemischte Typen
 
-Listen **müssen** Werte eines einheitlichen Typs enthalten – entweder nur Strings oder nur Zahlen. Gemischte Typen innerhalb einer Liste führen zu einem Parse-Fehler:
+Listen unterstützen heterogene Werte – du kannst Strings, Zahlen, Booleans und null mischen:
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-Das Folgende ist ungültig (gemischte Typen – Parse-Fehler):
+Jedes Element trägt seinen eigenen Typ im `valuesTypes`-Array des geparsten Ausdrucks (z. B. `["integer", "string", "boolean", "null"]`). Bei leeren Listen ist `valuesTypes` `null`.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+Wenn ein SQL-Generator eine Liste verarbeitet, prüft er, ob die Werttypen der Liste mit dem Typ der Zielspalte kompatibel sind. Werden beispielsweise String-Werte an eine numerische Spalte übergeben, führt das bei der SQL-Generierung zu einem Validierungsfehler.
 
-Der Parser merkt sich den Typ des ersten Werts in der Liste und lehnt jeden nachfolgenden Wert mit abweichendem Typ ab. Diese Prüfung erfolgt bereits beim Parsen, bevor die Abfrage einen Generator oder Matcher erreicht.
+## Parameter in Listen
 
-Wenn ein SQL-Generator eine Liste verarbeitet, prüft er zusätzlich, ob die Werttypen der Liste mit dem Typ der Zielspalte kompatibel sind. Werden beispielsweise String-Werte an eine numerische Spalte übergeben, führt das bei der SQL-Generierung zu einem Validierungsfehler.
+Parameter-Platzhalter können innerhalb von IN-Listen auftreten und frei mit Literalwerten gemischt werden:
 
-Das Feld `valuesType` im geparsten Ausdruck zeigt an, ob die Liste `"string"`- oder `"number"`-Werte enthält. Bei leeren Listen ist `valuesType` `null`.
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+Die `Parameter`-Objekte bleiben im `values`-Array, bis `bindParams()` sie auflöst. Siehe [Parameter](/de/syntax/parameters/) für die vollständige Referenz.
 
 ## Kombination mit anderen Operatoren
 

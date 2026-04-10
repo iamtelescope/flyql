@@ -105,6 +105,28 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## Consultas Parametrizadas
+
+Utilize marcadores `$name` e `$1` e depois resolva-os em tempo de execução com `bindParams()`:
+
+```javascript
+import { parse, bindParams } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse('status = $code and env = $env')
+bindParams(result.root, { code: 200, env: 'prod' })
+
+const columns = {
+    status: newColumn('status', false, 'UInt32', null),
+    env: newColumn('env', false, 'String', null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+Consulte [Parâmetros](/pt/syntax/parameters/) para a referência completa.
+
 ## Transformadores em Consultas
 
 Analise uma consulta com transformadores e gere SQL:

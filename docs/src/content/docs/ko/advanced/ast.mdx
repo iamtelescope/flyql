@@ -34,10 +34,10 @@ AST는 세 가지 타입으로 구성됩니다: **Node**(트리 구조), **Expre
 |-------|------|-------------|
 | `key` | `Key` | 검사할 필드입니다. 예: <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken> |
 | `operator` | `string` | 다음 중 하나입니다: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
-| `value` | `any` | 비교 값입니다. 스칼라 연산자에서는 문자열, 숫자, boolean 또는 null입니다. <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>에서는 비어 있습니다. |
-| `valueType` | `string` 또는 `null` | `value`의 명시적 타입입니다: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`. <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>에서는 `null`입니다. |
-| `values` | `array` 또는 `null` | <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken> 연산자용 값 목록입니다. 서로 다른 타입이 섞일 수 있습니다. 다른 연산자에서는 `null`입니다. |
-| `valuesTypes` | `string[]` 또는 `null` | `values`와 병렬인 요소별 타입 배열입니다. 각 요소는 타입 상수 중 하나입니다. `values`를 사용하지 않을 때는 `null`입니다. |
+| `value` | `any` | 비교 값입니다. 스칼라 연산자에서는 문자열, 숫자, boolean, null, `FunctionCall`, 또는 `Parameter`입니다. <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>에서는 비어 있습니다. |
+| `valueType` | `string` 또는 `null` | `value`의 명시적 타입입니다: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"`, 또는 `"parameter"`. <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>에서는 `null`입니다. |
+| `values` | `array` 또는 `null` | <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken> 연산자용 값 목록입니다. 서로 다른 타입이 섞일 수 있고, `Parameter` 항목을 포함할 수 있습니다. 다른 연산자에서는 `null`입니다. |
+| `valuesTypes` | `string[]` 또는 `null` | `values`와 병렬인 요소별 타입 배열입니다. 각 요소는 타입 상수 중 하나입니다(`"parameter"` 포함). `values`를 사용하지 않을 때는 `null`입니다. |
 
 ### Key
 
@@ -48,6 +48,34 @@ AST는 세 가지 타입으로 구성됩니다: **Node**(트리 구조), **Expre
 | `segments` | `string[]` | 경로 세그먼트입니다. 단순 키는 `["status"]`, 중첩 키는 `["user", "metadata", "role"]` 입니다. |
 | `raw` | `string` | 쿼리에 작성된 원래 key 문자열입니다. |
 | `isSegmented` | `boolean` | key가 둘 이상의 세그먼트를 가지면(`.` 표기 사용) `true`입니다. |
+
+### Parameter
+
+`Parameter`는 SQL 생성이나 매칭 전에 `bindParams()`로 치환될 해석되지 않은 placeholder(`$name` 또는 `$1`)를 나타냅니다.
+
+| 필드 | 타입 | 설명 |
+|-------|------|-------------|
+| `name` | `string` | `$` 접두사를 제외한 placeholder 식별자입니다. Named의 경우 `"code"`, positional의 경우 `"1"`입니다. |
+| `positional` | `boolean` | 파라미터가 positional(숫자만 포함된 이름)이면 `true`입니다. |
+
+`Parameter`는 다음 위치에 나타날 수 있습니다.
+- `expression.value`이며 `valueType === "parameter"` (스칼라 위치)
+- `expression.values` 안의 항목 (IN 리스트 위치)
+- `FunctionCall.parameterArgs` 안의 항목 (시간 함수 인수 위치)
+
+`bindParams()`로 해석되고 나면 AST에 `Parameter` 인스턴스가 남지 않습니다.
+
+### FunctionCall
+
+`FunctionCall`은 시간 함수 값(`ago(...)`, `now()`, `today(...)`, `startOf(...)`)을 나타냅니다.
+
+| 필드 | 타입 | 설명 |
+|-------|------|-------------|
+| `name` | `string` | `"ago"`, `"now"`, `"today"`, `"startOf"` 중 하나입니다. |
+| `durationArgs` | `Duration[]` | parse된 duration 인수들입니다(예: `[{value: 5, unit: "m"}]`). |
+| `unit` | `string` | `startOf`의 unit 인수입니다(`"day"`, `"week"`, `"month"`). |
+| `timezone` | `string` | `today`와 `startOf`의 타임존 인수입니다. |
+| `parameterArgs` | `Parameter[]` | 바인드 시점에 `durationArgs`/`unit`/`timezone`을 채울 파라미터 placeholder들입니다. |
 
 ### Operators
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### 파라미터 placeholder
+
+Query: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+`bindParams(node, { code: 200 })` 이후:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### IN 리스트 안의 파라미터
+
+Query: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### 시간 함수 안의 파라미터
+
+Query: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### 중첩 키
@@ -504,12 +585,16 @@ print(es_query)
 ```javascript
 import {
   parse,               // 쿼리 문자열을 AST로 parse
+  bindParams,          // 파라미터 placeholder 해석: bindParams(node, params)
   Parser,              // Parser 클래스 (고급 사용)
   Node,                // AST branch/leaf 노드
   Expression,          // leaf 조건
+  Parameter,           // 파라미터 placeholder ($name / $1)
+  FunctionCall,        // 시간 함수 값 (ago, now, today, startOf)
   Key,                 // 필드 경로
   Range,               // 소스 위치 범위 [start, end)
   Column,              // validator용 핵심 column 타입
+  ColumnSchema,        // 중첩 해석이 가능한 column schema 컨테이너
   Operator,            // 비교 operator 상수
   BoolOperator,        // 불리언 operator 상수 ("and", "or")
   FlyqlError,          // 기본 에러 클래스
@@ -525,13 +610,18 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST 노드 struct
-// flyql.Expression  — leaf 조건 struct
-// flyql.Key         — 필드 경로 struct
-// flyql.Range       — 소스 위치 범위 [Start, End)
-// flyql.Column      — validator용 핵심 column 타입
+// flyql.BindParams(node *Node, params map[string]any) error — 파라미터 placeholder 해석
+// flyql.Node         — AST 노드 struct
+// flyql.Expression   — leaf 조건 struct
+// flyql.Parameter    — 파라미터 placeholder struct ($name / $1)
+// flyql.FunctionCall — 시간 함수 값 struct
+// flyql.Key          — 필드 경로 struct
+// flyql.Range        — 소스 위치 범위 [Start, End)
+// flyql.Column       — validator용 핵심 column 타입
+// flyql.ColumnSchema — 중첩 해석이 가능한 column schema 컨테이너
+// flyql.FromColumns(cols) *ColumnSchema — 플랫 column slice에서 schema 생성
 // flyql.Diagnose(ast, schema, registry) []Diagnostic — AST validator
-// flyql.Diagnostic  — 위치 포함 진단 레코드
+// flyql.Diagnostic   — 위치 포함 진단 레코드
 //
 // Operator constants: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy 등
 // Bool operator constants: flyql.BoolOpAnd, flyql.BoolOpOr
@@ -540,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

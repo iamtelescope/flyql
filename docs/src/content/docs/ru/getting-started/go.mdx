@@ -124,6 +124,51 @@ func main() {
 }
 ```
 
+## Параметризованные запросы
+
+Используйте плейсхолдеры `$name` и `$1`, а затем разрешайте их во время выполнения с помощью `BindParams()`:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	// Парсим запрос с плейсхолдерами параметров
+	result, err := flyql.Parse(`status = $code and env in [$env, 'staging']`)
+	if err != nil {
+		panic(err)
+	}
+
+	// Связываем конкретные значения с параметрами
+	if err := flyql.BindParams(result.Root, map[string]any{
+		"code": 200,
+		"env":  "prod",
+	}); err != nil {
+		panic(err)
+	}
+
+	// Генерируем SQL
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "Int32"}),
+		"env":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "env", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQLWhere(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+	// (status = 200 AND env IN ('prod', 'staging'))
+}
+```
+
+Полный справочник см. в разделе [Параметры](/ru/syntax/parameters/).
+
 ## Запросы с трансформерами
 
 ```go

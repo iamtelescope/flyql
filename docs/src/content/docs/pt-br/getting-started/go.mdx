@@ -131,6 +131,37 @@ func main() {
 }
 ```
 
+## Consultas Parametrizadas
+
+Use placeholders `$name` e `$1`, e depois resolva-os em tempo de execução com `BindParams()`:
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+)
+
+func main() {
+	ast, err := flyql.Parse(`status = $code and env = $env`)
+	if err != nil {
+		panic(err)
+	}
+
+	err = flyql.BindParams(ast.Root, map[string]any{
+		"code": 200,
+		"env":  "prod",
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", ast.Root)
+}
+```
+
+Veja [Parâmetros](/pt-br/syntax/parameters/) para a referência completa.
+
 ## Transformadores em Consultas
 
 Parseie uma consulta com transformadores e gere SQL:

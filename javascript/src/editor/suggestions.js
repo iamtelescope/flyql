@@ -297,7 +297,30 @@ export function prepareSuggestionValues(items, quoteChar, filterPrefix) {
         })
 }
 
-export async function getValueSuggestions(schema, key, value, quoteChar, onAutocomplete, setLoading) {
+function getParameterSuggestions(parameters, value) {
+    const prefix = value.startsWith('$') ? value.slice(1).toLowerCase() : ''
+    const results = []
+    for (const name of parameters) {
+        if (prefix && !name.toLowerCase().startsWith(prefix)) continue
+        results.push({
+            label: '$' + name,
+            insertText: '$' + name,
+            type: 'value',
+            detail: 'parameter',
+        })
+    }
+    return results
+}
+
+export async function getValueSuggestions(schema, key, value, quoteChar, onAutocomplete, setLoading, parameters = []) {
+    // Parameter autocomplete: if current value starts with $, suggest parameters
+    if (value && value.startsWith('$')) {
+        return {
+            suggestions: getParameterSuggestions(parameters, value),
+            incomplete: false,
+            message: '',
+        }
+    }
     const col = resolveColumnDef(schema, key)
     if (!col) {
         // For unresolved dotted keys (e.g., discovered paths like request.method),
@@ -516,6 +539,7 @@ export async function updateSuggestions(
     keyCache,
     setLoading,
     registry = null,
+    parameters = [],
 ) {
     let message = ''
     let suggestions = []
@@ -564,7 +588,15 @@ export async function updateSuggestions(
         suggestionType = 'value'
     } else if (ctx.expecting === 'value') {
         suggestionType = 'value'
-        const result = await getValueSuggestions(schema, ctx.key, ctx.value, ctx.quoteChar, onAutocomplete, setLoading)
+        const result = await getValueSuggestions(
+            schema,
+            ctx.key,
+            ctx.value,
+            ctx.quoteChar,
+            onAutocomplete,
+            setLoading,
+            parameters,
+        )
         suggestions = result.suggestions
         incomplete = result.incomplete
         rawItems = result.rawItems

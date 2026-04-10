@@ -34,10 +34,10 @@ Uma `Expression` representa uma única condição — uma chave, um operador e u
 |-------|------|-------------|
 | `key` | `Key` | O campo sendo testado (ex.: <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | Um dos seguintes: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
-| `value` | `any` | O valor de comparação. Uma string, número, booleano ou null para operadores escalares. Vazio para <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` ou `null` | O tipo explícito de `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` ou `"null"`. `null` para <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
-| `values` | `array` ou `null` | Lista de valores para operadores <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. Pode ser heterogênea. `null` para outros operadores. |
-| `valuesTypes` | `string[]` ou `null` | Array de tipos por elemento, paralelo a `values`. Cada elemento é uma das constantes de tipo. `null` quando `values` não é usado. |
+| `value` | `any` | O valor de comparação. Uma string, número, booleano, null, `FunctionCall` ou `Parameter` para operadores escalares. Vazio para <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` ou `null` | O tipo explícito de `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` ou `"parameter"`. `null` para <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `values` | `array` ou `null` | Lista de valores para operadores <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. Pode ser heterogênea e pode conter entradas `Parameter`. `null` para outros operadores. |
+| `valuesTypes` | `string[]` ou `null` | Array de tipos por elemento, paralelo a `values`. Cada elemento é uma das constantes de tipo (incluindo `"parameter"`). `null` quando `values` não é usado. |
 
 ### Key
 
@@ -48,6 +48,34 @@ Uma `Key` representa o caminho do campo sendo consultado.
 | `segments` | `string[]` | Segmentos do caminho. `["status"]` para uma chave simples, `["user", "metadata", "role"]` para aninhada. |
 | `raw` | `string` | A string original da chave como escrita na consulta. |
 | `isSegmented` | `boolean` | `true` se a chave tem mais de um segmento (ou seja, usa notação de ponto). |
+
+### Parameter
+
+Um `Parameter` representa um placeholder não resolvido (`$name` ou `$1`) que será substituído por `bindParams()` antes da geração de SQL ou do matching.
+
+| Campo | Tipo | Descrição |
+|-------|------|-------------|
+| `name` | `string` | O identificador do placeholder sem o prefixo `$`. Nomeado: `"code"`. Posicional: `"1"`. |
+| `positional` | `boolean` | `true` se o parâmetro é posicional (nome apenas com dígitos). |
+
+Um `Parameter` pode aparecer como:
+- `expression.value` com `valueType === "parameter"` (posição escalar)
+- Uma entrada dentro de `expression.values` (posição em lista IN)
+- Uma entrada dentro de `FunctionCall.parameterArgs` (posição de argumento de função temporal)
+
+Após `bindParams()` resolvê-los, nenhuma instância de `Parameter` permanece na AST.
+
+### FunctionCall
+
+Um `FunctionCall` representa um valor de função temporal (`ago(...)`, `now()`, `today(...)`, `startOf(...)`).
+
+| Campo | Tipo | Descrição |
+|-------|------|-------------|
+| `name` | `string` | Um entre `"ago"`, `"now"`, `"today"`, `"startOf"`. |
+| `durationArgs` | `Duration[]` | Argumentos de duração parseados (ex.: `[{value: 5, unit: "m"}]`). |
+| `unit` | `string` | O argumento de unidade para `startOf` (`"day"`, `"week"` ou `"month"`). |
+| `timezone` | `string` | O argumento de fuso horário para `today` e `startOf`. |
+| `parameterArgs` | `Parameter[]` | Placeholders de parâmetros que preencherão `durationArgs`/`unit`/`timezone` no momento do bind. |
 
 ### Operadores
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### Placeholder de parâmetro
+
+Consulta: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+Após `bindParams(node, { code: 200 })`:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### Parâmetro dentro de uma lista IN
+
+Consulta: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### Parâmetro dentro de uma função temporal
+
+Consulta: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### Chave aninhada
@@ -504,17 +585,21 @@ A diferença principal em relação a um gerador customizado é que os geradores
 ```javascript
 import {
   parse,               // Parsear uma string de consulta em uma AST
+  bindParams,          // Resolver placeholders de parâmetros: bindParams(node, params)
   Parser,              // Classe Parser (uso avançado)
   Node,                // Nó branch/folha da AST
   Expression,          // Condição folha
+  Parameter,           // Placeholder de parâmetro ($name / $1)
+  FunctionCall,        // Valor de função temporal (ago, now, today, startOf)
   Key,                 // Caminho do campo
   Range,               // Intervalo de posição no fonte [start, end)
   Column,              // Tipo de coluna principal para o validador
+  ColumnSchema,        // Container de schema de colunas com resolução aninhada
   Operator,            // Constantes de operadores de comparação
   BoolOperator,        // Constantes de operadores booleanos ("and", "or")
   FlyqlError,          // Classe base de erro
   ParserError,         // Erro de parse (estende FlyqlError, inclui errno)
-  diagnose,            // Validador de AST: diagnose(ast, columns, registry?) → Diagnostic[]
+  diagnose,            // Validador de AST: diagnose(ast, schema, registry?) → Diagnostic[]
   Diagnostic,          // Registro de diagnóstico com posição
 } from 'flyql'
 ```
@@ -525,13 +610,18 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — struct de nó da AST
-// flyql.Expression  — struct de condição folha
-// flyql.Key         — struct de caminho do campo
-// flyql.Range       — intervalo de posição no fonte [Start, End)
-// flyql.Column      — tipo de coluna principal para o validador
-// flyql.Diagnose(ast, columns, registry) []Diagnostic — validador de AST
-// flyql.Diagnostic  — registro de diagnóstico com posição
+// flyql.BindParams(node *Node, params map[string]any) error — resolve placeholders de parâmetros
+// flyql.Node         — struct de nó da AST
+// flyql.Expression   — struct de condição folha
+// flyql.Parameter    — struct de placeholder de parâmetro ($name / $1)
+// flyql.FunctionCall — struct de valor de função temporal
+// flyql.Key          — struct de caminho do campo
+// flyql.Range        — intervalo de posição no fonte [Start, End)
+// flyql.Column       — tipo de coluna principal para o validador
+// flyql.ColumnSchema — container de schema de colunas com resolução aninhada
+// flyql.FromColumns(cols) *ColumnSchema — constrói schema a partir de slice plano de colunas
+// flyql.Diagnose(ast, schema, registry) []Diagnostic — validador de AST
+// flyql.Diagnostic   — registro de diagnóstico com posição
 //
 // Constantes de operadores: flyql.OpEquals, flyql.OpIn, flyql.OpTruthy, etc.
 // Constantes de operadores booleanos: flyql.BoolOpAnd, flyql.BoolOpOr
@@ -540,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

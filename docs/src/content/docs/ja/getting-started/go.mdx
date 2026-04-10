@@ -131,6 +131,51 @@ func main() {
 }
 ```
 
+## パラメータ化クエリ
+
+`$name` や `$1` のプレースホルダを使い、実行時に `BindParams()` で解決できます。
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	// パラメータプレースホルダを含むクエリを parse
+	result, err := flyql.Parse(`status = $code and env in [$env, 'staging']`)
+	if err != nil {
+		panic(err)
+	}
+
+	// 具体的な値をパラメータにバインド
+	if err := flyql.BindParams(result.Root, map[string]any{
+		"code": 200,
+		"env":  "prod",
+	}); err != nil {
+		panic(err)
+	}
+
+	// SQL を生成
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "Int32"}),
+		"env":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "env", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQLWhere(result.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+	// (status = 200 AND env IN ('prod', 'staging'))
+}
+```
+
+完全なリファレンスは [パラメータ](/ja/syntax/parameters/) を参照してください。
+
 ## クエリ内で Transformers を使う
 
 transformer を含むクエリを parse し、SQL を生成できます。

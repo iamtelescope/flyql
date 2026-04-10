@@ -105,6 +105,28 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## Requetes parametrees
+
+Utilisez les espaces reserves `$name` et `$1`, puis resolvez-les a l'execution avec `bindParams()` :
+
+```javascript
+import { parse, bindParams } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+const result = parse('status = $code and env = $env')
+bindParams(result.root, { code: 200, env: 'prod' })
+
+const columns = {
+    status: newColumn('status', false, 'UInt32', null),
+    env: newColumn('env', false, 'String', null),
+}
+
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+Voir [Parametres](/fr/syntax/parameters/) pour la reference complete.
+
 ## Transformateurs dans les requetes
 
 Analysez une requete avec des transformateurs et generez du SQL :

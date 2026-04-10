@@ -1,0 +1,408 @@
+{
+  "version": "1.0",
+  "description": "Parameter placeholder test cases",
+  "test_suite": "parameters",
+  "tests": [
+    {
+      "name": "named_basic",
+      "input": "status=$code",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "=",
+          "value": {"name": "code", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "positional_basic",
+      "input": "status=$1",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "=",
+          "value": {"name": "1", "positional": true},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "named_with_underscore",
+      "input": "env=$my_env",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "env",
+          "operator": "=",
+          "value": {"name": "my_env", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "named_starting_with_underscore",
+      "input": "env=$_private",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "env",
+          "operator": "=",
+          "value": {"name": "_private", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "named_with_operator_and_spaces",
+      "input": "status = $code",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "=",
+          "value": {"name": "code", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "named_in_and_expression",
+      "input": "status=$code and env=$env",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": {"name": "code", "positional": false},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "env",
+            "operator": "=",
+            "value": {"name": "env", "positional": false},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "named_in_or_expression",
+      "input": "status=$code or env=$env",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": {"name": "code", "positional": false},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "env",
+            "operator": "=",
+            "value": {"name": "env", "positional": false},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "positional_multiple",
+      "input": "a=$1 and b=$2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "expression": {
+            "key": "a",
+            "operator": "=",
+            "value": {"name": "1", "positional": true},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "b",
+            "operator": "=",
+            "value": {"name": "2", "positional": true},
+            "value_type": "parameter"
+          },
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "parameter_with_not",
+      "input": "not status=$code",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "negated": true,
+        "expression": {
+          "key": "status",
+          "operator": "=",
+          "value": {"name": "code", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_has",
+      "input": "key has $val",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "has",
+          "value": {"name": "val", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_like",
+      "input": "key like $pattern",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "like",
+          "value": {"name": "pattern", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_ilike",
+      "input": "key ilike $pattern",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "ilike",
+          "value": {"name": "pattern", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_not_has",
+      "input": "key not has $val",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "key",
+          "operator": "not has",
+          "value": {"name": "val", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_gt",
+      "input": "a>$x",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": ">",
+          "value": {"name": "x", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_neq",
+      "input": "a!=$x",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": "!=",
+          "value": {"name": "x", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_with_regex",
+      "input": "a~$x",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "a",
+          "operator": "~",
+          "value": {"name": "x", "positional": false},
+          "value_type": "parameter"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_in_list",
+      "input": "status in [$x, $y]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": "",
+          "value_type": null,
+          "values": [
+            {"name": "x", "positional": false},
+            {"name": "y", "positional": false}
+          ],
+          "values_type": null,
+          "values_types": ["parameter", "parameter"]
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_in_list_mixed",
+      "input": "status in [active, $x, 200]",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "status",
+          "operator": "in",
+          "value": "",
+          "value_type": null,
+          "values": ["active", {"name": "x", "positional": false}, 200],
+          "values_type": null,
+          "values_types": ["column", "parameter", "integer"]
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "parameter_in_function_ago",
+      "input": "created=ago($duration)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "",
+        "expression": {
+          "key": "created",
+          "operator": "=",
+          "value": {
+            "name": "ago",
+            "duration_args": [],
+            "unit": "",
+            "timezone": "",
+            "parameter_args": [{"name": "duration", "positional": false}]
+          },
+          "value_type": "function"
+        },
+        "left": null,
+        "right": null
+      }
+    },
+    {
+      "name": "error_empty_param",
+      "input": "status=$",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 74,
+        "message_contains": "empty parameter name"
+      }
+    },
+    {
+      "name": "error_empty_param_with_space",
+      "input": "status=$ and x=1",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 74,
+        "message_contains": "empty parameter name"
+      }
+    },
+    {
+      "name": "error_invalid_positional",
+      "input": "status=$1abc",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 75,
+        "message_contains": "invalid parameter name"
+      }
+    },
+    {
+      "name": "error_zero_positional",
+      "input": "status=$0",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 76,
+        "message_contains": "positional parameters are 1-indexed"
+      }
+    }
+  ]
+}

@@ -16,7 +16,7 @@ Utilisez <FlyqlToken type="operator">in</FlyqlToken> pour verifier si une valeur
 ## Regles de syntaxe
 
 - Les valeurs sont entre crochets <FlyqlToken type="operator">[ ]</FlyqlToken> et separees par des virgules
-- Toutes les valeurs d'une liste doivent etre du meme type (toutes des chaines ou tous des nombres)
+- Les valeurs peuvent etre de types mixtes : <FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - Les valeurs de type chaine doivent etre entre guillemets : <FlyqlCode code={`['a', 'b', 'c']`} inline />
 - Les valeurs numeriques ne sont pas entre guillemets : <FlyqlCode code={`[1, 2, 3]`} inline />
 - Les espaces autour des virgules et des crochets sont autorises
@@ -45,22 +45,24 @@ Une liste <FlyqlToken type="operator">in</FlyqlToken> vide est toujours fausse �
 
 Une liste <FlyqlToken type="operator">not in</FlyqlToken> vide est toujours vraie — tout est "pas dans" une liste vide.
 
-## Coherence des types
+## Types mixtes
 
-Les listes **doivent** contenir des valeurs d'un type uniforme — toutes des chaines ou tous des nombres. Le melange de types au sein d'une meme liste provoque une erreur d'analyse :
+Les listes prennent en charge des valeurs heterogenes — vous pouvez melanger chaines, nombres, booleens et null :
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-L'exemple suivant est invalide (types melanges — erreur d'analyse) :
+Chaque element possede son propre type dans le tableau `valuesTypes` de l'expression analysee (par ex. `["integer", "string", "boolean", "null"]`). Pour les listes vides, `valuesTypes` est `null`.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+Lorsqu'un generateur SQL traite une liste, il valide que les types de valeurs de la liste sont compatibles avec le type de la colonne cible. Par exemple, passer des valeurs de type chaine a une colonne numerique generera une erreur de validation lors de la generation SQL.
 
-L'analyseur suit le type de la premiere valeur de la liste et rejette toute valeur suivante d'un type different. Cela est applique au moment de l'analyse, avant que la requete n'atteigne un generateur ou un evaluateur.
+## Parametres dans les listes
 
-Lorsqu'un generateur SQL traite une liste, il valide en plus que les types de valeurs de la liste sont compatibles avec le type de la colonne cible. Par exemple, passer des valeurs de type chaine a une colonne numerique generera une erreur de validation lors de la generation SQL.
+Les espaces reserves de parametres peuvent apparaitre dans les listes IN, melanges librement avec des valeurs litterales :
 
-Le champ `valuesType` de l'expression analysee indique si la liste contient des valeurs `"string"` ou `"number"`. Pour les listes vides, `valuesType` est `null`.
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+Les objets `Parameter` se trouvent dans le tableau `values` jusqu'a ce que `bindParams()` les resolve. Voir [Parametres](/fr/syntax/parameters/) pour la reference complete.
 
 ## Combinaison avec d'autres operateurs
 

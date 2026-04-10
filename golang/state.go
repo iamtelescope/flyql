@@ -32,4 +32,7 @@ const (
 	stateFunctionQuotedArg
 	stateFunctionExpectCommaOrClose
 	stateFunctionExpectArg
+	stateParameter
+	stateInListParameter
+	stateFunctionParameter
 )

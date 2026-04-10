@@ -34,10 +34,10 @@ Eine `Expression` repräsentiert eine einzelne Bedingung – einen Schlüssel, e
 |------|-----|--------------|
 | `key` | `Key` | Das geprüfte Feld (z. B. <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>) |
 | `operator` | `string` | Einer von: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken> |
-| `value` | `any` | Der Vergleichswert. Ein String, eine Zahl, ein Boolean oder null für skalare Operatoren. Leer bei <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> |
-| `valueType` | `string` oder `null` | Der explizite Typ von `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` oder `"null"`. `null` für <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> |
-| `values` | `array` oder `null` | Werteliste für <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken>. Kann heterogen sein. `null` bei anderen Operatoren |
-| `valuesTypes` | `string[]` oder `null` | Typ-Array pro Element parallel zu `values`. Jedes Element ist eine der Typkonstanten. `null`, wenn `values` nicht verwendet wird |
+| `value` | `any` | Der Vergleichswert. Ein String, eine Zahl, ein Boolean, null, ein `FunctionCall` oder ein `Parameter` für skalare Operatoren. Leer bei <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> |
+| `valueType` | `string` oder `null` | Der explizite Typ von `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` oder `"parameter"`. `null` für <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> |
+| `values` | `array` oder `null` | Werteliste für <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken>. Kann heterogen sein und darf `Parameter`-Einträge enthalten. `null` bei anderen Operatoren |
+| `valuesTypes` | `string[]` oder `null` | Typ-Array pro Element parallel zu `values`. Jedes Element ist eine der Typkonstanten (einschließlich `"parameter"`). `null`, wenn `values` nicht verwendet wird |
 
 ### Key
 
@@ -48,6 +48,34 @@ Ein `Key` repräsentiert den abgefragten Feldpfad.
 | `segments` | `string[]` | Pfadsegmente. `["status"]` für einen einfachen Schlüssel, `["user", "metadata", "role"]` für verschachtelte Schlüssel |
 | `raw` | `string` | Der ursprüngliche Schlüsselstring, wie er in der Abfrage geschrieben wurde |
 | `isSegmented` | `boolean` | `true`, wenn der Schlüssel mehr als ein Segment hat, also Punktnotation verwendet |
+
+### Parameter
+
+Ein `Parameter` repräsentiert einen unaufgelösten Platzhalter (`$name` oder `$1`), der vor der SQL-Generierung oder dem Matching durch `bindParams()` ersetzt wird.
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| `name` | `string` | Der Platzhalter-Bezeichner ohne das `$`-Präfix. Benannt: `"code"`. Positional: `"1"` |
+| `positional` | `boolean` | `true`, wenn der Parameter positional ist (rein numerischer Name) |
+
+Ein `Parameter` kann auftreten als:
+- `expression.value` mit `valueType === "parameter"` (skalare Position)
+- Eintrag innerhalb von `expression.values` (IN-Listen-Position)
+- Eintrag innerhalb von `FunctionCall.parameterArgs` (Argumentposition in temporalen Funktionen)
+
+Sobald `bindParams()` sie aufgelöst hat, bleiben keine `Parameter`-Instanzen mehr im AST.
+
+### FunctionCall
+
+Ein `FunctionCall` repräsentiert einen temporalen Funktionswert (`ago(...)`, `now()`, `today(...)`, `startOf(...)`).
+
+| Feld | Typ | Beschreibung |
+|------|-----|--------------|
+| `name` | `string` | Einer von `"ago"`, `"now"`, `"today"`, `"startOf"` |
+| `durationArgs` | `Duration[]` | Geparste Dauerargumente (z. B. `[{value: 5, unit: "m"}]`) |
+| `unit` | `string` | Das Einheitenargument für `startOf` (`"day"`, `"week"` oder `"month"`) |
+| `timezone` | `string` | Das Zeitzonenargument für `today` und `startOf` |
+| `parameterArgs` | `Parameter[]` | Parameter-Platzhalter, die `durationArgs`/`unit`/`timezone` beim Binden ausfüllen |
 
 ### Operatoren
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### Parameter-Platzhalter
+
+Abfrage: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+Nach `bindParams(node, { code: 200 })`:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### Parameter in einer IN-Liste
+
+Abfrage: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### Parameter in einer temporalen Funktion
+
+Abfrage: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### Verschachtelter Schlüssel
@@ -504,9 +585,12 @@ Der wichtigste Unterschied zu einem benutzerdefinierten Generator ist, dass SQL-
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +610,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

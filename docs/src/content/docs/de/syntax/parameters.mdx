@@ -1,0 +1,286 @@
+---
+title: Parameter
+description: Verwende $name- und $1-Platzhalter in FlyQL-Abfragen und löse sie zur Laufzeit mit bindParams() auf
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL unterstützt **Parameter-Platzhalter** – `$name` (benannt) und `$1` (positional) – die an jeder Stelle stehen können, an der normalerweise ein Literal erwartet wird. Parameter werden zur Laufzeit aufgelöst, indem vor der SQL-Generierung oder der Auswertung im Speicher `bindParams()` aufgerufen wird.
+
+Das ist der sichere Weg, Abfragen zu templatisieren: Der Abfragetext bleibt statisch, konkrete Werte werden später gebunden. Keine Stringverkettung, kein Escapen, kein Injection-Risiko.
+
+## Warum Parameter
+
+Ein typischer Anwendungsfall ist ein Tool oder Dashboard, das dieselbe Abfrageform mit unterschiedlichen Eingaben ausführt:
+
+<FlyqlCode code={`status = $code and env = $env`} />
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+Die Parameterwerte können aus Formularfeldern, API-Anfragen oder beliebigen anderen Laufzeitquellen stammen – ohne den Abfragestring jemals neu aufzubauen.
+
+## Syntax
+
+### Benannte Parameter
+
+Ein benannter Parameter besteht aus `$` gefolgt von einem Buchstaben oder Unterstrich und anschließend einer beliebigen Kombination aus Buchstaben, Ziffern und Unterstrichen:
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`env = $my_env`} />
+<FlyqlCode code={`user = $_internal`} />
+
+Der Parametername enthält das `$`-Präfix **nicht** – `$code` verweist auf einen Parameter namens `code`.
+
+### Positionale Parameter
+
+Ein positionaler Parameter besteht aus `$` gefolgt von ausschließlich Ziffern. Positionale Parameter sind **1-basiert** (wie SQL `$1`):
+
+<FlyqlCode code={`a = $1 and b = $2`} />
+
+`$0` ist nicht erlaubt. `$1abc` (Ziffern gefolgt von Buchstaben) ist nicht erlaubt.
+
+## Wo Parameter vorkommen können
+
+Parameter funktionieren an jeder Stelle, an der ein Literalwert gültig ist:
+
+### Vergleichswerte
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`age >= $min_age`} />
+<FlyqlCode code={`name != $banned`} />
+<FlyqlCode code={`score > $1`} />
+
+### `has`, `like`, `ilike`
+
+<FlyqlCode code={`message has $needle`} />
+<FlyqlCode code={`path like $pattern`} />
+<FlyqlCode code={`title ilike $search`} />
+<FlyqlCode code={`tags not has $excluded`} />
+
+### IN-Listen
+
+Parameter können innerhalb von `in`- und `not in`-Listen mit Literalwerten gemischt werden:
+
+<FlyqlCode code={`status in [$x, $y]`} />
+<FlyqlCode code={`env in [$current, 'staging', 'dev']`} />
+<FlyqlCode code={`code not in [$banned, 401, 403]`} />
+
+### Argumente temporaler Funktionen
+
+Parameter können Dauerwerte innerhalb von `ago()` sowie Zeitzonenargumente in `today()` und `startOf()` ersetzen:
+
+<FlyqlCode code={`created > ago($duration)`} />
+<FlyqlCode code={`date = today($tz)`} />
+<FlyqlCode code={`created > startOf('day', $tz)`} />
+
+Der gebundene Wert für einen `ago()`-Parameter muss ein Dauer-String wie `"5m"`, `"1h"` oder `"7d"` sein.
+
+### Transformer-Argumente
+
+Parameter können innerhalb von Transformer-Argumentpositionen auftreten:
+
+<FlyqlCode code={`tags|split($sep) has $needle`} />
+
+## bindParams()
+
+Nach dem Parsen rufst du `bindParams()` auf, um Parameter-Platzhalter durch konkrete Werte zu ersetzen. Die Funktion durchläuft den AST in-place und ersetzt jeden gefundenen `Parameter`-Knoten.
+
+### Python
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+### JavaScript
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+ast, _ := flyql.Parse(`status = $code and env = $env`)
+err := flyql.BindParams(ast.Root, map[string]any{
+    "code": 200,
+    "env":  "prod",
+})
+```
+
+### API
+
+| Sprache | Signatur |
+|---------|----------|
+| Python | `bind_params(node, params: dict) -> Node` |
+| JavaScript | `bindParams(node, params: object): Node` |
+| Go | `BindParams(node *Node, params map[string]any) error` |
+
+- **`node`** – der von `parse()` zurückgegebene Root-`Node`.
+- **`params`** – ein Dict/Objekt/Map, das Parameternamen auf konkrete Werte abbildet. Benannte Parameter verwenden den Namen als Schlüssel (z. B. `"code"`). Positionale Parameter verwenden String-Schlüssel mit Ziffern (z. B. `"1"`, `"2"`). Gemischte Dicts sind erlaubt.
+- **Rückgabewert** – Python und JS geben denselben (in-place mutierten) `Node` zurück, um Chaining zu ermöglichen. Go gibt einen `error` zurück.
+
+### Typzuordnung
+
+Der native Typ des gebundenen Werts bestimmt den resultierenden `value_type` im AST:
+
+| Nativer Typ | Resultierender `value_type` |
+|-------------|-----------------------------|
+| `string` | `"string"` |
+| `int` (innerhalb des int64-Bereichs) | `"integer"` |
+| `int` (außerhalb des int64-Bereichs) | `"bigint"` |
+| `float` | `"float"` |
+| `bool` | `"boolean"` |
+| `null` / `None` / `nil` | `"null"` |
+
+Der Typ wird durch den **Laufzeittyp des gebundenen Werts** bestimmt, nicht durch Parsen des Werts als String. Das Binden von `"200"` erzeugt einen String, keine Ganzzahl:
+
+```python
+bind_params(parse("a = $x").root, {"x": "200"})
+# expression.value      -> "200"
+# expression.value_type -> "string"
+
+bind_params(parse("a = $x").root, {"x": 200})
+# expression.value      -> 200
+# expression.value_type -> "integer"
+```
+
+Nicht unterstützte Typen (z. B. `Decimal`, `BigInt`, eigene Objekte, `undefined`) führen zu einem Fehler:
+
+```
+unsupported parameter value type: Decimal
+```
+
+## Strikte Validierung
+
+`bindParams()` ist **strikt** sowohl bei fehlenden als auch bei überzähligen Parametern.
+
+### Fehlende Parameter
+
+Wenn die Abfrage einen Parameter referenziert, der im übergebenen Dict fehlt, wird ein Fehler ausgelöst:
+
+```python
+bind_params(parse("a = $x").root, {})
+# FlyqlError: unbound parameter: $x
+```
+
+### Überzählige Parameter
+
+Wenn das Dict einen Parameter enthält, der in der Abfrage nicht referenziert wird, wird ein Fehler ausgelöst:
+
+```python
+bind_params(parse("a = $x").root, {"x": 1, "y": 2})
+# FlyqlError: unused parameter: y
+```
+
+Das ist strenger als bei typischen SQL-Treibern, die die Parametervalidierung oft auf die Ausführungszeit verschieben. Das Abfangen dieser Fehler bereits beim Binden macht Flüchtigkeitsfehler sofort sichtbar.
+
+### Positionale Parameter
+
+Bei positionalen Parametern muss jeder Index von `1` bis zum höchsten referenzierten Index angegeben werden. Lücken sind nicht erlaubt:
+
+```python
+bind_params(parse("a = $1 and b = $3").root, {"1": 1, "3": 3})
+# FlyqlError: unbound parameter: $2
+```
+
+## In-Memory-Matching
+
+Parameter funktionieren beim Matcher genauso. Erst binden, dann auswerten:
+
+```python
+from flyql import parse, bind_params
+from flyql.matcher.evaluator import Evaluator
+
+ast = parse("status = $code")
+bind_params(ast.root, {"code": 200})
+
+result = Evaluator().evaluate(ast.root, {"status": 200})
+```
+
+Wenn du vergisst, `bind_params()` vor der Auswertung aufzurufen, meldet der Matcher einen klaren Fehler:
+
+```
+unbound parameter '$code' — call bind_params() before evaluating
+```
+
+Dieselbe Schutzprüfung existiert in jedem SQL-Generator, sodass du nicht versehentlich SQL mit ungelösten Parametern erzeugen kannst.
+
+## AST-Darstellung
+
+Ein Parameter wird im AST als `Expression` mit `value_type: "parameter"` und einem `Parameter`-Wertobjekt repräsentiert:
+
+Abfrage: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    value_type: "parameter"
+```
+
+Für Parameter in IN-Listen erscheint das `Parameter`-Objekt innerhalb von `expression.values`:
+
+Abfrage: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    values_types: ["parameter", "string"]
+```
+
+Für Parameter in temporalen Funktionen erscheinen sie in `FunctionCall.parameter_args`:
+
+Abfrage: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      duration_args: []
+      parameter_args: [{ name: "d", positional: false }]
+    value_type: "function"
+```
+
+Sobald `bindParams()` sie auflöst, werden diese `Parameter`-Platzhalter durch konkrete Werte ersetzt und der AST sieht aus wie eine normal geparste Abfrage.
+
+## Fehler
+
+| Fehler | Errno | Wann |
+|--------|-------|------|
+| `empty parameter name` | 74 | Abfrage enthält `$` ohne Namen (z. B. `status = $`) |
+| `invalid parameter name` | 75 | Name beginnt mit einer Ziffer, enthält aber Nicht-Ziffern (z. B. `$1abc`) |
+| `positional parameters are 1-indexed` | 76 | Positionales `$0` (z. B. `status = $0`) |
+
+`bindParams()` löst `FlyqlError` aus (oder gibt in Go einen Fehler zurück) für:
+
+- `unbound parameter: $name` – in der Abfrage referenziert, im Dict fehlend
+- `unused parameter: name` – im Dict vorhanden, in der Abfrage nicht referenziert
+- `unsupported parameter value type: <type>` – der gebundene Wert entspricht keinem der unterstützten Typen
+
+## Siehe auch
+
+- [Werte und Typen](/de/syntax/values/) – die Werttypen, in die Parameter aufgelöst werden
+- [Listen](/de/syntax/lists/) – IN-Listen-Syntax (Parameter können in Listenwerten auftreten)
+- [AST und benutzerdefinierte Generatoren](/de/advanced/ast/) – wie Parameter im AST aussehen

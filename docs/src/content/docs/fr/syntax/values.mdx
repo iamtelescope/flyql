@@ -6,7 +6,7 @@ description: Types de valeurs, litteraux types et expressions dans FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL prend en charge 7 types de valeurs : **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** et **Array**. Chaque valeur dans l'AST possede un champ `value_type` explicite.
+FlyQL prend en charge 10 types de valeurs : **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function** et **Parameter**. Chaque valeur dans l'AST possede un champ `value_type` explicite.
 
 ## Types de valeurs
 
@@ -40,7 +40,7 @@ AST : `value_type: "float"`
 
 ### String
 
-Valeurs textuelles, avec ou sans guillemets :
+Les valeurs textuelles **doivent etre entre guillemets** simples ou doubles. Les valeurs sans guillemets sont interpretees comme des references de colonne, pas comme des chaines.
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />
@@ -66,7 +66,7 @@ Les mots-cles <FlyqlToken type="boolean">true</FlyqlToken> et <FlyqlToken type="
 
 AST : `value_type: "boolean"`, la valeur est un booleen natif.
 
-Les variantes en majuscules (`True`, `FALSE`) sont traitees comme des chaines.
+Les variantes en majuscules (`True`, `FALSE`) sont traitees comme des references de colonne, pas comme des booleens.
 
 **Generation SQL :**
 | Dialecte | FlyQL | SQL genere |
@@ -87,7 +87,23 @@ Le mot-cle <FlyqlToken type="null">null</FlyqlToken> (en minuscules, sensible a 
 
 AST : `value_type: "null"`, la valeur est un null natif.
 
-Les variantes en majuscules (`Null`, `NULL`) sont traitees comme des chaines.
+Les variantes en majuscules (`Null`, `NULL`) sont traitees comme des references de colonne, pas comme null.
+
+### Reference de colonne
+
+Toute valeur sans guillemets qui n'est pas un nombre, un booleen, null ou une fonction temporelle est traitee comme une **reference de colonne** — un pointeur vers une autre colonne pour des comparaisons colonne-a-colonne :
+
+<FlyqlCode code={`price > min_price`} />
+<FlyqlCode code={`updated_at > created_at`} />
+<FlyqlCode code={`field = otherfield`} />
+
+AST : `value_type: "column"`
+
+Si vous souhaitez comparer a une valeur de type chaine, vous **devez** utiliser des guillemets :
+
+<FlyqlCode code={`level = 'error'`} />
+
+Sans guillemets, <FlyqlCode code={`level = error`} inline /> traite `error` comme une reference a une colonne nommee `error`.
 
 **Restrictions :** Seuls les operateurs <FlyqlToken type="operator">=</FlyqlToken> et <FlyqlToken type="operator">!=</FlyqlToken> sont valides avec null. L'utilisation de <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken> ou <FlyqlToken type="operator">{'!~'}</FlyqlToken> avec null produit une erreur d'analyse.
 
@@ -212,6 +228,18 @@ Les noms de fonctions sans parentheses sont traites comme des references de colo
 
 Cela produit `value_type: "column"`, pas un appel de fonction.
 
+## Parameter
+
+Les espaces reserves de parametres (`$name` pour les nommes, `$1` pour les positionnels) remplacent des valeurs a resoudre a l'execution par `bindParams()`. Ils peuvent apparaitre partout ou une valeur litterale est valide — y compris dans les listes IN, les arguments de fonctions temporelles et les arguments de transformateurs.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST : `value_type: "parameter"`, la valeur est un objet `Parameter` avec les champs `name` et `positional`.
+
+Voir [Parametres](/fr/syntax/parameters/) pour la reference complete.
+
 ## Notes de migration
 
 Si vous mettez a jour depuis une version precedente de FlyQL :
@@ -222,3 +250,6 @@ Si vous mettez a jour depuis une version precedente de FlyQL :
 - **Nouveau :** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> sont analyses comme des litteraux types (pas des chaines)
 - **Nouveau :** Le tableau `values_types` sur les expressions IN-list fournit les types par element
 - **Nouveau :** Le module `flyql.types` exporte les constantes de types canoniques
+- **Rupture :** Les valeurs non numeriques sans guillemets sont desormais analysees comme `value_type: "column"` (references de colonne), pas `"string"`. Pour comparer a une chaine, entourez la valeur de guillemets : `field = 'value'`
+- **Nouveau :** Valeurs de fonctions temporelles (`ago()`, `now()`, `today()`, `startOf()`) avec `value_type: "function"`
+- **Nouveau :** Espaces reserves de parametres (`$name`, `$1`) avec `value_type: "parameter"`, resolus par `bindParams()` a l'execution

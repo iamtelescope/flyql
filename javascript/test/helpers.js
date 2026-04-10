@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { FunctionCall } from '../src/core/expression.js'
+import { FunctionCall, Parameter } from '../src/core/expression.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -27,13 +27,22 @@ export function astToDict(node) {
 
     if (node.expression !== null) {
         let value = node.expression.value
-        if (value instanceof FunctionCall) {
-            value = {
+        if (value instanceof Parameter) {
+            value = { name: value.name, positional: value.positional }
+        } else if (value instanceof FunctionCall) {
+            const fcDict = {
                 name: value.name,
                 duration_args: value.durationArgs.map((d) => ({ value: d.value, unit: d.unit })),
                 unit: value.unit,
                 timezone: value.timezone,
             }
+            if (value.parameterArgs && value.parameterArgs.length > 0) {
+                fcDict.parameter_args = value.parameterArgs.map((p) => ({
+                    name: p.name,
+                    positional: p.positional,
+                }))
+            }
+            value = fcDict
         }
         result.expression = {
             key: node.expression.key.raw,
@@ -43,7 +52,9 @@ export function astToDict(node) {
             value_bigint: typeof node.expression.value === 'bigint',
         }
         if (node.expression.values !== null) {
-            result.expression.values = node.expression.values
+            result.expression.values = node.expression.values.map((v) =>
+                v instanceof Parameter ? { name: v.name, positional: v.positional } : v,
+            )
             result.expression.values_type = node.expression.valuesType
             result.expression.values_types = node.expression.valuesTypes
         }
@@ -174,9 +185,9 @@ function compareExpressions(actual, expected) {
             return actual.value.toString() === String(expected.value)
         }
 
-        // Function call values are objects — compare by JSON serialization
+        // Function call and parameter values are objects — compare by JSON serialization
         if (
-            actual.value_type === 'function' &&
+            (actual.value_type === 'function' || actual.value_type === 'parameter') &&
             typeof actual.value === 'object' &&
             typeof expected.value === 'object'
         ) {
@@ -187,7 +198,11 @@ function compareExpressions(actual, expected) {
         if (actual.values_type !== expected.values_type) return false
         if (actual.values.length !== expected.values.length) return false
         for (let i = 0; i < expected.values.length; i++) {
-            if (actual.values[i] !== expected.values[i]) return false
+            const av = actual.values[i]
+            const ev = expected.values[i]
+            if (typeof av === 'object' && av !== null && typeof ev === 'object' && ev !== null) {
+                if (JSON.stringify(av) !== JSON.stringify(ev)) return false
+            } else if (av !== ev) return false
         }
         if (expected.values_types !== undefined && expected.values_types !== null) {
             if (actual.values_types === undefined || actual.values_types === null) return false

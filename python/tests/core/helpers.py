@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
-from flyql.core.expression import FunctionCall
+from flyql.core.expression import FunctionCall, Parameter
 
 
 def get_expression(node):
@@ -55,7 +55,7 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
     if node.expression is not None:
         value = node.expression.value
         if isinstance(value, FunctionCall):
-            value = {
+            fc_dict: dict = {
                 "name": value.name,
                 "duration_args": [
                     {"value": d.value, "unit": d.unit} for d in value.duration_args
@@ -63,6 +63,14 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
                 "unit": value.unit,
                 "timezone": value.timezone,
             }
+            if value.parameter_args:
+                fc_dict["parameter_args"] = [
+                    {"name": p.name, "positional": p.positional}
+                    for p in value.parameter_args
+                ]
+            value = fc_dict
+        elif isinstance(value, Parameter):
+            value = {"name": value.name, "positional": value.positional}
         expr = {
             "key": node.expression.key.raw,
             "operator": node.expression.operator,
@@ -74,7 +82,15 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
             ),
         }
         if node.expression.values is not None:
-            expr["values"] = node.expression.values
+            serialized_values = []
+            for v in node.expression.values:
+                if isinstance(v, Parameter):
+                    serialized_values.append(
+                        {"name": v.name, "positional": v.positional}
+                    )
+                else:
+                    serialized_values.append(v)
+            expr["values"] = serialized_values
             expr["values_type"] = node.expression.values_type
             expr["values_types"] = (
                 [vt.value for vt in node.expression.values_types]

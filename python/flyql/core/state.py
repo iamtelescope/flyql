@@ -31,3 +31,6 @@ class State(Enum):
     FUNCTION_QUOTED_ARG = "FunctionQuotedArg"
     FUNCTION_EXPECT_COMMA_OR_CLOSE = "FunctionExpectCommaOrClose"
     FUNCTION_EXPECT_ARG = "FunctionExpectArg"
+    PARAMETER = "Parameter"
+    IN_LIST_PARAMETER = "InListParameter"
+    FUNCTION_PARAMETER = "FunctionParameter"

@@ -202,6 +202,7 @@ import './flyql.css'
 const props = defineProps({
     modelValue: { type: String, default: '' },
     columns: { type: Object, default: null },
+    parameters: { type: Array, default: () => [] },
     onAutocomplete: { type: Function, default: null },
     onKeyDiscovery: { type: Function, default: null },
     placeholder: { type: String, default: '' },
@@ -219,6 +220,7 @@ const engine = new EditorEngine(props.columns, {
     onAutocomplete: props.onAutocomplete,
     onKeyDiscovery: props.onKeyDiscovery,
     debounceMs: props.debounceMs,
+    parameters: props.parameters,
     onLoadingChange: (loading) => {
         isLoading.value = loading
         stateLabel.value = engine.getStateLabel()
@@ -777,6 +779,13 @@ watch(
     () => props.columns,
     (newColumns) => {
         engine.setColumns(newColumns)
+    },
+)
+
+watch(
+    () => props.parameters,
+    (newParams) => {
+        engine.setParameters(newParams)
     },
 )
 

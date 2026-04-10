@@ -105,6 +105,32 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## पैरामीटराइज़्ड क्वेरी
+
+`$name` और `$1` प्लेसहोल्डर का उपयोग करें, फिर रनटाइम पर `bindParams()` के साथ उन्हें हल करें:
+
+```javascript
+import { parse, bindParams } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// Named parameters
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+
+const columns = {
+    status: newColumn('status', false, 'UInt32', null),
+    env: newColumn('env', false, 'String', null),
+}
+const sql = generateWhere(ast.root, columns)
+console.log(sql)
+
+// Positional parameters
+const ast2 = parse('status = $1 and env = $2')
+bindParams(ast2.root, { '1': 200, '2': 'prod' })
+```
+
+पूर्ण संदर्भ के लिए [पैरामीटर](/hi/syntax/parameters/) देखें।
+
 ## क्वेरी में ट्रांसफ़ॉर्मर
 
 ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:

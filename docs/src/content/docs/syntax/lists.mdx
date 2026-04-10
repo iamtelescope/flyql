@@ -55,6 +55,15 @@ Each element carries its own type in the `valuesTypes` array on the parsed expre
 
 When a SQL generator processes a list, it validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
 
+## Parameters in Lists
+
+Parameter placeholders can appear inside IN-lists, mixed freely with literal values:
+
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+The `Parameter` objects sit in the `values` array until `bindParams()` resolves them. See [Parameters](/syntax/parameters/) for the full reference.
+
 ## Combined with Other Operators
 
 List operators combine with boolean operators like any other condition:

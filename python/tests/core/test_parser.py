@@ -117,6 +117,11 @@ def test_functions_parsing(test_case):
     run_test_case(test_case)
 
 
+@pytest.mark.parametrize("test_case", load_test_data("parameters.json")["tests"])
+def test_parameters_parsing(test_case):
+    run_test_case(test_case)
+
+
 def test_unquoted_hyphen_keys():
     """Test that unquoted keys with hyphens are parsed correctly"""
     # Test simple hyphenated key

@@ -16,7 +16,7 @@ Use <FlyqlToken type="operator">in</FlyqlToken> para verificar se um valor esta 
 ## Regras de Sintaxe
 
 - Os valores sao colocados entre parenteses rectos <FlyqlToken type="operator">[ ]</FlyqlToken> e separados por virgulas
-- Todos os valores numa lista devem ser do mesmo tipo (todos strings ou todos numeros)
+- Os valores podem ser de tipos mistos: <FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - Os valores de texto devem estar entre aspas: <FlyqlCode code={`['a', 'b', 'c']`} inline />
 - Os valores numericos nao levam aspas: <FlyqlCode code={`[1, 2, 3]`} inline />
 - Espacos a volta das virgulas e dos parenteses rectos sao permitidos
@@ -45,22 +45,24 @@ Uma lista <FlyqlToken type="operator">in</FlyqlToken> vazia e sempre falsa — n
 
 Uma lista <FlyqlToken type="operator">not in</FlyqlToken> vazia e sempre verdadeira — tudo esta "fora" de uma lista vazia.
 
-## Consistencia de Tipos
+## Tipos Mistos
 
-As listas **devem** conter valores de um tipo uniforme — todos strings ou todos numeros. Misturar tipos dentro de uma mesma lista causa um erro de analise:
+As listas suportam valores heterogeneos — pode misturar strings, numeros, booleanos e null:
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-O seguinte e invalido (tipos misturados — erro de analise):
+Cada elemento transporta o seu proprio tipo no array `valuesTypes` da expressao analisada (por exemplo, `["integer", "string", "boolean", "null"]`). Para listas vazias, `valuesTypes` e `null`.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+Quando um gerador SQL processa uma lista, valida que os tipos dos valores da lista sao compativeis com o tipo da coluna de destino. Por exemplo, passar valores de texto para uma coluna numerica produzira um erro de validacao durante a geracao de SQL.
 
-O analisador regista o tipo do primeiro valor na lista e rejeita qualquer valor subsequente de tipo diferente. Isto e aplicado durante a analise sintatica, antes da consulta chegar a qualquer gerador ou matcher.
+## Parametros em Listas
 
-Quando um gerador SQL processa uma lista, valida adicionalmente que os tipos dos valores da lista sao compativeis com o tipo da coluna de destino. Por exemplo, passar valores de texto para uma coluna numerica produzira um erro de validacao durante a geracao de SQL.
+Os marcadores de parametros podem aparecer dentro de listas IN, misturados livremente com valores literais:
 
-O campo `valuesType` na expressao analisada indica se a lista contem valores `"string"` ou `"number"`. Para listas vazias, `valuesType` e `null`.
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+Os objetos `Parameter` permanecem no array `values` ate que `bindParams()` os resolva. Consulte [Parametros](/pt/syntax/parameters/) para a referencia completa.
 
 ## Combinacao com Outros Operadores
 

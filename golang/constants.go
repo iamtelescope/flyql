@@ -43,4 +43,8 @@ const (
 	errInvalidFunctionArgs            = 71
 	errFunctionNotAllowedWithOperator = 72
 	errInvalidDuration                = 73
+	errEmptyParameterName             = 74
+	errInvalidParameterName           = 75
+	errParameterZeroIndex             = 76
+	errParameterInList                = 77
 )

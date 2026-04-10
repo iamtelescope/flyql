@@ -16,7 +16,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 ## 구문 규칙
 
 - 값은 대괄호 <FlyqlToken type="operator">[ ]</FlyqlToken>로 감싸고 쉼표로 구분합니다
-- 리스트의 모든 값은 같은 타입이어야 합니다 (모두 문자열 또는 모두 숫자)
+- 값은 서로 다른 타입이 섞여도 됩니다: <FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - 문자열 값은 따옴표로 감싸야 합니다: <FlyqlCode code={`['a', 'b', 'c']`} inline />
 - 숫자 값은 따옴표 없이 작성합니다: <FlyqlCode code={`[1, 2, 3]`} inline />
 - 쉼표와 대괄호 주변 공백은 허용됩니다
@@ -45,22 +45,24 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 빈 <FlyqlToken type="operator">not in</FlyqlToken> 리스트는 항상 true입니다. 모든 것이 빈 리스트에 "not in"입니다.
 
-## 타입 일관성
+## 혼합 타입
 
-리스트에는 **동일한 타입의 값만** 들어 있어야 합니다. 하나의 리스트 안에 타입이 섞이면 parse error가 발생합니다.
+리스트는 서로 다른 타입의 값을 지원합니다. 문자열, 숫자, boolean, null을 자유롭게 섞어 사용할 수 있습니다.
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-다음은 유효하지 않습니다 (타입 혼합 — parse error):
+각 요소는 parse된 expression의 `valuesTypes` 배열에 자신의 타입을 가집니다(예: `["integer", "string", "boolean", "null"]`). 빈 리스트의 경우 `valuesTypes`는 `null`입니다.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+SQL generator가 리스트를 처리할 때는, 리스트 값 타입이 대상 컬럼 타입과 호환되는지 검증합니다. 예를 들어 숫자 컬럼에 문자열 값을 넘기면 SQL 생성 중 validation error가 발생합니다.
 
-Parser는 리스트의 첫 번째 값 타입을 추적하고, 이후 다른 타입의 값이 나오면 거부합니다. 이 검사는 쿼리가 generator나 matcher에 도달하기 전에 parse 시점에 수행됩니다.
+## 리스트 안의 파라미터
 
-SQL generator가 리스트를 처리할 때는, 리스트 값 타입이 대상 컬럼 타입과 호환되는지도 추가로 검증합니다. 예를 들어 숫자 컬럼에 문자열 값을 넘기면 SQL 생성 중 validation error가 발생합니다.
+파라미터 placeholder는 IN 리스트 안에서도 사용할 수 있으며, 리터럴 값과 자유롭게 섞어서 쓸 수 있습니다.
 
-Parse된 expression의 `valuesType` 필드는 리스트가 `"string"` 값인지 `"number"` 값인지 나타냅니다. 빈 리스트의 경우 `valuesType`은 `null`입니다.
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+`Parameter` 객체는 `bindParams()`가 해석하기 전까지 `values` 배열에 남아 있습니다. 전체 레퍼런스는 [파라미터](/ko/syntax/parameters/)를 참고하세요.
 
 ## 다른 연산자와의 조합
 

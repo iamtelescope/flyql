@@ -8,4 +8,5 @@ export const ValueType = Object.freeze({
     ARRAY: 'array',
     COLUMN: 'column',
     FUNCTION: 'function',
+    PARAMETER: 'parameter',
 })

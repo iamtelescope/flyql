@@ -12,10 +12,11 @@ describe('ValueType', () => {
         ARRAY: 'array',
         COLUMN: 'column',
         FUNCTION: 'function',
+        PARAMETER: 'parameter',
     }
 
-    it('should have all 9 type constants', () => {
-        expect(Object.keys(ValueType)).toHaveLength(9)
+    it('should have all 10 type constants', () => {
+        expect(Object.keys(ValueType)).toHaveLength(10)
     })
 
     it.each(Object.entries(expectedValues))('should have %s = "%s"', (key, value) => {

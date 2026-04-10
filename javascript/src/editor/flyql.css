@@ -13,6 +13,7 @@
     --flyql-error-color: #ff0000;
     --flyql-transformer-color: #0451a5;
     --flyql-wildcard-color: #e06c75;
+    --flyql-parameter-color: #a855f7;
     --flyql-warning-color: #e5a100;
     --flyql-diag-highlight: rgba(255, 0, 0, 0.15);
 
@@ -40,6 +41,7 @@
     --flyql-error-color: #f48771;
     --flyql-transformer-color: #6e9fff;
     --flyql-wildcard-color: #e06c75;
+    --flyql-parameter-color: #c678dd;
     --flyql-warning-color: #cca700;
     --flyql-diag-highlight: rgba(255, 80, 80, 0.35);
 
@@ -504,6 +506,10 @@
 
 .flyql-wildcard {
     color: var(--flyql-wildcard-color, #e06c75);
+}
+
+.flyql-parameter {
+    color: var(--flyql-parameter-color, #a855f7);
 }
 
 .flyql-error {

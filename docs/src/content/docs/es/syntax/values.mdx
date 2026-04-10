@@ -6,7 +6,7 @@ description: Tipos de valores, literales tipados y expresiones en FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL admite 7 tipos de valor: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** y **Array**. Cada valor del AST incluye un campo `value_type` explícito.
+FlyQL admite 10 tipos de valor: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function** y **Parameter**. Cada valor del AST incluye un campo `value_type` explícito.
 
 ## Tipos de valor
 
@@ -212,6 +212,18 @@ Los nombres de función sin paréntesis se tratan como referencias a columnas, n
 
 Esto produce `value_type: "column"`, no una llamada a función.
 
+## Parameter
+
+Los marcadores de parámetros (`$name` para los nombrados y `$1` para los posicionales) sustituyen valores que se resolverán en tiempo de ejecución mediante `bindParams()`. Pueden aparecer en cualquier lugar donde sea válido un valor literal: dentro de listas IN, argumentos de funciones temporales y argumentos de transformers.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`, el valor es un objeto `Parameter` con los campos `name` y `positional`.
+
+Consulta [Parámetros](/es/syntax/parameters/) para ver la referencia completa.
+
 ## Notas de migración
 
 Si actualizas desde una versión anterior de FlyQL:
@@ -222,3 +234,5 @@ Si actualizas desde una versión anterior de FlyQL:
 - **Nuevo:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken> y <FlyqlToken type="null">null</FlyqlToken> se parsean como literales tipados, no como strings
 - **Nuevo:** el array `values_types` en expresiones de listas `IN` proporciona el tipo de cada elemento
 - **Nuevo:** el módulo `flyql.types` exporta las constantes de tipo canónicas
+- **Nuevo:** valores de funciones temporales (`ago()`, `now()`, `today()`, `startOf()`) con `value_type: "function"`
+- **Nuevo:** marcadores de parámetros (`$name`, `$1`) con `value_type: "parameter"`, resueltos por `bindParams()` en tiempo de ejecución

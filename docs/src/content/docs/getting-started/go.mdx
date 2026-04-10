@@ -9,6 +9,7 @@ import generateSnippet from '@snippets/go/generate_clickhouse/main.go?raw'
 import matchSnippet from '@snippets/go/match/main.go?raw'
 import columnsSnippet from '@snippets/go/columns/main.go?raw'
 import transformersSnippet from '@snippets/go/transformers/main.go?raw'
+import parametersSnippet from '@snippets/go/parameters/main.go?raw'
 
 ## Installation
 
@@ -45,6 +46,14 @@ The second argument is a `Capabilities` struct that controls which features are 
 Transformers are disabled by default.
 
 <Code code={columnsSnippet.trim()} lang="go" />
+
+## Parameterized Queries
+
+Use `$name` and `$1` placeholders, then resolve them at runtime with `BindParams()`:
+
+<Code code={parametersSnippet.trim()} lang="go" />
+
+See [Parameters](/syntax/parameters/) for the full reference.
 
 ## Transformers in Queries
 

@@ -55,6 +55,7 @@ const CHAR_TYPE_CLASS = {
     [CharType.ARGUMENT_NUMBER]: 'flyql-argument-number',
     [CharType.WILDCARD]: 'flyql-wildcard',
     [CharType.COLUMN]: 'flyql-column',
+    [CharType.PARAMETER]: 'flyql-parameter',
 }
 
 function escapeHtml(str) {
@@ -93,6 +94,7 @@ export class EditorEngine {
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
         this.registry = options.registry || null
+        this.parameters = options.parameters || []
         this.debounceMs = options.debounceMs ?? 300
         this.state = new EditorState()
         this.context = null
@@ -144,6 +146,13 @@ export class EditorEngine {
             if (col) _applyEditorTypeNormalization(col)
         }
         this._validatorColumns = null
+    }
+
+    /**
+     * Set the list of available parameter names (without `$` prefix).
+     */
+    setParameters(params) {
+        this.parameters = params || []
     }
 
     _buildValidatorColumns() {
@@ -428,6 +437,30 @@ export class EditorEngine {
             this.columnSuggestions = getColumnSuggestionsForValue(this.columns, ctx.value || '', ctx.key || '')
         }
 
+        // Parameter autocomplete short-circuit: when value starts with `$`, show
+        // parameter suggestions regardless of column async state.
+        if (ctx && ctx.expecting === 'value' && ctx.value && ctx.value.startsWith('$')) {
+            const prefix = ctx.value.slice(1).toLowerCase()
+            const paramSuggestions = (this.parameters || [])
+                .filter((n) => !prefix || n.toLowerCase().startsWith(prefix))
+                .map((n) => ({
+                    label: '$' + n,
+                    insertText: '$' + n,
+                    type: 'value',
+                    detail: 'parameter',
+                }))
+            this.valueSuggestions = paramSuggestions
+            this.valueMessage = paramSuggestions.length === 0 ? 'No matching parameters' : ''
+            this.suggestionType = 'value'
+            this.incomplete = false
+            this.isLoading = false
+            if (this.onLoadingChange) this.onLoadingChange(false)
+            this.suggestions = this.activeTab === 'values' ? this.valueSuggestions : this.columnSuggestions
+            this.message = this.activeTab === 'values' ? this.valueMessage : ''
+            this.state.selectedIndex = 0
+            return ctx
+        }
+
         // Only enter async _valueState flow when the column actually needs server fetch:
         // - column has autocomplete enabled AND no static values, OR
         // - column is unknown (unresolved dotted key — let onAutocomplete try)
@@ -476,6 +509,7 @@ export class EditorEngine {
                     if (this.onLoadingChange) this.onLoadingChange(loading)
                 },
                 this.registry,
+                this.parameters,
             )
 
             if (seq !== this._suggestionSeq) return ctx
@@ -520,6 +554,7 @@ export class EditorEngine {
                     if (this.onLoadingChange) this.onLoadingChange(loading)
                 },
                 this.registry,
+                this.parameters,
             )
 
             if (seq !== this._suggestionSeq) return ctx

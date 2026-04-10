@@ -71,6 +71,10 @@ func (c char) isValue() bool {
 		!c.isEquals()
 }
 
+func (c char) isParameterStart() bool {
+	return c.value == '$'
+}
+
 func (c char) isNewline() bool {
 	return c.value == '\n'
 }

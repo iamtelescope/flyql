@@ -4,6 +4,7 @@ from flyql.core.tree import Node
 from flyql.core.expression import (
     Expression,
     FunctionCall,
+    Parameter,
     Duration,
     convert_unquoted_value,
 )
@@ -20,6 +21,10 @@ from flyql.core.constants import (
     ERR_INVALID_FUNCTION_ARGS,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
     ERR_INVALID_DURATION,
+    ERR_EMPTY_PARAMETER_NAME,
+    ERR_INVALID_PARAMETER_NAME,
+    ERR_PARAMETER_ZERO_INDEX,
+    ERR_PARAMETER_IN_LIST,
 )
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
@@ -107,6 +112,8 @@ class Parser:
         self._function_args: List[str] = []
         self._function_durations: List[Duration] = []
         self._function_current_arg: str = ""
+        self._function_parameter_args: List[Parameter] = []
+        self._function_param_buf: str = ""
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -643,6 +650,9 @@ class Parser:
                 self.store_typed_char(CharType.TRANSFORMER)
             else:
                 self.store_typed_char(CharType.KEY)
+        elif self._transformer_paren_depth > 0 and self.char.is_parameter_start():
+            self.extend_key()
+            self.store_typed_char(CharType.PARAMETER)
         elif self._pipe_seen_in_key and self.char.value in "(),\"'":
             if self.char.value == "(":
                 self._transformer_paren_depth += 1
@@ -728,6 +738,12 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.HAS.value
+                self.is_not_has = False
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.HAS.value
                 self.is_not_has = False
@@ -764,6 +780,11 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.LIKE.value
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.LIKE.value
                 self.set_state(State.VALUE)
@@ -806,6 +827,11 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.ILIKE.value
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.ILIKE.value
                 self.set_state(State.VALUE)
@@ -836,6 +862,13 @@ class Parser:
         elif self.char.is_op():
             self.extend_key_value_operator()
             self.store_typed_char(CharType.OPERATOR)
+        elif self.char.is_parameter_start():
+            if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
+                self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
+            else:
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
         elif self.char.is_value():
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(f"unknown operator: {self.key_value_operator}", 10)
@@ -867,6 +900,10 @@ class Parser:
         if self.char.is_delimiter():
             self.store_typed_char(CharType.SPACE)
             return
+        elif self.char.is_parameter_start():
+            self._value_start = self.char.pos
+            self.set_state(State.PARAMETER)
+            self.store_typed_char(CharType.PARAMETER)
         elif self.char.is_value():
             self.set_state(State.VALUE)
             self.extend_value()
@@ -921,6 +958,77 @@ class Parser:
         else:
             self.set_error_state("invalid character", 10)
             return
+
+    def _finalize_parameter(self) -> None:
+        """Validate and create a Parameter expression from accumulated value."""
+        name = self.value
+        if not name:
+            self.set_error_state("empty parameter name", ERR_EMPTY_PARAMETER_NAME)
+            return
+        if name[0].isdigit():
+            if not name.isdigit():
+                self.set_error_state(
+                    "invalid parameter name", ERR_INVALID_PARAMETER_NAME
+                )
+                return
+            if int(name) == 0:
+                self.set_error_state(
+                    "positional parameters are 1-indexed", ERR_PARAMETER_ZERO_INDEX
+                )
+                return
+        param = Parameter(name=name, positional=name[0].isdigit())
+        expr_end = (
+            self._value_end
+            if self._value_end >= 0
+            else self.char.pos if self.char else 0
+        )
+        expr_range, key_range, operator_range = self._build_expr_ranges(expr_end)
+        value_range = (
+            Range(self._value_start, self._value_end)
+            if self._value_start >= 0
+            else None
+        )
+        key = self._parse_key_with_range(key_range)
+        expression = Expression(
+            key=key,
+            operator=self.key_value_operator,
+            value=param,
+            value_is_string=None,
+            range=expr_range,
+            operator_range=operator_range,
+            value_range=value_range,
+            value_type=ValueType.PARAMETER,
+        )
+        self.extend_tree(expression)
+        self.reset_data()
+
+    def in_state_parameter(self) -> None:
+        if not self.char:
+            return
+
+        if self.char.value.isalnum() or self.char.value == "_":
+            self.extend_value()
+            self.store_typed_char(CharType.PARAMETER)
+        elif self.char.is_delimiter():
+            self._finalize_parameter()
+            if self.state != State.ERROR:
+                self.reset_bool_operator()
+                self.set_state(State.EXPECT_BOOL_OP)
+                self.store_typed_char(CharType.SPACE)
+        elif self.char.is_group_close():
+            if not self.nodes_stack:
+                self.set_error_state("unmatched parenthesis", 9)
+                return
+            self._finalize_parameter()
+            if self.state != State.ERROR:
+                if self.bool_op_stack:
+                    self.bool_operator = self.bool_op_stack.pop()
+                self.extend_tree_from_stack(bool_operator=self.bool_operator)
+                self.reset_bool_operator()
+                self.set_state(State.EXPECT_BOOL_OP)
+                self.store_typed_char(CharType.OPERATOR)
+        else:
+            self.set_error_state("invalid character in parameter name", 10)
 
     def in_state_single_quoted_value(self) -> None:
         if not self.char:
@@ -1259,6 +1367,11 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.NOT_HAS.value
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.NOT_HAS.value
                 self.set_state(State.VALUE)
@@ -1299,6 +1412,11 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.NOT_LIKE.value
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.NOT_LIKE.value
                 self.set_state(State.VALUE)
@@ -1341,6 +1459,11 @@ class Parser:
                 self.set_value_is_string()
                 self.set_state(State.DOUBLE_QUOTED_VALUE)
                 self.store_typed_char(CharType.VALUE)
+            elif self.char.is_parameter_start():
+                self.key_value_operator = Operator.NOT_ILIKE.value
+                self._value_start = self.char.pos
+                self.set_state(State.PARAMETER)
+                self.store_typed_char(CharType.PARAMETER)
             elif self.char.is_value():
                 self.key_value_operator = Operator.NOT_ILIKE.value
                 self.set_state(State.VALUE)
@@ -1379,6 +1502,10 @@ class Parser:
             self._in_list_value_end = self.char.pos + 1
             self.store_typed_char(CharType.VALUE)
             self.set_state(State.IN_LIST_DOUBLE_QUOTED_VALUE)
+        elif self.char.is_parameter_start():
+            self._in_list_value_start = self.char.pos
+            self.set_state(State.IN_LIST_PARAMETER)
+            self.store_typed_char(CharType.PARAMETER)
         elif self.char.is_value():
             self.extend_in_list_current_value()
             self.store_typed_char(CharType.VALUE)
@@ -1414,6 +1541,67 @@ class Parser:
             self.set_state(State.EXPECT_BOOL_OP)
         else:
             self.set_error_state("unexpected character in list value", 44)
+
+    def _finalize_in_list_parameter(self) -> bool:
+        """Validate and finalize a parameter in an IN-list."""
+        name = self.in_list_current_value
+        if not name:
+            self.set_error_state("empty parameter name", ERR_EMPTY_PARAMETER_NAME)
+            return False
+        if name[0].isdigit():
+            if not name.isdigit():
+                self.set_error_state(
+                    "invalid parameter name", ERR_INVALID_PARAMETER_NAME
+                )
+                return False
+            if int(name) == 0:
+                self.set_error_state(
+                    "positional parameters are 1-indexed", ERR_PARAMETER_ZERO_INDEX
+                )
+                return False
+        param = Parameter(name=name, positional=name[0].isdigit())
+        self.in_list_values.append(param)
+        self.in_list_values_types.append(ValueType.PARAMETER)
+        if self._in_list_value_start >= 0:
+            self._in_list_value_ranges.append(
+                Range(self._in_list_value_start, self._in_list_value_end)
+            )
+        self.in_list_current_value = ""
+        self.in_list_current_value_is_string = None
+        self._in_list_value_start = -1
+        self._in_list_value_end = -1
+        return True
+
+    def in_state_in_list_parameter(self) -> None:
+        """Parsing a parameter ($name) inside a list."""
+        if not self.char:
+            return
+
+        c = self.char.value
+        if c.isalnum() or c == "_":
+            self.in_list_current_value += c
+            self._in_list_value_end = self.char.pos + 1
+            self.store_typed_char(CharType.PARAMETER)
+        elif self.char.is_delimiter():
+            if not self._finalize_in_list_parameter():
+                return
+            self.store_typed_char(CharType.SPACE)
+            self.set_state(State.EXPECT_LIST_COMMA_OR_END)
+        elif c == ",":
+            if not self._finalize_in_list_parameter():
+                return
+            self.store_typed_char(CharType.OPERATOR)
+            self.set_state(State.EXPECT_LIST_VALUE)
+        elif c == "]":
+            if not self._finalize_in_list_parameter():
+                return
+            self.store_typed_char(CharType.OPERATOR)
+            self.extend_tree(self.new_in_expression())
+            self.reset_data()
+            self.reset_bool_operator()
+            self.set_state(State.EXPECT_BOOL_OP)
+        else:
+            self.set_error_state("invalid character in parameter name", 10)
 
     def in_state_in_list_single_quoted_value(self) -> None:
         """Parsing a single-quoted value inside a list."""
@@ -1483,6 +1671,8 @@ class Parser:
         self._function_args = []
         self._function_durations = []
         self._function_current_arg = ""
+        self._function_parameter_args = []
+        self._function_param_buf = ""
 
     def _parse_duration_buf(self) -> bool:
         buf = self._function_duration_buf
@@ -1525,7 +1715,23 @@ class Parser:
 
         fc: Optional[FunctionCall] = None
 
-        if name == "ago":
+        if self._function_parameter_args:
+            self._parse_duration_buf()
+            fc = FunctionCall(
+                name=name,
+                duration_args=list(self._function_durations),
+                parameter_args=list(self._function_parameter_args),
+            )
+            if self._function_args:
+                if name in ("today", "startOf"):
+                    fc.unit = self._function_args[0] if name == "startOf" else ""
+                    tz_idx = 1 if name == "startOf" else 0
+                    fc.timezone = (
+                        self._function_args[tz_idx]
+                        if len(self._function_args) > tz_idx
+                        else ""
+                    )
+        elif name == "ago":
             if self._function_args:
                 self.set_error_state(
                     "ago() requires a duration, not a string argument",
@@ -1627,6 +1833,10 @@ class Parser:
         if self.char.is_group_close():
             self.store_typed_char(CharType.VALUE)
             self._complete_function_call()
+        elif self.char.is_parameter_start():
+            self._function_param_buf = ""
+            self.set_state(State.FUNCTION_PARAMETER)
+            self.store_typed_char(CharType.PARAMETER)
         elif self.char.value.isdigit():
             self._function_duration_buf += self.char.value
             self.set_state(State.FUNCTION_DURATION)
@@ -1701,11 +1911,65 @@ class Parser:
             self._function_current_arg = ""
             self.set_state(State.FUNCTION_QUOTED_ARG)
             self.store_typed_char(CharType.VALUE)
+        elif self.char.is_parameter_start():
+            self._function_param_buf = ""
+            self.set_state(State.FUNCTION_PARAMETER)
+            self.store_typed_char(CharType.PARAMETER)
         elif self.char.is_delimiter():
             self.store_typed_char(CharType.SPACE)
         else:
             self.set_error_state(
                 "expected quoted argument in function call", ERR_INVALID_FUNCTION_ARGS
+            )
+
+    def _finalize_function_parameter(self) -> bool:
+        """Validate and store a parameter in function args."""
+        name = self._function_param_buf
+        if not name:
+            self.set_error_state("empty parameter name", ERR_EMPTY_PARAMETER_NAME)
+            return False
+        if name[0].isdigit():
+            if not name.isdigit():
+                self.set_error_state(
+                    "invalid parameter name", ERR_INVALID_PARAMETER_NAME
+                )
+                return False
+            if int(name) == 0:
+                self.set_error_state(
+                    "positional parameters are 1-indexed", ERR_PARAMETER_ZERO_INDEX
+                )
+                return False
+        param = Parameter(name=name, positional=name[0].isdigit())
+        self._function_parameter_args.append(param)
+        self._function_param_buf = ""
+        return True
+
+    def in_state_function_parameter(self) -> None:
+        if not self.char:
+            return
+
+        c = self.char.value
+        if c.isalnum() or c == "_":
+            self._function_param_buf += c
+            self.store_typed_char(CharType.PARAMETER)
+        elif self.char.is_group_close():
+            if not self._finalize_function_parameter():
+                return
+            self.store_typed_char(CharType.VALUE)
+            self._complete_function_call()
+        elif c == ",":
+            if not self._finalize_function_parameter():
+                return
+            self.set_state(State.FUNCTION_EXPECT_ARG)
+            self.store_typed_char(CharType.VALUE)
+        elif self.char.is_delimiter():
+            if not self._finalize_function_parameter():
+                return
+            self.set_state(State.FUNCTION_EXPECT_COMMA_OR_CLOSE)
+            self.store_typed_char(CharType.SPACE)
+        else:
+            self.set_error_state(
+                "invalid character in parameter name", ERR_INVALID_FUNCTION_ARGS
             )
 
     def in_state_last_char(self) -> None:
@@ -1717,6 +1981,7 @@ class Parser:
             State.FUNCTION_QUOTED_ARG,
             State.FUNCTION_EXPECT_COMMA_OR_CLOSE,
             State.FUNCTION_EXPECT_ARG,
+            State.FUNCTION_PARAMETER,
         ):
             self.set_error_state("unclosed function call", ERR_INVALID_FUNCTION_ARGS)
         elif self.state in (
@@ -1735,6 +2000,7 @@ class Parser:
             State.IN_LIST_SINGLE_QUOTED_VALUE,
             State.IN_LIST_DOUBLE_QUOTED_VALUE,
             State.EXPECT_LIST_COMMA_OR_END,
+            State.IN_LIST_PARAMETER,
         ):
             self.set_error_state("unexpected EOF", 25)
         elif self.state == State.KEY:
@@ -1752,6 +2018,10 @@ class Parser:
         elif self.state == State.VALUE:
             self.extend_tree()
             self.reset_bool_operator()
+        elif self.state == State.PARAMETER:
+            self._finalize_parameter()
+            if self.state != State.ERROR:  # type: ignore[comparison-overlap]
+                self.reset_bool_operator()
         elif self.state == State.BOOL_OP_DELIMITER:
             self.set_error_state("unexpected EOF", 26)
             return
@@ -1829,6 +2099,8 @@ class Parser:
                     self.in_state_in_list_double_quoted_value()
                 case State.EXPECT_LIST_COMMA_OR_END:
                     self.in_state_expect_list_comma_or_end()
+                case State.IN_LIST_PARAMETER:
+                    self.in_state_in_list_parameter()
                 case State.FUNCTION_ARGS:
                     self.in_state_function_args()
                 case State.FUNCTION_DURATION:
@@ -1839,6 +2111,10 @@ class Parser:
                     self.in_state_function_expect_comma_or_close()
                 case State.FUNCTION_EXPECT_ARG:
                     self.in_state_function_expect_arg()
+                case State.FUNCTION_PARAMETER:
+                    self.in_state_function_parameter()
+                case State.PARAMETER:
+                    self.in_state_parameter()
                 case _:
                     self.set_error_state(f"Unknown state: {self.state}", 1)  # type: ignore[unreachable]
 

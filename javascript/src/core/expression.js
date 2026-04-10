@@ -17,6 +17,14 @@ export class FunctionCall {
         this.durationArgs = durationArgs
         this.unit = unit
         this.timezone = timezone
+        this.parameterArgs = []
+    }
+}
+
+export class Parameter {
+    constructor(name, positional) {
+        this.name = name
+        this.positional = positional
     }
 }
 

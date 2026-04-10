@@ -105,6 +105,19 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## 파라미터화된 쿼리
+
+`$name` 및 `$1` placeholder를 사용하고, 런타임에 `bindParams()`로 해석할 수 있습니다.
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+전체 레퍼런스는 [파라미터](/ko/syntax/parameters/)를 참고하세요.
+
 ## 쿼리에서 Transformers 사용하기
 
 transformer가 포함된 쿼리를 parse하고 SQL을 생성할 수 있습니다.

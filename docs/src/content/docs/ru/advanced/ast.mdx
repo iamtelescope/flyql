@@ -34,10 +34,10 @@ AST состоит из трёх типов: **Node** (древовидная с
 |------|-----|----------|
 | `key` | `Key` | Поле, которое проверяется (например, <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | Один из: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
-| `value` | `any` | Значение для сравнения. Строка, число, Boolean или Null для скалярных операторов. Пустое для <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"` или `"null"`. `null` для <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
-| `values` | `array` или `null` | Список значений для операторов <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. Может быть гетерогенным. `null` для остальных операторов. |
-| `valuesTypes` | `string[]` или `null` | Массив типов для каждого элемента, параллельный `values`. Каждый элемент — одна из констант типов. `null`, если `values` не используется. |
+| `value` | `any` | Значение для сравнения. Строка, число, Boolean, Null, `FunctionCall` или `Parameter` для скалярных операторов. Пустое для <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` или `"parameter"`. `null` для <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `values` | `array` или `null` | Список значений для операторов <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. Может быть гетерогенным и может содержать элементы `Parameter`. `null` для остальных операторов. |
+| `valuesTypes` | `string[]` или `null` | Массив типов для каждого элемента, параллельный `values`. Каждый элемент — одна из констант типов (включая `"parameter"`). `null`, если `values` не используется. |
 
 ### Key
 
@@ -48,6 +48,34 @@ AST состоит из трёх типов: **Node** (древовидная с
 | `segments` | `string[]` | Сегменты пути. `["status"]` для простого ключа, `["user", "metadata", "role"]` для вложенного. |
 | `raw` | `string` | Исходная строка ключа в том виде, в котором она записана в запросе. |
 | `isSegmented` | `boolean` | `true`, если ключ содержит более одного сегмента (то есть использует точечную нотацию). |
+
+### Parameter
+
+`Parameter` представляет неразрешённый плейсхолдер (`$name` или `$1`), который будет подставлен `bindParams()` перед генерацией SQL или сопоставлением.
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `name` | `string` | Идентификатор плейсхолдера без префикса `$`. Именованный: `"code"`. Позиционный: `"1"`. |
+| `positional` | `boolean` | `true`, если параметр позиционный (имя состоит только из цифр). |
+
+`Parameter` может появляться как:
+- `expression.value` с `valueType === "parameter"` (скалярная позиция)
+- элемент внутри `expression.values` (позиция в IN-списке)
+- элемент внутри `FunctionCall.parameterArgs` (позиция аргумента временной функции)
+
+После того как `bindParams()` их разрешит, в AST не остаётся ни одного экземпляра `Parameter`.
+
+### FunctionCall
+
+`FunctionCall` представляет значение временной функции (`ago(...)`, `now()`, `today(...)`, `startOf(...)`).
+
+| Поле | Тип | Описание |
+|------|-----|----------|
+| `name` | `string` | Одно из `"ago"`, `"now"`, `"today"`, `"startOf"`. |
+| `durationArgs` | `Duration[]` | Разобранные аргументы продолжительности (например, `[{value: 5, unit: "m"}]`). |
+| `unit` | `string` | Аргумент единицы для `startOf` (`"day"`, `"week"` или `"month"`). |
+| `timezone` | `string` | Аргумент часового пояса для `today` и `startOf`. |
+| `parameterArgs` | `Parameter[]` | Плейсхолдеры параметров, которые заполнят `durationArgs`/`unit`/`timezone` во время связывания. |
 
 ### Операторы
 
@@ -223,6 +251,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### Плейсхолдер параметра
+
+Запрос: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+После `bindParams(node, { code: 200 })`:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### Параметр внутри IN-списка
+
+Запрос: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### Параметр внутри временной функции
+
+Запрос: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### Вложенный ключ
@@ -504,9 +585,12 @@ print(es_query)
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +610,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +630,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

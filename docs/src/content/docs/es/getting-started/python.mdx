@@ -92,6 +92,19 @@ json_str = parse_to_json("message, status|upper", capabilities={"transformers": 
 print(json_str)
 ```
 
+## Consultas parametrizadas
+
+Usa marcadores `$name` y `$1`, y resuélvelos en tiempo de ejecución con `bind_params()`:
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+Consulta [Parámetros](/es/syntax/parameters/) para ver la referencia completa.
+
 ## Transformers en consultas
 
 Parsea una consulta con transformers y genera SQL:

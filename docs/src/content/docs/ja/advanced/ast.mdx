@@ -49,6 +49,35 @@ AST は 3 種類の型で構成されます。**Node**（木構造）、**Expres
 | `raw` | `string` | クエリで書かれた元のキー文字列 |
 | `isSegmented` | `boolean` | キーが複数セグメントを持つ、つまりドット記法を使っている場合に `true` |
 
+### Parameter
+
+`Parameter` は未解決のプレースホルダ（`$name` または `$1`）を表します。SQL 生成やマッチングの前に `bindParams()` によって置き換えられます。
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `name` | `string` | `$` プレフィックスを除いたプレースホルダ識別子。名前付きの場合は `"code"`、位置指定の場合は `"1"` |
+| `positional` | `boolean` | パラメータが位置指定（数字のみの名前）の場合は `true` |
+
+`Parameter` は次のいずれかの位置に現れます。
+
+- `expression.value`（`valueType === "parameter"`、スカラー位置）
+- `expression.values` 内の要素（IN リスト位置）
+- `FunctionCall.parameterArgs` 内の要素（テンポラル関数の引数位置）
+
+`bindParams()` で解決されると、AST には `Parameter` インスタンスは残りません。
+
+### FunctionCall
+
+`FunctionCall` はテンポラル関数値（`ago(...)`、`now()`、`today(...)`、`startOf(...)`）を表します。
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `name` | `string` | `"ago"`、`"now"`、`"today"`、`"startOf"` のいずれか |
+| `durationArgs` | `Duration[]` | parse 済みの duration 引数（例: `[{value: 5, unit: "m"}]`） |
+| `unit` | `string` | `startOf` の unit 引数（`"day"`、`"week"`、`"month"`） |
+| `timezone` | `string` | `today` および `startOf` のタイムゾーン引数 |
+| `parameterArgs` | `Parameter[]` | バインド時に `durationArgs` / `unit` / `timezone` を埋めるパラメータプレースホルダ |
+
 ### 演算子
 
 すべての演算子は import 可能な定数として提供されています。
@@ -223,6 +252,59 @@ Node (leaf)
     key: { segments: ["active"], raw: "active" }
     operator: "truthy"
     value: ""
+```
+
+### パラメータプレースホルダ
+
+クエリ: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    valueType: "parameter"
+```
+
+`bindParams(node, { code: 200 })` の実行後:
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: 200
+    valueType: "integer"
+```
+
+### IN リスト内のパラメータ
+
+クエリ: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    valuesTypes: ["parameter", "string"]
+```
+
+### テンポラル関数内のパラメータ
+
+クエリ: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      durationArgs: []
+      parameterArgs: [{ name: "d", positional: false }]
+    valueType: "function"
 ```
 
 ### ネストしたキー
@@ -504,9 +586,12 @@ print(es_query)
 ```javascript
 import {
   parse,               // Parse a query string into an AST
+  bindParams,          // Resolve parameter placeholders: bindParams(node, params)
   Parser,              // Parser class (advanced usage)
   Node,                // AST branch/leaf node
   Expression,          // Leaf condition
+  Parameter,           // Parameter placeholder ($name / $1)
+  FunctionCall,        // Temporal function value (ago, now, today, startOf)
   Key,                 // Field path
   Range,               // Source position range [start, end)
   Column,              // Core column type for validator
@@ -526,9 +611,12 @@ import {
 import flyql "github.com/iamtelescope/flyql/golang"
 
 // flyql.Parse(query string) (*ParseResult, error)
-// flyql.Node        — AST node struct
-// flyql.Expression  — leaf condition struct
-// flyql.Key         — field path struct
+// flyql.BindParams(node *Node, params map[string]any) error — resolve parameter placeholders
+// flyql.Node         — AST node struct
+// flyql.Expression   — leaf condition struct
+// flyql.Parameter    — parameter placeholder struct ($name / $1)
+// flyql.FunctionCall — temporal function value struct
+// flyql.Key          — field path struct
 // flyql.Range       — source position range [Start, End)
 // flyql.Column      — core column type for validator
 // flyql.ColumnSchema — column schema container with nested resolution
@@ -543,7 +631,7 @@ import flyql "github.com/iamtelescope/flyql/golang"
 ### Python
 
 ```python
-from flyql import parse, Parser
+from flyql import parse, bind_params, Parser, Parameter, FunctionCall
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key

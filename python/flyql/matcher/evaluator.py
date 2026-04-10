@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import re2  # type: ignore[import-untyped]
 
 from flyql.core.constants import Operator, BoolOperator
-from flyql.core.expression import Expression, FunctionCall, Duration
+from flyql.core.expression import Expression, FunctionCall, Duration, Parameter
 from flyql.core.exceptions import FlyqlError
 from flyql.core.tree import Node
 from flyql.types import ValueType
@@ -228,6 +228,27 @@ class Evaluator:
         expression: Expression,
         record: Record,
     ) -> bool:
+        if expression.value_type == ValueType.PARAMETER:
+            if isinstance(expression.value, Parameter):
+                raise FlyqlError(
+                    f"unbound parameter '${expression.value.name}' — call bind_params() before evaluating"
+                )
+            raise FlyqlError("unbound parameter — call bind_params() before evaluating")
+
+        if expression.values is not None:
+            for v in expression.values:
+                if isinstance(v, Parameter):
+                    raise FlyqlError(
+                        f"unbound parameter '${v.name}' in IN list — call bind_params() before evaluating"
+                    )
+
+        if (
+            isinstance(expression.value, FunctionCall)
+            and expression.value.parameter_args
+        ):
+            raise FlyqlError(
+                f"unbound parameter(s) in function {expression.value.name}() — call bind_params() before evaluating"
+            )
 
         key = Key(expression.key.raw)
         value = record.get_value(key)

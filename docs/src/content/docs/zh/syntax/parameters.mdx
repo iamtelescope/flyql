@@ -1,0 +1,286 @@
+---
+title: 参数
+description: 在 FlyQL 查询中使用 $name 和 $1 占位符，并在运行时通过 bindParams() 解析
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL 支持**参数占位符** —— `$name`（命名）和 `$1`（位置）—— 它们可以出现在任何字面量允许出现的位置。参数会在运行时通过调用 `bindParams()` 解析，之后再生成 SQL 或在内存中执行查询。
+
+这是模板化查询的安全方式：查询文本保持静态，具体值在之后绑定。没有字符串拼接、没有转义、也没有注入风险。
+
+## 为什么需要参数
+
+一个典型的使用场景是工具或仪表板重复运行相同结构但输入不同的查询：
+
+<FlyqlCode code={`status = $code and env = $env`} />
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+参数值可以来自表单字段、API 请求或任何其他运行时来源 —— 无需重新构建查询字符串。
+
+## 语法
+
+### 命名参数
+
+命名参数是 `$` 后跟一个字母或下划线，再加上任意字母、数字和下划线的组合：
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`env = $my_env`} />
+<FlyqlCode code={`user = $_internal`} />
+
+参数名**不**包含 `$` 前缀 —— `$code` 引用的是名为 `code` 的参数。
+
+### 位置参数
+
+位置参数是 `$` 后跟数字。位置参数采用**从 1 开始的索引**（与 SQL 的 `$1` 类似）：
+
+<FlyqlCode code={`a = $1 and b = $2`} />
+
+不允许使用 `$0`。也不允许 `$1abc`（数字后接字母）。
+
+## 参数可以出现的位置
+
+参数可以出现在任何字面值有效的位置：
+
+### 比较值
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`age >= $min_age`} />
+<FlyqlCode code={`name != $banned`} />
+<FlyqlCode code={`score > $1`} />
+
+### `has`、`like`、`ilike`
+
+<FlyqlCode code={`message has $needle`} />
+<FlyqlCode code={`path like $pattern`} />
+<FlyqlCode code={`title ilike $search`} />
+<FlyqlCode code={`tags not has $excluded`} />
+
+### IN 列表
+
+参数可以与字面值一起混合出现在 `in` 和 `not in` 列表中：
+
+<FlyqlCode code={`status in [$x, $y]`} />
+<FlyqlCode code={`env in [$current, 'staging', 'dev']`} />
+<FlyqlCode code={`code not in [$banned, 401, 403]`} />
+
+### 时间函数参数
+
+参数可以替换 `ago()` 中的时间段值，以及 `today()` 和 `startOf()` 中的时区参数：
+
+<FlyqlCode code={`created > ago($duration)`} />
+<FlyqlCode code={`date = today($tz)`} />
+<FlyqlCode code={`created > startOf('day', $tz)`} />
+
+绑定到 `ago()` 参数的值必须是类似 `"5m"`、`"1h"` 或 `"7d"` 的时间段字符串。
+
+### Transformer 参数
+
+参数可以出现在 transformer 的参数位置：
+
+<FlyqlCode code={`tags|split($sep) has $needle`} />
+
+## bindParams()
+
+解析之后，调用 `bindParams()` 将参数占位符替换为具体的值。该函数就地遍历 AST，替换它找到的每个 `Parameter` 节点。
+
+### Python
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+### JavaScript
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+ast, _ := flyql.Parse(`status = $code and env = $env`)
+err := flyql.BindParams(ast.Root, map[string]any{
+    "code": 200,
+    "env":  "prod",
+})
+```
+
+### API
+
+| 语言 | 签名 |
+|------|------|
+| Python | `bind_params(node, params: dict) -> Node` |
+| JavaScript | `bindParams(node, params: object): Node` |
+| Go | `BindParams(node *Node, params map[string]any) error` |
+
+- **`node`** —— `parse()` 返回的根 `Node`。
+- **`params`** —— 将参数名映射到具体值的 dict/object/map。命名参数以名称作为键（例如 `"code"`）。位置参数使用纯数字字符串作为键（例如 `"1"`、`"2"`）。允许混合字典。
+- **返回值** —— Python 和 JS 返回同一个 `Node`（就地修改）以便链式调用。Go 返回 `error`。
+
+### 类型映射
+
+绑定值的原生类型决定 AST 中产生的 `value_type`：
+
+| 原生类型 | 对应 `value_type` |
+|----------|-------------------|
+| `string` | `"string"` |
+| `int`（在 int64 范围内） | `"integer"` |
+| `int`（超出 int64 范围） | `"bigint"` |
+| `float` | `"float"` |
+| `bool` | `"boolean"` |
+| `null` / `None` / `nil` | `"null"` |
+
+类型由**绑定值的运行时类型**决定，而不是通过把值作为字符串解析得到。绑定 `"200"` 产生的是字符串，而不是整数：
+
+```python
+bind_params(parse("a = $x").root, {"x": "200"})
+# expression.value      → "200"
+# expression.value_type → "string"
+
+bind_params(parse("a = $x").root, {"x": 200})
+# expression.value      → 200
+# expression.value_type → "integer"
+```
+
+不支持的类型（例如 `Decimal`、`BigInt`、自定义对象、`undefined`）会抛出错误：
+
+```
+unsupported parameter value type: Decimal
+```
+
+## 严格校验
+
+`bindParams()` 对**缺失**和**多余**的参数都非常严格。
+
+### 缺失参数
+
+如果查询引用了一个未在提供的字典中的参数，将抛出错误：
+
+```python
+bind_params(parse("a = $x").root, {})
+# FlyqlError: unbound parameter: $x
+```
+
+### 多余参数
+
+如果字典包含一个查询中未引用的参数，也会抛出错误：
+
+```python
+bind_params(parse("a = $x").root, {"x": 1, "y": 2})
+# FlyqlError: unused parameter: y
+```
+
+这比典型的 SQL 驱动更严格，后者通常把参数校验延迟到查询执行阶段。在绑定阶段就捕获这些错误有助于尽早发现问题。
+
+### 位置参数
+
+对于位置参数，从 `1` 到引用的最大索引之间的每个索引都必须提供。不允许出现空缺：
+
+```python
+bind_params(parse("a = $1 and b = $3").root, {"1": 1, "3": 3})
+# FlyqlError: unbound parameter: $2
+```
+
+## 内存匹配
+
+参数在匹配器中的用法完全相同。先绑定，再求值：
+
+```python
+from flyql import parse, bind_params
+from flyql.matcher.evaluator import Evaluator
+
+ast = parse("status = $code")
+bind_params(ast.root, {"code": 200})
+
+result = Evaluator().evaluate(ast.root, {"status": 200})
+```
+
+如果你在求值之前忘记调用 `bind_params()`，匹配器会抛出清晰的错误：
+
+```
+unbound parameter '$code' — call bind_params() before evaluating
+```
+
+每个 SQL 生成器中都存在相同的保护机制，因此你不会意外地生成带有未解析参数的 SQL。
+
+## AST 表示
+
+在 AST 中，参数表示为一个 `value_type: "parameter"` 的 `Expression`，其 `value` 是一个 `Parameter` 对象：
+
+查询：<FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    value_type: "parameter"
+```
+
+对于 IN 列表中的参数，`Parameter` 对象出现在 `expression.values` 中：
+
+查询：<FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    values_types: ["parameter", "string"]
+```
+
+对于时间函数中的参数，它们出现在 `FunctionCall.parameter_args` 中：
+
+查询：<FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      duration_args: []
+      parameter_args: [{ name: "d", positional: false }]
+    value_type: "function"
+```
+
+在 `bindParams()` 解析这些占位符之后，它们会被替换为具体的值，AST 看起来就像普通解析得到的查询一样。
+
+## 错误
+
+| 错误 | Errno | 触发条件 |
+|------|-------|----------|
+| `empty parameter name` | 74 | 查询中 `$` 后没有名称（例如 `status = $`） |
+| `invalid parameter name` | 75 | 名称以数字开头但包含非数字字符（例如 `$1abc`） |
+| `positional parameters are 1-indexed` | 76 | 使用位置参数 `$0`（例如 `status = $0`） |
+
+`bindParams()` 会抛出 `FlyqlError`（Go 中则返回 error）用于以下情况：
+
+- `unbound parameter: $name` —— 查询中引用了该参数，但字典中缺失
+- `unused parameter: name` —— 字典中提供了该参数，但查询中未引用
+- `unsupported parameter value type: <type>` —— 绑定值不是支持的类型之一
+
+## 相关链接
+
+- [值与类型](/zh/syntax/values/) —— 参数可以解析为的值类型
+- [列表](/zh/syntax/lists/) —— IN 列表语法（参数可以出现在列表值中）
+- [AST 与自定义生成器](/zh/advanced/ast/) —— 参数在 AST 中的表现形式

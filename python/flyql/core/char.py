@@ -17,6 +17,7 @@ DOUBLE_QUOTE = '"'
 SINGLE_QUOTE = "'"
 PIPE = "|"
 NEWLINE = "\n"
+DOLLAR = "$"
 
 OPERATOR_CHARS = {EQUAL_SIGN, EXCL_MARK, TILDE, LOWER_THAN, GREATER_THAN}
 KEY_CHARS = {UNDERSCORE, DOT, COLON, SLASH, HYPHEN, AT, PIPE}
@@ -77,6 +78,9 @@ class Char:
             and not self.is_group_close()
             and not self.is_equals()
         )
+
+    def is_parameter_start(self) -> bool:
+        return self.value == DOLLAR
 
     def is_newline(self) -> bool:
         return self.value == NEWLINE

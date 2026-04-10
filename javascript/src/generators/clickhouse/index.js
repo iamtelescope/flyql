@@ -1,6 +1,7 @@
 import { Operator, BoolOperator, VALID_KEY_VALUE_OPERATORS, VALID_BOOL_OPERATORS } from '../../core/constants.js'
 import { ValueType } from '../../types.js'
-import { FunctionCall } from '../../core/expression.js'
+import { FunctionCall, Parameter } from '../../core/expression.js'
+import { FlyqlError } from '../../core/exceptions.js'
 import { parseKey } from '../../core/key.js'
 import {
     Column,
@@ -809,6 +810,28 @@ function validateBoolOperator(op) {
 }
 
 function expressionToSQL(expr, columns, registry = null, options = {}) {
+    if (expr.valueType === ValueType.PARAMETER) {
+        if (expr.value instanceof Parameter) {
+            throw new FlyqlError(
+                `unbound parameter '$${expr.value.name}' \u2014 call bindParams() before generating SQL`,
+            )
+        }
+        throw new FlyqlError('unbound parameter \u2014 call bindParams() before generating SQL')
+    }
+    if (expr.values !== null && expr.values !== undefined) {
+        for (const v of expr.values) {
+            if (v instanceof Parameter) {
+                throw new FlyqlError(
+                    `unbound parameter '$${v.name}' in IN list \u2014 call bindParams() before generating SQL`,
+                )
+            }
+        }
+    }
+    if (expr.value instanceof FunctionCall && expr.value.parameterArgs && expr.value.parameterArgs.length > 0) {
+        throw new FlyqlError(
+            `unbound parameter(s) in function ${expr.value.name}() \u2014 call bindParams() before generating SQL`,
+        )
+    }
     validateOperator(expr.operator)
     if (expr.operator === Operator.TRUTHY) {
         return truthyExpressionToSQL(expr, columns)

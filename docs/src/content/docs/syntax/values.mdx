@@ -6,7 +6,7 @@ description: Value types, typed literals, and expressions in FlyQL
 import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../components/FlyqlToken.astro'
 
-FlyQL supports 9 value types: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, and **Function**. Each value in the AST carries an explicit `value_type` field.
+FlyQL supports 10 value types: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function**, and **Parameter**. Each value in the AST carries an explicit `value_type` field.
 
 ## Value Types
 
@@ -228,6 +228,18 @@ Bare function names without parentheses are treated as column references, not fu
 
 This produces `value_type: "column"`, not a function call.
 
+## Parameter
+
+Parameter placeholders (`$name` for named, `$1` for positional) stand in for values to be resolved at runtime by `bindParams()`. They can appear anywhere a literal value is valid — including IN-lists, temporal function arguments, and transformer arguments.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`, value is a `Parameter` object with `name` and `positional` fields.
+
+See [Parameters](/syntax/parameters/) for the full reference.
+
 ## Migration Notes
 
 If upgrading from a previous FlyQL version:
@@ -240,3 +252,4 @@ If upgrading from a previous FlyQL version:
 - **New:** `flyql.types` module exports canonical type constants
 - **Breaking:** Unquoted non-numeric values are now parsed as `value_type: "column"` (column references), not `"string"`. To match a string, wrap the value in quotes: `field = 'value'`
 - **New:** Temporal function values (`ago()`, `now()`, `today()`, `startOf()`) with `value_type: "function"`
+- **New:** Parameter placeholders (`$name`, `$1`) with `value_type: "parameter"`, resolved by `bindParams()` at runtime

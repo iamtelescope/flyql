@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/iamtelescope/flyql/golang/types"
 )
@@ -94,6 +95,8 @@ type Parser struct {
 	functionArgs               []string
 	functionDurations          []Duration
 	functionCurrentArg         string
+	functionParameterArgs      []*Parameter
+	functionParamBuf           string
 }
 
 func NewParser() *Parser {
@@ -657,6 +660,9 @@ func (p *Parser) inStateKey() {
 		} else {
 			p.storeTypedChar(CharTypeKey)
 		}
+	} else if p.transformerParenDepth > 0 && p.char.isParameterStart() {
+		p.extendKey()
+		p.storeTypedChar(CharTypeParameter)
 	} else if p.pipeSeenInKey && (p.char.isGroupOpen() || p.char.isGroupClose() || p.char.isDoubleQuote() || p.char.isSingleQuote() || p.char.value == ',') {
 		if p.char.isGroupOpen() {
 			p.transformerParenDepth++
@@ -750,6 +756,12 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpHas
+			p.isNotHas = false
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpHas
 			p.isNotHas = false
@@ -799,6 +811,11 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpILike
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpILike
 			p.state = stateValue
@@ -837,6 +854,11 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpLike
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpLike
 			p.state = stateValue
@@ -875,6 +897,14 @@ func (p *Parser) inStateKeyValueOperator() {
 	} else if p.char.isOp() {
 		p.extendKeyValueOperator()
 		p.storeTypedChar(CharTypeOperator)
+	} else if p.char.isParameterStart() {
+		if !validKeyValueOperators[p.keyValueOperator] {
+			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+		} else {
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
+		}
 	} else if p.char.isValue() {
 		if !validKeyValueOperators[p.keyValueOperator] {
 			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
@@ -912,6 +942,10 @@ func (p *Parser) inStateExpectValue() {
 	if p.char.isDelimiter() {
 		p.storeTypedChar(CharTypeSpace)
 		return
+	} else if p.char.isParameterStart() {
+		p.valueStart = p.char.pos
+		p.state = stateParameter
+		p.storeTypedChar(CharTypeParameter)
 	} else if p.char.isValue() {
 		p.state = stateValue
 		p.extendValue()
@@ -978,6 +1012,8 @@ func (p *Parser) resetFunctionData() {
 	p.functionArgs = nil
 	p.functionDurations = nil
 	p.functionCurrentArg = ""
+	p.functionParameterArgs = nil
+	p.functionParamBuf = ""
 }
 
 func (p *Parser) parseDurationBuf() bool {
@@ -1025,6 +1061,44 @@ func (p *Parser) completeFunctionCall() {
 	}
 
 	var fc *FunctionCall
+
+	if len(p.functionParameterArgs) > 0 {
+		p.parseDurationBuf()
+		fc = &FunctionCall{
+			Name:          name,
+			DurationArgs:  append([]Duration{}, p.functionDurations...),
+			ParameterArgs: append([]*Parameter{}, p.functionParameterArgs...),
+		}
+		if len(p.functionArgs) > 0 {
+			if name == "startOf" {
+				fc.Unit = p.functionArgs[0]
+				if len(p.functionArgs) > 1 {
+					fc.Timezone = p.functionArgs[1]
+				}
+			} else if name == "today" {
+				fc.Timezone = p.functionArgs[0]
+			}
+		}
+
+		keyEnd := p.keyEnd
+		keyRange := Range{Start: p.keyStart, End: keyEnd}
+		key, _ := p.parseKeyWithRange(keyRange)
+		exprRange := Range{Start: p.exprStart, End: p.char.pos + 1}
+		operatorRange := &Range{Start: p.operatorStart, End: p.operatorEnd}
+		valueRange := &Range{Start: p.valueStart, End: p.char.pos + 1}
+
+		expr := NewFunctionCallExpression(key, p.keyValueOperator, fc)
+		expr.Range = exprRange
+		expr.OperatorRange = operatorRange
+		expr.ValueRange = valueRange
+
+		p.extendTreeWithExpression(expr)
+		p.resetData()
+		p.resetFunctionData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+		return
+	}
 
 	switch name {
 	case "ago":
@@ -1119,6 +1193,10 @@ func (p *Parser) inStateFunctionArgs() {
 	if p.char.isGroupClose() {
 		p.storeTypedChar(CharTypeValue)
 		p.completeFunctionCall()
+	} else if p.char.isParameterStart() {
+		p.functionParamBuf = ""
+		p.state = stateFunctionParameter
+		p.storeTypedChar(CharTypeParameter)
 	} else if p.char.value >= '0' && p.char.value <= '9' {
 		p.functionDurationBuf += string(p.char.value)
 		p.state = stateFunctionDuration
@@ -1201,10 +1279,71 @@ func (p *Parser) inStateFunctionExpectArg() {
 		p.functionCurrentArg = ""
 		p.state = stateFunctionQuotedArg
 		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isParameterStart() {
+		p.functionParamBuf = ""
+		p.state = stateFunctionParameter
+		p.storeTypedChar(CharTypeParameter)
 	} else if p.char.isDelimiter() {
 		p.storeTypedChar(CharTypeSpace)
 	} else {
 		p.setErrorState("expected quoted argument in function call", errInvalidFunctionArgs)
+	}
+}
+
+func (p *Parser) finalizeFunctionParameter() bool {
+	name := p.functionParamBuf
+	if name == "" {
+		p.setErrorState("empty parameter name", errEmptyParameterName)
+		return false
+	}
+	isDigitStart := name[0] >= '0' && name[0] <= '9'
+	if isDigitStart {
+		for _, ch := range name {
+			if ch < '0' || ch > '9' {
+				p.setErrorState("invalid parameter name", errInvalidParameterName)
+				return false
+			}
+		}
+		if name == "0" {
+			p.setErrorState("positional parameters are 1-indexed", errParameterZeroIndex)
+			return false
+		}
+	}
+	param := &Parameter{Name: name, Positional: isDigitStart}
+	p.functionParameterArgs = append(p.functionParameterArgs, param)
+	p.functionParamBuf = ""
+	return true
+}
+
+func (p *Parser) inStateFunctionParameter() {
+	if p.char == nil {
+		return
+	}
+
+	c := p.char.value
+	if unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_' {
+		p.functionParamBuf += string(c)
+		p.storeTypedChar(CharTypeParameter)
+	} else if p.char.isGroupClose() {
+		if !p.finalizeFunctionParameter() {
+			return
+		}
+		p.storeTypedChar(CharTypeValue)
+		p.completeFunctionCall()
+	} else if c == ',' {
+		if !p.finalizeFunctionParameter() {
+			return
+		}
+		p.state = stateFunctionExpectArg
+		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isDelimiter() {
+		if !p.finalizeFunctionParameter() {
+			return
+		}
+		p.state = stateFunctionExpectCommaOrClose
+		p.storeTypedChar(CharTypeSpace)
+	} else {
+		p.setErrorState("invalid character in parameter name", errInvalidFunctionArgs)
 	}
 }
 
@@ -1587,6 +1726,11 @@ func (p *Parser) inStateExpectHasKeyword() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpNotHas
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotHas
 			p.state = stateValue
@@ -1630,6 +1774,11 @@ func (p *Parser) inStateExpectLikeKeyword() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpNotLike
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotLike
 			p.state = stateValue
@@ -1673,6 +1822,11 @@ func (p *Parser) inStateExpectLikeKeyword() {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
+		} else if p.char.isParameterStart() {
+			p.keyValueOperator = OpNotILike
+			p.valueStart = p.char.pos
+			p.state = stateParameter
+			p.storeTypedChar(CharTypeParameter)
 		} else if p.char.isValue() {
 			p.keyValueOperator = OpNotILike
 			p.state = stateValue
@@ -1708,6 +1862,10 @@ func (p *Parser) inStateExpectListValue() {
 		p.setInListCurrentValueIsString()
 		p.state = stateInListDoubleQuotedValue
 		p.storeTypedChar(CharTypeValue)
+	} else if p.char.isParameterStart() {
+		p.inListValueStart = p.char.pos
+		p.state = stateInListParameter
+		p.storeTypedChar(CharTypeParameter)
 	} else if p.char.isValue() && p.char.value != ',' && p.char.value != ']' {
 		p.extendInListCurrentValue()
 		p.storeTypedChar(CharTypeValue)
@@ -1748,6 +1906,74 @@ func (p *Parser) inStateInListValue() {
 		p.state = stateExpectBoolOp
 	} else {
 		p.setErrorState("unexpected character in list value", 44)
+	}
+}
+
+func (p *Parser) finalizeInListParameter() bool {
+	name := p.inListCurrentValue
+	if name == "" {
+		p.setErrorState("empty parameter name", errEmptyParameterName)
+		return false
+	}
+	isDigitStart := name[0] >= '0' && name[0] <= '9'
+	if isDigitStart {
+		for _, ch := range name {
+			if ch < '0' || ch > '9' {
+				p.setErrorState("invalid parameter name", errInvalidParameterName)
+				return false
+			}
+		}
+		if name == "0" {
+			p.setErrorState("positional parameters are 1-indexed", errParameterZeroIndex)
+			return false
+		}
+	}
+	param := &Parameter{Name: name, Positional: isDigitStart}
+	p.inListValues = append(p.inListValues, param)
+	p.inListValuesTypes = append(p.inListValuesTypes, types.Parameter)
+	if p.inListValueStart >= 0 {
+		p.inListValueRanges = append(p.inListValueRanges, Range{Start: p.inListValueStart, End: p.inListValueEnd})
+	}
+	p.inListCurrentValue = ""
+	p.inListCurrentValueIsString = nil
+	p.inListValueStart = -1
+	p.inListValueEnd = -1
+	return true
+}
+
+func (p *Parser) inStateInListParameter() {
+	if p.char == nil {
+		return
+	}
+
+	c := p.char.value
+	if unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_' {
+		p.inListCurrentValue += string(c)
+		p.inListValueEnd = p.char.pos + 1
+		p.storeTypedChar(CharTypeParameter)
+	} else if p.char.isDelimiter() {
+		if !p.finalizeInListParameter() {
+			return
+		}
+		p.storeTypedChar(CharTypeSpace)
+		p.state = stateExpectListCommaOrEnd
+	} else if c == ',' {
+		if !p.finalizeInListParameter() {
+			return
+		}
+		p.storeTypedChar(CharTypeOperator)
+		p.state = stateExpectListValue
+	} else if c == ']' {
+		if !p.finalizeInListParameter() {
+			return
+		}
+		p.storeTypedChar(CharTypeOperator)
+		p.extendTreeWithExpression(p.newInExpression())
+		p.resetData()
+		p.resetBoolOperator()
+		p.state = stateExpectBoolOp
+	} else {
+		p.setErrorState("invalid character in parameter name", 10)
 	}
 }
 
@@ -1817,6 +2043,82 @@ func (p *Parser) inStateExpectListCommaOrEnd() {
 	}
 }
 
+func (p *Parser) finalizeParameter() {
+	name := p.value
+	if name == "" {
+		p.setErrorState("empty parameter name", errEmptyParameterName)
+		return
+	}
+	isDigitStart := name[0] >= '0' && name[0] <= '9'
+	if isDigitStart {
+		for _, ch := range name {
+			if ch < '0' || ch > '9' {
+				p.setErrorState("invalid parameter name", errInvalidParameterName)
+				return
+			}
+		}
+		if name == "0" {
+			p.setErrorState("positional parameters are 1-indexed", errParameterZeroIndex)
+			return
+		}
+	}
+	param := &Parameter{Name: name, Positional: isDigitStart}
+	exprEnd := p.valueEnd
+	if exprEnd < 0 && p.char != nil {
+		exprEnd = p.char.pos
+	}
+	exprRange, keyRange, operatorRange := p.buildExprRanges(exprEnd)
+	var valueRange *Range
+	if p.valueStart >= 0 {
+		vr := Range{Start: p.valueStart, End: p.valueEnd}
+		valueRange = &vr
+	}
+	key, _ := p.parseKeyWithRange(keyRange)
+	expr := NewParameterExpression(key, p.keyValueOperator, param)
+	expr.Range = exprRange
+	expr.OperatorRange = operatorRange
+	expr.ValueRange = valueRange
+	p.extendTreeWithExpression(expr)
+	p.resetData()
+}
+
+func (p *Parser) inStateParameter() {
+	if p.char == nil {
+		return
+	}
+
+	c := p.char.value
+	if unicode.IsLetter(c) || unicode.IsDigit(c) || c == '_' {
+		p.extendValue()
+		p.storeTypedChar(CharTypeParameter)
+	} else if p.char.isDelimiter() {
+		p.finalizeParameter()
+		if p.state != stateError {
+			p.resetBoolOperator()
+			p.state = stateExpectBoolOp
+			p.storeTypedChar(CharTypeSpace)
+		}
+	} else if p.char.isGroupClose() {
+		if len(p.nodesStack) == 0 {
+			p.setErrorState("unmatched parenthesis", 9)
+			return
+		}
+		p.finalizeParameter()
+		if p.state != stateError {
+			if len(p.boolOpStack) > 0 {
+				p.boolOperator = p.boolOpStack[len(p.boolOpStack)-1]
+				p.boolOpStack = p.boolOpStack[:len(p.boolOpStack)-1]
+			}
+			p.extendTreeFromStack(p.boolOperator)
+			p.resetBoolOperator()
+			p.state = stateExpectBoolOp
+			p.storeTypedChar(CharTypeOperator)
+		}
+	} else {
+		p.setErrorState("invalid character in parameter name", 10)
+	}
+}
+
 func (p *Parser) inStateLastChar() {
 	if p.state == stateInitial && len(p.nodesStack) == 0 {
 		p.setErrorState("empty input", 24)
@@ -1824,7 +2126,8 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateFunctionDuration ||
 		p.state == stateFunctionQuotedArg ||
 		p.state == stateFunctionExpectCommaOrClose ||
-		p.state == stateFunctionExpectArg {
+		p.state == stateFunctionExpectArg ||
+		p.state == stateFunctionParameter {
 		p.setErrorState("unclosed function call", errInvalidFunctionArgs)
 	} else if p.state == stateInitial ||
 		p.state == stateSingleQuotedKey ||
@@ -1840,7 +2143,8 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateInListValue ||
 		p.state == stateInListSingleQuotedValue ||
 		p.state == stateInListDoubleQuotedValue ||
-		p.state == stateExpectListCommaOrEnd {
+		p.state == stateExpectListCommaOrEnd ||
+		p.state == stateInListParameter {
 		p.setErrorState("unexpected EOF", 25)
 	} else if p.state == stateKey {
 		if p.key == NotKeyword {
@@ -1858,6 +2162,11 @@ func (p *Parser) inStateLastChar() {
 	} else if p.state == stateValue {
 		p.extendTree()
 		p.resetBoolOperator()
+	} else if p.state == stateParameter {
+		p.finalizeParameter()
+		if p.state != stateError {
+			p.resetBoolOperator()
+		}
 	} else if p.state == stateBoolOpDelimiter {
 		p.setErrorState("unexpected EOF", 26)
 		return
@@ -1956,6 +2265,12 @@ func (p *Parser) Parse(text string) error {
 			p.inStateFunctionExpectCommaOrClose()
 		case stateFunctionExpectArg:
 			p.inStateFunctionExpectArg()
+		case stateParameter:
+			p.inStateParameter()
+		case stateInListParameter:
+			p.inStateInListParameter()
+		case stateFunctionParameter:
+			p.inStateFunctionParameter()
 		default:
 			p.setErrorState("unknown state", 1)
 		}

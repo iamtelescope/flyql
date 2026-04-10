@@ -212,6 +212,18 @@ AST: `value_type: "function"`、`value` は `FunctionCall` オブジェクトで
 
 これは `value_type: "column"` を生成し、関数呼び出しにはなりません。
 
+## Parameter
+
+パラメータプレースホルダ（名前付きは `$name`、位置指定は `$1`）は、実行時に `bindParams()` で解決される値の代わりになります。リテラル値が有効な場所であればどこにでも現れる可能性があり、IN リスト、テンポラル関数の引数、transformer の引数なども含まれます。
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`、値は `name` と `positional` フィールドを持つ `Parameter` オブジェクトです。
+
+完全なリファレンスは [パラメータ](/ja/syntax/parameters/) を参照してください。
+
 ## 移行時の注意
 
 以前の FlyQL バージョンからアップグレードする場合:

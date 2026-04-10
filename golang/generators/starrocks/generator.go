@@ -1313,6 +1313,20 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 }
 
 func ExpressionToSQLWithOptions(expr *flyql.Expression, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
+	if expr.ValueType == types.Parameter {
+		if p, ok := expr.Value.(*flyql.Parameter); ok {
+			return "", fmt.Errorf("unbound parameter '$%s' — call BindParams() before generating SQL", p.Name)
+		}
+		return "", fmt.Errorf("unbound parameter — call BindParams() before generating SQL")
+	}
+	for _, v := range expr.Values {
+		if p, ok := v.(*flyql.Parameter); ok {
+			return "", fmt.Errorf("unbound parameter '$%s' in IN list — call BindParams() before generating SQL", p.Name)
+		}
+	}
+	if fc, ok := expr.Value.(*flyql.FunctionCall); ok && len(fc.ParameterArgs) > 0 {
+		return "", fmt.Errorf("unbound parameter(s) in function %s() — call BindParams() before generating SQL", fc.Name)
+	}
 	var reg *transformers.TransformerRegistry
 	if len(registry) > 0 && registry[0] != nil {
 		reg = registry[0]

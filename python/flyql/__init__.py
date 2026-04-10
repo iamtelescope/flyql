@@ -1,6 +1,7 @@
 from .core.parser import Parser, ParserError, parse
 from .core.tree import Node
-from .core.expression import Expression, FunctionCall, Duration
+from .core.expression import Expression, FunctionCall, Duration, Parameter
+from .bind import bind_params
 from .core.key import Key, parse_key
 from .core.column import Column
 from .core.constants import BoolOperator, Operator
@@ -23,6 +24,8 @@ __all__ = [
     "Expression",
     "FunctionCall",
     "Duration",
+    "Parameter",
+    "bind_params",
     "Key",
     "parse_key",
     "Column",

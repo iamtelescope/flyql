@@ -27,6 +27,7 @@ export const tokenTypes = [
     CharType.BOOLEAN,
     CharType.NULL,
     CharType.COLUMN,
+    CharType.PARAMETER,
 ]
 
 export function generateMonacoTokens(parser) {

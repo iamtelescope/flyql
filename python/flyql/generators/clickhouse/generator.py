@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import List, Mapping, Optional, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
-from flyql.core.expression import Expression, FunctionCall
+from flyql.core.expression import Expression, FunctionCall, Parameter
 from flyql.types import ValueType
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
@@ -576,6 +576,25 @@ def expression_to_sql_where(
     registry: Optional[TransformerRegistry] = None,
     default_timezone: str = "UTC",
 ) -> str:
+    if expression.value_type == ValueType.PARAMETER:
+        if isinstance(expression.value, Parameter):
+            raise FlyqlError(
+                f"unbound parameter '${expression.value.name}' — call bind_params() before generating SQL"
+            )
+        raise FlyqlError("unbound parameter — call bind_params() before generating SQL")
+
+    if expression.values is not None:
+        for v in expression.values:
+            if isinstance(v, Parameter):
+                raise FlyqlError(
+                    f"unbound parameter '${v.name}' in IN list — call bind_params() before generating SQL"
+                )
+
+    if isinstance(expression.value, FunctionCall) and expression.value.parameter_args:
+        raise FlyqlError(
+            f"unbound parameter(s) in function {expression.value.name}() — call bind_params() before generating SQL"
+        )
+
     if expression.operator == Operator.TRUTHY.value:
         return truthy_expression_to_sql_where(expression, columns)
 

@@ -133,6 +133,20 @@ func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) (bool, error) {
 }
 
 func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool, error) {
+	if expr.ValueType == types.Parameter {
+		if p, ok := expr.Value.(*flyql.Parameter); ok {
+			return false, fmt.Errorf("unbound parameter '$%s' — call BindParams() before evaluating", p.Name)
+		}
+		return false, fmt.Errorf("unbound parameter — call BindParams() before evaluating")
+	}
+	for _, v := range expr.Values {
+		if p, ok := v.(*flyql.Parameter); ok {
+			return false, fmt.Errorf("unbound parameter '$%s' in IN list — call BindParams() before evaluating", p.Name)
+		}
+	}
+	if fc, ok := expr.Value.(*flyql.FunctionCall); ok && len(fc.ParameterArgs) > 0 {
+		return false, fmt.Errorf("unbound parameter(s) in function %s() — call BindParams() before evaluating", fc.Name)
+	}
 	key := NewKey(expr.Key.Raw)
 	value := record.GetValue(key)
 

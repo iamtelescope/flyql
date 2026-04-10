@@ -13,10 +13,16 @@ type Duration struct {
 }
 
 type FunctionCall struct {
-	Name         string
-	DurationArgs []Duration
-	Unit         string
-	Timezone     string
+	Name          string
+	DurationArgs  []Duration
+	Unit          string
+	Timezone      string
+	ParameterArgs []*Parameter
+}
+
+type Parameter struct {
+	Name       string
+	Positional bool
 }
 
 type Expression struct {
@@ -75,6 +81,15 @@ func NewFunctionCallExpression(key Key, operator string, fc *FunctionCall) *Expr
 		Operator:  operator,
 		Value:     fc,
 		ValueType: types.Function,
+	}
+}
+
+func NewParameterExpression(key Key, operator string, param *Parameter) *Expression {
+	return &Expression{
+		Key:       key,
+		Operator:  operator,
+		Value:     param,
+		ValueType: types.Parameter,
 	}
 }
 

@@ -60,6 +60,15 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 SQL 生成器还会进一步校验列表值是否与目标列类型兼容。例如，把字符串列表传给数值列时，会在 SQL 生成阶段抛出验证错误。
 
+## 列表中的参数
+
+参数占位符可以出现在 IN 列表中，与字面值自由混合：
+
+<FlyqlCode code={`status in [$x, $y, 200]`} />
+<FlyqlCode code={`env not in [$current, 'dev']`} />
+
+在 `bindParams()` 解析之前，`Parameter` 对象会保留在 `values` 数组中。完整参考见[参数](/zh/syntax/parameters/)。
+
 ## 与其他操作符组合
 
 列表操作符可以像普通条件一样与布尔逻辑组合：

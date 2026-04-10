@@ -21,10 +21,13 @@ FlyQL provides identical functionality across Go, Python, and JavaScript. This m
 |-----------|------|--------|------------|
 | Parse query | `Parse(query)` | `parse(query)` | `parse(query)` |
 | Parse key | `ParseKey(key)` | `parse_key(key)` | `parseKey(key)` |
+| Bind parameters | `BindParams(node, params)` | `bind_params(node, params)` | `bindParams(node, params)` |
 | **Types** | | | |
 | AST node | `Node` | `Node` | `Node` |
 | Expression | `Expression` | `Expression` | `Expression` |
 | Key | `Key` | `Key` | `Key` |
+| Parameter | `Parameter` | `Parameter` | `Parameter` |
+| FunctionCall | `FunctionCall` | `FunctionCall` | `FunctionCall` |
 | Column | `Column` | `Column` | `Column` |
 | Column schema | `ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 | Range | `Range` | `Range` | `Range` |
@@ -101,8 +104,8 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 
 ## Top-Level Package Imports
 
-**Python** — `from flyql import parse, Node, Expression, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, ValueType`
+**Python** — `from flyql import parse, bind_params, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, ValueType`
 
-**JavaScript** — `import { parse, Node, Expression, Key, Column, ColumnSchema, Operator, Range, ValueType } from 'flyql'`
+**JavaScript** — `import { parse, bindParams, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, ValueType } from 'flyql'`
 
 **Go** — `import "github.com/iamtelescope/flyql/golang"` (core), dialect-specific generator imports separately

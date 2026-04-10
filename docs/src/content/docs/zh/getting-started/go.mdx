@@ -124,6 +124,48 @@ func main() {
 }
 ```
 
+## 参数化查询
+
+使用 `$name` 和 `$1` 占位符，然后在运行时通过 `BindParams()` 解析它们：
+
+```go
+package main
+
+import (
+	"fmt"
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+	ast, err := flyql.Parse("status = $code and env = $env")
+	if err != nil {
+		panic(err)
+	}
+
+	err = flyql.BindParams(ast.Root, map[string]any{
+		"code": 200,
+		"env":  "prod",
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	columns := map[string]*clickhouse.Column{
+		"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),
+		"env":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "env", Type: "String"}),
+	}
+
+	sql, err := clickhouse.ToSQLWhere(ast.Root, columns)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(sql)
+}
+```
+
+完整参考请参见[参数](/zh/syntax/parameters/)。
+
 ## 带转换器的查询
 
 ```go

@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "description": "bind() function test cases",
+  "test_suite": "bind_parameters",
+  "tests": [
+    {
+      "name": "bind_named_string",
+      "input": "a=$x",
+      "params": {"x": "hello"},
+      "expected_result": "success",
+      "expected_value": "hello",
+      "expected_value_type": "string"
+    },
+    {
+      "name": "bind_named_int",
+      "input": "a=$x",
+      "params": {"x": 42},
+      "expected_result": "success",
+      "expected_value": 42,
+      "expected_value_type": "integer"
+    },
+    {
+      "name": "bind_named_float",
+      "input": "a=$x",
+      "params": {"x": 3.14},
+      "expected_result": "success",
+      "expected_value": 3.14,
+      "expected_value_type": "float"
+    },
+    {
+      "name": "bind_named_bool_true",
+      "input": "a=$x",
+      "params": {"x": true},
+      "expected_result": "success",
+      "expected_value": true,
+      "expected_value_type": "boolean"
+    },
+    {
+      "name": "bind_named_bool_false",
+      "input": "a=$x",
+      "params": {"x": false},
+      "expected_result": "success",
+      "expected_value": false,
+      "expected_value_type": "boolean"
+    },
+    {
+      "name": "bind_named_null",
+      "input": "a=$x",
+      "params": {"x": null},
+      "expected_result": "success",
+      "expected_value": null,
+      "expected_value_type": "null"
+    },
+    {
+      "name": "bind_named_string_that_looks_numeric",
+      "input": "a=$x",
+      "params": {"x": "200"},
+      "expected_result": "success",
+      "expected_value": "200",
+      "expected_value_type": "string"
+    },
+    {
+      "name": "bind_positional",
+      "input": "a=$1",
+      "params": {"1": 42},
+      "expected_result": "success",
+      "expected_value": 42,
+      "expected_value_type": "integer"
+    },
+    {
+      "name": "error_missing_param",
+      "input": "a=$x",
+      "params": {},
+      "expected_result": "error",
+      "expected_error_contains": "unbound parameter"
+    },
+    {
+      "name": "error_extra_param",
+      "input": "a=$x",
+      "params": {"x": 1, "y": 2},
+      "expected_result": "error",
+      "expected_error_contains": "unused parameter"
+    },
+    {
+      "name": "error_missing_positional",
+      "input": "a=$1 and b=$2",
+      "params": {"1": 42},
+      "expected_result": "error",
+      "expected_error_contains": "unbound parameter"
+    },
+    {
+      "name": "error_extra_positional",
+      "input": "a=$1",
+      "params": {"1": 42, "2": 99},
+      "expected_result": "error",
+      "expected_error_contains": "unused parameter"
+    }
+  ]
+}

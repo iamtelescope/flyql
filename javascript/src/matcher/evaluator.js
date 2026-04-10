@@ -1,7 +1,7 @@
 import { Operator, BoolOperator } from '../core/constants.js'
 import { FlyqlError } from '../core/exceptions.js'
 import { ValueType } from '../types.js'
-import { FunctionCall } from '../core/expression.js'
+import { FunctionCall, Parameter } from '../core/expression.js'
 import { parseKey } from '../core/key.js'
 import { defaultRegistry } from '../transformers/index.js'
 
@@ -222,6 +222,28 @@ export class Evaluator {
     }
 
     evalExpression(expr, record) {
+        if (expr.valueType === ValueType.PARAMETER) {
+            if (expr.value instanceof Parameter) {
+                throw new FlyqlError(
+                    `unbound parameter '$${expr.value.name}' \u2014 call bindParams() before evaluating`,
+                )
+            }
+            throw new FlyqlError('unbound parameter \u2014 call bindParams() before evaluating')
+        }
+        if (expr.values !== null && expr.values !== undefined) {
+            for (const v of expr.values) {
+                if (v instanceof Parameter) {
+                    throw new FlyqlError(
+                        `unbound parameter '$${v.name}' in IN list \u2014 call bindParams() before evaluating`,
+                    )
+                }
+            }
+        }
+        if (expr.value instanceof FunctionCall && expr.value.parameterArgs && expr.value.parameterArgs.length > 0) {
+            throw new FlyqlError(
+                `unbound parameter(s) in function ${expr.value.name}() \u2014 call bindParams() before evaluating`,
+            )
+        }
         let value = record.getValue(expr.key.raw)
 
         if (expr.key.transformers && expr.key.transformers.length) {

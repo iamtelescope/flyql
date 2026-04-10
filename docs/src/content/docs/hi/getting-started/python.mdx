@@ -92,6 +92,33 @@ json_str = parse_to_json("message, status|upper", capabilities={"transformers": 
 print(json_str)
 ```
 
+## पैरामीटराइज़्ड क्वेरी
+
+`$name` और `$1` प्लेसहोल्डर का उपयोग करें, फिर रनटाइम पर `bind_params()` के साथ उन्हें हल करें:
+
+```python
+from flyql import parse, bind_params
+from flyql.generators.clickhouse.generator import to_sql_where
+from flyql.generators.clickhouse.column import Column
+
+# Named parameters
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+
+columns = {
+    "status": Column("status", False, "UInt32"),
+    "env": Column("env", False, "String"),
+}
+sql = to_sql_where(ast.root, columns)
+print(sql)
+
+# Positional parameters
+ast = parse("status = $1 and env = $2")
+bind_params(ast.root, {"1": 200, "2": "prod"})
+```
+
+पूर्ण संदर्भ के लिए [पैरामीटर](/hi/syntax/parameters/) देखें।
+
 ## क्वेरी में ट्रांसफ़ॉर्मर
 
 ट्रांसफ़ॉर्मर के साथ क्वेरी पार्स करें और SQL उत्पन्न करें:

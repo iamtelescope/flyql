@@ -105,6 +105,31 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
+## パラメータ化クエリ
+
+`$name` や `$1` のプレースホルダを使い、実行時に `bindParams()` で解決できます。
+
+```javascript
+import { parse, bindParams } from 'flyql'
+import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
+
+// パラメータプレースホルダを含むクエリを parse
+const result = parse("status = $code and env in [$env, 'staging']")
+
+// 具体的な値をパラメータにバインド
+bindParams(result.root, { code: 200, env: 'prod' })
+
+// SQL を生成
+const columns = {
+    status: newColumn("status", false, "Int32", null),
+    env: newColumn("env", false, "String", null),
+}
+const sql = generateWhere(result.root, columns)
+console.log(sql)
+```
+
+完全なリファレンスは [パラメータ](/ja/syntax/parameters/) を参照してください。
+
 ## クエリ内で Transformers を使う
 
 transformer を含むクエリを parse し、SQL を生成できます。

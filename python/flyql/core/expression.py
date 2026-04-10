@@ -19,6 +19,13 @@ class FunctionCall:
     duration_args: list["Duration"] = field(default_factory=list)
     unit: str = ""
     timezone: str = ""
+    parameter_args: list["Parameter"] = field(default_factory=list)
+
+
+@dataclass
+class Parameter:
+    name: str
+    positional: bool
 
 
 INT64_MIN = -(2**63)
@@ -46,7 +53,7 @@ class Expression:
         self,
         key: Key,
         operator: str,
-        value: "str | int | float | bool | None | FunctionCall",
+        value: "str | int | float | bool | None | FunctionCall | Parameter",
         value_is_string: bool | None,
         range: Optional[Range] = None,
         operator_range: Optional[Range] = None,
@@ -82,7 +89,7 @@ class Expression:
         elif (
             not value_is_string
             and value is not None
-            and not isinstance(value, FunctionCall)
+            and not isinstance(value, (FunctionCall, Parameter))
         ):
             self.value, self.value_type = convert_unquoted_value(value)
         else:

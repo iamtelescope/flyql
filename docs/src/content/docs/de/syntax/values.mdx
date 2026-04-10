@@ -6,7 +6,7 @@ description: Werttypen, typisierte Literale und Ausdrücke in FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL unterstützt 7 Werttypen: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** und **Array**. Jeder Wert im AST trägt ein explizites Feld `value_type`.
+FlyQL unterstützt 10 Werttypen: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function** und **Parameter**. Jeder Wert im AST trägt ein explizites Feld `value_type`.
 
 ## Werttypen
 
@@ -40,7 +40,7 @@ AST: `value_type: "float"`
 
 ### String
 
-Textwerte, mit oder ohne Anführungszeichen:
+Textwerte **müssen in Anführungszeichen** gesetzt werden, entweder einfach oder doppelt. Werte ohne Anführungszeichen werden als Spaltenreferenzen und nicht als Strings interpretiert.
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />
@@ -52,7 +52,7 @@ AST: `value_type: "string"`
 Anführungszeichen lassen sich mit Backslash escapen:
 
 ```
-user = 'John
+user = 'John\'s'
 message="said \"hello\""
 ```
 
@@ -66,7 +66,7 @@ Die Schlüsselwörter <FlyqlToken type="boolean">true</FlyqlToken> und <FlyqlTok
 
 AST: `value_type: "boolean"`, der Wert ist ein nativer Boolean.
 
-Großgeschriebene Varianten (`True`, `FALSE`) werden als Zeichenketten behandelt.
+Großgeschriebene Varianten (`True`, `FALSE`) werden als Spaltenreferenzen behandelt, nicht als Booleans.
 
 **SQL-Generierung:**
 | Dialekt | FlyQL | Generiertes SQL |
@@ -87,11 +87,27 @@ Das Schlüsselwort <FlyqlToken type="null">null</FlyqlToken> (kleingeschrieben, 
 
 AST: `value_type: "null"`, der Wert ist natives null.
 
-Großgeschriebene Varianten (`Null`, `NULL`) werden als Zeichenketten behandelt.
+Großgeschriebene Varianten (`Null`, `NULL`) werden als Spaltenreferenzen behandelt, nicht als null.
 
 **Einschränkungen:** Mit null sind nur die Operatoren <FlyqlToken type="operator">=</FlyqlToken> und <FlyqlToken type="operator">!=</FlyqlToken> gültig. Die Verwendung von <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken> oder <FlyqlToken type="operator">{'!~'}</FlyqlToken> mit null erzeugt einen Parse-Fehler.
 
 **SQL-Generierung:** <FlyqlCode code={`field = null`} inline /> erzeugt `field IS NULL`, <FlyqlCode code={`field != null`} inline /> erzeugt `field IS NOT NULL` (in allen Dialekten).
+
+### Spaltenreferenz
+
+Jeder Wert ohne Anführungszeichen, der keine Zahl, kein Boolean, kein null und keine temporale Funktion ist, wird als **Spaltenreferenz** interpretiert – ein Verweis auf eine andere Spalte für Spalte-zu-Spalte-Vergleiche:
+
+<FlyqlCode code={`price > min_price`} />
+<FlyqlCode code={`updated_at > created_at`} />
+<FlyqlCode code={`field = otherfield`} />
+
+AST: `value_type: "column"`
+
+Wenn du einen Stringwert vergleichen willst, **musst** du Anführungszeichen verwenden:
+
+<FlyqlCode code={`level = 'error'`} />
+
+Ohne Anführungszeichen behandelt <FlyqlCode code={`level = error`} inline /> `error` als Verweis auf eine Spalte mit dem Namen `error`.
 
 ### Array
 
@@ -212,6 +228,18 @@ Nackte Funktionsnamen ohne Klammern werden als Spaltenreferenzen behandelt, nich
 
 Dies erzeugt `value_type: "column"`, keinen Funktionsaufruf.
 
+## Parameter
+
+Parameter-Platzhalter (`$name` für benannt, `$1` für positional) stehen für Werte, die zur Laufzeit von `bindParams()` aufgelöst werden. Sie können überall dort auftreten, wo ein Literalwert gültig ist – auch in IN-Listen, Argumenten temporaler Funktionen und Transformer-Argumenten.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`, der Wert ist ein `Parameter`-Objekt mit den Feldern `name` und `positional`.
+
+Siehe [Parameter](/de/syntax/parameters/) für die vollständige Referenz.
+
 ## Hinweise zur Migration
 
 Beim Upgrade von einer früheren FlyQL-Version:
@@ -222,3 +250,6 @@ Beim Upgrade von einer früheren FlyQL-Version:
 - **Neu:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> werden als typisierte Literale geparst (nicht als Zeichenketten)
 - **Neu:** Das Array `values_types` bei IN-Listen-Ausdrücken stellt Typen pro Element bereit
 - **Neu:** Das Modul `flyql.types` exportiert die kanonischen Typkonstanten
+- **Breaking:** Werte ohne Anführungszeichen, die keine Zahlen sind, werden jetzt als `value_type: "column"` (Spaltenreferenzen) geparst, nicht mehr als `"string"`. Um einen String zu vergleichen, setze den Wert in Anführungszeichen: `field = 'value'`
+- **Neu:** Temporale Funktionswerte (`ago()`, `now()`, `today()`, `startOf()`) mit `value_type: "function"`
+- **Neu:** Parameter-Platzhalter (`$name`, `$1`) mit `value_type: "parameter"`, zur Laufzeit durch `bindParams()` aufgelöst

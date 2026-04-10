@@ -1,5 +1,5 @@
 import { Char } from './char.js'
-import { Expression, FunctionCall, Duration } from './expression.js'
+import { Expression, FunctionCall, Duration, Parameter } from './expression.js'
 import { Node } from './tree.js'
 import { ParserError, KeyParseError } from './exceptions.js'
 import { parseKey, Key } from './key.js'
@@ -24,6 +24,11 @@ import {
     ERR_INVALID_FUNCTION_ARGS,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
     ERR_INVALID_DURATION,
+    DOLLAR,
+    ERR_EMPTY_PARAMETER_NAME,
+    ERR_INVALID_PARAMETER_NAME,
+    ERR_PARAMETER_ZERO_INDEX,
+    ERR_PARAMETER_IN_LIST,
 } from './constants.js'
 
 export class Parser {
@@ -82,6 +87,8 @@ export class Parser {
         this._functionArgs = []
         this._functionDurations = []
         this._functionCurrentArg = ''
+        this._functionParameterArgs = []
+        this._functionParamBuf = ''
     }
 
     setState(state) {
@@ -599,6 +606,9 @@ export class Parser {
             } else {
                 this.storeTypedChar(CharType.KEY)
             }
+        } else if (this._transformerParenDepth > 0 && this.char.value === DOLLAR) {
+            this.extendKey()
+            this.storeTypedChar(CharType.PARAMETER)
         } else if (this._pipeSeenInKey && '(),"\''.includes(this.char.value)) {
             if (this.char.value === '(') this._transformerParenDepth++
             else if (this.char.value === ')') this._transformerParenDepth--
@@ -786,6 +796,12 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.HAS
+                this.isNotHas = false
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.HAS
                 this.isNotHas = false
@@ -843,6 +859,11 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.ILIKE
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.ILIKE
                 this.setState(State.VALUE)
@@ -887,6 +908,11 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.LIKE
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.LIKE
                 this.setState(State.VALUE)
@@ -925,6 +951,14 @@ export class Parser {
         } else if (this.char.isOp()) {
             this.extendKeyValueOperator()
             this.storeTypedChar(CharType.OPERATOR)
+        } else if (this.char.value === DOLLAR) {
+            if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, 10)
+            } else {
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
+            }
         } else if (this.char.isValue()) {
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
                 this.setErrorState(`unknown operator: ${this.keyValueOperator}`, 10)
@@ -962,6 +996,10 @@ export class Parser {
         if (this.char.isDelimiter()) {
             this.storeTypedChar(CharType.SPACE)
             return
+        } else if (this.char.value === DOLLAR) {
+            this._valueStart = this.char.pos
+            this.setState(State.PARAMETER)
+            this.storeTypedChar(CharType.PARAMETER)
         } else if (this.char.isValue()) {
             this.setState(State.VALUE)
             this.extendValue()
@@ -1047,6 +1085,8 @@ export class Parser {
         this._functionArgs = []
         this._functionDurations = []
         this._functionCurrentArg = ''
+        this._functionParameterArgs = []
+        this._functionParamBuf = ''
     }
 
     parseDurationBuf() {
@@ -1090,7 +1130,19 @@ export class Parser {
 
         let fc = null
 
-        if (name === 'ago') {
+        if (this._functionParameterArgs.length > 0) {
+            this.parseDurationBuf()
+            fc = new FunctionCall(name, [...this._functionDurations])
+            fc.parameterArgs = [...this._functionParameterArgs]
+            if (this._functionArgs.length > 0) {
+                if (name === 'startOf') {
+                    fc.unit = this._functionArgs[0]
+                    fc.timezone = this._functionArgs.length > 1 ? this._functionArgs[1] : ''
+                } else if (name === 'today') {
+                    fc.timezone = this._functionArgs[0]
+                }
+            }
+        } else if (name === 'ago') {
             if (this._functionArgs.length > 0) {
                 this.setErrorState('ago() requires a duration, not a string argument', ERR_INVALID_DURATION)
                 return
@@ -1183,6 +1235,10 @@ export class Parser {
         if (this.char.isGroupClose()) {
             this.storeTypedChar(CharType.VALUE)
             this.completeFunctionCall()
+        } else if (this.char.value === DOLLAR) {
+            this._functionParamBuf = ''
+            this.setState(State.FUNCTION_PARAMETER)
+            this.storeTypedChar(CharType.PARAMETER)
         } else if (this.char.value >= '0' && this.char.value <= '9') {
             this._functionDurationBuf += this.char.value
             this.setState(State.FUNCTION_DURATION)
@@ -1260,10 +1316,66 @@ export class Parser {
             this._functionCurrentArg = ''
             this.setState(State.FUNCTION_QUOTED_ARG)
             this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.value === DOLLAR) {
+            this._functionParamBuf = ''
+            this.setState(State.FUNCTION_PARAMETER)
+            this.storeTypedChar(CharType.PARAMETER)
         } else if (this.char.isDelimiter()) {
             this.storeTypedChar(CharType.SPACE)
         } else {
             this.setErrorState('expected quoted argument in function call', ERR_INVALID_FUNCTION_ARGS)
+        }
+    }
+
+    _finalizeFunctionParameter() {
+        const name = this._functionParamBuf
+        if (!name) {
+            this.setErrorState('empty parameter name', ERR_EMPTY_PARAMETER_NAME)
+            return false
+        }
+        if (name[0] >= '0' && name[0] <= '9') {
+            if (!/^\d+$/.test(name)) {
+                this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
+                return false
+            }
+            if (parseInt(name, 10) === 0) {
+                this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
+                return false
+            }
+        }
+        const param = new Parameter(name, name[0] >= '0' && name[0] <= '9')
+        this._functionParameterArgs.push(param)
+        this._functionParamBuf = ''
+        return true
+    }
+
+    inStateFunctionParameter() {
+        if (!this.char) return
+
+        const c = this.char.value
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_') {
+            this._functionParamBuf += c
+            this.storeTypedChar(CharType.PARAMETER)
+        } else if (this.char.isGroupClose()) {
+            if (!this._finalizeFunctionParameter()) {
+                return
+            }
+            this.storeTypedChar(CharType.VALUE)
+            this.completeFunctionCall()
+        } else if (c === ',') {
+            if (!this._finalizeFunctionParameter()) {
+                return
+            }
+            this.setState(State.FUNCTION_EXPECT_ARG)
+            this.storeTypedChar(CharType.VALUE)
+        } else if (this.char.isDelimiter()) {
+            if (!this._finalizeFunctionParameter()) {
+                return
+            }
+            this.setState(State.FUNCTION_EXPECT_COMMA_OR_CLOSE)
+            this.storeTypedChar(CharType.SPACE)
+        } else {
+            this.setErrorState('invalid character in parameter name', ERR_INVALID_FUNCTION_ARGS)
         }
     }
 
@@ -1574,6 +1686,11 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.NOT_HAS
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.NOT_HAS
                 this.setState(State.VALUE)
@@ -1617,6 +1734,11 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.NOT_LIKE
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.NOT_LIKE
                 this.setState(State.VALUE)
@@ -1662,6 +1784,11 @@ export class Parser {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
                 this.storeTypedChar(CharType.VALUE)
+            } else if (this.char.value === DOLLAR) {
+                this.keyValueOperator = Operator.NOT_ILIKE
+                this._valueStart = this.char.pos
+                this.setState(State.PARAMETER)
+                this.storeTypedChar(CharType.PARAMETER)
             } else if (this.char.isValue()) {
                 this.keyValueOperator = Operator.NOT_ILIKE
                 this.setState(State.VALUE)
@@ -1699,6 +1826,10 @@ export class Parser {
             this.inListQuoteChar = this.char.value
             this.storeTypedChar(CharType.VALUE)
             this.setState(State.IN_LIST_DOUBLE_QUOTED_VALUE)
+        } else if (this.char.value === DOLLAR) {
+            this._inListValueStart = this.char.pos
+            this.setState(State.IN_LIST_PARAMETER)
+            this.storeTypedChar(CharType.PARAMETER)
         } else if (this.char.isValue()) {
             this.extendInListCurrentValue()
             this.storeTypedChar(CharType.VALUE)
@@ -1739,6 +1870,71 @@ export class Parser {
             this.setState(State.EXPECT_BOOL_OP)
         } else {
             this.setErrorState('unexpected character in list value', 44)
+        }
+    }
+
+    _finalizeInListParameter() {
+        const name = this.inListCurrentValue
+        if (!name) {
+            this.setErrorState('empty parameter name', ERR_EMPTY_PARAMETER_NAME)
+            return false
+        }
+        if (name[0] >= '0' && name[0] <= '9') {
+            if (!/^\d+$/.test(name)) {
+                this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
+                return false
+            }
+            if (parseInt(name, 10) === 0) {
+                this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
+                return false
+            }
+        }
+        const param = new Parameter(name, name[0] >= '0' && name[0] <= '9')
+        this.inListValues.push(param)
+        this.inListValuesTypes.push(ValueType.PARAMETER)
+        if (this._inListValueStart >= 0) {
+            this._inListValueRanges.push(new Range(this._inListValueStart, this._inListValueEnd))
+        }
+        this.inListCurrentValue = ''
+        this.inListCurrentValueIsString = null
+        this._inListValueStart = -1
+        this._inListValueEnd = -1
+        return true
+    }
+
+    inStateInListParameter() {
+        if (!this.char) {
+            return
+        }
+
+        const c = this.char.value
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_') {
+            this.inListCurrentValue += c
+            this._inListValueEnd = this.char.pos + 1
+            this.storeTypedChar(CharType.PARAMETER)
+        } else if (this.char.isDelimiter()) {
+            if (!this._finalizeInListParameter()) {
+                return
+            }
+            this.storeTypedChar(CharType.SPACE)
+            this.setState(State.EXPECT_LIST_COMMA_OR_END)
+        } else if (c === ',') {
+            if (!this._finalizeInListParameter()) {
+                return
+            }
+            this.storeTypedChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_LIST_VALUE)
+        } else if (c === ']') {
+            if (!this._finalizeInListParameter()) {
+                return
+            }
+            this.storeTypedChar(CharType.OPERATOR)
+            this.extendTreeWithExpression(this.newInExpression())
+            this.resetData()
+            this.resetBoolOperator()
+            this.setState(State.EXPECT_BOOL_OP)
+        } else {
+            this.setErrorState('invalid character in parameter name', 10)
         }
     }
 
@@ -1812,6 +2008,78 @@ export class Parser {
         }
     }
 
+    _finalizeParameter() {
+        const name = this.value
+        if (!name) {
+            this.setErrorState('empty parameter name', ERR_EMPTY_PARAMETER_NAME)
+            return
+        }
+        if (name[0] >= '0' && name[0] <= '9') {
+            if (!/^\d+$/.test(name)) {
+                this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
+                return
+            }
+            if (parseInt(name, 10) === 0) {
+                this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
+                return
+            }
+        }
+        const param = new Parameter(name, name[0] >= '0' && name[0] <= '9')
+        const exprEnd = this._valueEnd >= 0 ? this._valueEnd : this.char ? this.char.pos : 0
+        const { exprRange, keyRange, operatorRange } = this._buildExprRanges(exprEnd)
+        const valueRange = this._valueStart >= 0 ? new Range(this._valueStart, this._valueEnd) : null
+        const key = this._parseKeyWithRange(keyRange)
+        const expression = new Expression(
+            key,
+            this.keyValueOperator,
+            param,
+            null,
+            null,
+            null,
+            null,
+            ValueType.PARAMETER,
+            exprRange,
+            operatorRange,
+            valueRange,
+        )
+        this.extendTreeWithExpression(expression)
+        this.resetData()
+    }
+
+    inStateParameter() {
+        if (!this.char) return
+
+        const c = this.char.value
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_') {
+            this.extendValue()
+            this.storeTypedChar(CharType.PARAMETER)
+        } else if (this.char.isDelimiter()) {
+            this._finalizeParameter()
+            if (this.state !== State.ERROR) {
+                this.resetBoolOperator()
+                this.setState(State.EXPECT_BOOL_OP)
+                this.storeTypedChar(CharType.SPACE)
+            }
+        } else if (this.char.isGroupClose()) {
+            if (!this.nodesStack.length) {
+                this.setErrorState('unmatched parenthesis', 9)
+                return
+            }
+            this._finalizeParameter()
+            if (this.state !== State.ERROR) {
+                if (this.boolOpStack.length) {
+                    this.boolOperator = this.boolOpStack.pop()
+                }
+                this.extendTreeFromStack(this.boolOperator)
+                this.resetBoolOperator()
+                this.setState(State.EXPECT_BOOL_OP)
+                this.storeTypedChar(CharType.OPERATOR)
+            }
+        } else {
+            this.setErrorState('invalid character in parameter name', 10)
+        }
+    }
+
     inStateLastChar() {
         if (this.state === State.INITIAL && !this.nodesStack.length) {
             this.setErrorState('empty input', 24)
@@ -1820,7 +2088,8 @@ export class Parser {
             this.state === State.FUNCTION_DURATION ||
             this.state === State.FUNCTION_QUOTED_ARG ||
             this.state === State.FUNCTION_EXPECT_COMMA_OR_CLOSE ||
-            this.state === State.FUNCTION_EXPECT_ARG
+            this.state === State.FUNCTION_EXPECT_ARG ||
+            this.state === State.FUNCTION_PARAMETER
         ) {
             this.setErrorState('unclosed function call', ERR_INVALID_FUNCTION_ARGS)
         } else if (
@@ -1838,7 +2107,8 @@ export class Parser {
             this.state === State.IN_LIST_VALUE ||
             this.state === State.IN_LIST_SINGLE_QUOTED_VALUE ||
             this.state === State.IN_LIST_DOUBLE_QUOTED_VALUE ||
-            this.state === State.EXPECT_LIST_COMMA_OR_END
+            this.state === State.EXPECT_LIST_COMMA_OR_END ||
+            this.state === State.IN_LIST_PARAMETER
         ) {
             this.setErrorState('unexpected EOF', 25)
         } else if (this.state === State.KEY) {
@@ -1857,6 +2127,11 @@ export class Parser {
         } else if (this.state === State.VALUE) {
             this.extendTree()
             this.resetBoolOperator()
+        } else if (this.state === State.PARAMETER) {
+            this._finalizeParameter()
+            if (this.state !== State.ERROR) {
+                this.resetBoolOperator()
+            }
         } else if (this.state === State.BOOL_OP_DELIMITER) {
             this.setErrorState('unexpected EOF', 26)
             return
@@ -1968,6 +2243,15 @@ export class Parser {
                     break
                 case State.FUNCTION_EXPECT_ARG:
                     this.inStateFunctionExpectArg()
+                    break
+                case State.FUNCTION_PARAMETER:
+                    this.inStateFunctionParameter()
+                    break
+                case State.IN_LIST_PARAMETER:
+                    this.inStateInListParameter()
+                    break
+                case State.PARAMETER:
+                    this.inStateParameter()
                     break
                 default:
                     this.setErrorState(`Unknown state: ${this.state}`, 1)

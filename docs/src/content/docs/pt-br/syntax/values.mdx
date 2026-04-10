@@ -6,7 +6,7 @@ description: Tipos de valores, literais tipados e expressões no FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-O FlyQL suporta 7 tipos de valores: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null** e **Array**. Cada valor no AST carrega um campo `value_type` explícito.
+O FlyQL suporta 10 tipos de valores: **Integer**, **BigInt**, **Float**, **String**, **Boolean**, **Null**, **Array**, **Column**, **Function** e **Parameter**. Cada valor no AST carrega um campo `value_type` explícito.
 
 ## Tipos de Valores
 
@@ -212,6 +212,18 @@ Nomes de função sem parênteses são tratados como referências de coluna, nã
 
 Isso produz `value_type: "column"`, não uma chamada de função.
 
+## Parameter
+
+Placeholders de parâmetros (`$name` para nomeado, `$1` para posicional) substituem valores a serem resolvidos em tempo de execução por `bindParams()`. Eles podem aparecer em qualquer lugar onde um valor literal seja válido — incluindo listas IN, argumentos de funções temporais e argumentos de transformadores.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`level in [$primary, 'warn']`} />
+<FlyqlCode code={`created > ago($duration)`} />
+
+AST: `value_type: "parameter"`, valor é um objeto `Parameter` com campos `name` e `positional`.
+
+Veja [Parâmetros](/pt-br/syntax/parameters/) para a referência completa.
+
 ## Notas de Migração
 
 Se estiver atualizando de uma versão anterior do FlyQL:
@@ -222,3 +234,5 @@ Se estiver atualizando de uma versão anterior do FlyQL:
 - **Novo:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> são analisados como literais tipados (não strings)
 - **Novo:** O array `values_types` em expressões de lista IN fornece tipos por elemento
 - **Novo:** O módulo `flyql.types` exporta constantes de tipo canônicas
+- **Novo:** Valores de funções temporais (`ago()`, `now()`, `today()`, `startOf()`) com `value_type: "function"`
+- **Novo:** Placeholders de parâmetros (`$name`, `$1`) com `value_type: "parameter"`, resolvidos por `bindParams()` em tempo de execução

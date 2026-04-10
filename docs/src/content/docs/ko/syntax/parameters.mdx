@@ -1,0 +1,286 @@
+---
+title: 파라미터
+description: FlyQL 쿼리에서 $name 및 $1 placeholder를 사용하고 런타임에 bindParams()로 해석합니다
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL은 리터럴이 들어갈 수 있는 자리 어디에나 사용할 수 있는 **파라미터 placeholder** — `$name` (named)과 `$1` (positional) — 을 지원합니다. 파라미터는 SQL 생성이나 메모리 평가 전에 `bindParams()`를 호출하여 런타임에 해석됩니다.
+
+이는 쿼리를 안전하게 템플릿화하는 방법입니다. 쿼리 텍스트는 정적으로 유지하고, 구체적인 값은 나중에 바인딩합니다. 문자열 연결도, 이스케이프도, 인젝션 위험도 없습니다.
+
+## 왜 파라미터인가
+
+일반적인 사용 사례는 같은 쿼리 형태를 서로 다른 입력값으로 실행하는 도구나 대시보드입니다.
+
+<FlyqlCode code={`status = $code and env = $env`} />
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+파라미터 값은 폼 필드, API 요청, 또는 다른 런타임 소스에서 제공할 수 있으며, 쿼리 문자열을 다시 만들 필요가 없습니다.
+
+## 구문
+
+### Named 파라미터
+
+Named 파라미터는 `$` 뒤에 문자나 언더스코어가 오고, 그다음으로 문자, 숫자, 언더스코어의 조합이 올 수 있습니다.
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`env = $my_env`} />
+<FlyqlCode code={`user = $_internal`} />
+
+파라미터 이름에는 `$` 접두사가 포함되지 **않습니다** — `$code`는 `code`라는 이름의 파라미터를 참조합니다.
+
+### Positional 파라미터
+
+Positional 파라미터는 `$` 뒤에 숫자만 오는 형태입니다. Positional 파라미터는 SQL의 `$1`처럼 **1부터 시작**합니다.
+
+<FlyqlCode code={`a = $1 and b = $2`} />
+
+`$0`은 허용되지 않습니다. `$1abc`(숫자 뒤에 문자가 오는 형태)도 허용되지 않습니다.
+
+## 파라미터가 사용될 수 있는 위치
+
+파라미터는 리터럴 값이 유효한 모든 위치에서 사용할 수 있습니다.
+
+### 비교 값
+
+<FlyqlCode code={`status = $code`} />
+<FlyqlCode code={`age >= $min_age`} />
+<FlyqlCode code={`name != $banned`} />
+<FlyqlCode code={`score > $1`} />
+
+### `has`, `like`, `ilike`
+
+<FlyqlCode code={`message has $needle`} />
+<FlyqlCode code={`path like $pattern`} />
+<FlyqlCode code={`title ilike $search`} />
+<FlyqlCode code={`tags not has $excluded`} />
+
+### IN 리스트
+
+파라미터는 `in`과 `not in` 리스트 안에서 리터럴 값과 섞어서 사용할 수 있습니다.
+
+<FlyqlCode code={`status in [$x, $y]`} />
+<FlyqlCode code={`env in [$current, 'staging', 'dev']`} />
+<FlyqlCode code={`code not in [$banned, 401, 403]`} />
+
+### 시간 함수 인수
+
+파라미터는 `ago()` 안의 duration 값, `today()`와 `startOf()`의 타임존 인수 자리에 사용할 수 있습니다.
+
+<FlyqlCode code={`created > ago($duration)`} />
+<FlyqlCode code={`date = today($tz)`} />
+<FlyqlCode code={`created > startOf('day', $tz)`} />
+
+`ago()` 파라미터에 바인딩되는 값은 `"5m"`, `"1h"`, `"7d"`와 같은 duration 문자열이어야 합니다.
+
+### Transformer 인수
+
+파라미터는 transformer 인수 위치에도 나타날 수 있습니다.
+
+<FlyqlCode code={`tags|split($sep) has $needle`} />
+
+## bindParams()
+
+parse 후에 `bindParams()`를 호출하면 파라미터 placeholder가 구체적인 값으로 치환됩니다. 이 함수는 AST를 in-place로 순회하며 발견되는 모든 `Parameter` 노드를 교체합니다.
+
+### Python
+
+```python
+from flyql import parse, bind_params
+
+ast = parse("status = $code and env = $env")
+bind_params(ast.root, {"code": 200, "env": "prod"})
+```
+
+### JavaScript
+
+```javascript
+import { parse, bindParams } from 'flyql'
+
+const ast = parse('status = $code and env = $env')
+bindParams(ast.root, { code: 200, env: 'prod' })
+```
+
+### Go
+
+```go
+import flyql "github.com/iamtelescope/flyql/golang"
+
+ast, _ := flyql.Parse(`status = $code and env = $env`)
+err := flyql.BindParams(ast.Root, map[string]any{
+    "code": 200,
+    "env":  "prod",
+})
+```
+
+### API
+
+| 언어 | 시그니처 |
+|------|----------|
+| Python | `bind_params(node, params: dict) -> Node` |
+| JavaScript | `bindParams(node, params: object): Node` |
+| Go | `BindParams(node *Node, params map[string]any) error` |
+
+- **`node`** — `parse()`가 반환한 루트 `Node`.
+- **`params`** — 파라미터 이름을 구체적인 값에 매핑하는 dict/object/map. Named 파라미터는 이름을 키로 사용합니다(예: `"code"`). Positional 파라미터는 숫자 문자열을 키로 사용합니다(예: `"1"`, `"2"`). 두 종류를 섞어서 사용할 수 있습니다.
+- **반환 값** — Python과 JS는 체이닝을 위해 같은 `Node`를 반환합니다(in-place로 변경됨). Go는 `error`를 반환합니다.
+
+### 타입 매핑
+
+바인딩된 값의 네이티브 타입이 AST의 결과 `value_type`을 결정합니다.
+
+| 네이티브 타입 | 결과 `value_type` |
+|---------------|-------------------|
+| `string` | `"string"` |
+| `int` (int64 범위 내) | `"integer"` |
+| `int` (int64 범위 밖) | `"bigint"` |
+| `float` | `"float"` |
+| `bool` | `"boolean"` |
+| `null` / `None` / `nil` | `"null"` |
+
+타입은 값을 문자열로 파싱하는 것이 아니라 **바인딩된 값의 런타임 타입**으로 결정됩니다. `"200"`을 바인딩하면 정수가 아니라 문자열이 됩니다.
+
+```python
+bind_params(parse("a = $x").root, {"x": "200"})
+# expression.value      → "200"
+# expression.value_type → "string"
+
+bind_params(parse("a = $x").root, {"x": 200})
+# expression.value      → 200
+# expression.value_type → "integer"
+```
+
+지원되지 않는 타입(예: `Decimal`, `BigInt`, 사용자 정의 객체, `undefined`)은 에러를 발생시킵니다.
+
+```
+unsupported parameter value type: Decimal
+```
+
+## 엄격한 검증
+
+`bindParams()`는 누락 및 추가 파라미터 모두에 대해 **엄격**합니다.
+
+### 누락된 파라미터
+
+쿼리가 제공된 dict에 없는 파라미터를 참조하면 에러가 발생합니다.
+
+```python
+bind_params(parse("a = $x").root, {})
+# FlyqlError: unbound parameter: $x
+```
+
+### 불필요한 파라미터
+
+dict에 쿼리에서 참조되지 않은 파라미터가 포함되어 있으면 에러가 발생합니다.
+
+```python
+bind_params(parse("a = $x").root, {"x": 1, "y": 2})
+# FlyqlError: unused parameter: y
+```
+
+이는 일반적인 SQL 드라이버보다 엄격한 동작입니다. 그런 드라이버들은 보통 파라미터 검증을 쿼리 실행 시점으로 미루는 편입니다. 바인드 시점에 이런 에러를 포착하면 실수를 빠르게 드러낼 수 있습니다.
+
+### Positional 파라미터
+
+Positional 파라미터의 경우 `1`부터 최대 참조 인덱스까지 모든 인덱스가 제공되어야 합니다. 중간이 비어 있으면 허용되지 않습니다.
+
+```python
+bind_params(parse("a = $1 and b = $3").root, {"1": 1, "3": 3})
+# FlyqlError: unbound parameter: $2
+```
+
+## 메모리 매칭
+
+파라미터는 matcher에서도 동일하게 동작합니다. 먼저 bind한 후 평가하세요.
+
+```python
+from flyql import parse, bind_params
+from flyql.matcher.evaluator import Evaluator
+
+ast = parse("status = $code")
+bind_params(ast.root, {"code": 200})
+
+result = Evaluator().evaluate(ast.root, {"status": 200})
+```
+
+평가 전에 `bind_params()`를 호출하는 것을 잊으면 matcher가 명확한 에러를 발생시킵니다.
+
+```
+unbound parameter '$code' — call bind_params() before evaluating
+```
+
+모든 SQL generator에도 같은 가드가 있기 때문에, 해결되지 않은 파라미터가 포함된 SQL을 실수로 생성하는 일이 없습니다.
+
+## AST 표현
+
+파라미터는 AST에서 `value_type: "parameter"`를 가진 `Expression`과 `Parameter` 값 객체로 표현됩니다.
+
+Query: <FlyqlCode code="status = $code" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "="
+    value: { name: "code", positional: false }
+    value_type: "parameter"
+```
+
+IN 리스트에 있는 파라미터의 경우, `Parameter` 객체는 `expression.values` 안에 들어갑니다.
+
+Query: <FlyqlCode code="status in [$x, 'ok']" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["status"], raw: "status" }
+    operator: "in"
+    values: [{ name: "x", positional: false }, "ok"]
+    values_types: ["parameter", "string"]
+```
+
+시간 함수 안에 있는 파라미터는 `FunctionCall.parameter_args`에 나타납니다.
+
+Query: <FlyqlCode code="created > ago($d)" inline />
+
+```
+Node (leaf)
+  expression:
+    key: { segments: ["created"], raw: "created" }
+    operator: ">"
+    value:
+      name: "ago"
+      duration_args: []
+      parameter_args: [{ name: "d", positional: false }]
+    value_type: "function"
+```
+
+`bindParams()`로 해석되고 나면 이러한 `Parameter` placeholder들이 구체적인 값으로 치환되어, AST는 일반적으로 parse된 쿼리와 같은 모습이 됩니다.
+
+## 에러
+
+| 에러 | Errno | 발생 조건 |
+|------|-------|-----------|
+| `empty parameter name` | 74 | 쿼리에 이름 없이 `$`만 있는 경우 (예: `status = $`) |
+| `invalid parameter name` | 75 | 이름이 숫자로 시작하면서 숫자가 아닌 문자가 포함된 경우 (예: `$1abc`) |
+| `positional parameters are 1-indexed` | 76 | Positional `$0`을 사용한 경우 (예: `status = $0`) |
+
+`bindParams()`는 다음과 같은 경우에 `FlyqlError`를 발생시킵니다(Go에서는 에러를 반환).
+
+- `unbound parameter: $name` — 쿼리에서 참조되지만 dict에 없음
+- `unused parameter: name` — dict에 제공되었으나 쿼리에서 참조되지 않음
+- `unsupported parameter value type: <type>` — 바인딩된 값이 지원되는 타입이 아님
+
+## 더 보기
+
+- [값과 타입](/ko/syntax/values/) — 파라미터가 해석되는 값 타입
+- [리스트](/ko/syntax/lists/) — IN 리스트 구문 (파라미터가 리스트 값에 나타날 수 있음)
+- [AST와 사용자 정의 Generator](/ko/advanced/ast/) — 파라미터가 AST에 표현되는 방식

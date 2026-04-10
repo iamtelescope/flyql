@@ -1,6 +1,6 @@
 export const flyqlVersion = '0.0.36'
 
-export const landingIntroQuery = 'status >= 400 and host = prod* and not debug'
+export const landingIntroQuery = "status >= 400 and host like 'prod%' and not debug"
 
 export const landingQuickExampleQuery =
   'service != api and (status >= 400 or level = error) and message ~ "timeout.*"'

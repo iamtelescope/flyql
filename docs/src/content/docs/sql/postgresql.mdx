@@ -39,6 +39,18 @@ PostgreSQL uses uppercase <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlTok
 | <FlyqlCode code={`status in []`} inline /> | `FALSE` |
 | <FlyqlCode code={`status not in []`} inline /> | `TRUE` |
 
+## Truthy Checks
+
+A bare column reference (`active`, `not active`) generates type-aware SQL — there is no single "is truthy" expression, because what counts as falsy differs by column type.
+
+| Column Type | FlyQL | Generated SQL |
+|-------------|-------|--------------|
+| String | <FlyqlCode code={`message`} inline /> | `("message" IS NOT NULL AND "message" != '')` |
+| Int / Float | <FlyqlCode code={`count`} inline /> | `("count" IS NOT NULL AND "count" != 0)` |
+| Bool | <FlyqlCode code={`active`} inline /> | `"active"` |
+| Date | <FlyqlCode code={`created_at`} inline /> | `("created_at" IS NOT NULL)` |
+| Negated String | <FlyqlCode code={`not message`} inline /> | `("message" IS NULL OR "message" = '')` |
+
 ## Containment (`has` / `not has`)
 
 The <FlyqlToken type="operator">has</FlyqlToken> operator generates different SQL depending on the column type:

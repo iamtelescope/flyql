@@ -5,10 +5,10 @@ description: 在 Python 项目中安装并使用 FlyQL
 
 ## 安装
 
-FlyQL 的 Python 版本目前通过 git 安装，尚未发布到 PyPI：
+FlyQL 的 Python 版本已在 PyPI 上发布：
 
 ```bash
-pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+pip install flyql
 ```
 
 这会安装 `flyql` 包以及其依赖 `google-re2`。
@@ -37,7 +37,7 @@ from flyql import parse
 from flyql.generators.clickhouse.generator import to_sql_where
 from flyql.generators.clickhouse.column import Column
 
-result = parse("status >= 400 and host = 'prod*'")
+result = parse("status >= 400 and host like 'prod%'")
 
 columns = {
     "status": Column("status", False, "UInt32"),

@@ -40,7 +40,7 @@ Las consultas de FlyQL constan de una o más condiciones conectadas por operador
 
 - [Operadores](/es/syntax/operators/) — operadores de comparación (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
 - [Lógica booleana](/es/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, precedencia y agrupación
-- [Coincidencia de patrones](/es/syntax/pattern-matching/) — regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) y coincidencia con comodines (<FlyqlToken type="operator">{'*'}</FlyqlToken>)
+- [Coincidencia de patrones](/es/syntax/pattern-matching/) — regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) y <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> con comodines SQL (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listas](/es/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> y <FlyqlToken type="operator">not in</FlyqlToken> con valores de lista
 - [Comprobación de contención](/es/syntax/operators/#comprobación-de-contención) — <FlyqlToken type="operator">has</FlyqlToken> y <FlyqlToken type="operator">not has</FlyqlToken> para subcadenas, existencia de claves y pertenencia de elementos
 - [Valores y expresiones](/es/syntax/values/) — truthy/falsy, cadenas entre comillas, números

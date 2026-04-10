@@ -73,6 +73,10 @@ Les colonnes stockant du JSON sous forme de chaine necessitent `parse_json()` av
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## Types complexes imbriques
+
+Le generateur StarRocks traite un chemin segmente comme appartenant a un seul type conteneur — il ne descend actuellement pas a travers des imbrications mixtes comme `Map(K, Struct)`, `Array(Map)` ou des champs `Struct` qui sont eux-memes des `Map`/`Array`. Pour ces colonnes, aplatissez le chemin ou exposez la valeur interne comme une colonne distincte.
+
 ## Colonnes Map
 
 Les colonnes Map utilisent la notation entre crochets avec comparaison directe :

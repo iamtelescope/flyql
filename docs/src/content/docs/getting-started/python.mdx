@@ -13,10 +13,10 @@ import parametersSnippet from '@snippets/python/getting_started_parameters.py?ra
 
 ## Installation
 
-FlyQL for Python is installed from git (not published to PyPI):
+FlyQL for Python is available on PyPI:
 
 ```bash
-pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+pip install flyql
 ```
 
 This installs the `flyql` package along with its dependency `google-re2`.
@@ -41,7 +41,7 @@ PostgreSQL and StarRocks generators follow the same pattern — import from `fly
 
 ## Match In-Memory
 
-Evaluate a query against a data record without generating SQL:
+Evaluate a query against a data record without generating SQL. Python does not ship a top-level `match(query, data)` helper (Go and JavaScript do) — use `Evaluator` directly:
 
 <Code code={matchSnippet.trim()} lang="python" />
 

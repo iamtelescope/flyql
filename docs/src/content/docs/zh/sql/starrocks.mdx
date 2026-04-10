@@ -69,6 +69,10 @@ StarRocks 支持原生 JSON 与字符串形式 JSON 两种模式。
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## 嵌套复合类型
+
+StarRocks 生成器将分段路径视为属于单一容器类型——目前不会穿透 `Map(K, Struct)`、`Array(Map)` 或其本身为 `Map`/`Array` 的 `Struct` 字段等混合嵌套。对于这类列，请将路径拍平或将内部值暴露为单独的列。
+
 ## Map 列
 
 | FlyQL | 生成 SQL |

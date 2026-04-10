@@ -134,29 +134,29 @@ O FlyQL e tolerante a espacos em branco. Espacos a volta dos operadores sao opci
 
 Todas as formas acima sao equivalentes.
 
-## Modulo de Constantes de Tipo
+## Constantes LiteralKind
 
-Todas as constantes de tipo estao disponiveis no modulo `flyql.types`:
+Os valores de expressoes analisadas carregam uma etiqueta `LiteralKind`. As constantes sao exportadas pelo pacote raiz em cada implementacao.
 
 **Python:**
 ```python
-from flyql.types import ValueType
-# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
-# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+from flyql import LiteralKind
+# LiteralKind.INTEGER, LiteralKind.BIGINT, LiteralKind.FLOAT,
+# LiteralKind.STRING, LiteralKind.BOOLEAN, LiteralKind.NULL, LiteralKind.ARRAY
 ```
 
 **Go:**
 ```go
-import "github.com/iamtelescope/flyql/golang/types"
-// types.Integer, types.BigInt, types.Float,
-// types.String, types.Boolean, types.Null, types.Array
+import "github.com/iamtelescope/flyql/golang/literal"
+// literal.Integer, literal.BigInt, literal.Float,
+// literal.String, literal.Boolean, literal.Null, literal.Array
 ```
 
 **JavaScript:**
 ```javascript
-import { ValueType } from 'flyql/types'
-// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
-// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+import { LiteralKind } from 'flyql'
+// LiteralKind.INTEGER, LiteralKind.BIGINT, LiteralKind.FLOAT,
+// LiteralKind.STRING, LiteralKind.BOOLEAN, LiteralKind.NULL, LiteralKind.ARRAY
 ```
 
 ## Funcoes Temporais
@@ -224,16 +224,3 @@ AST: `value_type: "parameter"`, o valor é um objeto `Parameter` com os campos `
 
 Consulte [Parâmetros](/pt/syntax/parameters/) para a referência completa.
 
-## Notas de Migracao
-
-Se estiver a actualizar a partir de uma versao anterior do FlyQL:
-
-- **Incompativel:** `ValueTypeString`/`ValueTypeNumber` do Go foram removidos, substituidos pelo `types.ValueType` com 7 valores
-- **Incompativel:** O campo `value_type` do AST mudou de `"string"`/`"number"` para `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
-- **Incompativel:** A imposicao de tipos uniformes em listas foi removida — arrays heterogeneos sao agora validos
-- **Novo:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> sao analisados como literais tipados (nao como strings)
-- **Novo:** O array `values_types` nas expressoes IN-list fornece tipos por elemento
-- **Novo:** O modulo `flyql.types` exporta constantes de tipo canonicas
-- **Incompativel:** Valores nao numericos sem aspas sao agora analisados como `value_type: "column"` (referencias de coluna), e nao `"string"`. Para corresponder a uma string, coloque o valor entre aspas: `field = 'value'`
-- **Novo:** Valores de funcoes temporais (`ago()`, `now()`, `today()`, `startOf()`) com `value_type: "function"`
-- **Novo:** Marcadores de parametros (`$name`, `$1`) com `value_type: "parameter"`, resolvidos por `bindParams()` em tempo de execucao

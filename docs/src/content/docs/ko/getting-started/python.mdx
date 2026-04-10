@@ -5,10 +5,10 @@ description: Python 프로젝트에서 FlyQL 설치 및 사용
 
 ## 설치
 
-Python용 FlyQL은 PyPI가 아니라 git에서 설치합니다.
+Python용 FlyQL은 PyPI에서 제공됩니다.
 
 ```bash
-pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+pip install flyql
 ```
 
 이렇게 하면 `flyql` 패키지와 의존성인 `google-re2`가 함께 설치됩니다.
@@ -37,7 +37,7 @@ from flyql import parse
 from flyql.generators.clickhouse.generator import to_sql_where
 from flyql.generators.clickhouse.column import Column
 
-result = parse("status >= 400 and host = 'prod*'")
+result = parse("status >= 400 and host like 'prod%'")
 
 columns = {
     "status": Column("status", False, "UInt32"),

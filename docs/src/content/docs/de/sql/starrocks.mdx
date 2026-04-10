@@ -73,6 +73,10 @@ Spalten, die JSON als String speichern, benötigen vor der Traversierung `parse_
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## Verschachtelte komplexe Typen
+
+Der StarRocks-Generator behandelt einen segmentierten Pfad als zu einem einzelnen Containertyp gehörend — er steigt derzeit nicht durch gemischte Verschachtelungen wie `Map(K, Struct)`, `Array(Map)` oder `Struct`-Felder, die selbst `Map`/`Array` sind, ab. Für solche Spalten den Pfad abflachen oder den inneren Wert als eigene Spalte bereitstellen.
+
 ## Map-Spalten
 
 Map-Spalten verwenden Klammernotation mit direktem Vergleich:

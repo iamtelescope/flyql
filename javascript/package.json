@@ -14,9 +14,6 @@
     "./transformers": {
       "import": "./src/transformers/index.js"
     },
-    "./types": {
-      "import": "./src/types.js"
-    },
     "./columns": {
       "import": "./src/columns/index.js"
     },

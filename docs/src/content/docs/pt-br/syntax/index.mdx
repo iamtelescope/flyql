@@ -40,7 +40,7 @@ As consultas FlyQL consistem em uma ou mais condições conectadas por operadore
 
 - [Operadores](/pt-br/syntax/operators/) — Operadores de comparação (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
 - [Lógica Booleana](/pt-br/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, precedência, agrupamento
-- [Correspondência de Padrões](/pt-br/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) e correspondência com curinga (<FlyqlToken type="operator">{'*'}</FlyqlToken>)
+- [Correspondência de Padrões](/pt-br/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) e <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> com curingas SQL (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listas](/pt-br/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken> com valores de lista
 - [Contenção](/pt-br/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> e <FlyqlToken type="operator">not has</FlyqlToken> para substring, existência de chave e pertencimento a itens
 - [Valores e Expressões](/pt-br/syntax/values/) — Truthy/falsy, strings entre aspas, números

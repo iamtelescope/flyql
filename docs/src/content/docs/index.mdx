@@ -22,7 +22,7 @@ This query works identically whether your backend is ClickHouse, PostgreSQL, Sta
 - **Multi-Dialect SQL** — One query language, dialect-specific output. Generates correct SQL for ClickHouse, PostgreSQL, and StarRocks with proper type handling (JSON paths, Map access, Array handling).
 - **Multi-Language** — Full implementations in Go, Python, and JavaScript. Parse on the frontend, validate on the backend, generate SQL anywhere — same query, same results.
 - **Parameterized Queries** — `$name` and `$1` placeholders that are resolved at runtime via `bindParams()`. Template a query once, bind values safely later — no string concatenation, no escaping by hand.
-- **Zero Dependencies** — Hand-written state-machine parser with no external dependencies in any language. Trivial to integrate, nothing to conflict with.
+- **Minimal Dependencies** — Hand-written state-machine parser with zero external dependencies in Go and JavaScript. Python pulls in `google-re2` for RE2-safe regex matching. Trivial to integrate, nothing to conflict with.
 
 ## Quick Example
 

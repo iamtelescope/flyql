@@ -150,29 +150,29 @@ FlyQL is whitespace-tolerant. Spaces around operators are optional:
 
 All of the above are equivalent.
 
-## Type Constants Module
+## Literal Kind Constants
 
-All type constants are available from the `flyql.types` module:
+Parsed expression values carry a `LiteralKind` tag. The constants are exported from the root package in every implementation.
 
 **Python:**
 ```python
-from flyql.types import ValueType
-# ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
-# ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+from flyql import LiteralKind
+# LiteralKind.INTEGER, LiteralKind.BIGINT, LiteralKind.FLOAT,
+# LiteralKind.STRING, LiteralKind.BOOLEAN, LiteralKind.NULL, LiteralKind.ARRAY
 ```
 
 **Go:**
 ```go
-import "github.com/iamtelescope/flyql/golang/types"
-// types.Integer, types.BigInt, types.Float,
-// types.String, types.Boolean, types.Null, types.Array
+import "github.com/iamtelescope/flyql/golang/literal"
+// literal.Integer, literal.BigInt, literal.Float,
+// literal.String, literal.Boolean, literal.Null, literal.Array
 ```
 
 **JavaScript:**
 ```javascript
-import { ValueType } from 'flyql/types'
-// ValueType.INTEGER, ValueType.BIGINT, ValueType.FLOAT,
-// ValueType.STRING, ValueType.BOOLEAN, ValueType.NULL, ValueType.ARRAY
+import { LiteralKind } from 'flyql'
+// LiteralKind.INTEGER, LiteralKind.BIGINT, LiteralKind.FLOAT,
+// LiteralKind.STRING, LiteralKind.BOOLEAN, LiteralKind.NULL, LiteralKind.ARRAY
 ```
 
 ## Temporal Functions
@@ -240,16 +240,3 @@ AST: `value_type: "parameter"`, value is a `Parameter` object with `name` and `p
 
 See [Parameters](/syntax/parameters/) for the full reference.
 
-## Migration Notes
-
-If upgrading from a previous FlyQL version:
-
-- **Breaking:** Go's `ValueTypeString`/`ValueTypeNumber` removed, replaced by 7-value `types.ValueType`
-- **Breaking:** AST `value_type` field changed from `"string"`/`"number"` to `"integer"`/`"float"`/`"bigint"`/`"string"`/`"boolean"`/`"null"`
-- **Breaking:** Mixed-type list enforcement removed — heterogeneous arrays are now valid
-- **New:** <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>, <FlyqlToken type="null">null</FlyqlToken> are parsed as typed literals (not strings)
-- **New:** `values_types` array on IN-list expressions provides per-element types
-- **New:** `flyql.types` module exports canonical type constants
-- **Breaking:** Unquoted non-numeric values are now parsed as `value_type: "column"` (column references), not `"string"`. To match a string, wrap the value in quotes: `field = 'value'`
-- **New:** Temporal function values (`ago()`, `now()`, `today()`, `startOf()`) with `value_type: "function"`
-- **New:** Parameter placeholders (`$name`, `$1`) with `value_type: "parameter"`, resolved by `bindParams()` at runtime

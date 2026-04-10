@@ -73,6 +73,10 @@ Las columnas que almacenan JSON como string requieren `parse_json()` antes del r
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## Tipos complejos anidados
+
+El generador de StarRocks trata una ruta segmentada como perteneciente a un único tipo contenedor: actualmente no desciende por anidamientos mixtos como `Map(K, Struct)`, `Array(Map)` o campos `Struct` que a su vez sean `Map`/`Array`. Para estas columnas, aplana la ruta o expone el valor interno como una columna aparte.
+
 ## Columnas Map
 
 Las columnas Map usan notación con corchetes y comparación directa:

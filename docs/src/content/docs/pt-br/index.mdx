@@ -22,7 +22,7 @@ Esta consulta funciona de forma idêntica independentemente de seu backend ser C
 - **SQL Multi-Dialeto** — Uma linguagem de consultas, saída específica por dialeto. Gera SQL correto para ClickHouse, PostgreSQL e StarRocks com tratamento adequado de tipos (caminhos JSON, acesso a Map, tratamento de Array).
 - **Multi-Linguagem** — Implementações completas em Go, Python e JavaScript. Parseie no frontend, valide no backend, gere SQL em qualquer lugar — mesma consulta, mesmos resultados.
 - **Consultas Parametrizadas** — Placeholders `$name` e `$1` que são resolvidos em tempo de execução via `bindParams()`. Crie o template de uma consulta uma vez, faça o bind dos valores com segurança depois — sem concatenação de strings, sem escape manual.
-- **Zero Dependências** — Parser escrito à mão como máquina de estados sem dependências externas em nenhuma linguagem. Trivial de integrar, nada para conflitar.
+- **Dependências Mínimas** — Parser escrito à mão como máquina de estados sem dependências externas em Go e JavaScript. O Python exige `google-re2` para matching regex RE2-seguro. Trivial de integrar, nada para conflitar.
 
 ## Exemplo Rápido
 

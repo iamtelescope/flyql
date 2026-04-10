@@ -40,7 +40,7 @@ FlyQL のクエリは、1 つ以上の条件をブール演算子（<FlyqlToken 
 
 - [演算子](/ja/syntax/operators/) — 比較演算子（<FlyqlToken type="operator">=</FlyqlToken>、<FlyqlToken type="operator">!=</FlyqlToken>、<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>）
 - [ブールロジック](/ja/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>、<FlyqlToken type="operator">or</FlyqlToken>、<FlyqlToken type="operator">not</FlyqlToken>、優先順位、グループ化
-- [パターンマッチ](/ja/syntax/pattern-matching/) — regex（<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>）とワイルドカード（<FlyqlToken type="operator">{'*'}</FlyqlToken>）による一致
+- [パターンマッチ](/ja/syntax/pattern-matching/) — regex（<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>）と SQL ワイルドカード（<FlyqlToken type="operator">{'%'}</FlyqlToken>、<FlyqlToken type="operator">{'_'}</FlyqlToken>）を使う <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken>
 - [リスト](/ja/syntax/lists/) — リスト値に対する <FlyqlToken type="operator">in</FlyqlToken> と <FlyqlToken type="operator">not in</FlyqlToken>
 - [包含チェック](/ja/syntax/operators/#包含チェック) — 部分文字列、キー存在、要素所属を判定する <FlyqlToken type="operator">has</FlyqlToken> と <FlyqlToken type="operator">not has</FlyqlToken>
 - [値と式](/ja/syntax/values/) — truthy/falsy、クォート付き文字列、数値

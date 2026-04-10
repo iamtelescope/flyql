@@ -73,6 +73,10 @@ As colunas que armazenam JSON como string requerem `parse_json()` antes da trave
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## Tipos complexos aninhados
+
+O gerador StarRocks trata um caminho segmentado como pertencendo a um único tipo contêiner — atualmente não desce por aninhamentos mistos como `Map(K, Struct)`, `Array(Map)` ou campos `Struct` que são eles próprios `Map`/`Array`. Para essas colunas, achate o caminho ou exponha o valor interno como uma coluna separada.
+
 ## Colunas Map
 
 As colunas Map utilizam notação de colchetes com comparação direta:

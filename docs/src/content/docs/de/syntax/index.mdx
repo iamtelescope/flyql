@@ -40,7 +40,7 @@ FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit booleschen 
 
 - [Operatoren](/de/syntax/operators/) — Vergleichsoperatoren (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
 - [Boolesche Logik](/de/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, Priorität, Gruppierung
-- [Pattern Matching](/de/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) und Wildcard-Matching (<FlyqlToken type="operator">{'*'}</FlyqlToken>)
+- [Pattern Matching](/de/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) und <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> mit SQL-Wildcards (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listen](/de/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> mit Listenwerten
 - [Enthalten-Prüfung](/de/syntax/operators/#enthalten-prufung) — <FlyqlToken type="operator">has</FlyqlToken> und <FlyqlToken type="operator">not has</FlyqlToken> für Teilstrings, Schlüsselerkennung und Elementzugehörigkeit
 - [Werte und Ausdrücke](/de/syntax/values/) — Truthy/Falsy, Zeichenketten in Anführungszeichen, Zahlen

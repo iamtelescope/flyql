@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	result, err := flyql.Parse("status >= 400 and host = prod*")
+	result, err := flyql.Parse("status >= 400 and host like 'prod%'")
 	if err != nil {
 		panic(err)
 	}

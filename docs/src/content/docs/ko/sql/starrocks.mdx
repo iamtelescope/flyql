@@ -73,6 +73,10 @@ native JSON column은 JSON 문자열화된 key와 함께 `->` operator를 사용
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
 
+## 중첩 복합 타입
+
+StarRocks 제너레이터는 세그먼트 경로를 하나의 컨테이너 타입에 속한 것으로 처리하며, 현재 `Map(K, Struct)`, `Array(Map)`, 또는 자기 자신이 `Map`/`Array`인 `Struct` 필드와 같은 혼합 중첩을 내려가지 않습니다. 이런 컬럼의 경우 경로를 평평하게 만들거나 내부 값을 별도 컬럼으로 노출하세요.
+
 ## Map Columns
 
 Map column은 bracket 표기와 직접 비교를 사용합니다.

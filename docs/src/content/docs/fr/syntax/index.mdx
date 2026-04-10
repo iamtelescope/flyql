@@ -40,7 +40,7 @@ Les requetes FlyQL sont composees d'une ou plusieurs conditions reliees par des 
 
 - [Operateurs](/fr/syntax/operators/) — Operateurs de comparaison (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
 - [Logique booleenne](/fr/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, precedence, regroupement
-- [Correspondance de motifs](/fr/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) et correspondance par joker (<FlyqlToken type="operator">{'*'}</FlyqlToken>)
+- [Correspondance de motifs](/fr/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) et <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> avec jokers SQL (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listes](/fr/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken> avec des valeurs de liste
 - [Inclusion](/fr/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> et <FlyqlToken type="operator">not has</FlyqlToken> pour la sous-chaine, l'existence de cle et l'appartenance a un element
 - [Valeurs et expressions](/fr/syntax/values/) — Truthy/falsy, chaines entre guillemets, nombres

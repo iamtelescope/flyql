@@ -34,7 +34,7 @@ from flyql import parse
 from flyql.generators.clickhouse.generator import to_sql_where
 from flyql.generators.clickhouse.column import Column
 
-result = parse("status >= 400 and host = prod*")
+result = parse("status >= 400 and host like 'prod%'")
 
 columns = {
     "status": Column("status", False, "UInt32"),
@@ -49,7 +49,7 @@ sql = to_sql_where(result.root, columns)
 import { parse } from 'flyql'
 import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 
-const result = parse("status >= 400 and host = prod*")
+const result = parse("status >= 400 and host like 'prod%'")
 
 const columns = {
     status: newColumn("status", false, "UInt32", null),
@@ -66,7 +66,7 @@ import (
 	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
 )
 
-result, err := flyql.Parse("status >= 400 and host = prod*")
+result, err := flyql.Parse("status >= 400 and host like 'prod%'")
 
 columns := map[string]*clickhouse.Column{
 	"status": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "status", Type: "UInt32"}),

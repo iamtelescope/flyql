@@ -5,10 +5,10 @@ description: Installer et utiliser FlyQL dans un projet Python
 
 ## Installation
 
-FlyQL pour Python s'installe depuis git (non publie sur PyPI) :
+FlyQL pour Python est disponible sur PyPI :
 
 ```bash
-pip install "flyql @ git+https://github.com/iamtelescope/flyql.git#subdirectory=python"
+pip install flyql
 ```
 
 Cela installe le package `flyql` ainsi que sa dependance `google-re2`.
@@ -37,7 +37,7 @@ from flyql import parse
 from flyql.generators.clickhouse.generator import to_sql_where
 from flyql.generators.clickhouse.column import Column
 
-result = parse("status >= 400 and host = 'prod*'")
+result = parse("status >= 400 and host like 'prod%'")
 
 columns = {
     "status": Column("status", False, "UInt32"),

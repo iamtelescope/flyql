@@ -37,6 +37,18 @@ StarRocks SQL uses backtick-quoted identifiers, `regexp()` for regex, and `->` w
 | <FlyqlCode code={`status in []`} inline /> | `0` |
 | <FlyqlCode code={`status not in []`} inline /> | `1` |
 
+## Truthy Checks
+
+A bare column reference (`active`, `not active`) generates type-aware SQL — there is no single "is truthy" expression, because what counts as falsy differs by column type.
+
+| Column Type | FlyQL | Generated SQL |
+|-------------|-------|--------------|
+| String | <FlyqlCode code={`message`} inline /> | `` (`message` IS NOT NULL AND `message` != '') `` |
+| Int / Float | <FlyqlCode code={`count`} inline /> | `` (`count` IS NOT NULL AND `count` != 0) `` |
+| Bool | <FlyqlCode code={`active`} inline /> | `` `active` `` |
+| Date | <FlyqlCode code={`created_at`} inline /> | `` (`created_at` IS NOT NULL) `` |
+| Negated String | <FlyqlCode code={`not message`} inline /> | `` (`message` IS NULL OR `message` = '') `` |
+
 ## Containment (`has` / `not has`)
 
 The <FlyqlToken type="operator">has</FlyqlToken> operator generates different SQL depending on the column type:
@@ -72,6 +84,10 @@ Columns storing JSON as a string require `parse_json()` before traversal:
 |-------|--------------|
 | <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
 | <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+
+## Nested Complex Types
+
+The StarRocks generator treats a segmented path as belonging to a single container type — it does not currently descend through mixed nesting such as `Map(K, Struct)`, `Array(Map)`, or `Struct` fields that are themselves `Map`/`Array`. For such columns, flatten the path or expose the inner value as a separate column.
 
 ## Map Columns
 

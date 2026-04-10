@@ -22,7 +22,7 @@ Diese Abfrage funktioniert identisch, egal ob dein Backend ClickHouse, PostgreSQ
 - **Mehrere SQL-Dialekte**: Eine Abfragesprache, dialektspezifische Ausgabe. FlyQL generiert korrektes SQL für ClickHouse, PostgreSQL und StarRocks mit passender Typbehandlung für JSON-Pfade, Map-Zugriffe und Arrays.
 - **Mehrere Programmiersprachen**: Vollständige Implementierungen in Go, Python und JavaScript. Parse im Frontend, validiere im Backend, generiere SQL überall, gleiche Abfrage, gleiches Ergebnis.
 - **Parametrisierte Abfragen**: `$name`- und `$1`-Platzhalter, die zur Laufzeit über `bindParams()` aufgelöst werden. Templatisiere eine Abfrage einmal und binde Werte später sicher – keine Stringverkettung, kein manuelles Escapen.
-- **Keine Abhängigkeiten**: Ein handgeschriebener State-Machine-Parser ohne externe Abhängigkeiten in jeder Sprache. Leicht integrierbar und konfliktfrei.
+- **Minimale Abhängigkeiten**: Ein handgeschriebener State-Machine-Parser ohne externe Abhängigkeiten in Go und JavaScript. Python zieht `google-re2` für RE2-sichere Regex-Vergleiche nach. Leicht integrierbar und konfliktfrei.
 
 ## Schnelles Beispiel
 

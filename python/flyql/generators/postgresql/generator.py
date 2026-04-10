@@ -5,7 +5,8 @@ from typing import Any, List, Mapping, Optional, Tuple
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression, FunctionCall, Parameter
-from flyql.types import ValueType
+from flyql.flyql_type import Type
+from flyql.literal import LiteralKind
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
     Operator,
@@ -18,13 +19,6 @@ from flyql.generators.postgresql.column import Column
 from flyql.generators.postgresql.helpers import (
     validate_operation,
     validate_in_list_types,
-)
-from flyql.generators.postgresql.constants import (
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
 )
 from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
@@ -228,19 +222,16 @@ def expression_to_sql_simple(
 
     column = columns[column_name]
 
-    if expression.value_type == ValueType.FUNCTION:
+    if expression.value_type == LiteralKind.FUNCTION:
         if expression.key.is_segmented:
             raise FlyqlError("temporal functions are not supported with segmented keys")
         fc = expression.value
         if not isinstance(fc, FunctionCall):
             raise FlyqlError("expected FunctionCall value for function type")
-        if (
-            column.normalized_type is not None
-            and column.normalized_type != NORMALIZED_TYPE_DATE
-        ):
+        if column.flyql_type is not None and column.flyql_type != Type.Date:
             raise FlyqlError(
                 f"temporal function '{fc.name}' is not valid for column "
-                f"'{column_name}' of type '{column.normalized_type}'"
+                f"'{column_name}' of type '{column.flyql_type}'"
             )
         value = _function_call_to_sql(fc, default_timezone)
         identifier = get_identifier(column)
@@ -252,7 +243,7 @@ def expression_to_sql_simple(
         return f"{identifier} {expression.operator} {value}"
 
     rhs_ref = None
-    if expression.value_type == ValueType.COLUMN:
+    if expression.value_type == LiteralKind.COLUMN:
         rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
 
     if rhs_ref is not None:
@@ -285,10 +276,8 @@ def expression_to_sql_simple(
         if column.values and str(expression.value) not in column.values:
             raise FlyqlError(f"unknown value: {expression.value}")
 
-        if column.normalized_type is not None and not expression.key.transformers:
-            validate_operation(
-                expression.value, column.normalized_type, expression.operator
-            )
+        if column.flyql_type is not None and not expression.key.transformers:
+            validate_operation(expression.value, column.flyql_type, expression.operator)
 
         identifier = get_identifier(column)
         if expression.key.transformers:
@@ -316,13 +305,13 @@ def expression_to_sql_simple(
             value = _escape_like_param(expression.value)
             return f"{identifier} NOT ILIKE {value}"
         elif expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value):
-            if expression.value_type == ValueType.NULL:
+            if expression.value_type == LiteralKind.NULL:
                 return (
                     f"{identifier} IS NULL"
                     if expression.operator == Operator.EQUALS.value
                     else f"{identifier} IS NOT NULL"
                 )
-            elif expression.value_type == ValueType.BOOLEAN:
+            elif expression.value_type == LiteralKind.BOOLEAN:
                 bool_literal = "TRUE" if expression.value else "FALSE"
                 return f"{identifier} {expression.operator} {bool_literal}"
             else:
@@ -343,17 +332,15 @@ def expression_to_sql_segmented(
     column = columns[column_name]
 
     if (
-        column.normalized_type is not None
+        column.flyql_type is not None
         and not column.jsonstring
         and not expression.key.transformers
     ):
-        validate_operation(
-            expression.value, column.normalized_type, expression.operator
-        )
+        validate_operation(expression.value, column.flyql_type, expression.operator)
 
     identifier = get_identifier(column)
 
-    if column.is_jsonb or column.jsonstring:
+    if (column.flyql_type == Type.JSON) or column.jsonstring:
         cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         json_path = expression.key.segments[1:]
         json_path_quoted = expression.key.quoted_segments[1:]
@@ -368,7 +355,7 @@ def expression_to_sql_segmented(
                 path_expr, expression.key.transformers, "postgresql"
             )
         rhs_ref = None
-        if expression.value_type == ValueType.COLUMN:
+        if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
 
         if rhs_ref is not None:
@@ -406,11 +393,11 @@ def expression_to_sql_segmented(
         else:
             return f"{path_expr} {expression.operator} {value}"
 
-    elif column.is_hstore:
+    elif column.flyql_type == Type.Map:
         map_key = ".".join(expression.key.segments[1:])
         escaped_map_key = escape_param(map_key)
         rhs_ref = None
-        if expression.value_type == ValueType.COLUMN:
+        if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
         value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
         access_expr = f"{identifier}->{escaped_map_key}"
@@ -426,7 +413,7 @@ def expression_to_sql_segmented(
         else:
             return f"{access_expr} {expression.operator} {value}"
 
-    elif column.is_array:
+    elif column.flyql_type == Type.Array:
         array_index_str = ".".join(expression.key.segments[1:])
         try:
             array_index = int(array_index_str)
@@ -435,7 +422,7 @@ def expression_to_sql_segmented(
                 f"invalid array index, expected number: {array_index_str}"
             ) from err
         rhs_ref = None
-        if expression.value_type == ValueType.COLUMN:
+        if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
         value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
         pg_index = array_index + 1
@@ -474,11 +461,11 @@ def in_expression_to_sql_where(
         expression.values_types is not None and len(set(expression.values_types)) > 1
     )
     if (
-        column.normalized_type is not None
+        column.flyql_type is not None
         and not expression.key.is_segmented
         and not is_heterogeneous
     ):
-        validate_in_list_types(expression.values, column.normalized_type)
+        validate_in_list_types(expression.values, column.flyql_type)
 
     values_parts: List[str] = []
     for i, v in enumerate(expression.values):
@@ -486,7 +473,7 @@ def in_expression_to_sql_where(
         if (
             expression.values_types is not None
             and i < len(expression.values_types)
-            and expression.values_types[i] == ValueType.COLUMN
+            and expression.values_types[i] == LiteralKind.COLUMN
         ):
             rhs_ref = _resolve_rhs_column_ref(str(v), columns)
         values_parts.append(rhs_ref if rhs_ref is not None else escape_param(v))
@@ -495,7 +482,7 @@ def in_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.jsonstring:
             cast_identifier = (
                 f"({identifier}::jsonb)" if column.jsonstring else identifier
             )
@@ -511,7 +498,7 @@ def in_expression_to_sql_where(
                     path_expr, expression.key.transformers, "postgresql"
                 )
             return f"{path_expr} {sql_op} ({values_sql})"
-        elif column.is_hstore:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{identifier}->{escaped_map_key}"
@@ -520,7 +507,7 @@ def in_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "postgresql"
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -555,7 +542,7 @@ def truthy_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.jsonstring:
             cast_identifier = (
                 f"({identifier}::jsonb)" if column.jsonstring else identifier
             )
@@ -571,7 +558,7 @@ def truthy_expression_to_sql_where(
                     path_expr, expression.key.transformers, "postgresql"
                 )
             return f"({path_expr} IS NOT NULL AND {path_expr} != '')"
-        elif column.is_hstore:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{identifier}->{escaped_map_key}"
@@ -580,7 +567,7 @@ def truthy_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "postgresql"
                 )
             return f"({identifier} ? {escaped_map_key} AND " f"{leaf_expr} != '')"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -617,13 +604,13 @@ def truthy_expression_to_sql_where(
             f"ELSE false END)"
         )
 
-    if column.normalized_type == NORMALIZED_TYPE_BOOL:
+    if column.flyql_type == Type.Bool:
         return identifier
-    elif column.normalized_type == NORMALIZED_TYPE_STRING:
+    elif column.flyql_type == Type.String:
         return f"({identifier} IS NOT NULL AND {identifier} != '')"
-    elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+    elif column.flyql_type in (Type.Int, Type.Float):
         return f"({identifier} IS NOT NULL AND {identifier} != 0)"
-    elif column.normalized_type == NORMALIZED_TYPE_DATE:
+    elif column.flyql_type == Type.Date:
         return f"({identifier} IS NOT NULL)"
     else:
         return f"({identifier} IS NOT NULL)"
@@ -640,7 +627,7 @@ def falsy_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_jsonb or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.jsonstring:
             cast_identifier = (
                 f"({identifier}::jsonb)" if column.jsonstring else identifier
             )
@@ -656,7 +643,7 @@ def falsy_expression_to_sql_where(
                     path_expr, expression.key.transformers, "postgresql"
                 )
             return f"({path_expr} IS NULL OR {path_expr} = '')"
-        elif column.is_hstore:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{identifier}->{escaped_map_key}"
@@ -665,7 +652,7 @@ def falsy_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "postgresql"
                 )
             return f"(NOT ({identifier} ? {escaped_map_key}) OR " f"{leaf_expr} = '')"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -701,13 +688,13 @@ def falsy_expression_to_sql_where(
             f"ELSE true END)"
         )
 
-    if column.normalized_type == NORMALIZED_TYPE_BOOL:
+    if column.flyql_type == Type.Bool:
         return f"NOT {identifier}"
-    elif column.normalized_type == NORMALIZED_TYPE_STRING:
+    elif column.flyql_type == Type.String:
         return f"({identifier} IS NULL OR {identifier} = '')"
-    elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+    elif column.flyql_type in (Type.Int, Type.Float):
         return f"({identifier} IS NULL OR {identifier} = 0)"
-    elif column.normalized_type == NORMALIZED_TYPE_DATE:
+    elif column.flyql_type == Type.Date:
         return f"({identifier} IS NULL)"
     else:
         return f"({identifier} IS NULL)"
@@ -724,12 +711,12 @@ def has_expression_to_sql_where(
     is_not_has = expression.operator == Operator.NOT_HAS.value
     identifier = get_identifier(column)
     rhs_ref = None
-    if expression.value_type == ValueType.COLUMN:
+    if expression.value_type == LiteralKind.COLUMN:
         rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
     value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
     if expression.key.is_segmented:
-        if column.is_jsonb or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.jsonstring:
             cast_identifier = (
                 f"({identifier}::jsonb)" if column.jsonstring else identifier
             )
@@ -747,7 +734,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"position({value} in {path_expr}) = 0"
             return f"position({value} in {path_expr}) > 0"
-        elif column.is_hstore:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{identifier}->{escaped_map_key}"
@@ -758,7 +745,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"position({value} in {leaf_expr}) = 0"
             return f"position({value} in {leaf_expr}) > 0"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -783,7 +770,7 @@ def has_expression_to_sql_where(
             identifier, expression.key.transformers, "postgresql"
         )
 
-    is_array_result = column.is_array
+    is_array_result = column.flyql_type == Type.Array
     out_type = get_transformer_output_type(expression.key.transformers)
     if out_type and out_type.value == "array":
         is_array_result = True
@@ -792,22 +779,22 @@ def has_expression_to_sql_where(
         if is_not_has:
             return f"NOT ({value} = ANY({identifier}))"
         return f"{value} = ANY({identifier})"
-    elif column.is_jsonb or column.jsonstring:
+    elif (column.flyql_type == Type.JSON) or column.jsonstring:
         cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         if is_not_has:
             return f"NOT ({cast_identifier} ? {value})"
         return f"{cast_identifier} ? {value}"
-    elif column.is_hstore:
+    elif column.flyql_type == Type.Map:
         if is_not_has:
             return f"NOT ({identifier} ? {value})"
         return f"{identifier} ? {value}"
-    elif column.normalized_type == NORMALIZED_TYPE_STRING:
+    elif column.flyql_type == Type.String:
         if is_not_has:
             return f"({identifier} IS NULL OR position({value} in {identifier}) = 0)"
         return f"position({value} in {identifier}) > 0"
     else:
         raise FlyqlError(
-            f"has operator is not supported for column type: {column.normalized_type}"
+            f"has operator is not supported for column type: {column.flyql_type}"
         )
 
 
@@ -817,7 +804,7 @@ def expression_to_sql_where(
     registry: Optional[TransformerRegistry] = None,
     default_timezone: str = "UTC",
 ) -> str:
-    if expression.value_type == ValueType.PARAMETER:
+    if expression.value_type == LiteralKind.PARAMETER:
         if isinstance(expression.value, Parameter):
             raise FlyqlError(
                 f"unbound parameter '${expression.value.name}' — call bind_params() before generating SQL"
@@ -997,7 +984,7 @@ def _build_select_expr(
     if not path:
         return identifier
 
-    if column.is_jsonb or column.jsonstring:
+    if (column.flyql_type == Type.JSON) or column.jsonstring:
         cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
         for i, part in enumerate(path):
             validate_json_path_part(
@@ -1005,12 +992,12 @@ def _build_select_expr(
             )
         return _build_jsonb_path_raw(cast_identifier, path, path_quoted)
 
-    if column.is_hstore:
+    if column.flyql_type == Type.Map:
         map_key = ".".join(path)
         escaped_key = escape_param(map_key)
         return f"{identifier}->{escaped_key}"
 
-    if column.is_array:
+    if column.flyql_type == Type.Array:
         index_str = ".".join(path)
         try:
             index = int(index_str)
@@ -1041,7 +1028,7 @@ def to_sql_select(
         sql_expr = _build_select_expr(identifier, column, path, path_quoted)
         if key.transformers:
             validate_transformer_chain(key.transformers, registry=registry)
-            if path and (column.is_jsonb or column.jsonstring):
+            if path and ((column.flyql_type == Type.JSON) or column.jsonstring):
                 sql_expr = f"({sql_expr})::text"
             sql_expr = apply_transformer_sql(
                 sql_expr, key.transformers, "postgresql", registry=registry

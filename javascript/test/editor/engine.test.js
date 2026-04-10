@@ -1161,7 +1161,8 @@ describe('EditorEngine', () => {
             await engine.updateSuggestions()
             expect(engine.suggestionType).toBe('column')
             expect(engine.suggestions[0].label).toBe('status')
-            expect(engine.suggestions[0].detail).toBe('enum')
+            // Editor normalizes the raw 'enum' input to canonical Type.String.
+            expect(engine.suggestions[0].detail).toBe('string')
 
             // Operator phase (after known column)
             engine.setQuery('status')
@@ -1238,24 +1239,24 @@ describe('EditorEngine', () => {
             const engine = new EditorEngine(ColumnSchema.fromPlainObject({ status: { type: 'enum' } }))
             engine.setQuery('status=x')
             engine.getDiagnostics()
-            expect(engine._validatorColumns.get('status').type).toBe('enum')
-            expect(engine._validatorColumns.get('status').normalizedType).toBe('string')
+            // Editor overwrites raw 'enum' with canonical flyql.Type after
+            // normalization (unify-column-type-system refactor).
+            expect(engine._validatorColumns.get('status').type).toBe('string')
         })
 
         it('column type mapping: number → int', () => {
             const engine = new EditorEngine(ColumnSchema.fromPlainObject({ level: { type: 'number' } }))
             engine.setQuery('level=1')
             engine.getDiagnostics()
-            expect(engine._validatorColumns.get('level').type).toBe('number')
-            expect(engine._validatorColumns.get('level').normalizedType).toBe('int')
+            expect(engine._validatorColumns.get('level').type).toBe('int')
         })
 
-        it('column type mapping: unknown type passes through', () => {
+        it('column type mapping: unknown type falls back to Unknown', () => {
             const engine = new EditorEngine(ColumnSchema.fromPlainObject({ x: { type: 'custom' } }))
             engine.setQuery('x=1')
             engine.getDiagnostics()
-            expect(engine._validatorColumns.get('x').type).toBe('custom')
-            expect(engine._validatorColumns.get('x').normalizedType).toBe('custom')
+            // Unmapped raw types never leak — they collapse to Type.Unknown.
+            expect(engine._validatorColumns.get('x').type).toBe('unknown')
         })
 
         it('setColumns() invalidates validator column cache', () => {

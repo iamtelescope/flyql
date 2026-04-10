@@ -5,7 +5,8 @@ from typing import List, Mapping, Optional, Tuple, Any
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression, FunctionCall, Parameter
-from flyql.types import ValueType
+from flyql.flyql_type import Type
+from flyql.literal import LiteralKind
 from flyql.core.key import Key, parse_key
 from flyql.core.constants import (
     Operator,
@@ -18,13 +19,6 @@ from flyql.generators.starrocks.column import Column
 from flyql.generators.starrocks.helpers import (
     validate_operation,
     validate_in_list_types,
-)
-from flyql.generators.starrocks.constants import (
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
 )
 from flyql.generators.transformer_helpers import (
     apply_transformer_sql,
@@ -161,7 +155,7 @@ def truthy_expression_to_sql_where(
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_json:
+        if column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -175,7 +169,7 @@ def truthy_expression_to_sql_where(
                 )
                 return f"({leaf_expr} IS NOT NULL AND {leaf_expr} != '')"
             return f"({leaf_expr} IS NOT NULL)"
-        elif column.is_map:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{col_id}[{escaped_map_key}]"
@@ -187,7 +181,7 @@ def truthy_expression_to_sql_where(
                 f"(element_at({col_id}, {escaped_map_key}) IS NOT NULL AND "
                 f"{leaf_expr} != '')"
             )
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -203,7 +197,7 @@ def truthy_expression_to_sql_where(
             return (
                 f"(array_length({col_id}) >= {array_index} AND " f"{leaf_expr} != '')"
             )
-        elif column.is_struct:
+        elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             leaf_expr = f"{col_id}.`{struct_column}`"
@@ -239,7 +233,7 @@ def truthy_expression_to_sql_where(
             )
             return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
         elif column.jsonstring:
-            if column.is_map or column.is_struct:
+            if (column.flyql_type == Type.Map) or (column.flyql_type == Type.Struct):
                 return (
                     f"({col_id} IS NOT NULL AND " f"json_length(to_json({col_id})) > 0)"
                 )
@@ -248,13 +242,13 @@ def truthy_expression_to_sql_where(
                     f"({col_id} IS NOT NULL AND {col_id} != '' AND "
                     f"json_length({col_id}) > 0)"
                 )
-        elif column.normalized_type == NORMALIZED_TYPE_BOOL:
+        elif column.flyql_type == Type.Bool:
             return col_id
-        elif column.normalized_type == NORMALIZED_TYPE_STRING:
+        elif column.flyql_type == Type.String:
             return f"({col_id} IS NOT NULL AND {col_id} != '')"
-        elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+        elif column.flyql_type in (Type.Int, Type.Float):
             return f"({col_id} IS NOT NULL AND {col_id} != 0)"
-        elif column.normalized_type == NORMALIZED_TYPE_DATE:
+        elif column.flyql_type == Type.Date:
             return f"({col_id} IS NOT NULL)"
         else:
             return f"({col_id} IS NOT NULL)"
@@ -280,7 +274,7 @@ def falsy_expression_to_sql_where(
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_json:
+        if column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -294,7 +288,7 @@ def falsy_expression_to_sql_where(
                 )
                 return f"({leaf_expr} IS NULL OR {leaf_expr} = '')"
             return f"({leaf_expr} IS NULL)"
-        elif column.is_map:
+        elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
             leaf_expr = f"{col_id}[{escaped_map_key}]"
@@ -306,7 +300,7 @@ def falsy_expression_to_sql_where(
                 f"(element_at({col_id}, {escaped_map_key}) IS NULL OR "
                 f"{leaf_expr} = '')"
             )
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -320,7 +314,7 @@ def falsy_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"(array_length({col_id}) < {array_index} OR " f"{leaf_expr} = '')"
-        elif column.is_struct:
+        elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             leaf_expr = f"{col_id}.`{struct_column}`"
@@ -356,20 +350,20 @@ def falsy_expression_to_sql_where(
             )
             return f"({col_ref} IS NULL OR {col_ref} = '')"
         elif column.jsonstring:
-            if column.is_map or column.is_struct:
+            if (column.flyql_type == Type.Map) or (column.flyql_type == Type.Struct):
                 return f"({col_id} IS NULL OR " f"json_length(to_json({col_id})) = 0)"
             else:
                 return (
                     f"({col_id} IS NULL OR {col_id} = '' OR "
                     f"json_length({col_id}) = 0)"
                 )
-        elif column.normalized_type == NORMALIZED_TYPE_BOOL:
+        elif column.flyql_type == Type.Bool:
             return f"NOT {col_id}"
-        elif column.normalized_type == NORMALIZED_TYPE_STRING:
+        elif column.flyql_type == Type.String:
             return f"({col_id} IS NULL OR {col_id} = '')"
-        elif column.normalized_type in (NORMALIZED_TYPE_INT, NORMALIZED_TYPE_FLOAT):
+        elif column.flyql_type in (Type.Int, Type.Float):
             return f"({col_id} IS NULL OR {col_id} = 0)"
-        elif column.normalized_type == NORMALIZED_TYPE_DATE:
+        elif column.flyql_type == Type.Date:
             return f"({col_id} IS NULL)"
         else:
             return f"({col_id} IS NULL)"
@@ -392,11 +386,11 @@ def in_expression_to_sql_where(
         expression.values_types is not None and len(set(expression.values_types)) > 1
     )
     if (
-        column.normalized_type is not None
+        column.flyql_type is not None
         and not expression.key.is_segmented
         and not is_heterogeneous
     ):
-        validate_in_list_types(expression.values, column.normalized_type)
+        validate_in_list_types(expression.values, column.flyql_type)
 
     values_parts: List[str] = []
     for i, v in enumerate(expression.values):
@@ -404,7 +398,7 @@ def in_expression_to_sql_where(
         if (
             expression.values_types is not None
             and i < len(expression.values_types)
-            and expression.values_types[i] == ValueType.COLUMN
+            and expression.values_types[i] == LiteralKind.COLUMN
         ):
             rhs_ref = _resolve_rhs_column_ref(str(v), columns)
         values_parts.append(rhs_ref if rhs_ref is not None else escape_param(v))
@@ -414,7 +408,7 @@ def in_expression_to_sql_where(
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_json:
+        if column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -427,7 +421,7 @@ def in_expression_to_sql_where(
                     "starrocks",
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.is_map:
+        elif column.flyql_type == Type.Map:
             map_path = [escape_param(part) for part in expression.key.segments[1:]]
             map_key = "][".join(map_path)
             leaf_expr = f"{col_id}[{map_key}]"
@@ -436,7 +430,7 @@ def in_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -450,7 +444,7 @@ def in_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.is_struct:
+        elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             leaf_expr = f"{col_id}.`{struct_column}`"
@@ -491,14 +485,14 @@ def has_expression_to_sql_where(
     column = columns[column_name]
     is_not_has = expression.operator == Operator.NOT_HAS.value
     rhs_ref = None
-    if expression.value_type == ValueType.COLUMN:
+    if expression.value_type == LiteralKind.COLUMN:
         rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
     value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.is_json:
+        if column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -511,7 +505,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
-        elif column.is_map:
+        elif column.flyql_type == Type.Map:
             map_path = expression.key.segments[1:]
             escaped_parts = [escape_param(part) for part in map_path]
             map_key = "][".join(escaped_parts)
@@ -523,7 +517,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -539,7 +533,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
-        elif column.is_struct:
+        elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             leaf_expr = f"{col_id}.`{struct_column}`"
@@ -572,7 +566,7 @@ def has_expression_to_sql_where(
             col_ref, expression.key.transformers, "starrocks"
         )
 
-    is_array_result = column.is_array
+    is_array_result = column.flyql_type == Type.Array
     out_type = get_transformer_output_type(expression.key.transformers)
     if out_type and out_type.value == "array":
         is_array_result = True
@@ -581,21 +575,21 @@ def has_expression_to_sql_where(
         if is_not_has:
             return f"NOT array_contains({col_ref}, {value})"
         return f"array_contains({col_ref}, {value})"
-    elif column.is_map:
+    elif column.flyql_type == Type.Map:
         if is_not_has:
             return f"NOT array_contains(map_keys({col_ref}), {value})"
         return f"array_contains(map_keys({col_ref}), {value})"
-    elif column.is_json:
+    elif column.flyql_type == Type.JSON:
         if is_not_has:
             return f"NOT json_exists({col_ref}, concat('$.', {value}))"
         return f"json_exists({col_ref}, concat('$.', {value}))"
-    elif column.normalized_type == NORMALIZED_TYPE_STRING:
+    elif column.flyql_type == Type.String:
         if is_not_has:
             return f"({col_ref} IS NULL OR INSTR({col_ref}, {value}) = 0)"
         return f"INSTR({col_ref}, {value}) > 0"
     else:
         raise FlyqlError(
-            f"has operator is not supported for column type: {column.normalized_type}"
+            f"has operator is not supported for column type: {column.flyql_type}"
         )
 
 
@@ -656,7 +650,7 @@ def expression_to_sql_where(
     registry: Optional[TransformerRegistry] = None,
     default_timezone: str = "UTC",
 ) -> str:
-    if expression.value_type == ValueType.PARAMETER:
+    if expression.value_type == LiteralKind.PARAMETER:
         if isinstance(expression.value, Parameter):
             raise FlyqlError(
                 f"unbound parameter '${expression.value.name}' — call bind_params() before generating SQL"
@@ -684,7 +678,7 @@ def expression_to_sql_where(
     if expression.operator in (Operator.HAS.value, Operator.NOT_HAS.value):
         return has_expression_to_sql_where(expression, columns)
 
-    if expression.value_type == ValueType.FUNCTION:
+    if expression.value_type == LiteralKind.FUNCTION:
         if expression.key.is_segmented:
             raise FlyqlError("temporal functions are not supported with segmented keys")
         fc = expression.value
@@ -694,10 +688,10 @@ def expression_to_sql_where(
         if column_name not in columns:
             raise FlyqlError(f"unknown column: {column_name}")
         column = columns[column_name]
-        if column.normalized_type and column.normalized_type != NORMALIZED_TYPE_DATE:
+        if column.flyql_type and column.flyql_type != Type.Date:
             raise FlyqlError(
                 f"temporal function '{fc.name}' is not valid for column "
-                f"'{column_name}' of type '{column.normalized_type}'"
+                f"'{column_name}' of type '{column.flyql_type}'"
             )
         value = _function_call_to_sql(fc, default_timezone)
         col_ref = get_identifier(column)
@@ -725,10 +719,8 @@ def expression_to_sql_where(
             raise FlyqlError(f"unknown column: {column_name}")
         column = columns[column_name]
 
-        if column.normalized_type is not None and not expression.key.transformers:
-            validate_operation(
-                expression.value, column.normalized_type, expression.operator
-            )
+        if column.flyql_type is not None and not expression.key.transformers:
+            validate_operation(expression.value, column.flyql_type, expression.operator)
 
         # Although any column can be marked as jsonstring, and this can provide UI
         # benefits in Telescope, we cannot actually cast Map and Array columns to JSON
@@ -742,7 +734,7 @@ def expression_to_sql_where(
             Operator.NOT_REGEX.value,
         )
 
-        if column.is_json:
+        if column.flyql_type == Type.JSON:
             # Although `parse_json` works on a JSON column, it is more efficient to not use it
             # when we know the column is already the JSON type.
             json_path = expression.key.segments[1:]
@@ -750,7 +742,7 @@ def expression_to_sql_where(
                 validate_json_path_part(part)
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             rhs_ref = None
-            if expression.value_type == ValueType.COLUMN:
+            if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
@@ -763,12 +755,12 @@ def expression_to_sql_where(
                     column_exp, expression.key.transformers, "starrocks"
                 )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
-        elif column.is_map:
+        elif column.flyql_type == Type.Map:
             map_path = expression.key.segments[1:]
             map_path = [escape_param(part) for part in map_path]
             map_key = "][".join(map_path)
             rhs_ref = None
-            if expression.value_type == ValueType.COLUMN:
+            if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             column_exp = f"{col_id}[{map_key}]"
@@ -777,7 +769,7 @@ def expression_to_sql_where(
                     column_exp, expression.key.transformers, "starrocks"
                 )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
-        elif column.is_array:
+        elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
                 array_index = int(array_index_str)
@@ -786,7 +778,7 @@ def expression_to_sql_where(
                     f"invalid array index, expected number: {array_index_str}"
                 )
             rhs_ref = None
-            if expression.value_type == ValueType.COLUMN:
+            if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             column_exp = f"{col_id}[{array_index}]"
@@ -795,11 +787,11 @@ def expression_to_sql_where(
                     column_exp, expression.key.transformers, "starrocks"
                 )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
-        elif column.is_struct:
+        elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
             rhs_ref = None
-            if expression.value_type == ValueType.COLUMN:
+            if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
             column_exp = f"{col_id}.`{struct_column}`"
@@ -816,7 +808,7 @@ def expression_to_sql_where(
                 f"{quote_json_path_part(part)}" for part in json_path
             )
             rhs_ref = None
-            if expression.value_type == ValueType.COLUMN:
+            if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
@@ -840,7 +832,7 @@ def expression_to_sql_where(
         column = columns[column_name]
 
         rhs_ref = None
-        if expression.value_type == ValueType.COLUMN:
+        if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
 
         if rhs_ref is not None:
@@ -875,9 +867,9 @@ def expression_to_sql_where(
             if column.values and str(expression.value) not in column.values:
                 raise FlyqlError(f"unknown value: {expression.value}")
 
-            if column.normalized_type is not None and not expression.key.transformers:
+            if column.flyql_type is not None and not expression.key.transformers:
                 validate_operation(
-                    expression.value, column.normalized_type, expression.operator
+                    expression.value, column.flyql_type, expression.operator
                 )
 
             col_ref = get_identifier(column)
@@ -911,13 +903,13 @@ def expression_to_sql_where(
                 Operator.EQUALS.value,
                 Operator.NOT_EQUALS.value,
             ]:
-                if expression.value_type == ValueType.NULL:
+                if expression.value_type == LiteralKind.NULL:
                     text = (
                         f"{col_ref} IS NULL"
                         if expression.operator == Operator.EQUALS.value
                         else f"{col_ref} IS NOT NULL"
                     )
-                elif expression.value_type == ValueType.BOOLEAN:
+                elif expression.value_type == LiteralKind.BOOLEAN:
                     bool_literal = "true" if expression.value else "false"
                     text = f"{col_ref} {expression.operator} {bool_literal}"
                 else:
@@ -1080,7 +1072,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
     if not path:
         return col_id
 
-    if column.is_json:
+    if column.flyql_type == Type.JSON:
         for part in path:
             validate_json_path_part(part)
         json_path_str = "->".join(quote_json_path_part(part) for part in path)
@@ -1090,12 +1082,12 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
         json_path_str = "->".join(quote_json_path_part(part) for part in path)
         return f"parse_json({col_id})->{json_path_str}"
 
-    if column.is_map:
+    if column.flyql_type == Type.Map:
         map_key = ".".join(path)
         escaped_key = escape_param(map_key)
         return f"{col_id}[{escaped_key}]"
 
-    if column.is_array:
+    if column.flyql_type == Type.Array:
         index_str = ".".join(path)
         try:
             index = int(index_str)
@@ -1105,7 +1097,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
             ) from err
         return f"{col_id}[{index}]"
 
-    if column.is_struct:
+    if column.flyql_type == Type.Struct:
         struct_column = "`.`".join(path)
         return f"{col_id}.`{struct_column}`"
 

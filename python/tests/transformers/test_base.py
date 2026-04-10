@@ -1,27 +1,28 @@
 import pytest
 from typing import Any
 
-from flyql.transformers.base import Transformer, TransformerType
+from flyql.transformers.base import Transformer
+from flyql.flyql_type import Type
 
 
 class TestTransformerType:
     def test_string_value(self) -> None:
-        assert TransformerType.STRING.value == "string"
+        assert Type.String.value == "string"
 
     def test_int_value(self) -> None:
-        assert TransformerType.INT.value == "int"
+        assert Type.Int.value == "int"
 
     def test_float_value(self) -> None:
-        assert TransformerType.FLOAT.value == "float"
+        assert Type.Float.value == "float"
 
     def test_bool_value(self) -> None:
-        assert TransformerType.BOOL.value == "bool"
+        assert Type.Bool.value == "bool"
 
     def test_array_value(self) -> None:
-        assert TransformerType.ARRAY.value == "array"
+        assert Type.Array.value == "array"
 
-    def test_has_exactly_five_members(self) -> None:
-        assert len(TransformerType) == 5
+    def test_has_eleven_members(self) -> None:
+        assert len(Type) == 11
 
 
 class _StubTransformer(Transformer):
@@ -30,12 +31,12 @@ class _StubTransformer(Transformer):
         return "stub"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         return f"STUB({column_ref})"
@@ -55,11 +56,11 @@ class TestTransformerBaseClass:
 
     def test_concrete_subclass_has_input_type(self) -> None:
         t = _StubTransformer()
-        assert t.input_type == TransformerType.STRING
+        assert t.input_type == Type.String
 
     def test_concrete_subclass_has_output_type(self) -> None:
         t = _StubTransformer()
-        assert t.output_type == TransformerType.STRING
+        assert t.output_type == Type.String
 
     def test_concrete_subclass_sql(self) -> None:
         t = _StubTransformer()

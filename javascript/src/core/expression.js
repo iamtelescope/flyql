@@ -2,7 +2,7 @@ import { convertUnquotedValue } from './utils.js'
 import { FlyqlError } from './exceptions.js'
 import { VALID_KEY_VALUE_OPERATORS, Operator } from './constants.js'
 import { Key } from './key.js'
-import { ValueType } from '../types.js'
+import { LiteralKind } from '../literal/literal_kind.js'
 
 export class Duration {
     constructor(value, unit) {
@@ -66,7 +66,7 @@ export class Expression {
             this.valueType = valueType
         } else if (operator === Operator.TRUTHY) {
             this.value = ''
-            this.valueType = ValueType.STRING
+            this.valueType = LiteralKind.STRING
         } else if (operator === Operator.IN || operator === Operator.NOT_IN) {
             this.value = ''
             this.valueType = null
@@ -76,7 +76,7 @@ export class Expression {
             this.valueType = detectedType
         } else if (valueIsString === true) {
             this.value = value
-            this.valueType = ValueType.STRING
+            this.valueType = LiteralKind.STRING
         } else {
             const [convertedValue, detectedType] = convertUnquotedValue(value)
             this.value = convertedValue

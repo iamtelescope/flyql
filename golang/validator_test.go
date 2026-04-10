@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
@@ -17,61 +18,61 @@ import (
 type takesStringThenInt struct{}
 
 func (takesStringThenInt) Name() string { return "takes_string_then_int" }
-func (takesStringThenInt) InputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (takesStringThenInt) InputType() flyqltype.Type {
+	return flyqltype.String
 }
-func (takesStringThenInt) OutputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (takesStringThenInt) OutputType() flyqltype.Type {
+	return flyqltype.String
 }
 func (takesStringThenInt) SQL(dialect, col string, args []any) string      { return col }
 func (takesStringThenInt) Apply(value interface{}, args []any) interface{} { return value }
 func (takesStringThenInt) ArgSchema() []transformers.ArgSpec {
 	return []transformers.ArgSpec{
-		{Type: transformers.TransformerTypeString, Required: true},
-		{Type: transformers.TransformerTypeInt, Required: true},
+		{Type: flyqltype.String, Required: true},
+		{Type: flyqltype.Int, Required: true},
 	}
 }
 
 type stringToInt struct{}
 
 func (stringToInt) Name() string { return "string_to_int" }
-func (stringToInt) InputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (stringToInt) InputType() flyqltype.Type {
+	return flyqltype.String
 }
-func (stringToInt) OutputType() transformers.TransformerType        { return transformers.TransformerTypeInt }
+func (stringToInt) OutputType() flyqltype.Type                      { return flyqltype.Int }
 func (stringToInt) SQL(dialect, col string, args []any) string      { return col }
 func (stringToInt) Apply(value interface{}, args []any) interface{} { return 0 }
 func (stringToInt) ArgSchema() []transformers.ArgSpec               { return []transformers.ArgSpec{} }
 
 type takesFloat struct{}
 
-func (takesFloat) Name() string                            { return "takes_float" }
-func (takesFloat) InputType() transformers.TransformerType { return transformers.TransformerTypeString }
-func (takesFloat) OutputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (takesFloat) Name() string              { return "takes_float" }
+func (takesFloat) InputType() flyqltype.Type { return flyqltype.String }
+func (takesFloat) OutputType() flyqltype.Type {
+	return flyqltype.String
 }
 func (takesFloat) SQL(dialect, col string, args []any) string      { return col }
 func (takesFloat) Apply(value interface{}, args []any) interface{} { return value }
 func (takesFloat) ArgSchema() []transformers.ArgSpec {
 	return []transformers.ArgSpec{
-		{Type: transformers.TransformerTypeFloat, Required: true},
+		{Type: flyqltype.Float, Required: true},
 	}
 }
 
 type takesIntTransformer struct{}
 
 func (takesIntTransformer) Name() string { return "takes_int" }
-func (takesIntTransformer) InputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (takesIntTransformer) InputType() flyqltype.Type {
+	return flyqltype.String
 }
-func (takesIntTransformer) OutputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (takesIntTransformer) OutputType() flyqltype.Type {
+	return flyqltype.String
 }
 func (takesIntTransformer) SQL(dialect, col string, args []any) string      { return col }
 func (takesIntTransformer) Apply(value interface{}, args []any) interface{} { return value }
 func (takesIntTransformer) ArgSchema() []transformers.ArgSpec {
 	return []transformers.ArgSpec{
-		{Type: transformers.TransformerTypeInt, Required: true},
+		{Type: flyqltype.Int, Required: true},
 	}
 }
 
@@ -88,8 +89,9 @@ func testRegistry() *transformers.TransformerRegistry {
 	return reg
 }
 
-func makeColumn(name, normalizedType string) Column {
-	return NewColumn(name, false, normalizedType, normalizedType)
+func makeColumn(name, typeStr string) Column {
+	t, _ := ParseType(typeStr)
+	return NewColumn(name, false, t)
 }
 
 func parseAST(t *testing.T, query string) *Node {
@@ -106,8 +108,8 @@ func parseAST(t *testing.T, query string) *Node {
 // ---------------------------------------------------------------------------
 
 type validatorFixtureColumn struct {
-	Name           string `json:"name"`
-	NormalizedType string `json:"normalized_type"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 type validatorExpectedDiag struct {
@@ -173,7 +175,7 @@ func TestValidatorShared(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			var cols []Column
 			for _, c := range tc.Columns {
-				cols = append(cols, makeColumn(c.Name, c.NormalizedType))
+				cols = append(cols, makeColumn(c.Name, c.Type))
 			}
 
 			var registry *transformers.TransformerRegistry
@@ -268,10 +270,10 @@ func TestDiagnoseInvalidASTGuard(t *testing.T) {
 func TestDiagnoseDialectColumnSubclass(t *testing.T) {
 	reg := testRegistry()
 	col := Column{
-		Name:           "`1host`",
-		NormalizedType: "string",
-		MatchName:      "1host",
-		Suggest:        true,
+		Name:      "`1host`",
+		Type:      TypeString,
+		MatchName: "1host",
+		Suggest:   true,
 	}
 	ast := parseAST(t, "host='X'")
 	cols := []Column{makeColumn("host", "string"), col}

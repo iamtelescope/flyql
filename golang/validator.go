@@ -5,8 +5,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/iamtelescope/flyql/golang/flyqltype"
+	"github.com/iamtelescope/flyql/golang/literal"
 	"github.com/iamtelescope/flyql/golang/transformers"
-	"github.com/iamtelescope/flyql/golang/types"
 )
 
 var validColumnNameRE = regexp.MustCompile(`^[a-zA-Z0-9_.:/@|\-]+$`)
@@ -89,7 +90,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 		return diags
 	}
 
-	var prevOutputType transformers.TransformerType
+	var prevOutputType Type
 	var hasPrevType bool
 
 	// Nested traversal: walk all segments through schema
@@ -132,7 +133,8 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 			col = child
 		}
 		if col != nil {
-			prevOutputType, hasPrevType = NormalizedToTransformerType(col.NormalizedType)
+			prevOutputType = col.Type
+			hasPrevType = col.Type != "" && col.Type != TypeUnknown
 		}
 	}
 
@@ -176,7 +178,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 		// Per-argument type check
 		for j := 0; j < len(tr.Arguments) && j < len(schema); j++ {
 			expected := schema[j].Type
-			actual, ok := goToTransformerType(tr.Arguments[j])
+			actual, ok := goToFlyQLType(tr.Arguments[j])
 			if !ok {
 				continue
 			}
@@ -184,7 +186,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 				continue
 			}
 			// int widens to float
-			if actual == transformers.TransformerTypeInt && expected == transformers.TransformerTypeFloat {
+			if actual == flyqltype.Int && expected == flyqltype.Float {
 				continue
 			}
 			if j < len(tr.ArgumentRanges) {
@@ -213,7 +215,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 	}
 
 	// COLUMN value validation
-	if expr.ValueType == types.Column {
+	if expr.ValueType == literal.Column {
 		if v, ok := expr.Value.(string); ok && v != "" {
 			if !validColumnNameRE.MatchString(v) {
 				if expr.ValueRange != nil {
@@ -242,7 +244,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 
 	// IN-list COLUMN value validation
 	for i, vt := range expr.ValuesTypes {
-		if vt == types.Column {
+		if vt == literal.Column {
 			if v, ok := expr.Values[i].(string); ok {
 				if !validColumnNameRE.MatchString(v) {
 					if i < len(expr.ValueRanges) {
@@ -273,17 +275,17 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 	return diags
 }
 
-// goToTransformerType maps a Go value to its TransformerType.
-func goToTransformerType(v any) (transformers.TransformerType, bool) {
+// goToFlyQLType maps a Go runtime value to its flyql.Type.
+func goToFlyQLType(v any) (flyqltype.Type, bool) {
 	switch v.(type) {
 	case bool:
-		return transformers.TransformerTypeBool, true
+		return flyqltype.Bool, true
 	case int, int64, int32:
-		return transformers.TransformerTypeInt, true
+		return flyqltype.Int, true
 	case float64, float32:
-		return transformers.TransformerTypeFloat, true
+		return flyqltype.Float, true
 	case string:
-		return transformers.TransformerTypeString, true
+		return flyqltype.String, true
 	default:
 		return "", false
 	}

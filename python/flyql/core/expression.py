@@ -4,7 +4,7 @@ from flyql.core.exceptions import FlyqlError
 from flyql.core.constants import VALID_KEY_VALUE_OPERATORS, Operator
 from flyql.core.key import Key
 from flyql.core.range import Range
-from flyql.types import ValueType
+from flyql.literal import LiteralKind
 
 
 @dataclass
@@ -34,18 +34,18 @@ INT64_MAX = 2**63 - 1
 
 def convert_unquoted_value(
     value: str | int | float,
-) -> Tuple[str | int | float, ValueType]:
+) -> Tuple[str | int | float, LiteralKind]:
     try:
         int_val = int(str(value))
         if INT64_MIN <= int_val <= INT64_MAX:
-            return int_val, ValueType.INTEGER
-        return int_val, ValueType.BIGINT
+            return int_val, LiteralKind.INTEGER
+        return int_val, LiteralKind.BIGINT
     except ValueError:
         pass
     try:
-        return float(value), ValueType.FLOAT
+        return float(value), LiteralKind.FLOAT
     except ValueError:
-        return value, ValueType.COLUMN
+        return value, LiteralKind.COLUMN
 
 
 class Expression:
@@ -61,8 +61,8 @@ class Expression:
         value_ranges: Optional[List[Range]] = None,
         values: Optional[List[Any]] = None,
         values_type: Optional[str] = None,
-        value_type: Optional[ValueType] = None,
-        values_types: Optional[List[ValueType]] = None,
+        value_type: Optional[LiteralKind] = None,
+        values_types: Optional[List[LiteralKind]] = None,
     ) -> None:
         if operator not in VALID_KEY_VALUE_OPERATORS:
             raise FlyqlError(f"invalid operator: {operator}")
@@ -74,7 +74,7 @@ class Expression:
         self.operator = operator
         self.values: Optional[List[Any]] = values
         self.values_type: Optional[str] = values_type
-        self.values_types: Optional[List[ValueType]] = values_types
+        self.values_types: Optional[List[LiteralKind]] = values_types
         self.range = range if range is not None else Range(0, 0)
         self.operator_range = operator_range
         self.value_range = value_range
@@ -82,7 +82,7 @@ class Expression:
 
         if value_type is not None:
             self.value: Any = value
-            self.value_type: Optional[ValueType] = value_type
+            self.value_type: Optional[LiteralKind] = value_type
         elif operator in (Operator.IN.value, Operator.NOT_IN.value):
             self.value = None
             self.value_type = None
@@ -94,7 +94,7 @@ class Expression:
             self.value, self.value_type = convert_unquoted_value(value)
         else:
             self.value = value
-            self.value_type = ValueType.STRING
+            self.value_type = LiteralKind.STRING
 
     def __str__(self) -> str:
         if self.operator in (Operator.IN.value, Operator.NOT_IN.value):

@@ -8,7 +8,6 @@ import {
     Expression,
     Node,
     Column,
-    normalizedToTransformerType,
     diagnose,
     Diagnostic,
     CODE_UNKNOWN_COLUMN,
@@ -20,13 +19,8 @@ import {
     Range,
 } from '../../src/index.js'
 import { ColumnSchema } from '../../src/core/column.js'
-import {
-    ArgSpec,
-    Transformer,
-    TransformerType,
-    TransformerRegistry,
-    defaultRegistry,
-} from '../../src/transformers/index.js'
+import { ArgSpec, Transformer, TransformerRegistry, defaultRegistry } from '../../src/transformers/index.js'
+import { Type } from '../../src/flyql_type.js'
 import { Column as CHColumn } from '../../src/generators/clickhouse/column.js'
 
 // ---------------------------------------------------------------------------
@@ -42,8 +36,9 @@ const SHARED_CASES = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8')).tests
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeColumn(name, normalizedType, { jsonString = false, matchName = null } = {}) {
-    return new Column(name, jsonString, normalizedType, normalizedType, { matchName })
+function makeColumn(name, typeStr, { jsonString = false, matchName = null } = {}) {
+    const t = typeStr || Type.Unknown
+    return new Column(name, jsonString, t, { matchName })
 }
 
 function parseAst(query) {
@@ -53,7 +48,7 @@ function parseAst(query) {
 }
 
 function columnsFromSpec(colSpecs) {
-    return colSpecs.map((c) => makeColumn(c.name, c.normalized_type))
+    return colSpecs.map((c) => makeColumn(c.name, c.type))
 }
 
 // ---------------------------------------------------------------------------
@@ -65,13 +60,13 @@ class TakesStringThenInt extends Transformer {
         return 'takes_string_then_int'
     }
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get outputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get argSchema() {
-        return [new ArgSpec(TransformerType.STRING, true), new ArgSpec(TransformerType.INT, true)]
+        return [new ArgSpec(Type.String, true), new ArgSpec(Type.Int, true)]
     }
     sql(dialect, columnRef) {
         return columnRef
@@ -86,10 +81,10 @@ class StringToInt extends Transformer {
         return 'string_to_int'
     }
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get outputType() {
-        return TransformerType.INT
+        return Type.Int
     }
     sql(dialect, columnRef) {
         return columnRef
@@ -104,13 +99,13 @@ class TakesFloat extends Transformer {
         return 'takes_float'
     }
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get outputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get argSchema() {
-        return [new ArgSpec(TransformerType.FLOAT, true)]
+        return [new ArgSpec(Type.Float, true)]
     }
     sql(dialect, columnRef) {
         return columnRef
@@ -125,13 +120,13 @@ class TakesInt extends Transformer {
         return 'takes_int'
     }
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get outputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get argSchema() {
-        return [new ArgSpec(TransformerType.INT, true)]
+        return [new ArgSpec(Type.Int, true)]
     }
     sql(dialect, columnRef) {
         return columnRef
@@ -224,10 +219,14 @@ describe('Validator (language-specific)', () => {
         expect(diags[0].range).toEqual(new Range(0, 0))
     })
 
-    it('should accept ClickHouse Column with matchName', () => {
-        const col = new CHColumn('host', false, 'String')
+    it('should accept ClickHouse Column via bridge', () => {
+        // After the unify-column-type-system refactor, dialect Columns are
+        // opaque — bridge via flyql.Column to get a canonical column for
+        // the validator.
+        const ch = new CHColumn('host', false, 'String')
+        const bridged = new Column(ch.name, ch.jsonString, ch.flyqlType(), { matchName: ch.matchName })
         const ast = parseAst("host='X'")
-        expect(diagnose(ast, ColumnSchema.fromColumns([col]), registry)).toEqual([])
+        expect(diagnose(ast, ColumnSchema.fromColumns([bridged]), registry)).toEqual([])
     })
 
     it('should use matchName for escaped identifiers', () => {

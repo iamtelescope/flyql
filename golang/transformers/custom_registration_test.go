@@ -5,14 +5,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 type FirstOctet struct{}
 
-func (f FirstOctet) Name() string                { return "firstoctet" }
-func (f FirstOctet) InputType() TransformerType  { return TransformerTypeString }
-func (f FirstOctet) OutputType() TransformerType { return TransformerTypeInt }
-func (f FirstOctet) ArgSchema() []ArgSpec        { return []ArgSpec{} }
+func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) InputType() flyqltype.Type  { return flyqltype.String }
+func (f FirstOctet) OutputType() flyqltype.Type { return flyqltype.Int }
+func (f FirstOctet) ArgSchema() []ArgSpec       { return []ArgSpec{} }
 func (f FirstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)
@@ -38,10 +40,10 @@ func TestCustomRegistration(t *testing.T) {
 	if tr.Name() != "firstoctet" {
 		t.Errorf("expected name firstoctet, got %s", tr.Name())
 	}
-	if tr.InputType() != TransformerTypeString {
+	if tr.InputType() != flyqltype.String {
 		t.Errorf("expected input string, got %s", tr.InputType())
 	}
-	if tr.OutputType() != TransformerTypeInt {
+	if tr.OutputType() != flyqltype.Int {
 		t.Errorf("expected output int, got %s", tr.OutputType())
 	}
 }

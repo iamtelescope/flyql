@@ -12,6 +12,7 @@ from flyql.core.validator import (
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
 )
+from flyql.flyql_type import Type, parse_flyql_type
 
 FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -25,12 +26,11 @@ FIXTURE_PATH = os.path.join(
 SHARED_DATA = json.loads(open(FIXTURE_PATH, "r").read())
 
 
-def make_column(name: str, normalized_type: str) -> Column:
+def make_column(name: str, type_str: str) -> Column:
     return Column(
         name=name,
         jsonstring=False,
-        _type=normalized_type,
-        normalized_type=normalized_type,
+        column_type=parse_flyql_type(type_str),
         match_name=name,
     )
 
@@ -44,8 +44,7 @@ def _build_column_from_def(d: dict) -> Column:
     return Column(
         name=d["name"],
         jsonstring=False,
-        _type=d["normalized_type"],
-        normalized_type=d["normalized_type"],
+        column_type=parse_flyql_type(d["type"]),
         match_name=d["name"],
         children=children,
     )

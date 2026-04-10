@@ -32,7 +32,8 @@ FlyQL provides identical functionality across Go, Python, and JavaScript. This m
 | Column schema | `ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 | Range | `Range` | `Range` | `Range` |
 | Operators | string constants | `Operator`, `BoolOperator` (enums) | `Operator`, `BoolOperator` |
-| Value types | `types.Integer`, etc. | `ValueType.INTEGER`, etc. | `ValueType.INTEGER`, etc. |
+| Column/value type ([`flyql.Type`](./column-types)) | `flyql.Type` (`flyql.TypeString`, ...) | `Type` (`Type.String`, ...) | `Type` (`Type.String`, ...) |
+| Parser literal kind | `literal.Integer`, etc. | `LiteralKind.INTEGER`, etc. | `LiteralKind.INTEGER`, etc. |
 
 ## Generators — WHERE Clause
 
@@ -86,7 +87,7 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | Registry | `DefaultRegistry()` | `default_registry()` | `defaultRegistry()` |
 | **Types** | | | |
 | Transformer interface | `Transformer` (interface) | `Transformer` (ABC) | `Transformer` (class) |
-| Transformer type | `TransformerType` | `TransformerType` | `TransformerType` |
+| Transformer input/output type | `flyql.Type` | `Type` | `Type` |
 | Arg spec | `ArgSpec` | `ArgSpec` | `ArgSpec` |
 | Registry type | `TransformerRegistry` | `TransformerRegistry` | `TransformerRegistry` |
 
@@ -102,10 +103,20 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | Diagnostic | `Diagnostic` | `Diagnostic` | `Diagnostic` |
 | Column schema | `*ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 
+## Dialect → flyql.ColumnSchema bridges
+
+Each dialect package exposes a helper that bridges from a list of dialect-specific Columns to a canonical `flyql.ColumnSchema` for use with the validator. See [Column Types](./column-types) for the full contract.
+
+| Dialect | Go | Python | JavaScript |
+|---------|------|--------|------------|
+| ClickHouse | `clickhouse.ToFlyQLSchema(cols)` | `clickhouse.to_flyql_schema(cols)` | `toFlyQLSchema(cols)` |
+| PostgreSQL | `postgresql.ToFlyQLSchema(cols)` | `postgresql.to_flyql_schema(cols)` | `toFlyQLSchema(cols)` |
+| StarRocks | `starrocks.ToFlyQLSchema(cols)` | `starrocks.to_flyql_schema(cols)` | `toFlyQLSchema(cols)` |
+
 ## Top-Level Package Imports
 
-**Python** — `from flyql import parse, bind_params, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, ValueType`
+**Python** — `from flyql import parse, bind_params, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, Type, LiteralKind`
 
-**JavaScript** — `import { parse, bindParams, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, ValueType } from 'flyql'`
+**JavaScript** — `import { parse, bindParams, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Type, LiteralKind } from 'flyql'`
 
-**Go** — `import "github.com/iamtelescope/flyql/golang"` (core), dialect-specific generator imports separately
+**Go** — `import "github.com/iamtelescope/flyql/golang"` (core, exports `flyql.Type` and `flyql.Type*` constants), dialect-specific generator imports separately

@@ -245,7 +245,7 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 Custom transformers participate in the same type chain validation as built-ins. If you chain `field|firstoctet|upper`, the system detects that `firstoctet` outputs `int` but `upper` requires `string`.
 
-Available types: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+Available types: see [`flyql.Type`](./column-types) — the canonical 11-value enum (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
 
 ## Validation with `diagnose()`
 
@@ -261,22 +261,20 @@ Each diagnostic carries a `range` (source position), `message`, `severity` (`"er
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
-columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, _type="String", normalized_type="string")])
+columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, column_type=Type.String)])
 diags = diagnose(ast, columns)  # columns is a ColumnSchema
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
 const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
@@ -286,7 +284,7 @@ const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
-schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", false, "String", "string")})
+schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", false, flyql.TypeString)})
 diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```

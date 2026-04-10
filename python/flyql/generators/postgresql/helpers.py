@@ -1,32 +1,10 @@
-from typing import Any, List
+"""Validation helpers — column-type-keyed forbidden-op and IN-list checks."""
 
+from typing import Any, List, Optional
+
+from flyql.core.constants import Operator
 from flyql.core.exceptions import FlyqlError
-from flyql.generators.postgresql.constants import (
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
-)
-
-FORBIDDEN_OPERATIONS = {
-    (NORMALIZED_TYPE_STRING, "<", "int"),
-    (NORMALIZED_TYPE_STRING, "<", "float"),
-    (NORMALIZED_TYPE_STRING, ">", "int"),
-    (NORMALIZED_TYPE_STRING, ">", "float"),
-    (NORMALIZED_TYPE_STRING, ">=", "int"),
-    (NORMALIZED_TYPE_STRING, ">=", "float"),
-    (NORMALIZED_TYPE_STRING, "<=", "int"),
-    (NORMALIZED_TYPE_STRING, "<=", "float"),
-    (NORMALIZED_TYPE_INT, "~", "string"),
-    (NORMALIZED_TYPE_FLOAT, "~", "string"),
-    (NORMALIZED_TYPE_INT, "!~", "string"),
-    (NORMALIZED_TYPE_FLOAT, "!~", "string"),
-    (NORMALIZED_TYPE_BOOL, "<", "bool"),
-    (NORMALIZED_TYPE_BOOL, ">", "bool"),
-    (NORMALIZED_TYPE_BOOL, ">=", "bool"),
-    (NORMALIZED_TYPE_BOOL, "<=", "bool"),
-}
+from flyql.flyql_type import Type
 
 
 def get_value_type(value: Any) -> str:
@@ -41,36 +19,59 @@ def get_value_type(value: Any) -> str:
     return ""
 
 
-def validate_operation(value: Any, column_normalized_type: str, operator: str) -> None:
-    if not column_normalized_type:
-        return
-    key = (column_normalized_type, operator, get_value_type(value))
-    if key in FORBIDDEN_OPERATIONS:
-        raise FlyqlError(
-            f"operation not allowed: {column_normalized_type} column with '{operator}' operator"
-        )
-
-
-IN_COMPATIBLE_TYPES = {
-    NORMALIZED_TYPE_STRING: {"string"},
-    NORMALIZED_TYPE_INT: {"int", "float"},
-    NORMALIZED_TYPE_FLOAT: {"int", "float"},
-    NORMALIZED_TYPE_BOOL: {"bool", "int"},
-    NORMALIZED_TYPE_DATE: {"string"},
+FORBIDDEN_OPERATIONS = {
+    (Type.String, Operator.LOWER_THAN.value, "int"),
+    (Type.String, Operator.LOWER_THAN.value, "float"),
+    (Type.String, Operator.GREATER_THAN.value, "int"),
+    (Type.String, Operator.GREATER_THAN.value, "float"),
+    (Type.String, Operator.GREATER_OR_EQUALS_THAN.value, "int"),
+    (Type.String, Operator.GREATER_OR_EQUALS_THAN.value, "float"),
+    (Type.String, Operator.LOWER_OR_EQUALS_THAN.value, "int"),
+    (Type.String, Operator.LOWER_OR_EQUALS_THAN.value, "float"),
+    (Type.Int, Operator.REGEX.value, "string"),
+    (Type.Float, Operator.REGEX.value, "string"),
+    (Type.Int, Operator.NOT_REGEX.value, "string"),
+    (Type.Float, Operator.NOT_REGEX.value, "string"),
+    (Type.Bool, Operator.LOWER_THAN.value, "bool"),
+    (Type.Bool, Operator.GREATER_THAN.value, "bool"),
+    (Type.Bool, Operator.GREATER_OR_EQUALS_THAN.value, "bool"),
+    (Type.Bool, Operator.LOWER_OR_EQUALS_THAN.value, "bool"),
 }
 
 
-def validate_in_list_types(values: List[Any], column_normalized_type: str) -> None:
-    if not column_normalized_type:
+IN_COMPATIBLE_TYPES = {
+    Type.String: {"string"},
+    Type.Int: {"int", "float"},
+    Type.Float: {"int", "float"},
+    Type.Bool: {"bool", "int"},
+    Type.Date: {"string"},
+}
+
+
+def validate_operation(value: Any, column_type: Optional[Type], operator: str) -> None:
+    if column_type is None or column_type == Type.Unknown:
         return
+
+    if (column_type, operator, get_value_type(value)) in FORBIDDEN_OPERATIONS:
+        raise FlyqlError(
+            f"operation not allowed: {column_type} column with '{operator}' operator"
+        )
+
+
+def validate_in_list_types(values: List[Any], column_type: Optional[Type]) -> None:
+    if column_type is None or column_type == Type.Unknown:
+        return
+
     if not values:
         return
-    allowed = IN_COMPATIBLE_TYPES.get(column_normalized_type)
-    if allowed is None:
+
+    allowed_types = IN_COMPATIBLE_TYPES.get(column_type)
+    if allowed_types is None:
         return
+
     for value in values:
-        vtype = get_value_type(value)
-        if vtype and vtype not in allowed:
+        value_type = get_value_type(value)
+        if value_type and value_type not in allowed_types:
             raise FlyqlError(
-                f"type mismatch in IN list: {column_normalized_type} column cannot contain {vtype} values"
+                f"type mismatch in IN list: {column_type} column cannot contain {value_type} values"
             )

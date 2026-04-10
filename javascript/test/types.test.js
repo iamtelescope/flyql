@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { ValueType } from '../src/types.js'
+import {} from '../src/literal/literal_kind.js'
+import { LiteralKind } from '../src/literal/literal_kind.js'
 
-describe('ValueType', () => {
+describe('LiteralKind', () => {
     const expectedValues = {
         INTEGER: 'integer',
         BIGINT: 'bigint',
@@ -16,19 +17,19 @@ describe('ValueType', () => {
     }
 
     it('should have all 10 type constants', () => {
-        expect(Object.keys(ValueType)).toHaveLength(10)
+        expect(Object.keys(LiteralKind)).toHaveLength(10)
     })
 
     it.each(Object.entries(expectedValues))('should have %s = "%s"', (key, value) => {
-        expect(ValueType[key]).toBe(value)
+        expect(LiteralKind[key]).toBe(value)
     })
 
     it('should be frozen', () => {
-        expect(Object.isFrozen(ValueType)).toBe(true)
+        expect(Object.isFrozen(LiteralKind)).toBe(true)
     })
 
     it('should be importable from main index', async () => {
-        const { ValueType: VT } = await import('../src/index.js')
-        expect(VT).toBe(ValueType)
+        const { LiteralKind: VT } = await import('../src/index.js')
+        expect(VT).toBe(LiteralKind)
     })
 })

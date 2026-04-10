@@ -1,24 +1,28 @@
 import { Operator, BoolOperator, VALID_KEY_VALUE_OPERATORS, VALID_BOOL_OPERATORS } from '../../core/constants.js'
-import { ValueType } from '../../types.js'
+import { Type } from '../../flyql_type.js'
+import { LiteralKind } from '../../literal/literal_kind.js'
 import { FunctionCall, Parameter } from '../../core/expression.js'
 import { FlyqlError } from '../../core/exceptions.js'
 import { parseKey } from '../../core/key.js'
-import {
-    Column,
-    newColumn,
-    normalizeClickHouseType,
-    NormalizedTypeBool,
-    NormalizedTypeString,
-    NormalizedTypeInt,
-    NormalizedTypeFloat,
-    NormalizedTypeDate,
-    NormalizedTypeJSON,
-} from './column.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
 import { defaultRegistry } from '../../transformers/index.js'
+import { Column, newColumn, normalizeClickHouseType } from './column.js'
+import { Column as FCol, ColumnSchema } from '../../core/column.js'
 
 export { Column, newColumn, normalizeClickHouseType }
+
+/**
+ * Bridge dialect Columns to a canonical flyql.ColumnSchema for use
+ * with the validator. See unify-column-type-system spec, Tech Decision #13.
+ */
+export function toFlyQLSchema(cols) {
+    const m = {}
+    for (const c of cols) {
+        m[c.name] = new FCol(c.name, c.jsonString, c.flyqlType(), { matchName: c.matchName })
+    }
+    return new ColumnSchema(m)
+}
 
 const boolOpToSQL = {
     [BoolOperator.AND]: 'AND',
@@ -194,13 +198,13 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (expr.valueType === ValueType.FUNCTION) {
+    if (expr.valueType === LiteralKind.FUNCTION) {
         if (expr.key.isSegmented) {
             throw new Error('temporal functions are not supported with segmented keys')
         }
-        if (column.normalizedType && column.normalizedType !== NormalizedTypeDate) {
+        if (column.flyqlType() && column.flyqlType() !== Type.Date) {
             throw new Error(
-                `temporal function '${expr.value.name}' is not valid for column '${columnName}' of type '${column.normalizedType}'`,
+                `temporal function '${expr.value.name}' is not valid for column '${columnName}' of type '${column.flyqlType()}'`,
             )
         }
         const fc = expr.value
@@ -214,7 +218,7 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
     }
 
     let rhsRef = null
-    if (expr.valueType === ValueType.COLUMN) {
+    if (expr.valueType === LiteralKind.COLUMN) {
         rhsRef = resolveRhsColumnRef(String(expr.value), columns)
     }
 
@@ -249,8 +253,8 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         }
     }
 
-    if (column.normalizedType && !expr.key.transformers.length) {
-        validateOperation(expr.value, column.normalizedType, expr.operator)
+    if (column.flyqlType() && !expr.key.transformers.length) {
+        validateOperation(expr.value, column.flyqlType(), expr.operator)
     }
 
     let colRef = getIdentifier(column)
@@ -286,10 +290,10 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
-            if (expr.valueType === ValueType.NULL) {
+            if (expr.valueType === LiteralKind.NULL) {
                 return expr.operator === Operator.EQUALS ? `${colRef} IS NULL` : `${colRef} IS NOT NULL`
             }
-            if (expr.valueType === ValueType.BOOLEAN) {
+            if (expr.valueType === LiteralKind.BOOLEAN) {
                 const boolLiteral = expr.value ? 'true' : 'false'
                 return `${colRef} ${expr.operator} ${boolLiteral}`
             }
@@ -320,8 +324,8 @@ function expressionToSQLSegmented(expr, columns) {
 
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
-    if (column.normalizedType && !hasTransformers) {
-        validateOperation(expr.value, column.normalizedType, expr.operator)
+    if (column.flyqlType() && !hasTransformers) {
+        validateOperation(expr.value, column.flyqlType(), expr.operator)
     }
 
     const colId = getIdentifier(column)
@@ -332,7 +336,7 @@ function expressionToSQLSegmented(expr, columns) {
         const jsonPathStr = jsonPathParts.join(', ')
 
         let rhsRef = null
-        if (expr.valueType === ValueType.COLUMN) {
+        if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
         if (rhsRef !== null) {
@@ -370,7 +374,7 @@ function expressionToSQLSegmented(expr, columns) {
         }
         multiIf.push('0')
         return `${reverseOperator}multiIf(${multiIf.join(',')})`
-    } else if (column.isJSON) {
+    } else if (column.flyqlType() === Type.JSON) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) {
             validateJSONPathPart(part)
@@ -378,7 +382,7 @@ function expressionToSQLSegmented(expr, columns) {
         const pathParts = jsonPath.map((part) => '`' + part + '`')
         const jsonPathStr = pathParts.join('.')
         let rhsRef = null
-        if (expr.valueType === ValueType.COLUMN) {
+        if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
         const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
@@ -387,11 +391,11 @@ function expressionToSQLSegmented(expr, columns) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
         return `${leafExpr} ${expr.operator} ${value}`
-    } else if (column.isMap) {
+    } else if (column.flyqlType() === Type.Map) {
         const mapKey = expr.key.segments.slice(1).join('.')
         const escapedMapKey = escapeParam(mapKey)
         let rhsRef = null
-        if (expr.valueType === ValueType.COLUMN) {
+        if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
         const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
@@ -400,14 +404,14 @@ function expressionToSQLSegmented(expr, columns) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
         return `${reverseOperator}${funcName}(${leafExpr}, ${value})`
-    } else if (column.isArray) {
+    } else if (column.flyqlType() === Type.Array) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
         if (isNaN(arrayIndex)) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
         let rhsRef = null
-        if (expr.valueType === ValueType.COLUMN) {
+        if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
         const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
@@ -435,14 +439,14 @@ function inExpressionToSQL(expr, columns) {
     }
 
     const isHeterogeneous = expr.valuesTypes && new Set(expr.valuesTypes).size > 1
-    if (column.normalizedType && !expr.key.isSegmented && !isHeterogeneous) {
-        validateInListTypes(expr.values, column.normalizedType)
+    if (column.flyqlType() && !expr.key.isSegmented && !isHeterogeneous) {
+        validateInListTypes(expr.values, column.flyqlType())
     }
 
     const valueParts = []
     for (let i = 0; i < expr.values.length; i++) {
         let rhsRef = null
-        if (expr.valuesTypes && i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN) {
+        if (expr.valuesTypes && i < expr.valuesTypes.length && expr.valuesTypes[i] === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.values[i]), columns)
         }
         valueParts.push(rhsRef !== null ? rhsRef : escapeParam(expr.values[i]))
@@ -456,7 +460,7 @@ function inExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.isJSON) {
+        if (column.flyqlType() === Type.JSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
@@ -477,7 +481,7 @@ function inExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `${leafExpr} ${sqlOp} (${valuesSQL})`
-        } else if (column.isMap) {
+        } else if (column.flyqlType() === Type.Map) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
             let leafExpr = `${colId}[${escapedMapKey}]`
@@ -485,7 +489,7 @@ function inExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `${leafExpr} ${sqlOp} (${valuesSQL})`
-        } else if (column.isArray) {
+        } else if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
@@ -530,7 +534,7 @@ function truthyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `(JSONHas(${colId}, ${jsonPathStr}) AND ${leafExpr} != '')`
-        } else if (column.isJSON) {
+        } else if (column.flyqlType() === Type.JSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
@@ -543,7 +547,7 @@ function truthyExpressionToSQL(expr, columns) {
                 return `(${leafExpr} IS NOT NULL AND ${leafExpr} != '')`
             }
             return `(${leafExpr} IS NOT NULL)`
-        } else if (column.isMap) {
+        } else if (column.flyqlType() === Type.Map) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
             let leafExpr = `${colId}[${escapedMapKey}]`
@@ -551,7 +555,7 @@ function truthyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `(mapContains(${colId}, ${escapedMapKey}) AND ${leafExpr} != '')`
-        } else if (column.isArray) {
+        } else if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
@@ -576,15 +580,15 @@ function truthyExpressionToSQL(expr, columns) {
         return `(${colId} IS NOT NULL AND ${colId} != '' AND JSONLength(${colId}) > 0)`
     }
 
-    switch (column.normalizedType) {
-        case NormalizedTypeBool:
+    switch (column.flyqlType()) {
+        case Type.Bool:
             return colId
-        case NormalizedTypeString:
+        case Type.String:
             return `(${colId} IS NOT NULL AND ${colId} != '')`
-        case NormalizedTypeInt:
-        case NormalizedTypeFloat:
+        case Type.Int:
+        case Type.Float:
             return `(${colId} IS NOT NULL AND ${colId} != 0)`
-        case NormalizedTypeDate:
+        case Type.Date:
             return `(${colId} IS NOT NULL)`
         default:
             return `(${colId} IS NOT NULL)`
@@ -612,7 +616,7 @@ function falsyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `(NOT JSONHas(${colId}, ${jsonPathStr}) OR ${leafExpr} = '')`
-        } else if (column.isJSON) {
+        } else if (column.flyqlType() === Type.JSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
@@ -625,7 +629,7 @@ function falsyExpressionToSQL(expr, columns) {
                 return `(${leafExpr} IS NULL OR ${leafExpr} = '')`
             }
             return `(${leafExpr} IS NULL)`
-        } else if (column.isMap) {
+        } else if (column.flyqlType() === Type.Map) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
             let leafExpr = `${colId}[${escapedMapKey}]`
@@ -633,7 +637,7 @@ function falsyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `(NOT mapContains(${colId}, ${escapedMapKey}) OR ${leafExpr} = '')`
-        } else if (column.isArray) {
+        } else if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
@@ -658,15 +662,15 @@ function falsyExpressionToSQL(expr, columns) {
         return `(${colId} IS NULL OR ${colId} = '' OR JSONLength(${colId}) = 0)`
     }
 
-    switch (column.normalizedType) {
-        case NormalizedTypeBool:
+    switch (column.flyqlType()) {
+        case Type.Bool:
             return `NOT ${colId}`
-        case NormalizedTypeString:
+        case Type.String:
             return `(${colId} IS NULL OR ${colId} = '')`
-        case NormalizedTypeInt:
-        case NormalizedTypeFloat:
+        case Type.Int:
+        case Type.Float:
             return `(${colId} IS NULL OR ${colId} = 0)`
-        case NormalizedTypeDate:
+        case Type.Date:
             return `(${colId} IS NULL)`
         default:
             return `(${colId} IS NULL)`
@@ -682,7 +686,7 @@ function hasExpressionToSQL(expr, columns) {
     }
 
     let rhsRef = null
-    if (expr.valueType === ValueType.COLUMN) {
+    if (expr.valueType === LiteralKind.COLUMN) {
         rhsRef = resolveRhsColumnRef(String(expr.value), columns)
     }
     const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
@@ -703,7 +707,7 @@ function hasExpressionToSQL(expr, columns) {
                 return `position(${leafExpr}, ${value}) = 0`
             }
             return `position(${leafExpr}, ${value}) > 0`
-        } else if (column.isJSON) {
+        } else if (column.flyqlType() === Type.JSON) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
@@ -717,7 +721,7 @@ function hasExpressionToSQL(expr, columns) {
                 return `position(${leafExpr}, ${value}) = 0`
             }
             return `position(${leafExpr}, ${value}) > 0`
-        } else if (column.isMap) {
+        } else if (column.flyqlType() === Type.Map) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
             let leafExpr = `${colId}[${escapedMapKey}]`
@@ -728,7 +732,7 @@ function hasExpressionToSQL(expr, columns) {
                 return `position(${leafExpr}, ${value}) = 0`
             }
             return `position(${leafExpr}, ${value}) > 0`
-        } else if (column.isArray) {
+        } else if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) {
@@ -752,7 +756,7 @@ function hasExpressionToSQL(expr, columns) {
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'clickhouse')
     }
 
-    let isArrayResult = column.isArray
+    let isArrayResult = column.flyqlType() === Type.Array
     if (expr.key.transformers && expr.key.transformers.length) {
         const reg = defaultRegistry()
         const lastT = reg.get(expr.key.transformers[expr.key.transformers.length - 1].name)
@@ -766,14 +770,14 @@ function hasExpressionToSQL(expr, columns) {
         return `has(${colRef}, ${value})`
     }
 
-    if (column.isMap) {
+    if (column.flyqlType() === Type.Map) {
         if (isNotHas) {
             return `NOT mapContains(${colRef}, ${value})`
         }
         return `mapContains(${colRef}, ${value})`
     }
 
-    if (column.isJSON) {
+    if (column.flyqlType() === Type.JSON) {
         if (isNotHas) {
             return `NOT JSON_EXISTS(${colRef}, concat('$.', ${value}))`
         }
@@ -787,14 +791,14 @@ function hasExpressionToSQL(expr, columns) {
         return `JSONHas(${colRef}, ${value})`
     }
 
-    if (column.normalizedType === NormalizedTypeString) {
+    if (column.flyqlType() === Type.String) {
         if (isNotHas) {
             return `(${colRef} IS NULL OR position(${colRef}, ${value}) = 0)`
         }
         return `position(${colRef}, ${value}) > 0`
     }
 
-    throw new Error(`has operator is not supported for column type: ${column.normalizedType}`)
+    throw new Error(`has operator is not supported for column type: ${column.flyqlType()}`)
 }
 
 function validateOperator(op) {
@@ -810,7 +814,7 @@ function validateBoolOperator(op) {
 }
 
 function expressionToSQL(expr, columns, registry = null, options = {}) {
-    if (expr.valueType === ValueType.PARAMETER) {
+    if (expr.valueType === LiteralKind.PARAMETER) {
         if (expr.value instanceof Parameter) {
             throw new FlyqlError(
                 `unbound parameter '$${expr.value.name}' \u2014 call bindParams() before generating SQL`,
@@ -952,7 +956,7 @@ function buildSelectExpr(column, path) {
         return colId
     }
 
-    if (column.isJSON) {
+    if (column.flyqlType() === Type.JSON) {
         for (const part of path) {
             validateJSONPathPart(part)
         }
@@ -965,13 +969,13 @@ function buildSelectExpr(column, path) {
         return `JSONExtractString(${colId}, ${jsonPathParts.join(', ')})`
     }
 
-    if (column.isMap) {
+    if (column.flyqlType() === Type.Map) {
         const mapKey = path.join('.')
         const escapedKey = escapeParam(mapKey)
         return `${colId}[${escapedKey}]`
     }
 
-    if (column.isArray) {
+    if (column.flyqlType() === Type.Array) {
         const indexStr = path.join('.')
         const index = parseInt(indexStr, 10)
         if (isNaN(index)) {

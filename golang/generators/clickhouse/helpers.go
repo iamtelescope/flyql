@@ -4,33 +4,34 @@ import (
 	"fmt"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 type forbiddenOp struct {
-	columnType string
+	columnType flyqltype.Type
 	operator   string
 	valueType  string
 }
 
 var forbiddenOperations = map[forbiddenOp]bool{
-	{NormalizedTypeString, flyql.OpLess, "int"}:              true,
-	{NormalizedTypeString, flyql.OpLess, "float"}:            true,
-	{NormalizedTypeString, flyql.OpGreater, "int"}:           true,
-	{NormalizedTypeString, flyql.OpGreater, "float"}:         true,
-	{NormalizedTypeString, flyql.OpGreaterOrEquals, "int"}:   true,
-	{NormalizedTypeString, flyql.OpGreaterOrEquals, "float"}: true,
-	{NormalizedTypeString, flyql.OpLessOrEquals, "int"}:      true,
-	{NormalizedTypeString, flyql.OpLessOrEquals, "float"}:    true,
+	{flyqltype.String, flyql.OpLess, "int"}:              true,
+	{flyqltype.String, flyql.OpLess, "float"}:            true,
+	{flyqltype.String, flyql.OpGreater, "int"}:           true,
+	{flyqltype.String, flyql.OpGreater, "float"}:         true,
+	{flyqltype.String, flyql.OpGreaterOrEquals, "int"}:   true,
+	{flyqltype.String, flyql.OpGreaterOrEquals, "float"}: true,
+	{flyqltype.String, flyql.OpLessOrEquals, "int"}:      true,
+	{flyqltype.String, flyql.OpLessOrEquals, "float"}:    true,
 
-	{NormalizedTypeInt, flyql.OpRegex, "string"}:      true,
-	{NormalizedTypeFloat, flyql.OpRegex, "string"}:    true,
-	{NormalizedTypeInt, flyql.OpNotRegex, "string"}:   true,
-	{NormalizedTypeFloat, flyql.OpNotRegex, "string"}: true,
+	{flyqltype.Int, flyql.OpRegex, "string"}:      true,
+	{flyqltype.Float, flyql.OpRegex, "string"}:    true,
+	{flyqltype.Int, flyql.OpNotRegex, "string"}:   true,
+	{flyqltype.Float, flyql.OpNotRegex, "string"}: true,
 
-	{NormalizedTypeBool, flyql.OpLess, "bool"}:            true,
-	{NormalizedTypeBool, flyql.OpGreater, "bool"}:         true,
-	{NormalizedTypeBool, flyql.OpGreaterOrEquals, "bool"}: true,
-	{NormalizedTypeBool, flyql.OpLessOrEquals, "bool"}:    true,
+	{flyqltype.Bool, flyql.OpLess, "bool"}:            true,
+	{flyqltype.Bool, flyql.OpGreater, "bool"}:         true,
+	{flyqltype.Bool, flyql.OpGreaterOrEquals, "bool"}: true,
+	{flyqltype.Bool, flyql.OpLessOrEquals, "bool"}:    true,
 }
 
 func getValueType(value any) string {
@@ -48,34 +49,36 @@ func getValueType(value any) string {
 	}
 }
 
-func ValidateOperation(value any, columnNormalizedType string, operator string) error {
-	if columnNormalizedType == "" {
+// ValidateOperation checks whether the given operator is allowed against
+// the column's flyql.Type for a value of the inferred runtime type.
+func ValidateOperation(value any, columnType flyqltype.Type, operator string) error {
+	if columnType == "" || columnType == flyqltype.Unknown {
 		return nil
 	}
 
 	op := forbiddenOp{
-		columnType: columnNormalizedType,
+		columnType: columnType,
 		operator:   operator,
 		valueType:  getValueType(value),
 	}
 
 	if forbiddenOperations[op] {
-		return fmt.Errorf("operation not allowed: %s column with '%s' operator", columnNormalizedType, operator)
+		return fmt.Errorf("operation not allowed: %s column with '%s' operator", columnType, operator)
 	}
 
 	return nil
 }
 
-var inCompatibleTypes = map[string]map[string]bool{
-	NormalizedTypeString: {"string": true},
-	NormalizedTypeInt:    {"int": true, "float": true},
-	NormalizedTypeFloat:  {"int": true, "float": true},
-	NormalizedTypeBool:   {"bool": true, "int": true},
-	NormalizedTypeDate:   {"string": true},
+var inCompatibleTypes = map[flyqltype.Type]map[string]bool{
+	flyqltype.String: {"string": true},
+	flyqltype.Int:    {"int": true, "float": true},
+	flyqltype.Float:  {"int": true, "float": true},
+	flyqltype.Bool:   {"bool": true, "int": true},
+	flyqltype.Date:   {"string": true},
 }
 
-func ValidateInListTypes(values []any, columnNormalizedType string) error {
-	if columnNormalizedType == "" {
+func ValidateInListTypes(values []any, columnType flyqltype.Type) error {
+	if columnType == "" || columnType == flyqltype.Unknown {
 		return nil
 	}
 
@@ -83,7 +86,7 @@ func ValidateInListTypes(values []any, columnNormalizedType string) error {
 		return nil
 	}
 
-	allowedTypes, ok := inCompatibleTypes[columnNormalizedType]
+	allowedTypes, ok := inCompatibleTypes[columnType]
 	if !ok {
 		return nil
 	}
@@ -91,7 +94,7 @@ func ValidateInListTypes(values []any, columnNormalizedType string) error {
 	for _, value := range values {
 		valueType := getValueType(value)
 		if valueType != "" && !allowedTypes[valueType] {
-			return fmt.Errorf("type mismatch in IN list: %s column cannot contain %s values", columnNormalizedType, valueType)
+			return fmt.Errorf("type mismatch in IN list: %s column cannot contain %s values", columnType, valueType)
 		}
 	}
 

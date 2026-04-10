@@ -1,71 +1,117 @@
-import re
-from typing import List, Optional
+"""PostgreSQL-dialect Column."""
 
-from flyql.core.column import Column as CoreColumn
-from flyql.generators.postgresql.constants import (
-    NORMALIZED_TYPE_TO_POSTGRESQL_TYPES,
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
-    NORMALIZED_TYPE_ARRAY,
-    NORMALIZED_TYPE_JSON,
-    NORMALIZED_TYPE_HSTORE,
-)
+import re
+from typing import Dict, List, Optional
+
+from flyql.flyql_type import Type
 
 REGEX = {
-    NORMALIZED_TYPE_STRING: re.compile(
+    Type.String: re.compile(
         r"^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)", re.IGNORECASE
     ),
-    NORMALIZED_TYPE_FLOAT: re.compile(
+    Type.Float: re.compile(
         r"^(numeric|decimal)\s*\(\s*\d+\s*(,\s*\d+)?\s*\)", re.IGNORECASE
     ),
-    NORMALIZED_TYPE_DATE: re.compile(r"^timestamp\s*\(\s*\d+\s*\)", re.IGNORECASE),
-    NORMALIZED_TYPE_ARRAY: re.compile(r"(\[\]$|^_)", re.IGNORECASE),
+    Type.Date: re.compile(r"^timestamp\s*\(\s*\d+\s*\)", re.IGNORECASE),
+    Type.Array: re.compile(r"(\[\]$|^_)", re.IGNORECASE),
+}
+
+# PG renames: jsonb→json, hstore→map, interval→duration.
+FLYQL_TYPE_TO_POSTGRESQL_TYPES: Dict[Type, set] = {
+    Type.String: {
+        "text",
+        "varchar",
+        "char",
+        "character varying",
+        "character",
+        "name",
+        "uuid",
+        "citext",
+        "inet",
+        "cidr",
+        "macaddr",
+    },
+    Type.Int: {
+        "smallint",
+        "integer",
+        "bigint",
+        "int2",
+        "int4",
+        "int8",
+        "serial",
+        "bigserial",
+        "smallserial",
+    },
+    Type.Float: {
+        "real",
+        "double precision",
+        "numeric",
+        "decimal",
+        "float4",
+        "float8",
+        "money",
+    },
+    Type.Bool: {"boolean", "bool"},
+    Type.Date: {
+        "date",
+        "timestamp",
+        "timestamptz",
+        "timestamp without time zone",
+        "timestamp with time zone",
+        "time",
+        "timetz",
+    },
+    Type.Duration: {"interval"},
+    Type.JSON: {"jsonb", "json"},
+    Type.Map: {"hstore"},
 }
 
 
-def normalize_postgresql_type(pg_type: str) -> Optional[str]:
+def normalize_postgresql_type(pg_type: str) -> Type:
     if not pg_type or not isinstance(pg_type, str):
-        return None
+        return Type.Unknown
 
     normalized = pg_type.strip().lower()
 
-    if REGEX[NORMALIZED_TYPE_ARRAY].search(normalized):
-        return NORMALIZED_TYPE_ARRAY
+    if REGEX[Type.Array].search(normalized):
+        return Type.Array
 
-    if REGEX[NORMALIZED_TYPE_STRING].match(normalized):
-        return NORMALIZED_TYPE_STRING
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_STRING]:
-        return NORMALIZED_TYPE_STRING
+    if REGEX[Type.String].match(normalized):
+        return Type.String
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.String]:
+        return Type.String
 
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_INT]:
-        return NORMALIZED_TYPE_INT
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Int]:
+        return Type.Int
 
-    if REGEX[NORMALIZED_TYPE_FLOAT].match(normalized):
-        return NORMALIZED_TYPE_FLOAT
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_FLOAT]:
-        return NORMALIZED_TYPE_FLOAT
+    if REGEX[Type.Float].match(normalized):
+        return Type.Float
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Float]:
+        return Type.Float
 
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_BOOL]:
-        return NORMALIZED_TYPE_BOOL
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Bool]:
+        return Type.Bool
 
-    if REGEX[NORMALIZED_TYPE_DATE].match(normalized):
-        return NORMALIZED_TYPE_DATE
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_DATE]:
-        return NORMALIZED_TYPE_DATE
+    if REGEX[Type.Date].match(normalized):
+        return Type.Date
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Date]:
+        return Type.Date
 
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_JSON]:
-        return NORMALIZED_TYPE_JSON
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Duration]:
+        return Type.Duration
 
-    if normalized in NORMALIZED_TYPE_TO_POSTGRESQL_TYPES[NORMALIZED_TYPE_HSTORE]:
-        return NORMALIZED_TYPE_HSTORE
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.JSON]:
+        return Type.JSON
 
-    return None
+    if normalized in FLYQL_TYPE_TO_POSTGRESQL_TYPES[Type.Map]:
+        return Type.Map
+
+    return Type.Unknown
 
 
-class Column(CoreColumn):
+class Column:
+    """Opaque PostgreSQL-dialect column."""
+
     def __init__(
         self,
         name: str,
@@ -75,16 +121,24 @@ class Column(CoreColumn):
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        normalized = normalize_postgresql_type(_type)
-        super().__init__(
-            name=name,
-            jsonstring=jsonstring,
-            _type=_type,
-            normalized_type=normalized,
-            values=values,
-            display_name=display_name,
-            raw_identifier=raw_identifier,
-        )
-        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
-        self.is_jsonb = normalized == NORMALIZED_TYPE_JSON
-        self.is_hstore = normalized == NORMALIZED_TYPE_HSTORE
+        self.name = name
+        self.match_name = name
+        # JSONString is an orthogonal capability flag — see Tech Decision #5.
+        self.jsonstring = jsonstring
+        self.values: List[str] = values or []
+        self.display_name = display_name
+        self.raw_identifier = raw_identifier
+        self._raw_type = _type
+        self._flyql_type: Type = normalize_postgresql_type(_type)
+
+    @property
+    def raw_type(self) -> str:
+        return self._raw_type
+
+    @property
+    def flyql_type(self) -> Type:
+        return self._flyql_type
+
+    def with_raw_identifier(self, identifier: str) -> "Column":
+        self.raw_identifier = identifier
+        return self

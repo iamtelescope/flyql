@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iamtelescope/flyql/golang/types"
+	"github.com/iamtelescope/flyql/golang/literal"
 )
 
 type bindSharedTestCase struct {
@@ -41,8 +41,8 @@ func loadBindSharedTestData(t *testing.T) bindSharedTestFile {
 }
 
 // normalizeParams converts JSON-decoded float64 values that have no fractional
-// component into int64, so that "integer" test cases produce types.Integer
-// rather than types.Float. This matches how JS/Python handle whole numbers.
+// component into int64, so that "integer" test cases produce literal.Integer
+// rather than literal.Float. This matches how JS/Python handle whole numbers.
 func normalizeParams(params map[string]any) map[string]any {
 	out := make(map[string]any, len(params))
 	for k, v := range params {
@@ -105,7 +105,7 @@ func TestBindFromSharedData(t *testing.T) {
 						expr.ValueType, tc.ExpectedValueType)
 				}
 				// Sanity: ValueType constant should match string form.
-				_ = types.Integer
+				_ = literal.Integer
 			case "error":
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil",

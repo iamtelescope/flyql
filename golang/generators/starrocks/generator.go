@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
+	"github.com/iamtelescope/flyql/golang/literal"
 	"github.com/iamtelescope/flyql/golang/transformers"
-	"github.com/iamtelescope/flyql/golang/types"
 )
 
 func getIdentifier(column *Column) string {
@@ -48,7 +49,7 @@ func applyTransformerSQL(columnRef string, keyTransformers []flyql.Transformer, 
 }
 
 func validateTransformerChain(keyTransformers []flyql.Transformer, registry *transformers.TransformerRegistry) error {
-	currentType := transformers.TransformerTypeString
+	currentType := flyqltype.String
 	for i, t := range keyTransformers {
 		transformer := registry.Get(t.Name)
 		if transformer == nil {
@@ -341,13 +342,13 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if expr.ValueType == types.Function {
+	if expr.ValueType == literal.Function {
 		fc, ok := expr.Value.(*flyql.FunctionCall)
 		if !ok {
 			return "", fmt.Errorf("expected FunctionCall value for function type")
 		}
-		if column.NormalizedType != "" && column.NormalizedType != NormalizedTypeDate {
-			return "", fmt.Errorf("temporal function '%s' is not valid for column '%s' of type '%s'", fc.Name, columnName, column.NormalizedType)
+		if column.FlyQLType() != "" && column.FlyQLType() != flyqltype.Date {
+			return "", fmt.Errorf("temporal function '%s' is not valid for column '%s' of type '%s'", fc.Name, columnName, column.FlyQLType())
 		}
 		defaultTz := "UTC"
 		if options != nil && options.DefaultTimezone != "" {
@@ -371,7 +372,7 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 	}
 
 	// Check for COLUMN value type (RHS column reference)
-	if expr.ValueType == types.Column {
+	if expr.ValueType == literal.Column {
 		rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns)
 		if resolved {
 			colRef := getIdentifier(column)
@@ -418,8 +419,8 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		}
 	}
 
-	if column.NormalizedType != "" && len(expr.Key.Transformers) == 0 {
-		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
+	if column.FlyQLType() != "" && len(expr.Key.Transformers) == 0 {
+		if err := ValidateOperation(expr.Value, column.FlyQLType(), expr.Operator); err != nil {
 			return "", err
 		}
 	}
@@ -464,13 +465,13 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		return fmt.Sprintf("%s NOT ILIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
 
 	case flyql.OpEquals, flyql.OpNotEquals:
-		if expr.ValueType == types.Null {
+		if expr.ValueType == literal.Null {
 			if expr.Operator == flyql.OpEquals {
 				return fmt.Sprintf("%s IS NULL", colRef), nil
 			}
 			return fmt.Sprintf("%s IS NOT NULL", colRef), nil
 		}
-		if expr.ValueType == types.Boolean {
+		if expr.ValueType == literal.Boolean {
 			boolLiteral := "false"
 			if v, ok := expr.Value.(bool); ok && v {
 				boolLiteral = "true"
@@ -498,7 +499,7 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 }
 
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
-	if expr.ValueType == types.Function {
+	if expr.ValueType == literal.Function {
 		return "", fmt.Errorf("temporal functions are not supported with segmented keys")
 	}
 	reverseOperator := ""
@@ -513,8 +514,8 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		return "", fmt.Errorf("unknown column: %s", columnName)
 	}
 
-	if column.NormalizedType != "" && len(expr.Key.Transformers) == 0 {
-		if err := ValidateOperation(expr.Value, column.NormalizedType, expr.Operator); err != nil {
+	if column.FlyQLType() != "" && len(expr.Key.Transformers) == 0 {
+		if err := ValidateOperation(expr.Value, column.FlyQLType(), expr.Operator); err != nil {
 			return "", err
 		}
 	}
@@ -522,7 +523,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 	isRegexOp := expr.Operator == flyql.OpRegex || expr.Operator == flyql.OpNotRegex
 	hasTransformers := len(expr.Key.Transformers) > 0
 
-	if column.IsJSON {
+	if column.FlyQLType() == flyqltype.JSON {
 		jsonPath := expr.Key.Segments[1:]
 		for _, part := range jsonPath {
 			if err := validateJSONPathPart(part); err != nil {
@@ -536,7 +537,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		jsonPathStr := strings.Join(pathParts, "->")
 
 		var value string
-		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 			value = rhsRef
 		} else {
 			var err error
@@ -560,7 +561,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
-	} else if column.IsMap {
+	} else if column.FlyQLType() == flyqltype.Map {
 		mapPath := expr.Key.Segments[1:]
 		escapedParts := make([]string, len(mapPath))
 		for i, part := range mapPath {
@@ -573,7 +574,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		mapKey := strings.Join(escapedParts, "][")
 
 		var value string
-		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 			value = rhsRef
 		} else {
 			var err error
@@ -593,7 +594,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
-	} else if column.IsArray {
+	} else if column.FlyQLType() == flyqltype.Array {
 		arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 		arrayIndex, err := strconv.Atoi(arrayIndexStr)
 		if err != nil {
@@ -601,7 +602,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 
 		var value string
-		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 			value = rhsRef
 		} else {
 			value, err = EscapeParam(expr.Value)
@@ -619,12 +620,12 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		}
 		return fmt.Sprintf("%s %s%s %s", columnExp, reverseOperator, operator, value), nil
 
-	} else if column.IsStruct {
+	} else if column.FlyQLType() == flyqltype.Struct {
 		structPath := expr.Key.Segments[1:]
 		structColumn := strings.Join(structPath, "`.`")
 
 		var value string
-		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 			value = rhsRef
 		} else {
 			var err error
@@ -658,7 +659,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		jsonPathStr := strings.Join(pathParts, "->")
 
 		var value string
-		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+		if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 			value = rhsRef
 		} else {
 			var err error
@@ -712,15 +713,15 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 		}
 		return false
 	}()
-	if column.NormalizedType != "" && !expr.Key.IsSegmented() && !isHeterogeneous {
-		if err := ValidateInListTypes(expr.Values, column.NormalizedType); err != nil {
+	if column.FlyQLType() != "" && !expr.Key.IsSegmented() && !isHeterogeneous {
+		if err := ValidateInListTypes(expr.Values, column.FlyQLType()); err != nil {
 			return "", err
 		}
 	}
 
 	valueParts := make([]string, len(expr.Values))
 	for i, v := range expr.Values {
-		if len(expr.ValuesTypes) > i && expr.ValuesTypes[i] == types.Column {
+		if len(expr.ValuesTypes) > i && expr.ValuesTypes[i] == literal.Column {
 			if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", v), columns); resolved {
 				valueParts[i] = rhsRef
 				continue
@@ -742,7 +743,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSON {
+		if column.FlyQLType() == flyqltype.JSON {
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
 				if err := validateJSONPathPart(part); err != nil {
@@ -764,7 +765,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				}
 			}
 			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
-		} else if column.IsMap {
+		} else if column.FlyQLType() == flyqltype.Map {
 			mapPath := expr.Key.Segments[1:]
 			escapedParts := make([]string, len(mapPath))
 			for i, part := range mapPath {
@@ -785,7 +786,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				}
 			}
 			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
-		} else if column.IsArray {
+		} else if column.FlyQLType() == flyqltype.Array {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
@@ -800,7 +801,7 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 				}
 			}
 			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
-		} else if column.IsStruct {
+		} else if column.FlyQLType() == flyqltype.Struct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
 			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
@@ -860,7 +861,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	}
 
 	var value string
-	if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == types.Column && resolved {
+	if rhsRef, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); expr.ValueType == literal.Column && resolved {
 		value = rhsRef
 	} else {
 		var err error
@@ -873,7 +874,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSON {
+		if column.FlyQLType() == flyqltype.JSON {
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
 				if err := validateJSONPathPart(part); err != nil {
@@ -898,7 +899,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
 			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
-		} else if column.IsMap {
+		} else if column.FlyQLType() == flyqltype.Map {
 			mapPath := expr.Key.Segments[1:]
 			escapedParts := make([]string, len(mapPath))
 			for i, part := range mapPath {
@@ -922,7 +923,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
 			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
-		} else if column.IsArray {
+		} else if column.FlyQLType() == flyqltype.Array {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
@@ -940,7 +941,7 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 				return fmt.Sprintf("INSTR(%s, %s) = 0", leafExpr, value), nil
 			}
 			return fmt.Sprintf("INSTR(%s, %s) > 0", leafExpr, value), nil
-		} else if column.IsStruct {
+		} else if column.FlyQLType() == flyqltype.Struct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
 			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
@@ -999,11 +1000,11 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 		}
 	}
 
-	isArrayResult := column.IsArray
+	isArrayResult := (column.FlyQLType() == flyqltype.Array)
 	if len(expr.Key.Transformers) > 0 {
 		registry := transformers.DefaultRegistry()
 		lastT := registry.Get(expr.Key.Transformers[len(expr.Key.Transformers)-1].Name)
-		if lastT != nil && lastT.OutputType() == transformers.TransformerTypeArray {
+		if lastT != nil && lastT.OutputType() == flyqltype.Array {
 			isArrayResult = true
 		}
 	}
@@ -1013,23 +1014,23 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 			return fmt.Sprintf("NOT array_contains(%s, %s)", colRef, value), nil
 		}
 		return fmt.Sprintf("array_contains(%s, %s)", colRef, value), nil
-	} else if column.NormalizedType == NormalizedTypeString {
+	} else if column.FlyQLType() == flyqltype.String {
 		if isNotHas {
 			return fmt.Sprintf("(%s IS NULL OR INSTR(%s, %s) = 0)", colRef, colRef, value), nil
 		}
 		return fmt.Sprintf("INSTR(%s, %s) > 0", colRef, value), nil
-	} else if column.IsMap {
+	} else if column.FlyQLType() == flyqltype.Map {
 		if isNotHas {
 			return fmt.Sprintf("NOT array_contains(map_keys(%s), %s)", colRef, value), nil
 		}
 		return fmt.Sprintf("array_contains(map_keys(%s), %s)", colRef, value), nil
-	} else if column.IsJSON {
+	} else if column.FlyQLType() == flyqltype.JSON {
 		if isNotHas {
 			return fmt.Sprintf("NOT json_exists(%s, concat('$.', %s))", colRef, value), nil
 		}
 		return fmt.Sprintf("json_exists(%s, concat('$.', %s))", colRef, value), nil
 	} else {
-		return "", fmt.Errorf("has operator is not supported for column type: %s", column.NormalizedType)
+		return "", fmt.Errorf("has operator is not supported for column type: %s", column.FlyQLType())
 	}
 }
 
@@ -1043,7 +1044,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSON {
+		if column.FlyQLType() == flyqltype.JSON {
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
 				if err := validateJSONPathPart(part); err != nil {
@@ -1066,7 +1067,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 				return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", leafExpr, leafExpr), nil
 			}
 			return fmt.Sprintf("(%s IS NOT NULL)", leafExpr), nil
-		} else if column.IsMap {
+		} else if column.FlyQLType() == flyqltype.Map {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
@@ -1082,7 +1083,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 			}
 			return fmt.Sprintf("(element_at(%s, %s) IS NOT NULL AND %s != '')",
 				getIdentifier(column), escapedMapKey, leafExpr), nil
-		} else if column.IsArray {
+		} else if column.FlyQLType() == flyqltype.Array {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
@@ -1098,7 +1099,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 			}
 			return fmt.Sprintf("(array_length(%s) >= %d AND %s != '')",
 				getIdentifier(column), arrayIndex, leafExpr), nil
-		} else if column.IsStruct {
+		} else if column.FlyQLType() == flyqltype.Struct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
 			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
@@ -1149,7 +1150,7 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 	}
 
 	if column.JSONString {
-		if column.IsMap || column.IsStruct {
+		if (column.FlyQLType() == flyqltype.Map) || (column.FlyQLType() == flyqltype.Struct) {
 			return fmt.Sprintf("(%s IS NOT NULL AND json_length(to_json(%s)) > 0)",
 				getIdentifier(column), getIdentifier(column)), nil
 		}
@@ -1157,14 +1158,14 @@ func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (
 			getIdentifier(column), getIdentifier(column), getIdentifier(column)), nil
 	}
 
-	switch column.NormalizedType {
-	case NormalizedTypeBool:
+	switch column.FlyQLType() {
+	case flyqltype.Bool:
 		return getIdentifier(column), nil
-	case NormalizedTypeString:
+	case flyqltype.String:
 		return fmt.Sprintf("(%s IS NOT NULL AND %s != '')", getIdentifier(column), getIdentifier(column)), nil
-	case NormalizedTypeInt, NormalizedTypeFloat:
+	case flyqltype.Int, flyqltype.Float:
 		return fmt.Sprintf("(%s IS NOT NULL AND %s != 0)", getIdentifier(column), getIdentifier(column)), nil
-	case NormalizedTypeDate:
+	case flyqltype.Date:
 		return fmt.Sprintf("(%s IS NOT NULL)", getIdentifier(column)), nil
 	default:
 		return fmt.Sprintf("(%s IS NOT NULL)", getIdentifier(column)), nil
@@ -1181,7 +1182,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 	hasTransformers := len(expr.Key.Transformers) > 0
 
 	if expr.Key.IsSegmented() {
-		if column.IsJSON {
+		if column.FlyQLType() == flyqltype.JSON {
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
 				if err := validateJSONPathPart(part); err != nil {
@@ -1204,7 +1205,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				return fmt.Sprintf("(%s IS NULL OR %s = '')", leafExpr, leafExpr), nil
 			}
 			return fmt.Sprintf("(%s IS NULL)", leafExpr), nil
-		} else if column.IsMap {
+		} else if column.FlyQLType() == flyqltype.Map {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
 			if err != nil {
@@ -1220,7 +1221,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 			}
 			return fmt.Sprintf("(element_at(%s, %s) IS NULL OR %s = '')",
 				getIdentifier(column), escapedMapKey, leafExpr), nil
-		} else if column.IsArray {
+		} else if column.FlyQLType() == flyqltype.Array {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
 			if err != nil {
@@ -1236,7 +1237,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 			}
 			return fmt.Sprintf("(array_length(%s) < %d OR %s = '')",
 				getIdentifier(column), arrayIndex, leafExpr), nil
-		} else if column.IsStruct {
+		} else if column.FlyQLType() == flyqltype.Struct {
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
 			leafExpr := fmt.Sprintf("%s.`%s`", getIdentifier(column), structColumn)
@@ -1286,7 +1287,7 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 	}
 
 	if column.JSONString {
-		if column.IsMap || column.IsStruct {
+		if (column.FlyQLType() == flyqltype.Map) || (column.FlyQLType() == flyqltype.Struct) {
 			return fmt.Sprintf("(%s IS NULL OR json_length(to_json(%s)) = 0)",
 				getIdentifier(column), getIdentifier(column)), nil
 		}
@@ -1294,14 +1295,14 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 			getIdentifier(column), getIdentifier(column), getIdentifier(column)), nil
 	}
 
-	switch column.NormalizedType {
-	case NormalizedTypeBool:
+	switch column.FlyQLType() {
+	case flyqltype.Bool:
 		return fmt.Sprintf("NOT %s", getIdentifier(column)), nil
-	case NormalizedTypeString:
+	case flyqltype.String:
 		return fmt.Sprintf("(%s IS NULL OR %s = '')", getIdentifier(column), getIdentifier(column)), nil
-	case NormalizedTypeInt, NormalizedTypeFloat:
+	case flyqltype.Int, flyqltype.Float:
 		return fmt.Sprintf("(%s IS NULL OR %s = 0)", getIdentifier(column), getIdentifier(column)), nil
-	case NormalizedTypeDate:
+	case flyqltype.Date:
 		return fmt.Sprintf("(%s IS NULL)", getIdentifier(column)), nil
 	default:
 		return fmt.Sprintf("(%s IS NULL)", getIdentifier(column)), nil
@@ -1313,7 +1314,7 @@ func ExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registr
 }
 
 func ExpressionToSQLWithOptions(expr *flyql.Expression, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
-	if expr.ValueType == types.Parameter {
+	if expr.ValueType == literal.Parameter {
 		if p, ok := expr.Value.(*flyql.Parameter); ok {
 			return "", fmt.Errorf("unbound parameter '$%s' — call BindParams() before generating SQL", p.Name)
 		}

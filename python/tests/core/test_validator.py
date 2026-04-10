@@ -26,7 +26,8 @@ from flyql.core.validator import (
     Diagnostic,
     diagnose,
 )
-from flyql.transformers.base import ArgSpec, Transformer, TransformerType
+from flyql.transformers.base import ArgSpec, Transformer
+from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 # ---------------------------------------------------------------------------
@@ -62,16 +63,17 @@ SHARED_CASES = _load_shared_cases()
 
 def make_column(
     name: str,
-    normalized_type: str,
+    type_str: str,
     *,
     jsonstring: bool = False,
     match_name: str | None = None,
 ) -> Column:
+    from flyql.flyql_type import parse_flyql_type
+
     return Column(
         name=name,
         jsonstring=jsonstring,
-        _type=normalized_type,
-        normalized_type=normalized_type,
+        column_type=parse_flyql_type(type_str) if type_str else Type.Unknown,
         match_name=match_name,
     )
 
@@ -83,7 +85,7 @@ def _parse_ast(query: str) -> Node:
 
 
 def _columns_from_spec(col_specs: list) -> list[Column]:
-    return [make_column(c["name"], c["normalized_type"]) for c in col_specs]
+    return [make_column(c["name"], c["type"]) for c in col_specs]
 
 
 # ---------------------------------------------------------------------------
@@ -93,8 +95,8 @@ def _columns_from_spec(col_specs: list) -> list[Column]:
 
 class TakesStringThenInt(Transformer):
     arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
-        ArgSpec(type=TransformerType.STRING),
-        ArgSpec(type=TransformerType.INT),
+        ArgSpec(type=Type.String),
+        ArgSpec(type=Type.Int),
     )
 
     @property
@@ -102,12 +104,12 @@ class TakesStringThenInt(Transformer):
         return "takes_string_then_int"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(self, dialect, column_ref, args=None):
         return column_ref
@@ -122,12 +124,12 @@ class StringToInt(Transformer):
         return "string_to_int"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.INT
+    def output_type(self) -> Type:
+        return Type.Int
 
     def sql(self, dialect, column_ref, args=None):
         return column_ref
@@ -137,19 +139,19 @@ class StringToInt(Transformer):
 
 
 class TakesFloat(Transformer):
-    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (ArgSpec(type=TransformerType.FLOAT),)
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (ArgSpec(type=Type.Float),)
 
     @property
     def name(self) -> str:
         return "takes_float"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(self, dialect, column_ref, args=None):
         return column_ref
@@ -159,19 +161,19 @@ class TakesFloat(Transformer):
 
 
 class TakesInt(Transformer):
-    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (ArgSpec(type=TransformerType.INT),)
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (ArgSpec(type=Type.Int),)
 
     @property
     def name(self) -> str:
         return "takes_int"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(self, dialect, column_ref, args=None):
         return column_ref
@@ -251,15 +253,25 @@ def test_shared_validator(test_case: dict, registry: TransformerRegistry) -> Non
 # ---------------------------------------------------------------------------
 
 
-class TestDialectColumnSubclass:
-    def test_accepts_dialect_column_subclass(
+class TestDialectBridge:
+    def test_accepts_dialect_column_via_bridge(
         self, registry: TransformerRegistry
     ) -> None:
+        # After the unify-column-type-system refactor, dialect Columns are
+        # opaque and no longer subclass core Column. Consumers must bridge
+        # via to_flyql_schema (or hand-construct flyql.Column from
+        # column.flyql_type).
         from flyql.generators.clickhouse.column import Column as CHColumn
 
-        col = CHColumn("host", False, "String")
+        ch = CHColumn("host", False, "String")
+        bridged = Column(
+            name=ch.name,
+            jsonstring=ch.jsonstring,
+            column_type=ch.flyql_type,
+            match_name=ch.match_name,
+        )
         ast = _parse_ast("host='X'")
-        assert diagnose(ast, ColumnSchema.from_columns([col]), registry) == []
+        assert diagnose(ast, ColumnSchema.from_columns([bridged]), registry) == []
 
 
 class TestInvalidAstGuard:

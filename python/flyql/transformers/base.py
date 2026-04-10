@@ -1,20 +1,16 @@
+"""Transformer ABC and ArgSpec — uses :class:`flyql.flyql_type.Type` for
+type-checking transformer chains."""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, ClassVar, List, Optional, Tuple
 
-
-class TransformerType(Enum):
-    STRING = "string"
-    INT = "int"
-    FLOAT = "float"
-    BOOL = "bool"
-    ARRAY = "array"
+from flyql.flyql_type import Type
 
 
 @dataclass(frozen=True)
 class ArgSpec:
-    type: TransformerType
+    type: Type
     required: bool = True
 
 
@@ -27,11 +23,11 @@ class Transformer(ABC):
 
     @property
     @abstractmethod
-    def input_type(self) -> TransformerType: ...
+    def input_type(self) -> Type: ...
 
     @property
     @abstractmethod
-    def output_type(self) -> TransformerType: ...
+    def output_type(self) -> Type: ...
 
     @abstractmethod
     def sql(

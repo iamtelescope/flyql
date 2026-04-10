@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { parse } from '../../src/core/parser.js'
-import {
-    Transformer,
-    TransformerType,
-    TransformerRegistry,
-    defaultRegistry,
-    SplitTransformer,
-} from '../../src/transformers/index.js'
+import { Transformer, TransformerRegistry, defaultRegistry, SplitTransformer } from '../../src/transformers/index.js'
+import { Type } from '../../src/flyql_type.js'
 import { generateWhere as chGenerateWhere, newColumn as chNewColumn } from '../../src/generators/clickhouse/index.js'
 import { generateWhere as pgGenerateWhere, newColumn as pgNewColumn } from '../../src/generators/postgresql/index.js'
 import { generateWhere as srGenerateWhere, newColumn as srNewColumn } from '../../src/generators/starrocks/index.js'
@@ -21,10 +16,10 @@ class FirstOctetTransformer extends Transformer {
         return 'firstoctet'
     }
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
     get outputType() {
-        return TransformerType.INT
+        return Type.Int
     }
     sql(dialect, columnRef) {
         if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
@@ -48,8 +43,8 @@ describe('Custom Transformer Registration', () => {
             const t = registry.get('firstoctet')
             expect(t).not.toBeNull()
             expect(t.name).toBe('firstoctet')
-            expect(t.inputType).toBe(TransformerType.STRING)
-            expect(t.outputType).toBe(TransformerType.INT)
+            expect(t.inputType).toBe(Type.String)
+            expect(t.outputType).toBe(Type.Int)
         })
 
         it('builtins still available after registration', () => {

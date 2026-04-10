@@ -1,4 +1,5 @@
-import { ArgSpec, Transformer, TransformerType } from './base.js'
+import { Type } from '../flyql_type.js'
+import { ArgSpec, Transformer } from './base.js'
 
 export class UpperTransformer extends Transformer {
     get name() {
@@ -6,11 +7,11 @@ export class UpperTransformer extends Transformer {
     }
 
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     get outputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     sql(dialect, columnRef) {
@@ -31,11 +32,11 @@ export class LowerTransformer extends Transformer {
     }
 
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     get outputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     sql(dialect, columnRef) {
@@ -56,15 +57,15 @@ export class SplitTransformer extends Transformer {
     }
 
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     get outputType() {
-        return TransformerType.ARRAY
+        return Type.Array
     }
 
     get argSchema() {
-        return [new ArgSpec(TransformerType.STRING, false)]
+        return [new ArgSpec(Type.String, false)]
     }
 
     sql(dialect, columnRef, args = []) {
@@ -94,11 +95,11 @@ export class LenTransformer extends Transformer {
     }
 
     get inputType() {
-        return TransformerType.STRING
+        return Type.String
     }
 
     get outputType() {
-        return TransformerType.INT
+        return Type.Int
     }
 
     sql(dialect, columnRef) {

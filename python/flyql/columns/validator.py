@@ -6,7 +6,7 @@ transformer registry, returning Diagnostic objects with source ranges.
 
 from typing import Any, List, Optional
 
-from flyql.core.column import Column, ColumnSchema, normalized_to_transformer_type
+from flyql.core.column import Column, ColumnSchema
 from flyql.core.range import Range
 from flyql.core.validator import (
     CODE_ARG_COUNT,
@@ -16,22 +16,22 @@ from flyql.core.validator import (
     CODE_UNKNOWN_TRANSFORMER,
     Diagnostic,
 )
-from flyql.transformers.base import TransformerType
+from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 from .column import ParsedColumn
 
 
-def _python_to_transformer_type(v: Any) -> Optional[TransformerType]:
+def _python_to_flyql_type(v: Any) -> Optional[Type]:
     # bool check MUST precede int check (bool is subclass of int in Python)
     if isinstance(v, bool):
-        return TransformerType.BOOL
+        return Type.Bool
     if isinstance(v, int):
-        return TransformerType.INT
+        return Type.Int
     if isinstance(v, float):
-        return TransformerType.FLOAT
+        return Type.Float
     if isinstance(v, str):
-        return TransformerType.STRING
+        return Type.String
     return None
 
 
@@ -48,7 +48,6 @@ def diagnose(
     diags: List[Diagnostic] = []
 
     for col in parsed_columns:
-        # Strip empty trailing segment from trailing dot (user still typing)
         segments = col.segments
         if segments and segments[-1] == "":
             segments = segments[:-1]
@@ -56,6 +55,7 @@ def diagnose(
             continue
         resolved = schema.resolve(segments)
 
+        prev_output_type: Optional[Type] = None
         if resolved is None:
             if col.name_range is not None:
                 fail_seg, fail_range = _find_failing_segment(
@@ -69,9 +69,8 @@ def diagnose(
                         code=CODE_UNKNOWN_COLUMN,
                     )
                 )
-            prev_output_type = None
-        else:
-            prev_output_type = normalized_to_transformer_type(resolved.normalized_type)
+        elif resolved.type != Type.Unknown:
+            prev_output_type = resolved.type
 
         transformer_ranges = col.transformer_ranges or []
 
@@ -94,7 +93,6 @@ def diagnose(
                 prev_output_type = None
                 continue
 
-            # Arity check
             required_count = sum(
                 1 for s in t.arg_schema if getattr(s, "required", True)
             )
@@ -121,18 +119,16 @@ def diagnose(
                         )
                     )
 
-            # Per-argument type check
             for j, arg in enumerate(transformer["arguments"]):
                 if j >= len(t.arg_schema):
                     break
                 expected = t.arg_schema[j].type
-                actual = _python_to_transformer_type(arg)
+                actual = _python_to_flyql_type(arg)
                 if actual is None:
                     continue
                 if actual == expected:
                     continue
-                # int widens to float
-                if actual == TransformerType.INT and expected == TransformerType.FLOAT:
+                if actual == Type.Int and expected == Type.Float:
                     continue
                 if j < len(arg_ranges):
                     diags.append(
@@ -144,7 +140,6 @@ def diagnose(
                         )
                     )
 
-            # Chain type check
             if prev_output_type is not None and prev_output_type != t.input_type:
                 if name_range is not None:
                     diags.append(

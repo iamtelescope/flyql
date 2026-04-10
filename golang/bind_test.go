@@ -3,7 +3,7 @@ package flyql
 import (
 	"testing"
 
-	"github.com/iamtelescope/flyql/golang/types"
+	"github.com/iamtelescope/flyql/golang/literal"
 )
 
 // firstExpression returns the first Expression found in an AST (depth-first).
@@ -35,7 +35,7 @@ func TestBindNamedParameter(t *testing.T) {
 	if expr.Value != 42 {
 		t.Errorf("value = %v, want 42", expr.Value)
 	}
-	if expr.ValueType != types.Integer {
+	if expr.ValueType != literal.Integer {
 		t.Errorf("type = %v, want Integer", expr.ValueType)
 	}
 }
@@ -52,7 +52,7 @@ func TestBindStringParameter(t *testing.T) {
 	if expr.Value != "Alice" {
 		t.Errorf("value = %v, want Alice", expr.Value)
 	}
-	if expr.ValueType != types.String {
+	if expr.ValueType != literal.String {
 		t.Errorf("type = %v, want String", expr.ValueType)
 	}
 }
@@ -72,7 +72,7 @@ func TestBindInList(t *testing.T) {
 	if expr.Values[0] != "a" || expr.Values[1] != "b" {
 		t.Errorf("values = %v, want [a b]", expr.Values)
 	}
-	if len(expr.ValuesTypes) != 2 || expr.ValuesTypes[0] != types.String || expr.ValuesTypes[1] != types.String {
+	if len(expr.ValuesTypes) != 2 || expr.ValuesTypes[0] != literal.String || expr.ValuesTypes[1] != literal.String {
 		t.Errorf("value types = %v, want [string string]", expr.ValuesTypes)
 	}
 }
@@ -144,7 +144,7 @@ func TestBindNilValue(t *testing.T) {
 	if firstExpression(res.Root).Value != nil {
 		t.Errorf("value = %v, want nil", firstExpression(res.Root).Value)
 	}
-	if firstExpression(res.Root).ValueType != types.Null {
+	if firstExpression(res.Root).ValueType != literal.Null {
 		t.Errorf("type = %v, want Null", firstExpression(res.Root).ValueType)
 	}
 }

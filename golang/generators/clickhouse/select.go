@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"fmt"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"regexp"
 	"strconv"
 	"strings"
@@ -71,7 +72,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		return getIdentifier(column), nil
 	}
 
-	if column.IsJSON {
+	if column.FlyQLType() == flyqltype.JSON {
 		for _, part := range path {
 			if err := validateJSONPathPart(part); err != nil {
 				return "", err
@@ -96,7 +97,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		return fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), strings.Join(pathParts, ", ")), nil
 	}
 
-	if column.IsMap {
+	if column.FlyQLType() == flyqltype.Map {
 		mapKey := strings.Join(path, ".")
 		escaped, err := EscapeParam(mapKey)
 		if err != nil {
@@ -105,7 +106,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		return fmt.Sprintf("%s[%s]", getIdentifier(column), escaped), nil
 	}
 
-	if column.IsArray {
+	if column.FlyQLType() == flyqltype.Array {
 		indexStr := strings.Join(path, ".")
 		index, err := strconv.Atoi(indexStr)
 		if err != nil {

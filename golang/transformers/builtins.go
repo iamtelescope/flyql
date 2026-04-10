@@ -3,15 +3,17 @@ package transformers
 import (
 	"fmt"
 	"strings"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 // Upper transforms a string value to uppercase.
 type Upper struct{}
 
-func (Upper) Name() string                { return "upper" }
-func (Upper) InputType() TransformerType  { return TransformerTypeString }
-func (Upper) OutputType() TransformerType { return TransformerTypeString }
-func (Upper) ArgSchema() []ArgSpec        { return []ArgSpec{} }
+func (Upper) Name() string               { return "upper" }
+func (Upper) InputType() flyqltype.Type  { return flyqltype.String }
+func (Upper) OutputType() flyqltype.Type { return flyqltype.String }
+func (Upper) ArgSchema() []ArgSpec       { return []ArgSpec{} }
 func (Upper) Apply(value interface{}, args []any) interface{} {
 	return strings.ToUpper(fmt.Sprintf("%v", value))
 }
@@ -26,10 +28,10 @@ func (Upper) SQL(dialect, columnRef string, args []any) string {
 // Lower transforms a string value to lowercase.
 type Lower struct{}
 
-func (Lower) Name() string                { return "lower" }
-func (Lower) InputType() TransformerType  { return TransformerTypeString }
-func (Lower) OutputType() TransformerType { return TransformerTypeString }
-func (Lower) ArgSchema() []ArgSpec        { return []ArgSpec{} }
+func (Lower) Name() string               { return "lower" }
+func (Lower) InputType() flyqltype.Type  { return flyqltype.String }
+func (Lower) OutputType() flyqltype.Type { return flyqltype.String }
+func (Lower) ArgSchema() []ArgSpec       { return []ArgSpec{} }
 func (Lower) Apply(value interface{}, args []any) interface{} {
 	return strings.ToLower(fmt.Sprintf("%v", value))
 }
@@ -45,8 +47,8 @@ func (Lower) SQL(dialect, columnRef string, args []any) string {
 type Len struct{}
 
 func (Len) Name() string                                    { return "len" }
-func (Len) InputType() TransformerType                      { return TransformerTypeString }
-func (Len) OutputType() TransformerType                     { return TransformerTypeInt }
+func (Len) InputType() flyqltype.Type                       { return flyqltype.String }
+func (Len) OutputType() flyqltype.Type                      { return flyqltype.Int }
 func (Len) ArgSchema() []ArgSpec                            { return []ArgSpec{} }
 func (Len) Apply(value interface{}, args []any) interface{} { return len(fmt.Sprintf("%v", value)) }
 
@@ -60,11 +62,11 @@ func (Len) SQL(dialect, columnRef string, args []any) string {
 // Split splits a string by delimiter and returns an array.
 type Split struct{}
 
-func (Split) Name() string                { return "split" }
-func (Split) InputType() TransformerType  { return TransformerTypeString }
-func (Split) OutputType() TransformerType { return TransformerTypeArray }
+func (Split) Name() string               { return "split" }
+func (Split) InputType() flyqltype.Type  { return flyqltype.String }
+func (Split) OutputType() flyqltype.Type { return flyqltype.Array }
 func (Split) ArgSchema() []ArgSpec {
-	return []ArgSpec{{Type: TransformerTypeString, Required: false}}
+	return []ArgSpec{{Type: flyqltype.String, Required: false}}
 }
 
 func (Split) SQL(dialect, columnRef string, args []any) string {

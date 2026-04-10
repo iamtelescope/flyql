@@ -19,8 +19,8 @@ def test_top_level_imports() -> None:
         Range,
         Diagnostic,
         diagnose,
-        ValueType,
-        TransformerType,
+        LiteralKind,
+        Type,
         TransformerRegistry,
         default_registry,
     )
@@ -84,13 +84,14 @@ def test_transformers_subpackage_imports() -> None:
     """Transformers subpackage exports remain intact."""
     from flyql.transformers import (
         Transformer,
-        TransformerType,
         TransformerRegistry,
         default_registry,
         ArgSpec,
     )
+    from flyql.flyql_type import Type
 
     assert callable(default_registry)
+    assert Type is not None
 
 
 def test_all_lists_defined() -> None:

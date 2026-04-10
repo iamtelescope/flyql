@@ -1,27 +1,21 @@
 package transformers
 
-// TransformerType represents the data type that a transformer operates on.
-type TransformerType string
-
-const (
-	TransformerTypeString TransformerType = "string"
-	TransformerTypeInt    TransformerType = "int"
-	TransformerTypeFloat  TransformerType = "float"
-	TransformerTypeBool   TransformerType = "bool"
-	TransformerTypeArray  TransformerType = "array"
-)
+import "github.com/iamtelescope/flyql/golang/flyqltype"
 
 // ArgSpec describes a single argument in a transformer's schema.
 type ArgSpec struct {
-	Type     TransformerType
+	Type     flyqltype.Type
 	Required bool
 }
 
 // Transformer defines the interface for column value transformers.
+// InputType and OutputType report the flyql semantic type the transformer
+// accepts and produces respectively. They participate in chain typing
+// during validation.
 type Transformer interface {
 	Name() string
-	InputType() TransformerType
-	OutputType() TransformerType
+	InputType() flyqltype.Type
+	OutputType() flyqltype.Type
 	ArgSchema() []ArgSpec
 	SQL(dialect, columnRef string, args []any) string
 	Apply(value interface{}, args []any) interface{}

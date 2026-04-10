@@ -1,45 +1,20 @@
-const NormalizedTypeString = 'string'
-const NormalizedTypeInt = 'int'
-const NormalizedTypeFloat = 'float'
-const NormalizedTypeBool = 'bool'
-const NormalizedTypeDate = 'date'
-const NormalizedTypeArray = 'array'
-const NormalizedTypeMap = 'map'
-const NormalizedTypeTuple = 'tuple'
-const NormalizedTypeGeometry = 'geometry'
-const NormalizedTypeInterval = 'interval'
-const NormalizedTypeSpecial = 'special'
-const NormalizedTypeJSON = 'json'
+import { Type } from '../../flyql_type.js'
 
-export {
-    NormalizedTypeString,
-    NormalizedTypeInt,
-    NormalizedTypeFloat,
-    NormalizedTypeBool,
-    NormalizedTypeDate,
-    NormalizedTypeArray,
-    NormalizedTypeMap,
-    NormalizedTypeTuple,
-    NormalizedTypeGeometry,
-    NormalizedTypeInterval,
-    NormalizedTypeSpecial,
-    NormalizedTypeJSON,
-}
+const wrapperRegex = /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\(/i
 
 const typeRegexes = {
-    wrapper: /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\(/i,
-    [NormalizedTypeString]: /^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)/i,
-    [NormalizedTypeInt]: /^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)/i,
-    [NormalizedTypeFloat]: /^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,
-    [NormalizedTypeDate]: /^datetime64\s*\(\s*\d+\s*(,\s*.+)?\s*\)/i,
-    [NormalizedTypeArray]: /^array\s*\(/i,
-    [NormalizedTypeMap]: /^map\s*\(/i,
-    [NormalizedTypeTuple]: /^tuple\s*\(/i,
-    [NormalizedTypeJSON]: /^json\s*\(/i,
+    [Type.String]: /^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)/i,
+    [Type.Int]: /^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)/i,
+    [Type.Float]: /^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,
+    [Type.Date]: /^datetime64\s*\(\s*\d+\s*(,\s*.+)?\s*\)/i,
+    [Type.Array]: /^array\s*\(/i,
+    [Type.Map]: /^map\s*\(/i,
+    [Type.Struct]: /^tuple\s*\(/i,
+    [Type.JSON]: /^json\s*\(/i,
 }
 
-const normalizedTypeToClickHouseTypes = {
-    [NormalizedTypeString]: new Set([
+const flyqlTypeToClickHouseTypes = {
+    [Type.String]: new Set([
         'string',
         'fixedstring',
         'longtext',
@@ -79,7 +54,7 @@ const normalizedTypeToClickHouseTypes = {
         'enum8',
         'enum16',
     ]),
-    [NormalizedTypeInt]: new Set([
+    [Type.Int]: new Set([
         'int8',
         'int16',
         'int32',
@@ -120,7 +95,7 @@ const normalizedTypeToClickHouseTypes = {
         'set',
         'time',
     ]),
-    [NormalizedTypeFloat]: new Set([
+    [Type.Float]: new Set([
         'float32',
         'float64',
         'float',
@@ -137,9 +112,9 @@ const normalizedTypeToClickHouseTypes = {
         'fixed',
         'single',
     ]),
-    [NormalizedTypeBool]: new Set(['bool', 'boolean']),
-    [NormalizedTypeDate]: new Set(['date', 'date32', 'datetime', 'datetime32', 'datetime64', 'timestamp', 'year']),
-    [NormalizedTypeInterval]: new Set([
+    [Type.Bool]: new Set(['bool', 'boolean']),
+    [Type.Date]: new Set(['date', 'date32', 'datetime', 'datetime32', 'datetime64', 'timestamp', 'year']),
+    [Type.Duration]: new Set([
         'intervalday',
         'intervalhour',
         'intervalmicrosecond',
@@ -152,89 +127,62 @@ const normalizedTypeToClickHouseTypes = {
         'intervalweek',
         'intervalyear',
     ]),
-    [NormalizedTypeGeometry]: new Set(['geometry', 'point', 'polygon', 'multipolygon', 'linestring', 'ring']),
-    [NormalizedTypeSpecial]: new Set(['nothing', 'nested', 'object', 'dynamic', 'variant']),
-    [NormalizedTypeJSON]: new Set(['json']),
+    [Type.Unknown]: new Set([
+        'geometry',
+        'point',
+        'polygon',
+        'multipolygon',
+        'linestring',
+        'ring',
+        'nothing',
+        'nested',
+        'object',
+        'dynamic',
+        'variant',
+    ]),
+    [Type.JSON]: new Set(['json']),
 }
 
 export function normalizeClickHouseType(chType) {
-    if (!chType) {
-        return ''
-    }
+    if (!chType) return Type.Unknown
 
     let normalized = chType.trim().toLowerCase()
 
-    const wrapperMatch = normalized.match(typeRegexes.wrapper)
+    const wrapperMatch = normalized.match(wrapperRegex)
     if (wrapperMatch) {
         const afterKeyword = normalized.slice(wrapperMatch[0].length)
         const lastParen = afterKeyword.lastIndexOf(')')
         normalized = (lastParen >= 0 ? afterKeyword.slice(0, lastParen) : afterKeyword).trim()
     }
 
-    if (typeRegexes[NormalizedTypeString].test(normalized)) {
-        return NormalizedTypeString
-    }
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeString].has(normalized)) {
-        return NormalizedTypeString
-    }
+    if (typeRegexes[Type.String].test(normalized)) return Type.String
+    if (flyqlTypeToClickHouseTypes[Type.String].has(normalized)) return Type.String
 
-    if (typeRegexes[NormalizedTypeInt].test(normalized)) {
-        return NormalizedTypeInt
-    }
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeInt].has(normalized)) {
-        return NormalizedTypeInt
-    }
+    if (typeRegexes[Type.Int].test(normalized)) return Type.Int
+    if (flyqlTypeToClickHouseTypes[Type.Int].has(normalized)) return Type.Int
 
-    if (typeRegexes[NormalizedTypeFloat].test(normalized)) {
-        return NormalizedTypeFloat
-    }
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeFloat].has(normalized)) {
-        return NormalizedTypeFloat
-    }
+    if (typeRegexes[Type.Float].test(normalized)) return Type.Float
+    if (flyqlTypeToClickHouseTypes[Type.Float].has(normalized)) return Type.Float
 
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeBool].has(normalized)) {
-        return NormalizedTypeBool
-    }
+    if (flyqlTypeToClickHouseTypes[Type.Bool].has(normalized)) return Type.Bool
 
-    if (typeRegexes[NormalizedTypeDate].test(normalized)) {
-        return NormalizedTypeDate
-    }
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeDate].has(normalized)) {
-        return NormalizedTypeDate
-    }
+    if (typeRegexes[Type.Date].test(normalized)) return Type.Date
+    if (flyqlTypeToClickHouseTypes[Type.Date].has(normalized)) return Type.Date
 
-    if (typeRegexes[NormalizedTypeJSON].test(normalized)) {
-        return NormalizedTypeJSON
-    }
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeJSON].has(normalized)) {
-        return NormalizedTypeJSON
-    }
+    if (typeRegexes[Type.JSON].test(normalized)) return Type.JSON
+    if (flyqlTypeToClickHouseTypes[Type.JSON].has(normalized)) return Type.JSON
 
-    if (typeRegexes[NormalizedTypeArray].test(normalized)) {
-        return NormalizedTypeArray
-    }
+    if (typeRegexes[Type.Array].test(normalized)) return Type.Array
 
-    if (typeRegexes[NormalizedTypeMap].test(normalized)) {
-        return NormalizedTypeMap
-    }
+    if (typeRegexes[Type.Map].test(normalized)) return Type.Map
 
-    if (typeRegexes[NormalizedTypeTuple].test(normalized)) {
-        return NormalizedTypeTuple
-    }
+    if (typeRegexes[Type.Struct].test(normalized)) return Type.Struct
 
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeGeometry].has(normalized)) {
-        return NormalizedTypeGeometry
-    }
+    if (flyqlTypeToClickHouseTypes[Type.Unknown].has(normalized)) return Type.Unknown
 
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeInterval].has(normalized)) {
-        return NormalizedTypeInterval
-    }
+    if (flyqlTypeToClickHouseTypes[Type.Duration].has(normalized)) return Type.Duration
 
-    if (normalizedTypeToClickHouseTypes[NormalizedTypeSpecial].has(normalized)) {
-        return NormalizedTypeSpecial
-    }
-
-    return ''
+    return Type.Unknown
 }
 
 function escapeIdentifier(name) {
@@ -245,19 +193,30 @@ function escapeIdentifier(name) {
     return name
 }
 
+/**
+ * Opaque ClickHouse-dialect Column. Construct via `new Column(...)` or
+ * `newColumn(...)`. The flyql semantic type is computed at construction
+ * via `normalizeClickHouseType`. `jsonString` is an orthogonal capability
+ * flag — see Tech Decision #5.
+ */
 export class Column {
     constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
         this.name = escapeIdentifier(name)
         this.jsonString = jsonString
-        this.type = type
         this.values = values || []
-        this.normalizedType = normalizeClickHouseType(type)
-        this.isMap = this.normalizedType === NormalizedTypeMap
-        this.isArray = this.normalizedType === NormalizedTypeArray
-        this.isJSON = this.normalizedType === NormalizedTypeJSON
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
         this.matchName = name
+        this._rawType = type
+        this._flyqlType = normalizeClickHouseType(type)
+    }
+
+    rawType() {
+        return this._rawType
+    }
+
+    flyqlType() {
+        return this._flyqlType
     }
 
     withRawIdentifier(identifier) {

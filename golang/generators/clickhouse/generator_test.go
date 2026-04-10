@@ -2,6 +2,7 @@ package clickhouse
 
 import (
 	"encoding/json"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -256,77 +257,77 @@ func TestNormalizeClickHouseType(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected string
+		expected flyqltype.Type
 	}{
-		// Empty
-		{"empty", "", ""},
+		// Empty maps to Unknown after the unify-column-type-system refactor.
+		{"empty", "", flyqltype.Unknown},
 
 		// String types
-		{"string", "String", NormalizedTypeString},
-		{"nullable_string", "Nullable(String)", NormalizedTypeString},
-		{"lowcardinality_string", "LowCardinality(String)", NormalizedTypeString},
-		{"fixedstring", "FixedString(100)", NormalizedTypeString},
-		{"varchar", "VARCHAR(255)", NormalizedTypeString},
+		{"string", "String", flyqltype.String},
+		{"nullable_string", "Nullable(String)", flyqltype.String},
+		{"lowcardinality_string", "LowCardinality(String)", flyqltype.String},
+		{"fixedstring", "FixedString(100)", flyqltype.String},
+		{"varchar", "VARCHAR(255)", flyqltype.String},
 
 		// Int types
-		{"int64", "Int64", NormalizedTypeInt},
-		{"uint32", "UInt32", NormalizedTypeInt},
-		{"nullable_int8", "Nullable(Int8)", NormalizedTypeInt},
-		{"int16", "Int16", NormalizedTypeInt},
-		{"uint64", "UInt64", NormalizedTypeInt},
-		{"tinyint", "TINYINT(4)", NormalizedTypeInt},
+		{"int64", "Int64", flyqltype.Int},
+		{"uint32", "UInt32", flyqltype.Int},
+		{"nullable_int8", "Nullable(Int8)", flyqltype.Int},
+		{"int16", "Int16", flyqltype.Int},
+		{"uint64", "UInt64", flyqltype.Int},
+		{"tinyint", "TINYINT(4)", flyqltype.Int},
 
 		// Float types
-		{"float64", "Float64", NormalizedTypeFloat},
-		{"float32", "Float32", NormalizedTypeFloat},
-		{"decimal", "Decimal(10,2)", NormalizedTypeFloat},
-		{"decimal64", "Decimal64(4)", NormalizedTypeFloat},
+		{"float64", "Float64", flyqltype.Float},
+		{"float32", "Float32", flyqltype.Float},
+		{"decimal", "Decimal(10,2)", flyqltype.Float},
+		{"decimal64", "Decimal64(4)", flyqltype.Float},
 
 		// Bool type
-		{"bool", "Bool", NormalizedTypeBool},
+		{"bool", "Bool", flyqltype.Bool},
 
 		// Date types
-		{"date", "Date", NormalizedTypeDate},
-		{"date32", "Date32", NormalizedTypeDate},
-		{"datetime", "DateTime", NormalizedTypeDate},
-		{"datetime64", "DateTime64(3)", NormalizedTypeDate},
-		{"datetime64_tz", "DateTime64(3, 'UTC')", NormalizedTypeDate},
+		{"date", "Date", flyqltype.Date},
+		{"date32", "Date32", flyqltype.Date},
+		{"datetime", "DateTime", flyqltype.Date},
+		{"datetime64", "DateTime64(3)", flyqltype.Date},
+		{"datetime64_tz", "DateTime64(3, 'UTC')", flyqltype.Date},
 
 		// JSON types
-		{"json", "JSON", NormalizedTypeJSON},
-		{"json_params", "JSON(a String)", NormalizedTypeJSON},
+		{"json", "JSON", flyqltype.JSON},
+		{"json_params", "JSON(a String)", flyqltype.JSON},
 
 		// Array types
-		{"array_string", "Array(String)", NormalizedTypeArray},
-		{"array_int", "Array(Int64)", NormalizedTypeArray},
+		{"array_string", "Array(String)", flyqltype.Array},
+		{"array_int", "Array(Int64)", flyqltype.Array},
 
 		// Map types
-		{"map", "Map(String, Int64)", NormalizedTypeMap},
-		{"map_complex", "Map(String, Array(Int64))", NormalizedTypeMap},
+		{"map", "Map(String, Int64)", flyqltype.Map},
+		{"map_complex", "Map(String, Array(Int64))", flyqltype.Map},
 
 		// Tuple types
-		{"tuple", "Tuple(String, Int64)", NormalizedTypeTuple},
+		{"tuple", "Tuple(String, Int64)", flyqltype.Struct},
 
 		// Geometry types
-		{"point", "Point", NormalizedTypeGeometry},
-		{"ring", "Ring", NormalizedTypeGeometry},
-		{"polygon", "Polygon", NormalizedTypeGeometry},
+		{"point", "Point", flyqltype.Unknown},
+		{"ring", "Ring", flyqltype.Unknown},
+		{"polygon", "Polygon", flyqltype.Unknown},
 
-		// Interval types
-		{"interval_second", "IntervalSecond", NormalizedTypeInterval},
-		{"interval_day", "IntervalDay", NormalizedTypeInterval},
+		// Interval types now map to Duration (the forward-looking duration type).
+		{"interval_second", "IntervalSecond", flyqltype.Duration},
+		{"interval_day", "IntervalDay", flyqltype.Duration},
 
 		// Special types (uuid, ipv4, ipv6 are classified as string in this impl)
-		{"object", "Object", NormalizedTypeSpecial},
-		{"nothing", "Nothing", NormalizedTypeSpecial},
+		{"object", "Object", flyqltype.Unknown},
+		{"nothing", "Nothing", flyqltype.Unknown},
 
 		// Types classified as string
-		{"uuid", "UUID", NormalizedTypeString},
-		{"ipv4", "IPv4", NormalizedTypeString},
-		{"ipv6", "IPv6", NormalizedTypeString},
+		{"uuid", "UUID", flyqltype.String},
+		{"ipv4", "IPv4", flyqltype.String},
+		{"ipv6", "IPv6", flyqltype.String},
 
 		// Unknown type
-		{"unknown", "UnknownType", ""},
+		{"unknown", "UnknownType", flyqltype.Unknown},
 	}
 
 	for _, tc := range tests {

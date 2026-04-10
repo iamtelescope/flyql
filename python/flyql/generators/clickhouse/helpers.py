@@ -1,80 +1,71 @@
-from typing import Set, Tuple, Any, Optional, List
+"""Validation helpers — column-type-keyed forbidden-op and IN-list checks."""
 
-from flyql.core.exceptions import FlyqlError
+from typing import Any, List, Optional
+
 from flyql.core.constants import Operator
+from flyql.core.exceptions import FlyqlError
+from flyql.flyql_type import Type
 
 
 def get_value_type(value: Any) -> str:
     if isinstance(value, bool):
         return "bool"
-    elif isinstance(value, int):
+    if isinstance(value, int):
         return "int"
-    elif isinstance(value, float):
+    if isinstance(value, float):
         return "float"
-    elif isinstance(value, str):
+    if isinstance(value, str):
         return "string"
-    else:
-        return ""
+    return ""
 
 
-IN_COMPATIBLE_TYPES: dict[str, set[str]] = {
-    "string": {"string"},
-    "int": {"int", "float"},
-    "float": {"int", "float"},
-    "bool": {"bool", "int"},
-    "date": {"string"},
+FORBIDDEN_OPERATIONS = {
+    (Type.String, Operator.LOWER_THAN.value, "int"),
+    (Type.String, Operator.LOWER_THAN.value, "float"),
+    (Type.String, Operator.GREATER_THAN.value, "int"),
+    (Type.String, Operator.GREATER_THAN.value, "float"),
+    (Type.String, Operator.GREATER_OR_EQUALS_THAN.value, "int"),
+    (Type.String, Operator.GREATER_OR_EQUALS_THAN.value, "float"),
+    (Type.String, Operator.LOWER_OR_EQUALS_THAN.value, "int"),
+    (Type.String, Operator.LOWER_OR_EQUALS_THAN.value, "float"),
+    (Type.Int, Operator.REGEX.value, "string"),
+    (Type.Float, Operator.REGEX.value, "string"),
+    (Type.Int, Operator.NOT_REGEX.value, "string"),
+    (Type.Float, Operator.NOT_REGEX.value, "string"),
+    (Type.Bool, Operator.LOWER_THAN.value, "bool"),
+    (Type.Bool, Operator.GREATER_THAN.value, "bool"),
+    (Type.Bool, Operator.GREATER_OR_EQUALS_THAN.value, "bool"),
+    (Type.Bool, Operator.LOWER_OR_EQUALS_THAN.value, "bool"),
 }
 
 
-FORBIDDEN_OPERATIONS: Set[Tuple[str, str, str]] = {
-    # String vs numbers comparison
-    ("string", Operator.LOWER_THAN.value, "int"),
-    ("string", Operator.LOWER_THAN.value, "float"),
-    ("string", Operator.GREATER_THAN.value, "int"),
-    ("string", Operator.GREATER_THAN.value, "float"),
-    ("string", Operator.GREATER_OR_EQUALS_THAN.value, "int"),
-    ("string", Operator.GREATER_OR_EQUALS_THAN.value, "float"),
-    ("string", Operator.LOWER_OR_EQUALS_THAN.value, "int"),
-    ("string", Operator.LOWER_OR_EQUALS_THAN.value, "float"),
-    # Numbers with regex
-    ("int", Operator.REGEX.value, "string"),
-    ("float", Operator.REGEX.value, "string"),
-    ("int", Operator.NOT_REGEX.value, "string"),
-    ("float", Operator.NOT_REGEX.value, "string"),
-    # Bool with comparison
-    ("bool", Operator.LOWER_THAN.value, "bool"),
-    ("bool", Operator.GREATER_THAN.value, "bool"),
-    ("bool", Operator.GREATER_OR_EQUALS_THAN.value, "bool"),
-    ("bool", Operator.LOWER_OR_EQUALS_THAN.value, "bool"),
+IN_COMPATIBLE_TYPES = {
+    Type.String: {"string"},
+    Type.Int: {"int", "float"},
+    Type.Float: {"int", "float"},
+    Type.Bool: {"bool", "int"},
+    Type.Date: {"string"},
 }
 
 
-def validate_operation(
-    value: Any, column_normalized_type: Optional[str], operator: str
-) -> None:
-    if column_normalized_type is None:
+def validate_operation(value: Any, column_type: Optional[Type], operator: str) -> None:
+    if column_type is None or column_type == Type.Unknown:
         return
 
-    if (
-        column_normalized_type,
-        operator,
-        get_value_type(value),
-    ) in FORBIDDEN_OPERATIONS:
+    if (column_type, operator, get_value_type(value)) in FORBIDDEN_OPERATIONS:
         raise FlyqlError(
-            f"operation not allowed: {column_normalized_type} column with '{operator}' operator"
+            f"operation not allowed: {column_type} column with '{operator}' operator"
         )
 
 
-def validate_in_list_types(
-    values: List[Any], column_normalized_type: Optional[str]
-) -> None:
-    if column_normalized_type is None:
+def validate_in_list_types(values: List[Any], column_type: Optional[Type]) -> None:
+    if column_type is None or column_type == Type.Unknown:
         return
 
     if not values:
         return
 
-    allowed_types = IN_COMPATIBLE_TYPES.get(column_normalized_type)
+    allowed_types = IN_COMPATIBLE_TYPES.get(column_type)
     if allowed_types is None:
         return
 
@@ -82,5 +73,5 @@ def validate_in_list_types(
         value_type = get_value_type(value)
         if value_type and value_type not in allowed_types:
             raise FlyqlError(
-                f"type mismatch in IN list: {column_normalized_type} column cannot contain {value_type} values"
+                f"type mismatch in IN list: {column_type} column cannot contain {value_type} values"
             )

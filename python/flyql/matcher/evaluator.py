@@ -8,7 +8,7 @@ from flyql.core.constants import Operator, BoolOperator
 from flyql.core.expression import Expression, FunctionCall, Duration, Parameter
 from flyql.core.exceptions import FlyqlError
 from flyql.core.tree import Node
-from flyql.types import ValueType
+from flyql.literal import LiteralKind
 
 from flyql.matcher.key import Key
 from flyql.matcher.record import Record
@@ -228,7 +228,7 @@ class Evaluator:
         expression: Expression,
         record: Record,
     ) -> bool:
-        if expression.value_type == ValueType.PARAMETER:
+        if expression.value_type == LiteralKind.PARAMETER:
             if isinstance(expression.value, Parameter):
                 raise FlyqlError(
                     f"unbound parameter '${expression.value.name}' — call bind_params() before evaluating"
@@ -266,7 +266,7 @@ class Evaluator:
 
         # Resolve COLUMN-typed RHS values from the record
         expr_value = expression.value
-        if expression.value_type == ValueType.COLUMN and isinstance(expr_value, str):
+        if expression.value_type == LiteralKind.COLUMN and isinstance(expr_value, str):
             try:
                 rhs_key = Key(expr_value)
             except Exception:
@@ -275,7 +275,7 @@ class Evaluator:
                 expr_value = record.get_value(rhs_key)
 
         # Resolve FUNCTION-typed RHS values to milliseconds since epoch
-        if expression.value_type == ValueType.FUNCTION and isinstance(
+        if expression.value_type == LiteralKind.FUNCTION and isinstance(
             expr_value, FunctionCall
         ):
             threshold_ms = _evaluate_function_call(expr_value, self._default_timezone)
@@ -381,7 +381,7 @@ class Evaluator:
         for i, v in enumerate(expression.values):
             if (
                 i < len(expression.values_types)
-                and expression.values_types[i] == ValueType.COLUMN
+                and expression.values_types[i] == LiteralKind.COLUMN
                 and isinstance(v, str)
             ):
                 try:

@@ -1,7 +1,11 @@
+"""Parser AST literal-kind enum (renamed from ``flyql.types.ValueType``)."""
+
 from enum import Enum
 
 
-class ValueType(str, Enum):
+class LiteralKind(str, Enum):
+    """Kind of literal recorded on a parsed Expression."""
+
     INTEGER = "integer"
     BIGINT = "bigint"
     FLOAT = "float"

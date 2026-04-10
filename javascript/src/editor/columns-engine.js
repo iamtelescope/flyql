@@ -15,21 +15,32 @@ import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestion
 import { Column, ColumnSchema } from '../core/column.js'
 import { Diagnostic } from '../core/validator.js'
 import { Range } from '../core/range.js'
-import { TransformerType } from '../transformers/base.js'
+import { Type } from '../flyql_type.js'
 import { CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from '../core/validator.js'
 
-const EDITOR_TYPE_TO_NORMALIZED = {
-    enum: TransformerType.STRING,
-    string: TransformerType.STRING,
-    number: TransformerType.INT,
-    float: TransformerType.FLOAT,
-    boolean: TransformerType.BOOL,
-    array: TransformerType.ARRAY,
+/** Maps editor-input raw-type strings to canonical flyql.Type. */
+const EDITOR_TYPE_TO_FLYQL = {
+    enum: Type.String,
+    string: Type.String,
+    number: Type.Int,
+    int: Type.Int,
+    integer: Type.Int,
+    float: Type.Float,
+    bool: Type.Bool,
+    boolean: Type.Bool,
+    array: Type.Array,
+    map: Type.Map,
+    struct: Type.Struct,
+    json: Type.JSON,
+    date: Type.Date,
 }
 
+const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))
+
 function _applyEditorTypeNormalization(col) {
-    if (col.type && !col.normalizedType) {
-        col.normalizedType = EDITOR_TYPE_TO_NORMALIZED[col.type] || col.type || null
+    if (col.type && !_FLYQL_TYPE_VALUES.has(col.type)) {
+        const mapped = EDITOR_TYPE_TO_FLYQL[col.type]
+        col.type = mapped !== undefined ? mapped : Type.Unknown
     }
     if (col.children) {
         for (const child of Object.values(col.children)) {

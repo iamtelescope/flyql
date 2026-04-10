@@ -15,7 +15,7 @@ export {
 } from './constants.js'
 export { isNumeric, convertUnquotedValue } from './utils.js'
 export { Range } from './range.js'
-export { Column, ColumnSchema, normalizedToTransformerType } from './column.js'
+export { Column, ColumnSchema } from './column.js'
 export {
     Diagnostic,
     diagnose,

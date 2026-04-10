@@ -1,25 +1,33 @@
 package flyql
 
 import (
+	"fmt"
 	"strings"
-
-	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
-// Column is the core column type used by the validator. Dialect-specific
-// generators have their own Column structs; to feed them into Diagnose(),
-// create a flyql.Column with the appropriate MatchName.
+// Column is the canonical, schema-aware column type used by the validator
+// and other consumers that need to reason about column type information
+// independently of any specific dialect. Dialect-specific generators have
+// their own opaque Column structs (clickhouse.Column, postgresql.Column,
+// starrocks.Column); use the dialect's ToFlyQLSchema helper to bridge
+// from a dialect column slice to a flyql.ColumnSchema.
 type Column struct {
-	Name           string
-	JSONString     bool
-	Type           string
-	NormalizedType string
-	Values         []string
-	DisplayName    string
-	RawIdentifier  string
-	MatchName      string             // raw unescaped name for validator lookups; defaults to Name
-	Suggest        bool               // whether this column appears in suggestions; defaults to true
-	Children       map[string]*Column // nested child columns; nil means flat (leaf) column
+	Name string
+	// JSONString is an orthogonal capability flag that means "treat this
+	// column as a JSON document for the purposes of dialect-specific
+	// emptiness/path access". It is intentionally NOT validated against
+	// Type — meaningful combinations are dialect-defined; e.g. StarRocks
+	// implements semantic behavior for JSONString=true on TypeMap and
+	// TypeStruct columns. See the unify-column-type-system spec, Tech
+	// Decision #5.
+	JSONString    bool
+	Type          Type
+	Values        []string
+	DisplayName   string
+	RawIdentifier string
+	MatchName     string             // raw unescaped name for validator lookups; defaults to Name
+	Suggest       bool               // whether this column appears in suggestions; defaults to true
+	Children      map[string]*Column // nested child columns; nil means flat (leaf) column
 }
 
 // IsNested returns true if this column has children.
@@ -27,28 +35,26 @@ func (c *Column) IsNested() bool {
 	return c.Children != nil
 }
 
-// NewColumn creates a Column with sensible defaults. MatchName is set to name.
-// Suggest defaults to true.
-func NewColumn(name string, jsonString bool, typ string, normalizedType string) Column {
+// NewColumn creates a Column with sensible defaults. MatchName is set to
+// name. Suggest defaults to true. JSONString is NOT validated against t.
+func NewColumn(name string, jsonString bool, t Type) Column {
 	return Column{
-		Name:           name,
-		JSONString:     jsonString,
-		Type:           typ,
-		NormalizedType: normalizedType,
-		MatchName:      name,
-		Suggest:        true,
+		Name:       name,
+		JSONString: jsonString,
+		Type:       t,
+		MatchName:  name,
+		Suggest:    true,
 	}
 }
 
 // NewNestedColumn creates a Column with children. Suggest defaults to true.
-func NewNestedColumn(name string, typ string, normalizedType string, children map[string]*Column) Column {
+func NewNestedColumn(name string, t Type, children map[string]*Column) Column {
 	return Column{
-		Name:           name,
-		Type:           typ,
-		NormalizedType: normalizedType,
-		MatchName:      name,
-		Suggest:        true,
-		Children:       children,
+		Name:      name,
+		Type:      t,
+		MatchName: name,
+		Suggest:   true,
+		Children:  children,
 	}
 }
 
@@ -132,35 +138,81 @@ func FromColumns(columns []Column) *ColumnSchema {
 	return NewColumnSchema(m)
 }
 
-// FromPlainObject recursively converts a map[string]interface{} (e.g. from JSON)
-// into a ColumnSchema. Each value should be a map with optional keys:
-// "type", "children", "suggest", "values".
-func FromPlainObject(obj map[string]any) *ColumnSchema {
+// validFlyQLTypes is the set of accepted lowercase tokens for ParseType.
+// Keep in sync with flyqltype.Type.
+var validFlyQLTypes = map[string]Type{
+	"string":   TypeString,
+	"int":      TypeInt,
+	"float":    TypeFloat,
+	"bool":     TypeBool,
+	"date":     TypeDate,
+	"duration": TypeDuration,
+	"array":    TypeArray,
+	"map":      TypeMap,
+	"struct":   TypeStruct,
+	"json":     TypeJSON,
+	"unknown":  TypeUnknown,
+}
+
+// ParseType strictly parses a string into a flyql.Type. It returns an
+// error for any value that is not one of the 11 valid lowercase tokens.
+// Strict-mode parsing is mandatory: a lenient fallback to TypeUnknown
+// would silently corrupt downstream consumers (validator, generators).
+// See the unify-column-type-system spec, Tech Decision #21.
+func ParseType(s string) (Type, error) {
+	if t, ok := validFlyQLTypes[s]; ok {
+		return t, nil
+	}
+	return TypeUnknown, fmt.Errorf("unknown flyql type: %q", s)
+}
+
+// FromPlainObject recursively converts a map[string]interface{} (e.g.
+// from JSON) into a ColumnSchema. Each value should be a map with
+// optional keys: "type", "children", "suggest", "values", "jsonstring".
+//
+// Strict mode: an unknown value for "type" returns an error. The legacy
+// key "normalized_type" is detected and returns a targeted migration
+// error pointing at docs.flyql.dev/advanced/column-types.
+func FromPlainObject(obj map[string]any) (*ColumnSchema, error) {
 	m := make(map[string]*Column, len(obj))
 	for name, raw := range obj {
-		col := columnFromPlainObject(name, raw)
+		col, err := columnFromPlainObject(name, raw)
+		if err != nil {
+			return nil, err
+		}
 		if col != nil {
 			m[name] = col
 		}
 	}
-	return NewColumnSchema(m)
+	return NewColumnSchema(m), nil
 }
 
-func columnFromPlainObject(name string, raw any) *Column {
+func columnFromPlainObject(name string, raw any) (*Column, error) {
 	dict, ok := raw.(map[string]any)
 	if !ok {
-		return nil
+		return nil, nil
+	}
+	if _, hasLegacy := dict["normalized_type"]; hasLegacy {
+		return nil, fmt.Errorf(
+			"column %q: %q field has been renamed to %q in canonical column JSON; see migration guide at docs.flyql.dev/advanced/column-types",
+			name, "normalized_type", "type",
+		)
 	}
 	col := &Column{
 		Name:      name,
 		MatchName: name,
 		Suggest:   true,
+		Type:      TypeUnknown,
 	}
 	if t, ok := dict["type"].(string); ok {
-		col.Type = t
+		parsed, err := ParseType(t)
+		if err != nil {
+			return nil, fmt.Errorf("column %q: %w", name, err)
+		}
+		col.Type = parsed
 	}
-	if nt, ok := dict["normalized_type"].(string); ok {
-		col.NormalizedType = nt
+	if js, ok := dict["jsonstring"].(bool); ok {
+		col.JSONString = js
 	}
 	if s, ok := dict["suggest"].(bool); ok {
 		col.Suggest = s
@@ -175,30 +227,14 @@ func columnFromPlainObject(name string, raw any) *Column {
 	if children, ok := dict["children"].(map[string]any); ok {
 		col.Children = make(map[string]*Column, len(children))
 		for childName, childRaw := range children {
-			child := columnFromPlainObject(childName, childRaw)
+			child, err := columnFromPlainObject(childName, childRaw)
+			if err != nil {
+				return nil, err
+			}
 			if child != nil {
 				col.Children[childName] = child
 			}
 		}
 	}
-	return col
-}
-
-// NormalizedToTransformerType maps a normalized column type string to
-// the corresponding TransformerType. Returns false if unmapped.
-func NormalizedToTransformerType(s string) (transformers.TransformerType, bool) {
-	switch s {
-	case "string":
-		return transformers.TransformerTypeString, true
-	case "int":
-		return transformers.TransformerTypeInt, true
-	case "float":
-		return transformers.TransformerTypeFloat, true
-	case "bool":
-		return transformers.TransformerTypeBool, true
-	case "array":
-		return transformers.TransformerTypeArray, true
-	default:
-		return "", false
-	}
+	return col, nil
 }

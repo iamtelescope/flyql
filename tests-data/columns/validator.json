@@ -7,7 +7,7 @@
       "name": "happy_path_single_column",
       "input": "level",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": []
     },
     {
@@ -15,8 +15,8 @@
       "input": "level, service",
       "capabilities": { "transformers": true },
       "columns": [
-        { "name": "level", "normalized_type": "string" },
-        { "name": "service", "normalized_type": "string" }
+        { "name": "level", "type": "string" },
+        { "name": "service", "type": "string" }
       ],
       "expected_diagnostics": []
     },
@@ -24,14 +24,14 @@
       "name": "happy_path_with_transformer",
       "input": "level|upper",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "unknown_column",
       "input": "foo",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "unknown_column",
@@ -45,7 +45,7 @@
       "name": "unknown_column_in_multi",
       "input": "level, foo",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "unknown_column",
@@ -59,7 +59,7 @@
       "name": "unknown_transformer",
       "input": "level|nonexistent",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "unknown_transformer",
@@ -73,7 +73,7 @@
       "name": "chain_type_mismatch",
       "input": "level|len|upper",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "chain_type",
@@ -87,7 +87,7 @@
       "name": "multiple_errors",
       "input": "foo, bar",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "unknown_column",
@@ -107,14 +107,14 @@
       "name": "empty_input",
       "input": "",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "dotted_column_name_unknown",
       "input": "resource.service.name",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "unknown_column",
@@ -128,7 +128,7 @@
       "name": "dotted_column_name_known_flat",
       "input": "resource.service.name",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "resource", "normalized_type": "string" }],
+      "columns": [{ "name": "resource", "type": "string" }],
       "expected_diagnostics": [
         { "code": "unknown_column", "severity": "error", "range": [9, 16], "message_contains": "service" }
       ]
@@ -137,21 +137,21 @@
       "name": "dotted_column_name_known_nested",
       "input": "resource.service.name",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "resource", "normalized_type": "object", "children": { "service": { "name": "service", "normalized_type": "object", "children": { "name": { "name": "name", "normalized_type": "string" } } } } }],
+      "columns": [{ "name": "resource", "type": "unknown", "children": { "service": { "name": "service", "type": "unknown", "children": { "name": { "name": "name", "type": "string" } } } } }],
       "expected_diagnostics": []
     },
     {
       "name": "column_without_transformers",
       "input": "level",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": []
     },
     {
       "name": "arg_count_too_many",
       "input": "level|upper(1)",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "arg_count",
@@ -165,7 +165,7 @@
       "name": "arg_type_mismatch",
       "input": "level|split(42)",
       "capabilities": { "transformers": true },
-      "columns": [{ "name": "level", "normalized_type": "string" }],
+      "columns": [{ "name": "level", "type": "string" }],
       "expected_diagnostics": [
         {
           "code": "arg_type",

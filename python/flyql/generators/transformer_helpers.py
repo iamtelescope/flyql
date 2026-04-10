@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from flyql.core.exceptions import FlyqlError
 from flyql.core.key import Transformer as KeyTransformer
-from flyql.transformers.base import TransformerType
+from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 
@@ -42,7 +42,7 @@ def apply_transformer_sql(
 def get_transformer_output_type(
     transformers: List[KeyTransformer],
     registry: Optional[TransformerRegistry] = None,
-) -> Optional[TransformerType]:
+) -> Optional[Type]:
     if not transformers:
         return None
     if registry is None:
@@ -54,7 +54,7 @@ def get_transformer_output_type(
 def validate_transformer_chain(
     transformers: List[KeyTransformer],
     registry: Optional[TransformerRegistry] = None,
-    base_type: TransformerType = TransformerType.STRING,
+    base_type: Type = Type.String,
 ) -> None:
     if not transformers:
         return

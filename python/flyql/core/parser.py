@@ -9,7 +9,7 @@ from flyql.core.expression import (
     convert_unquoted_value,
 )
 from flyql.core.char import Char
-from flyql.types import ValueType
+from flyql.literal import LiteralKind
 from flyql.core.state import State
 from flyql.core.exceptions import FlyqlError, KeyParseError
 from flyql.core.range import Range
@@ -84,7 +84,7 @@ class Parser:
         self.in_list_current_value: str = ""
         self.in_list_current_value_is_string: Union[bool, None] = None
         self.in_list_values_type: Optional[str] = None
-        self.in_list_values_types: List[ValueType] = []
+        self.in_list_values_types: List[LiteralKind] = []
         self.is_not_in: bool = False
         self.is_not_has: bool = False
         self.is_not_like: bool = False
@@ -216,13 +216,13 @@ class Parser:
             value: Any = self._unescape_quotes(
                 self.in_list_current_value, self.in_list_quote_char
             )
-            explicit_type = ValueType.STRING
+            explicit_type = LiteralKind.STRING
         elif self.in_list_current_value == "null":
             value = None
-            explicit_type = ValueType.NULL
+            explicit_type = LiteralKind.NULL
         elif self.in_list_current_value in ("true", "false"):
             value = self.in_list_current_value == "true"
-            explicit_type = ValueType.BOOLEAN
+            explicit_type = LiteralKind.BOOLEAN
         else:
             value, explicit_type = convert_unquoted_value(self.in_list_current_value)
 
@@ -373,7 +373,7 @@ class Parser:
                 range=expr_range,
                 operator_range=operator_range,
                 value_range=value_range,
-                value_type=ValueType.NULL,
+                value_type=LiteralKind.NULL,
             )
 
         if value in ("true", "false") and not self.value_is_string:
@@ -385,7 +385,7 @@ class Parser:
                 range=expr_range,
                 operator_range=operator_range,
                 value_range=value_range,
-                value_type=ValueType.BOOLEAN,
+                value_type=LiteralKind.BOOLEAN,
             )
 
         return Expression(
@@ -997,7 +997,7 @@ class Parser:
             range=expr_range,
             operator_range=operator_range,
             value_range=value_range,
-            value_type=ValueType.PARAMETER,
+            value_type=LiteralKind.PARAMETER,
         )
         self.extend_tree(expression)
         self.reset_data()
@@ -1561,7 +1561,7 @@ class Parser:
                 return False
         param = Parameter(name=name, positional=name[0].isdigit())
         self.in_list_values.append(param)
-        self.in_list_values_types.append(ValueType.PARAMETER)
+        self.in_list_values_types.append(LiteralKind.PARAMETER)
         if self._in_list_value_start >= 0:
             self._in_list_value_ranges.append(
                 Range(self._in_list_value_start, self._in_list_value_end)
@@ -1817,7 +1817,7 @@ class Parser:
             range=expr_range,
             operator_range=operator_range,
             value_range=value_range,
-            value_type=ValueType.FUNCTION,
+            value_type=LiteralKind.FUNCTION,
         )
 
         self.extend_tree(expr)

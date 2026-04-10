@@ -5,20 +5,21 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
-// goToTransformerType maps a Go value to its TransformerType.
-func goToTransformerType(v any) (transformers.TransformerType, bool) {
+// goToFlyQLType maps a Go runtime value to its flyql.Type.
+func goToFlyQLType(v any) (flyqltype.Type, bool) {
 	switch v.(type) {
 	case bool:
-		return transformers.TransformerTypeBool, true
+		return flyqltype.Bool, true
 	case int, int64, int32:
-		return transformers.TransformerTypeInt, true
+		return flyqltype.Int, true
 	case float64, float32:
-		return transformers.TransformerTypeFloat, true
+		return flyqltype.Float, true
 	case string:
-		return transformers.TransformerTypeString, true
+		return flyqltype.String, true
 	default:
 		return "", false
 	}
@@ -47,7 +48,7 @@ func Diagnose(parsedColumns []ParsedColumn, schema *flyql.ColumnSchema, registry
 		}
 		resolved := schema.Resolve(segments)
 
-		var prevOutputType transformers.TransformerType
+		var prevOutputType flyqltype.Type
 		var hasPrevType bool
 
 		if resolved == nil {
@@ -63,7 +64,8 @@ func Diagnose(parsedColumns []ParsedColumn, schema *flyql.ColumnSchema, registry
 			}
 			hasPrevType = false
 		} else {
-			prevOutputType, hasPrevType = flyql.NormalizedToTransformerType(resolved.NormalizedType)
+			prevOutputType = resolved.Type
+			hasPrevType = resolved.Type != "" && resolved.Type != flyql.TypeUnknown
 		}
 
 		for ti, transformer := range col.Transformers {
@@ -120,7 +122,7 @@ func Diagnose(parsedColumns []ParsedColumn, schema *flyql.ColumnSchema, registry
 			// Per-argument type check
 			for j := 0; j < len(transformer.Arguments) && j < len(schema); j++ {
 				expected := schema[j].Type
-				actual, ok := goToTransformerType(transformer.Arguments[j])
+				actual, ok := goToFlyQLType(transformer.Arguments[j])
 				if !ok {
 					continue
 				}
@@ -128,7 +130,7 @@ func Diagnose(parsedColumns []ParsedColumn, schema *flyql.ColumnSchema, registry
 					continue
 				}
 				// int widens to float
-				if actual == transformers.TransformerTypeInt && expected == transformers.TransformerTypeFloat {
+				if actual == flyqltype.Int && expected == flyqltype.Float {
 					continue
 				}
 				if j < len(argRanges) {

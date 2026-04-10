@@ -1,92 +1,90 @@
-import re
-from typing import List, Optional
+"""StarRocks-dialect Column."""
 
-from flyql.core.column import Column as CoreColumn
-from flyql.generators.starrocks.constants import (
-    NORMALIZED_TYPE_TO_STARROCKS_TYPES,
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
-    NORMALIZED_TYPE_ARRAY,
-    NORMALIZED_TYPE_MAP,
-    NORMALIZED_TYPE_STRUCT,
-    NORMALIZED_TYPE_SPECIAL,
-    NORMALIZED_TYPE_JSON,
-)
+import re
+from typing import Dict, List, Optional
+
+from flyql.flyql_type import Type
 
 REGEX = {
-    NORMALIZED_TYPE_STRING: re.compile(r"^(varchar|char|string)\s*\(\s*\d+\s*\)"),
-    NORMALIZED_TYPE_INT: re.compile(
-        r"^(tinyint|smallint|int|largeint|bigint)\s*\(\s*\d+\s*\)"
-    ),
-    NORMALIZED_TYPE_FLOAT: re.compile(
-        r"^(decimal|float|double)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)"
-    ),
-    NORMALIZED_TYPE_DATE: re.compile(r"^datetime"),
-    NORMALIZED_TYPE_ARRAY: re.compile(r"^array\s*\<"),
-    NORMALIZED_TYPE_MAP: re.compile(r"^map\s*\<"),
-    NORMALIZED_TYPE_STRUCT: re.compile(r"^struct\s*\<"),
-    NORMALIZED_TYPE_JSON: re.compile(r"^json"),
+    Type.String: re.compile(r"^(varchar|char|string)\s*\(\s*\d+\s*\)"),
+    Type.Int: re.compile(r"^(tinyint|smallint|int|largeint|bigint)\s*\(\s*\d+\s*\)"),
+    Type.Float: re.compile(r"^(decimal|float|double)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)"),
+    Type.Date: re.compile(r"^datetime"),
+    Type.Array: re.compile(r"^array\s*\<"),
+    Type.Map: re.compile(r"^map\s*\<"),
+    Type.Struct: re.compile(r"^struct\s*\<"),
+    Type.JSON: re.compile(r"^json"),
+}
+
+# SR renames: special→unknown.
+FLYQL_TYPE_TO_STARROCKS_TYPES: Dict[Type, set] = {
+    Type.String: {"string", "varchar", "char", "binary", "varbinary"},
+    Type.Int: {"int", "tinyint", "smallint", "largeint", "bigint"},
+    Type.Float: {"float", "double", "decimal"},
+    Type.Bool: {"bool", "boolean"},
+    Type.Date: {"date", "datetime"},
+    Type.Unknown: {"bitmap", "hll"},
+    Type.JSON: {"json"},
 }
 
 
-def normalize_starrocks_type(sr_type: str) -> Optional[str]:
+def normalize_starrocks_type(sr_type: str) -> Type:
     if not sr_type or not isinstance(sr_type, str):
-        return None
+        return Type.Unknown
 
     normalized = sr_type.strip().lower()
 
-    if REGEX[NORMALIZED_TYPE_STRING].match(normalized):
-        return NORMALIZED_TYPE_STRING
+    if REGEX[Type.String].match(normalized):
+        return Type.String
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.String]:
+        return Type.String
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_STRING]:
-        return NORMALIZED_TYPE_STRING
+    if REGEX[Type.Int].match(normalized):
+        return Type.Int
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.Int]:
+        return Type.Int
 
-    if REGEX[NORMALIZED_TYPE_INT].match(normalized):
-        return NORMALIZED_TYPE_INT
+    if REGEX[Type.Float].match(normalized):
+        return Type.Float
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.Float]:
+        return Type.Float
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_INT]:
-        return NORMALIZED_TYPE_INT
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.Bool]:
+        return Type.Bool
 
-    if REGEX[NORMALIZED_TYPE_FLOAT].match(normalized):
-        return NORMALIZED_TYPE_FLOAT
+    if REGEX[Type.Date].match(normalized):
+        return Type.Date
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.Date]:
+        return Type.Date
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_FLOAT]:
-        return NORMALIZED_TYPE_FLOAT
+    if REGEX[Type.JSON].match(normalized):
+        return Type.JSON
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.JSON]:
+        return Type.JSON
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_BOOL]:
-        return NORMALIZED_TYPE_BOOL
+    if REGEX[Type.Array].match(normalized):
+        return Type.Array
 
-    if REGEX[NORMALIZED_TYPE_DATE].match(normalized):
-        return NORMALIZED_TYPE_DATE
+    if REGEX[Type.Map].match(normalized):
+        return Type.Map
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_DATE]:
-        return NORMALIZED_TYPE_DATE
+    if REGEX[Type.Struct].match(normalized):
+        return Type.Struct
 
-    if REGEX[NORMALIZED_TYPE_JSON].match(normalized):
-        return NORMALIZED_TYPE_JSON
+    if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.Unknown]:
+        return Type.Unknown
 
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_JSON]:
-        return NORMALIZED_TYPE_JSON
-
-    if REGEX[NORMALIZED_TYPE_ARRAY].match(normalized):
-        return NORMALIZED_TYPE_ARRAY
-
-    if REGEX[NORMALIZED_TYPE_MAP].match(normalized):
-        return NORMALIZED_TYPE_MAP
-
-    if REGEX[NORMALIZED_TYPE_STRUCT].match(normalized):
-        return NORMALIZED_TYPE_STRUCT
-
-    if normalized in NORMALIZED_TYPE_TO_STARROCKS_TYPES[NORMALIZED_TYPE_SPECIAL]:
-        return NORMALIZED_TYPE_SPECIAL
-
-    return None
+    return Type.Unknown
 
 
-class Column(CoreColumn):
+class Column:
+    """Opaque StarRocks-dialect column.
+
+    Note: ``jsonstring=True`` combined with ``flyql_type == Type.Map`` or
+    ``Type.Struct`` is a meaningful, supported configuration in StarRocks
+    (the column is treated as a JSON document for emptiness checks via
+    ``json_length(to_json(...))``). See Tech Decision #5."""
+
     def __init__(
         self,
         name: str,
@@ -96,17 +94,23 @@ class Column(CoreColumn):
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        normalized = normalize_starrocks_type(_type)
-        super().__init__(
-            name=name,
-            jsonstring=jsonstring,
-            _type=_type,
-            normalized_type=normalized,
-            values=values,
-            display_name=display_name,
-            raw_identifier=raw_identifier,
-        )
-        self.is_map = normalized == NORMALIZED_TYPE_MAP
-        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
-        self.is_struct = normalized == NORMALIZED_TYPE_STRUCT
-        self.is_json = normalized == NORMALIZED_TYPE_JSON
+        self.name = name
+        self.match_name = name
+        self.jsonstring = jsonstring
+        self.values: List[str] = values or []
+        self.display_name = display_name
+        self.raw_identifier = raw_identifier
+        self._raw_type = _type
+        self._flyql_type: Type = normalize_starrocks_type(_type)
+
+    @property
+    def raw_type(self) -> str:
+        return self._raw_type
+
+    @property
+    def flyql_type(self) -> Type:
+        return self._flyql_type
+
+    def with_raw_identifier(self, identifier: str) -> "Column":
+        self.raw_identifier = identifier
+        return self

@@ -2,22 +2,24 @@ package transformers
 
 import (
 	"testing"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
-func TestTransformerTypeConstants(t *testing.T) {
+func TestFlyQLTypeConstants(t *testing.T) {
 	tests := []struct {
-		constant TransformerType
+		constant flyqltype.Type
 		value    string
 	}{
-		{TransformerTypeString, "string"},
-		{TransformerTypeInt, "int"},
-		{TransformerTypeFloat, "float"},
-		{TransformerTypeBool, "bool"},
-		{TransformerTypeArray, "array"},
+		{flyqltype.String, "string"},
+		{flyqltype.Int, "int"},
+		{flyqltype.Float, "float"},
+		{flyqltype.Bool, "bool"},
+		{flyqltype.Array, "array"},
 	}
 	for _, tc := range tests {
 		if string(tc.constant) != tc.value {
-			t.Errorf("TransformerType constant = %q, want %q", tc.constant, tc.value)
+			t.Errorf("flyqltype constant = %q, want %q", tc.constant, tc.value)
 		}
 	}
 }

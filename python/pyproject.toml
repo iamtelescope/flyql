@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flyql"
-version = "0.0.35"
+version = "0.0.36"
 dependencies = ["google-re2>=1.1"]
 requires-python = ">=3.10"
 license = { text = "MIT License" }

@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"encoding/json"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -279,67 +280,68 @@ func TestNormalizePostgreSQLType(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		expected string
+		expected flyqltype.Type
 	}{
-		{"empty", "", ""},
+		{"empty", "", flyqltype.Unknown},
 
 		// String types
-		{"text", "text", NormalizedTypeString},
-		{"varchar", "varchar", NormalizedTypeString},
-		{"varchar_n", "varchar(255)", NormalizedTypeString},
-		{"char", "char", NormalizedTypeString},
-		{"character_varying", "character varying", NormalizedTypeString},
-		{"character_varying_n", "character varying(100)", NormalizedTypeString},
-		{"uuid", "uuid", NormalizedTypeString},
-		{"citext", "citext", NormalizedTypeString},
-		{"inet", "inet", NormalizedTypeString},
-		{"name", "name", NormalizedTypeString},
+		{"text", "text", flyqltype.String},
+		{"varchar", "varchar", flyqltype.String},
+		{"varchar_n", "varchar(255)", flyqltype.String},
+		{"char", "char", flyqltype.String},
+		{"character_varying", "character varying", flyqltype.String},
+		{"character_varying_n", "character varying(100)", flyqltype.String},
+		{"uuid", "uuid", flyqltype.String},
+		{"citext", "citext", flyqltype.String},
+		{"inet", "inet", flyqltype.String},
+		{"name", "name", flyqltype.String},
 
 		// Int types
-		{"integer", "integer", NormalizedTypeInt},
-		{"smallint", "smallint", NormalizedTypeInt},
-		{"bigint", "bigint", NormalizedTypeInt},
-		{"int4", "int4", NormalizedTypeInt},
-		{"int8", "int8", NormalizedTypeInt},
-		{"serial", "serial", NormalizedTypeInt},
-		{"bigserial", "bigserial", NormalizedTypeInt},
+		{"integer", "integer", flyqltype.Int},
+		{"smallint", "smallint", flyqltype.Int},
+		{"bigint", "bigint", flyqltype.Int},
+		{"int4", "int4", flyqltype.Int},
+		{"int8", "int8", flyqltype.Int},
+		{"serial", "serial", flyqltype.Int},
+		{"bigserial", "bigserial", flyqltype.Int},
 
 		// Float types
-		{"real", "real", NormalizedTypeFloat},
-		{"double_precision", "double precision", NormalizedTypeFloat},
-		{"numeric", "numeric", NormalizedTypeFloat},
-		{"numeric_p_s", "numeric(10,2)", NormalizedTypeFloat},
-		{"decimal", "decimal", NormalizedTypeFloat},
-		{"money", "money", NormalizedTypeFloat},
+		{"real", "real", flyqltype.Float},
+		{"double_precision", "double precision", flyqltype.Float},
+		{"numeric", "numeric", flyqltype.Float},
+		{"numeric_p_s", "numeric(10,2)", flyqltype.Float},
+		{"decimal", "decimal", flyqltype.Float},
+		{"money", "money", flyqltype.Float},
 
 		// Bool
-		{"boolean", "boolean", NormalizedTypeBool},
-		{"bool", "bool", NormalizedTypeBool},
+		{"boolean", "boolean", flyqltype.Bool},
+		{"bool", "bool", flyqltype.Bool},
 
 		// Date types
-		{"date", "date", NormalizedTypeDate},
-		{"timestamp", "timestamp", NormalizedTypeDate},
-		{"timestamptz", "timestamptz", NormalizedTypeDate},
-		{"timestamp_with_tz", "timestamp with time zone", NormalizedTypeDate},
-		{"timestamp_without_tz", "timestamp without time zone", NormalizedTypeDate},
-		{"time", "time", NormalizedTypeDate},
-		{"interval", "interval", NormalizedTypeDate},
+		{"date", "date", flyqltype.Date},
+		{"timestamp", "timestamp", flyqltype.Date},
+		{"timestamptz", "timestamptz", flyqltype.Date},
+		{"timestamp_with_tz", "timestamp with time zone", flyqltype.Date},
+		{"timestamp_without_tz", "timestamp without time zone", flyqltype.Date},
+		{"time", "time", flyqltype.Date},
+		// PG interval now maps to Duration per Tech Decision #14.
+		{"interval", "interval", flyqltype.Duration},
 
 		// JSON types
-		{"jsonb", "jsonb", NormalizedTypeJSON},
-		{"json", "json", NormalizedTypeJSON},
+		{"jsonb", "jsonb", flyqltype.JSON},
+		{"json", "json", flyqltype.JSON},
 
 		// Array types
-		{"text_array", "text[]", NormalizedTypeArray},
-		{"integer_array", "integer[]", NormalizedTypeArray},
-		{"_text", "_text", NormalizedTypeArray},
-		{"_int4", "_int4", NormalizedTypeArray},
+		{"text_array", "text[]", flyqltype.Array},
+		{"integer_array", "integer[]", flyqltype.Array},
+		{"_text", "_text", flyqltype.Array},
+		{"_int4", "_int4", flyqltype.Array},
 
 		// Hstore
-		{"hstore", "hstore", NormalizedTypeHstore},
+		{"hstore", "hstore", flyqltype.Map},
 
 		// Unknown
-		{"unknown", "UnknownType", ""},
+		{"unknown", "UnknownType", flyqltype.Unknown},
 	}
 
 	for _, tc := range tests {

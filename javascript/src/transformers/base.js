@@ -1,10 +1,4 @@
-export const TransformerType = Object.freeze({
-    STRING: 'string',
-    INT: 'int',
-    FLOAT: 'float',
-    BOOL: 'bool',
-    ARRAY: 'array',
-})
+import { Type } from '../flyql_type.js'
 
 export class ArgSpec {
     constructor(type, required = true) {
@@ -38,3 +32,8 @@ export class Transformer {
         throw new Error('not implemented')
     }
 }
+
+// Re-export Type so existing `import { Type } from '../transformers/base.js'`
+// patterns continue to work, but new code should import from
+// '../flyql_type.js' directly.
+export { Type }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { isNumeric, convertUnquotedValue } from '../../src/index.js'
-import { ValueType } from '../../src/types.js'
+import {} from '../../src/literal/literal_kind.js'
+import { LiteralKind } from '../../src/literal/literal_kind.js'
 
 describe('isNumeric', () => {
     it('should identify numeric strings', () => {
@@ -29,22 +30,22 @@ describe('isNumeric', () => {
 
 describe('convertUnquotedValue', () => {
     it('should convert integer strings to integers with INTEGER type', () => {
-        expect(convertUnquotedValue('123')).toEqual([123, ValueType.INTEGER])
-        expect(convertUnquotedValue('-5')).toEqual([-5, ValueType.INTEGER])
-        expect(convertUnquotedValue('0')).toEqual([0, ValueType.INTEGER])
+        expect(convertUnquotedValue('123')).toEqual([123, LiteralKind.INTEGER])
+        expect(convertUnquotedValue('-5')).toEqual([-5, LiteralKind.INTEGER])
+        expect(convertUnquotedValue('0')).toEqual([0, LiteralKind.INTEGER])
     })
 
     it('should convert float strings to floats with FLOAT type', () => {
-        expect(convertUnquotedValue('12.34')).toEqual([12.34, ValueType.FLOAT])
+        expect(convertUnquotedValue('12.34')).toEqual([12.34, LiteralKind.FLOAT])
     })
 
     it('should keep non-numeric strings as column references with COLUMN type', () => {
-        expect(convertUnquotedValue('hello')).toEqual(['hello', ValueType.COLUMN])
-        expect(convertUnquotedValue('abc123')).toEqual(['abc123', ValueType.COLUMN])
+        expect(convertUnquotedValue('hello')).toEqual(['hello', LiteralKind.COLUMN])
+        expect(convertUnquotedValue('abc123')).toEqual(['abc123', LiteralKind.COLUMN])
     })
 
     it('should handle empty string with COLUMN type', () => {
-        expect(convertUnquotedValue('')).toEqual(['', ValueType.COLUMN])
+        expect(convertUnquotedValue('')).toEqual(['', LiteralKind.COLUMN])
     })
 
     it('should return non-strings with null type', () => {
@@ -55,7 +56,7 @@ describe('convertUnquotedValue', () => {
 
     it('should detect BigInt for values exceeding MAX_SAFE_INTEGER', () => {
         const [value, type] = convertUnquotedValue('9007199254740992')
-        expect(type).toBe(ValueType.BIGINT)
+        expect(type).toBe(LiteralKind.BIGINT)
         expect(typeof value).toBe('bigint')
     })
 })

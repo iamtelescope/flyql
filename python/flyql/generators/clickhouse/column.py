@@ -1,45 +1,177 @@
-import re
-from typing import List, Optional
+"""ClickHouse-dialect Column. Construct via ``Column(name=, jsonstring=,
+_type=, ...)``. Public surface is ``name`` / ``raw_identifier`` /
+``jsonstring`` / ``values`` / ``display_name`` plus the ``raw_type`` and
+``flyql_type`` properties. The ``flyql_type`` is computed at construction
+from the raw DB type via :func:`normalize_clickhouse_type`."""
 
-from flyql.core.column import Column as CoreColumn
-from flyql.generators.clickhouse.constants import (
-    NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES,
-    NORMALIZED_TYPE_STRING,
-    NORMALIZED_TYPE_INT,
-    NORMALIZED_TYPE_FLOAT,
-    NORMALIZED_TYPE_BOOL,
-    NORMALIZED_TYPE_DATE,
-    NORMALIZED_TYPE_ARRAY,
-    NORMALIZED_TYPE_MAP,
-    NORMALIZED_TYPE_TUPLE,
-    NORMALIZED_TYPE_GEOMETRY,
-    NORMALIZED_TYPE_INTERVAL,
-    NORMALIZED_TYPE_SPECIAL,
-    NORMALIZED_TYPE_JSON,
-)
+import re
+from typing import Dict, List, Optional
+
+from flyql.flyql_type import Type
 
 REGEX = {
     "wrapper": re.compile(
         r"^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)"
     ),
-    NORMALIZED_TYPE_STRING: re.compile(r"^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)"),
-    NORMALIZED_TYPE_INT: re.compile(
+    Type.String: re.compile(r"^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)"),
+    Type.Int: re.compile(
         r"^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)"
     ),
-    NORMALIZED_TYPE_FLOAT: re.compile(
-        r"^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)"
-    ),
-    NORMALIZED_TYPE_DATE: re.compile(r"^datetime64\s*\(\s*\d+\s*(,\s*.+)?\s*\)"),
-    NORMALIZED_TYPE_ARRAY: re.compile(r"^array\s*\("),
-    NORMALIZED_TYPE_MAP: re.compile(r"^map\s*\("),
-    NORMALIZED_TYPE_TUPLE: re.compile(r"^tuple\s*\("),
-    NORMALIZED_TYPE_JSON: re.compile(r"^json\s*\("),
+    Type.Float: re.compile(r"^(decimal|numeric|dec)\d*\s*\(\s*\d+\s*(,\s*\d+)?\s*\)"),
+    Type.Date: re.compile(r"^datetime64\s*\(\s*\d+\s*(,\s*.+)?\s*\)"),
+    Type.Array: re.compile(r"^array\s*\("),
+    Type.Map: re.compile(r"^map\s*\("),
+    Type.Struct: re.compile(r"^tuple\s*\("),
+    Type.JSON: re.compile(r"^json\s*\("),
+}
+
+# Lookup table for raw ClickHouse DB type names that don't require regex
+# matching. CH renames: tuple→Struct, interval→Duration, geometry/special
+# collapse into Unknown.
+FLYQL_TYPE_TO_CLICKHOUSE_TYPES: Dict[Type, set] = {
+    Type.String: {
+        "string",
+        "fixedstring",
+        "longtext",
+        "mediumtext",
+        "tinytext",
+        "text",
+        "longblob",
+        "mediumblob",
+        "tinyblob",
+        "blob",
+        "varchar",
+        "char",
+        "char large object",
+        "char varying",
+        "character",
+        "character large object",
+        "character varying",
+        "nchar large object",
+        "nchar varying",
+        "national character large object",
+        "national character varying",
+        "national char varying",
+        "national character",
+        "national char",
+        "binary large object",
+        "binary varying",
+        "clob",
+        "nchar",
+        "nvarchar",
+        "varchar2",
+        "binary",
+        "varbinary",
+        "bytea",
+        "uuid",
+        "ipv4",
+        "ipv6",
+        "enum8",
+        "enum16",
+    },
+    Type.Int: {
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "int128",
+        "int256",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "uint128",
+        "uint256",
+        "tinyint",
+        "smallint",
+        "mediumint",
+        "int",
+        "integer",
+        "bigint",
+        "tinyint signed",
+        "tinyint unsigned",
+        "smallint signed",
+        "smallint unsigned",
+        "mediumint signed",
+        "mediumint unsigned",
+        "int signed",
+        "int unsigned",
+        "integer signed",
+        "integer unsigned",
+        "bigint signed",
+        "bigint unsigned",
+        "int1",
+        "int1 signed",
+        "int1 unsigned",
+        "byte",
+        "signed",
+        "unsigned",
+        "bit",
+        "set",
+        "time",
+    },
+    Type.Float: {
+        "float32",
+        "float64",
+        "float",
+        "double",
+        "double precision",
+        "real",
+        "decimal",
+        "decimal32",
+        "decimal64",
+        "decimal128",
+        "decimal256",
+        "dec",
+        "numeric",
+        "fixed",
+        "single",
+    },
+    Type.Bool: {"bool", "boolean"},
+    Type.Date: {
+        "date",
+        "date32",
+        "datetime",
+        "datetime32",
+        "datetime64",
+        "timestamp",
+        "year",
+    },
+    Type.Duration: {
+        "intervalday",
+        "intervalhour",
+        "intervalmicrosecond",
+        "intervalmillisecond",
+        "intervalminute",
+        "intervalmonth",
+        "intervalnanosecond",
+        "intervalquarter",
+        "intervalsecond",
+        "intervalweek",
+        "intervalyear",
+    },
+    Type.Unknown: {
+        "geometry",
+        "point",
+        "polygon",
+        "multipolygon",
+        "linestring",
+        "ring",
+        "nothing",
+        "nested",
+        "object",
+        "dynamic",
+        "variant",
+    },
+    Type.JSON: {"json"},
 }
 
 
-def normalize_clickhouse_type(ch_type: str) -> Optional[str]:
+def normalize_clickhouse_type(ch_type: str) -> Type:
+    """Map a raw ClickHouse DB type string to its canonical
+    :class:`flyql.flyql_type.Type`. Unknown raw types map to ``Type.Unknown``."""
     if not ch_type or not isinstance(ch_type, str):
-        return None
+        return Type.Unknown
 
     normalized = ch_type.strip().lower()
 
@@ -47,58 +179,50 @@ def normalize_clickhouse_type(ch_type: str) -> Optional[str]:
     if match:
         normalized = match.group(2).strip()
 
-    if REGEX[NORMALIZED_TYPE_STRING].match(normalized):
-        return NORMALIZED_TYPE_STRING
+    if REGEX[Type.String].match(normalized):
+        return Type.String
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.String]:
+        return Type.String
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_STRING]:
-        return NORMALIZED_TYPE_STRING
+    if REGEX[Type.Int].match(normalized):
+        return Type.Int
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Int]:
+        return Type.Int
 
-    if REGEX[NORMALIZED_TYPE_INT].match(normalized):
-        return NORMALIZED_TYPE_INT
+    if REGEX[Type.Float].match(normalized):
+        return Type.Float
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Float]:
+        return Type.Float
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_INT]:
-        return NORMALIZED_TYPE_INT
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Bool]:
+        return Type.Bool
 
-    if REGEX[NORMALIZED_TYPE_FLOAT].match(normalized):
-        return NORMALIZED_TYPE_FLOAT
+    if REGEX[Type.Date].match(normalized):
+        return Type.Date
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Date]:
+        return Type.Date
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_FLOAT]:
-        return NORMALIZED_TYPE_FLOAT
+    if REGEX[Type.JSON].match(normalized):
+        return Type.JSON
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.JSON]:
+        return Type.JSON
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_BOOL]:
-        return NORMALIZED_TYPE_BOOL
+    if REGEX[Type.Array].match(normalized):
+        return Type.Array
 
-    if REGEX[NORMALIZED_TYPE_DATE].match(normalized):
-        return NORMALIZED_TYPE_DATE
+    if REGEX[Type.Map].match(normalized):
+        return Type.Map
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_DATE]:
-        return NORMALIZED_TYPE_DATE
+    if REGEX[Type.Struct].match(normalized):
+        return Type.Struct
 
-    if REGEX[NORMALIZED_TYPE_JSON].match(normalized):
-        return NORMALIZED_TYPE_JSON
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Unknown]:
+        return Type.Unknown
 
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_JSON]:
-        return NORMALIZED_TYPE_JSON
+    if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.Duration]:
+        return Type.Duration
 
-    if REGEX[NORMALIZED_TYPE_ARRAY].match(normalized):
-        return NORMALIZED_TYPE_ARRAY
-
-    if REGEX[NORMALIZED_TYPE_MAP].match(normalized):
-        return NORMALIZED_TYPE_MAP
-
-    if REGEX[NORMALIZED_TYPE_TUPLE].match(normalized):
-        return NORMALIZED_TYPE_TUPLE
-
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_GEOMETRY]:
-        return NORMALIZED_TYPE_GEOMETRY
-
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_INTERVAL]:
-        return NORMALIZED_TYPE_INTERVAL
-
-    if normalized in NORMALIZED_TYPE_TO_CLICKHOUSE_TYPES[NORMALIZED_TYPE_SPECIAL]:
-        return NORMALIZED_TYPE_SPECIAL
-
-    return None
+    return Type.Unknown
 
 
 def _escape_identifier(name: str) -> str:
@@ -111,7 +235,11 @@ def _escape_identifier(name: str) -> str:
     return f"`{escaped}`"
 
 
-class Column(CoreColumn):
+class Column:
+    """Opaque ClickHouse-dialect column. ``flyql_type`` is the primary
+    dispatch input for generator code; ``raw_type`` is the fallback for
+    DDL-level inspection."""
+
     def __init__(
         self,
         name: str,
@@ -121,18 +249,27 @@ class Column(CoreColumn):
         display_name: str = "",
         raw_identifier: str = "",
     ):
-        escaped = _escape_identifier(name)
-        normalized = normalize_clickhouse_type(_type)
-        super().__init__(
-            name=escaped,
-            jsonstring=jsonstring,
-            _type=_type,
-            normalized_type=normalized,
-            values=values,
-            display_name=display_name,
-            raw_identifier=raw_identifier,
-            match_name=name,
-        )
-        self.is_map = normalized == NORMALIZED_TYPE_MAP
-        self.is_array = normalized == NORMALIZED_TYPE_ARRAY
-        self.is_json = normalized == NORMALIZED_TYPE_JSON
+        # Public attributes
+        self.name = _escape_identifier(name)
+        self.match_name = name
+        # JSONString is an orthogonal capability flag. NOT validated against
+        # the computed flyql_type — see Tech Decision #5.
+        self.jsonstring = jsonstring
+        self.values: List[str] = values or []
+        self.display_name = display_name
+        self.raw_identifier = raw_identifier
+        # Internal type fields
+        self._raw_type = _type
+        self._flyql_type: Type = normalize_clickhouse_type(_type)
+
+    @property
+    def raw_type(self) -> str:
+        return self._raw_type
+
+    @property
+    def flyql_type(self) -> Type:
+        return self._flyql_type
+
+    def with_raw_identifier(self, identifier: str) -> "Column":
+        self.raw_identifier = identifier
+        return self

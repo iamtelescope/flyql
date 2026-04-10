@@ -3,7 +3,8 @@
  */
 
 import { Operator, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
-import { defaultRegistry, TransformerType } from '../transformers/index.js'
+import { Type } from '../flyql_type.js'
+import { defaultRegistry } from '../transformers/index.js'
 
 const OPERATOR_NAMES = {
     [Operator.EQUALS]: 'equals',
@@ -30,15 +31,24 @@ export const STATE_LABELS = {
     transformer: 'transformer',
 }
 
-const COLUMN_TYPE_TO_TRANSFORMER_TYPE = {
-    string: TransformerType.STRING,
-    text: TransformerType.STRING,
-    enum: TransformerType.STRING,
-    number: TransformerType.INT,
-    int: TransformerType.INT,
-    integer: TransformerType.INT,
-    float: TransformerType.FLOAT,
+const COLUMN_TYPE_TO_FLYQL = {
+    string: Type.String,
+    text: Type.String,
+    enum: Type.String,
+    number: Type.Int,
+    int: Type.Int,
+    integer: Type.Int,
+    float: Type.Float,
+    bool: Type.Bool,
+    boolean: Type.Bool,
+    array: Type.Array,
+    map: Type.Map,
+    struct: Type.Struct,
+    json: Type.JSON,
+    date: Type.Date,
 }
+
+const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))
 
 export function getTransformerSuggestions(schema, ctx, registry = null) {
     if (!registry) registry = defaultRegistry()
@@ -62,7 +72,11 @@ export function getTransformerSuggestions(schema, ctx, registry = null) {
         // First transformer: resolve column type
         const colDef = ctx.transformerBaseKey ? schema.resolve(ctx.transformerBaseKey.split('.')) : null
         if (colDef && colDef.type) {
-            inputType = COLUMN_TYPE_TO_TRANSFORMER_TYPE[colDef.type.toLowerCase()] || null
+            if (_FLYQL_TYPE_VALUES.has(colDef.type)) {
+                inputType = colDef.type
+            } else {
+                inputType = COLUMN_TYPE_TO_FLYQL[String(colDef.type).toLowerCase()] || null
+            }
         }
     }
 
@@ -138,17 +152,21 @@ export function getKeySuggestions(schema, prefix) {
     if (prefix.includes('.')) {
         const nested = getNestedColumnSuggestions(schema, prefix)
         if (nested.length > 0) return nested
-        // Check if this is a schemaless object column (no children) — signal async needed
+        // Check if this is a schemaless object column (no children) — signal async needed.
+        // After the unify-column-type-system refactor, "object" can be either
+        // the raw editor-input string 'object' OR the canonical Type.Unknown
+        // (since 'object' isn't a flyql.Type, it gets normalized to Unknown).
         const dotIndex = prefix.lastIndexOf('.')
         const rawParentPath = prefix.substring(0, dotIndex)
         const segments = rawParentPath.split('.')
         const rootCol = schema.get(segments[0])
-        if (rootCol && rootCol.type === 'object') {
+        const isObjectLike = (col) => col && (col.type === 'object' || col.type === Type.Unknown)
+        if (isObjectLike(rootCol)) {
             if (!rootCol.children) {
                 return null // root is schemaless object — signal async
             }
             const fullResolved = schema.resolve(segments)
-            if (fullResolved && !fullResolved.children && fullResolved.type === 'object') {
+            if (fullResolved && !fullResolved.children && isObjectLike(fullResolved)) {
                 return null // reached a schemaless object deeper in static tree
             }
         }
@@ -189,8 +207,24 @@ export function getOperatorSuggestions(schema, fieldName, registry = null) {
         { label: Operator.LIKE, insertText: ' ' + Operator.LIKE + ' ', sortText: 'k' },
         { label: Operator.ILIKE, insertText: ' ' + Operator.ILIKE + ' ', sortText: 'l' },
     ]
-    if (col && col.type === 'number') {
-        // remove HAS, LIKE, ILIKE — not supported for number columns
+    // After the unify-column-type-system refactor, col.type holds a
+    // canonical flyql.Type value. Numeric columns (Int/Float) get
+    // HAS/LIKE/ILIKE removed. Enum-like columns (Type.String with a
+    // bounded `values` list) get regex operators removed for UX. The
+    // helpers also accept raw editor-input strings ('number', 'enum')
+    // for callers that bypass the editor engine's normalization step.
+    const colTypeNormalized =
+        col && col.type
+            ? _FLYQL_TYPE_VALUES.has(col.type)
+                ? col.type
+                : COLUMN_TYPE_TO_FLYQL[String(col.type).toLowerCase()] || col.type
+            : null
+    const rawType = col && col.type ? String(col.type).toLowerCase() : null
+    const isNumeric = colTypeNormalized === Type.Int || colTypeNormalized === Type.Float || rawType === 'number'
+    const isEnumLike =
+        (colTypeNormalized === Type.String && Array.isArray(col && col.values) && col.values.length > 0) ||
+        rawType === 'enum'
+    if (isNumeric) {
         ops.splice(
             ops.findIndex((o) => o.label === Operator.HAS),
             1,
@@ -204,7 +238,7 @@ export function getOperatorSuggestions(schema, fieldName, registry = null) {
             1,
         )
     }
-    if (!col || (col.type !== 'enum' && col.type !== 'number')) {
+    if (!col || (!isEnumLike && !isNumeric)) {
         ops.push({ label: Operator.REGEX, insertText: Operator.REGEX, sortText: 'c' })
         ops.push({ label: Operator.NOT_REGEX, insertText: Operator.NOT_REGEX, sortText: 'd' })
     }
@@ -217,7 +251,14 @@ export function getOperatorSuggestions(schema, fieldName, registry = null) {
     }))
 
     // Insert pipe after equals and not-equals (3rd position)
-    const colType = col && col.type ? COLUMN_TYPE_TO_TRANSFORMER_TYPE[col.type.toLowerCase()] : null
+    let colType = null
+    if (col && col.type) {
+        if (_FLYQL_TYPE_VALUES.has(col.type)) {
+            colType = col.type
+        } else {
+            colType = COLUMN_TYPE_TO_FLYQL[String(col.type).toLowerCase()] || null
+        }
+    }
     const hasTransformers = registry.names().some((name) => {
         const t = registry.get(name)
         return !colType || t.inputType === colType
@@ -408,14 +449,17 @@ export async function getKeyDiscoverySuggestions(schema, prefix, onKeyDiscovery,
     const rootCol = schema.get(segments[0])
     if (!rootCol || rootCol.suggest === false) return []
 
+    // After the unify-column-type-system refactor, "object" can be either
+    // the raw editor-input string 'object' OR canonical Type.Unknown.
+    const isObjectLike = (col) => col && (col.type === 'object' || col.type === Type.Unknown)
     // If root node has children, check if the full path resolves through static children
     if (rootCol.children) {
         const fullResolved = schema.resolve(segments)
         if (fullResolved && fullResolved.children) return [] // fully static path
-        if (fullResolved && fullResolved.type !== 'object') return [] // leaf node
+        if (fullResolved && !isObjectLike(fullResolved)) return [] // leaf node
         if (!fullResolved) return []
     }
-    if (rootCol.type !== 'object') return []
+    if (!isObjectLike(rootCol)) return []
 
     const parentPath = segments.join('.')
     const rootColumnName = segments[0]

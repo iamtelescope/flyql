@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/iamtelescope/flyql/golang/types"
+	"github.com/iamtelescope/flyql/golang/literal"
 )
 
 type Duration struct {
@@ -29,27 +29,27 @@ type Expression struct {
 	Key           Key
 	Operator      string
 	Value         any
-	ValueType     types.ValueType
+	ValueType     literal.LiteralKind
 	Values        []any
 	ValuesType    *string
-	ValuesTypes   []types.ValueType
+	ValuesTypes   []literal.LiteralKind
 	Range         Range
 	OperatorRange *Range
 	ValueRange    *Range
 	ValueRanges   []Range
 }
 
-func convertUnquotedValue(value string) (any, types.ValueType) {
+func convertUnquotedValue(value string) (any, literal.LiteralKind) {
 	if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-		return i, types.Integer
+		return i, literal.Integer
 	}
 	if u, err := strconv.ParseUint(value, 10, 64); err == nil {
-		return u, types.BigInt
+		return u, literal.BigInt
 	}
 	if f, err := strconv.ParseFloat(value, 64); err == nil {
-		return f, types.Float
+		return f, literal.Float
 	}
-	return value, types.Column
+	return value, literal.Column
 }
 
 func NewExpression(key Key, operator string, value string, valueIsString bool) (*Expression, error) {
@@ -67,7 +67,7 @@ func NewExpression(key Key, operator string, value string, valueIsString bool) (
 
 	if valueIsString {
 		expr.Value = value
-		expr.ValueType = types.String
+		expr.ValueType = literal.String
 	} else {
 		expr.Value, expr.ValueType = convertUnquotedValue(value)
 	}
@@ -80,7 +80,7 @@ func NewFunctionCallExpression(key Key, operator string, fc *FunctionCall) *Expr
 		Key:       key,
 		Operator:  operator,
 		Value:     fc,
-		ValueType: types.Function,
+		ValueType: literal.Function,
 	}
 }
 
@@ -89,11 +89,11 @@ func NewParameterExpression(key Key, operator string, param *Parameter) *Express
 		Key:       key,
 		Operator:  operator,
 		Value:     param,
-		ValueType: types.Parameter,
+		ValueType: literal.Parameter,
 	}
 }
 
-func NewInExpression(key Key, operator string, values []any, valuesType *string, valuesTypes []types.ValueType) *Expression {
+func NewInExpression(key Key, operator string, values []any, valuesType *string, valuesTypes []literal.LiteralKind) *Expression {
 	return &Expression{
 		Key:         key,
 		Operator:    operator,

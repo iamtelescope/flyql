@@ -18,7 +18,7 @@ from typing import Any, Dict, Set, Union
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression, FunctionCall, Parameter, Duration
 from flyql.core.tree import Node
-from flyql.types import ValueType
+from flyql.literal import LiteralKind
 
 INT64_MIN = -(2**63)
 INT64_MAX = 2**63 - 1
@@ -26,20 +26,20 @@ INT64_MAX = 2**63 - 1
 _DURATION_UNITS = ("s", "m", "h", "d", "w")
 
 
-def _value_type_for(value: Any) -> ValueType:
-    """Map a Python value to its FlyQL ValueType. Raises on unsupported."""
+def _value_type_for(value: Any) -> LiteralKind:
+    """Map a Python value to its FlyQL LiteralKind. Raises on unsupported."""
     if value is None:
-        return ValueType.NULL
+        return LiteralKind.NULL
     if isinstance(value, bool):
-        return ValueType.BOOLEAN
+        return LiteralKind.BOOLEAN
     if isinstance(value, int):
         if INT64_MIN <= value <= INT64_MAX:
-            return ValueType.INTEGER
-        return ValueType.BIGINT
+            return LiteralKind.INTEGER
+        return LiteralKind.BIGINT
     if isinstance(value, float):
-        return ValueType.FLOAT
+        return LiteralKind.FLOAT
     if isinstance(value, str):
-        return ValueType.STRING
+        return LiteralKind.STRING
     raise FlyqlError(f"unsupported parameter value type: {type(value).__name__}")
 
 

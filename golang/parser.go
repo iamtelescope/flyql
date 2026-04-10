@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/iamtelescope/flyql/golang/types"
+	"github.com/iamtelescope/flyql/golang/literal"
 )
 
 var validKeyValueOperators = map[string]bool{
@@ -65,7 +65,7 @@ type Parser struct {
 	inListCurrentValue         string
 	inListCurrentValueIsString *bool
 	inListValuesType           *string
-	inListValuesTypes          []types.ValueType
+	inListValuesTypes          []literal.LiteralKind
 	isNotIn                    bool
 	isNotHas                   bool
 	isNotLike                  bool
@@ -193,17 +193,17 @@ func (p *Parser) finalizeInListValue() bool {
 	}
 
 	var value any
-	var explicitType types.ValueType
+	var explicitType literal.LiteralKind
 
 	if p.inListCurrentValueIsString != nil && *p.inListCurrentValueIsString {
 		value = unescapeQuotes(p.inListCurrentValue, p.inListQuoteChar)
-		explicitType = types.String
+		explicitType = literal.String
 	} else if p.inListCurrentValue == "null" {
 		value = nil
-		explicitType = types.Null
+		explicitType = literal.Null
 	} else if p.inListCurrentValue == "true" || p.inListCurrentValue == "false" {
 		value = p.inListCurrentValue == "true"
-		explicitType = types.Boolean
+		explicitType = literal.Boolean
 	} else {
 		value, explicitType = convertUnquotedValue(p.inListCurrentValue)
 	}
@@ -367,7 +367,7 @@ func (p *Parser) newExpression() *Expression {
 			Key:           key,
 			Operator:      p.keyValueOperator,
 			Value:         nil,
-			ValueType:     types.Null,
+			ValueType:     literal.Null,
 			Range:         exprRange,
 			OperatorRange: operatorRange,
 			ValueRange:    valueRange,
@@ -379,7 +379,7 @@ func (p *Parser) newExpression() *Expression {
 			Key:           key,
 			Operator:      p.keyValueOperator,
 			Value:         value == "true",
-			ValueType:     types.Boolean,
+			ValueType:     literal.Boolean,
 			Range:         exprRange,
 			OperatorRange: operatorRange,
 			ValueRange:    valueRange,
@@ -1930,7 +1930,7 @@ func (p *Parser) finalizeInListParameter() bool {
 	}
 	param := &Parameter{Name: name, Positional: isDigitStart}
 	p.inListValues = append(p.inListValues, param)
-	p.inListValuesTypes = append(p.inListValuesTypes, types.Parameter)
+	p.inListValuesTypes = append(p.inListValuesTypes, literal.Parameter)
 	if p.inListValueStart >= 0 {
 		p.inListValueRanges = append(p.inListValueRanges, Range{Start: p.inListValueStart, End: p.inListValueEnd})
 	}

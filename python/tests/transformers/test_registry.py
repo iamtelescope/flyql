@@ -1,7 +1,8 @@
 import pytest
 from typing import Any
 
-from flyql.transformers.base import Transformer, TransformerType
+from flyql.transformers.base import Transformer
+from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 
@@ -11,12 +12,12 @@ class _DummyTransformer(Transformer):
         return "dummy"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         return f"DUMMY({column_ref})"
@@ -83,11 +84,11 @@ class TestDefaultRegistry:
     def test_upper_types(self) -> None:
         t = default_registry().get("upper")
         assert t is not None
-        assert t.input_type == TransformerType.STRING
-        assert t.output_type == TransformerType.STRING
+        assert t.input_type == Type.String
+        assert t.output_type == Type.String
 
     def test_len_types(self) -> None:
         t = default_registry().get("len")
         assert t is not None
-        assert t.input_type == TransformerType.STRING
-        assert t.output_type == TransformerType.INT
+        assert t.input_type == Type.String
+        assert t.output_type == Type.Int

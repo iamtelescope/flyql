@@ -1,7 +1,7 @@
-import { ValueType } from '../types.js'
-import { normalizedToTransformerType, ColumnSchema } from './column.js'
+import { LiteralKind } from '../literal/literal_kind.js'
+import { Type } from '../flyql_type.js'
+import { ColumnSchema } from './column.js'
 import { Range } from './range.js'
-import { TransformerType } from '../transformers/base.js'
 import { defaultRegistry } from '../transformers/registry.js'
 
 export const CODE_UNKNOWN_COLUMN = 'unknown_column'
@@ -45,11 +45,11 @@ function _walk(node, schema, registry) {
     return diags
 }
 
-function _jsToTransformerType(v) {
-    if (typeof v === 'boolean') return TransformerType.BOOL
-    if (typeof v === 'number' && Number.isInteger(v)) return TransformerType.INT
-    if (typeof v === 'number') return TransformerType.FLOAT
-    if (typeof v === 'string') return TransformerType.STRING
+export function jsToFlyQLType(v) {
+    if (typeof v === 'boolean') return Type.Bool
+    if (typeof v === 'number' && Number.isInteger(v)) return Type.Int
+    if (typeof v === 'number') return Type.Float
+    if (typeof v === 'string') return Type.String
     return null
 }
 
@@ -68,7 +68,6 @@ function _diagnoseExpression(expression, schema, registry) {
         return diags
     }
 
-    // Nested traversal: walk all segments through schema
     let col = schema.get(expression.key.segments[0])
     let prevOutputType
 
@@ -85,7 +84,7 @@ function _diagnoseExpression(expression, schema, registry) {
     } else {
         for (let i = 1; i < expression.key.segments.length; i++) {
             const seg = expression.key.segments[i]
-            if (seg === '') break // trailing dot — user still typing
+            if (seg === '') break
             if (col.children == null) {
                 diags.push(
                     new Diagnostic(
@@ -113,7 +112,7 @@ function _diagnoseExpression(expression, schema, registry) {
             }
             col = child
         }
-        prevOutputType = col != null ? normalizedToTransformerType(col.normalizedType) : null
+        prevOutputType = col != null && col.type && col.type !== Type.Unknown ? col.type : null
     }
 
     for (const transformer of expression.key.transformers) {
@@ -132,7 +131,6 @@ function _diagnoseExpression(expression, schema, registry) {
             continue
         }
 
-        // Arity check
         const requiredCount = t.argSchema.filter((s) => s.required).length
         const maxCount = t.argSchema.length
         const got = transformer.arguments.length
@@ -153,15 +151,13 @@ function _diagnoseExpression(expression, schema, registry) {
             )
         }
 
-        // Per-argument type check
         for (let j = 0; j < transformer.arguments.length; j++) {
             if (j >= t.argSchema.length) break
             const expected = t.argSchema[j].type
-            const actual = _jsToTransformerType(transformer.arguments[j])
+            const actual = jsToFlyQLType(transformer.arguments[j])
             if (actual == null) continue
             if (actual === expected) continue
-            // int widens to float
-            if (actual === TransformerType.INT && expected === TransformerType.FLOAT) continue
+            if (actual === Type.Int && expected === Type.Float) continue
             diags.push(
                 new Diagnostic(
                     transformer.argumentRanges[j],
@@ -172,7 +168,6 @@ function _diagnoseExpression(expression, schema, registry) {
             )
         }
 
-        // Chain type check
         if (prevOutputType != null && prevOutputType !== t.inputType) {
             diags.push(
                 new Diagnostic(
@@ -187,8 +182,11 @@ function _diagnoseExpression(expression, schema, registry) {
         prevOutputType = t.outputType
     }
 
-    // COLUMN value validation
-    if (expression.valueType === ValueType.COLUMN && typeof expression.value === 'string' && expression.value !== '') {
+    if (
+        expression.valueType === LiteralKind.COLUMN &&
+        typeof expression.value === 'string' &&
+        expression.value !== ''
+    ) {
         if (!VALID_COLUMN_NAME_RE.test(expression.value)) {
             if (expression.valueRange != null) {
                 diags.push(
@@ -214,10 +212,9 @@ function _diagnoseExpression(expression, schema, registry) {
         }
     }
 
-    // IN-list COLUMN value validation
     if (expression.valuesTypes != null) {
         for (let i = 0; i < expression.valuesTypes.length; i++) {
-            if (expression.valuesTypes[i] === ValueType.COLUMN && typeof expression.values[i] === 'string') {
+            if (expression.valuesTypes[i] === LiteralKind.COLUMN && typeof expression.values[i] === 'string') {
                 const val = expression.values[i]
                 if (!VALID_COLUMN_NAME_RE.test(val)) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {

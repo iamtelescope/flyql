@@ -4,7 +4,8 @@ import pytest
 from typing import Any
 
 from flyql.core.parser import parse
-from flyql.transformers.base import Transformer, TransformerType
+from flyql.transformers.base import Transformer
+from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 from flyql.generators.clickhouse import generator as ch_gen
 from flyql.generators.clickhouse.column import Column as ChColumn
@@ -22,12 +23,12 @@ class FirstOctetTransformer(Transformer):
         return "firstoctet"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.INT
+    def output_type(self) -> Type:
+        return Type.Int
 
     def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
         if dialect == "clickhouse":
@@ -50,8 +51,8 @@ class TestCustomRegistration:
         t = registry.get("firstoctet")
         assert t is not None
         assert t.name == "firstoctet"
-        assert t.input_type == TransformerType.STRING
-        assert t.output_type == TransformerType.INT
+        assert t.input_type == Type.String
+        assert t.output_type == Type.Int
 
     def test_builtins_still_available(self) -> None:
         registry = _custom_registry()

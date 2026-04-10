@@ -1,6 +1,6 @@
 import pytest
 
-from flyql.transformers.base import TransformerType
+from flyql.flyql_type import Type
 from flyql.transformers.builtins import (
     LenTransformer,
     LowerTransformer,
@@ -17,10 +17,10 @@ class TestUpperTransformer:
         assert self.t.name == "upper"
 
     def test_input_type(self) -> None:
-        assert self.t.input_type == TransformerType.STRING
+        assert self.t.input_type == Type.String
 
     def test_output_type(self) -> None:
-        assert self.t.output_type == TransformerType.STRING
+        assert self.t.output_type == Type.String
 
     @pytest.mark.parametrize(
         "dialect, col, expected",
@@ -48,10 +48,10 @@ class TestLowerTransformer:
         assert self.t.name == "lower"
 
     def test_input_type(self) -> None:
-        assert self.t.input_type == TransformerType.STRING
+        assert self.t.input_type == Type.String
 
     def test_output_type(self) -> None:
-        assert self.t.output_type == TransformerType.STRING
+        assert self.t.output_type == Type.String
 
     @pytest.mark.parametrize(
         "dialect, col, expected",
@@ -76,10 +76,10 @@ class TestLenTransformer:
         assert self.t.name == "len"
 
     def test_input_type(self) -> None:
-        assert self.t.input_type == TransformerType.STRING
+        assert self.t.input_type == Type.String
 
     def test_output_type(self) -> None:
-        assert self.t.output_type == TransformerType.INT
+        assert self.t.output_type == Type.Int
 
     @pytest.mark.parametrize(
         "dialect, col, expected",

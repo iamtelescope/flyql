@@ -3,83 +3,136 @@ package postgresql
 import (
 	"regexp"
 	"strings"
+
+	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
-var typeRegexes = map[string]*regexp.Regexp{
-	NormalizedTypeString: regexp.MustCompile(`(?i)^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)`),
-	NormalizedTypeFloat:  regexp.MustCompile(`(?i)^(numeric|decimal)\s*\(\s*\d+\s*(,\s*\d+)?\s*\)`),
-	NormalizedTypeDate:   regexp.MustCompile(`(?i)^timestamp\s*\(\s*\d+\s*\)`),
-	NormalizedTypeArray:  regexp.MustCompile(`(?i)(\[\]$|^_)`),
+var typeRegexes = map[flyqltype.Type]*regexp.Regexp{
+	flyqltype.String: regexp.MustCompile(`(?i)^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)`),
+	flyqltype.Float:  regexp.MustCompile(`(?i)^(numeric|decimal)\s*\(\s*\d+\s*(,\s*\d+)?\s*\)`),
+	flyqltype.Date:   regexp.MustCompile(`(?i)^timestamp\s*\(\s*\d+\s*\)`),
+	flyqltype.Array:  regexp.MustCompile(`(?i)(\[\]$|^_)`),
 }
 
-func NormalizePostgreSQLType(pgType string) string {
+// flyqlTypeToPostgreSQLTypes is the lookup table for raw PostgreSQL DB
+// type names. PG renames: jsonb→json, hstore→map, interval→duration.
+var flyqlTypeToPostgreSQLTypes = map[flyqltype.Type]map[string]bool{
+	flyqltype.String: {
+		"text": true, "varchar": true, "char": true,
+		"character varying": true, "character": true, "name": true,
+		"uuid": true, "citext": true, "inet": true, "cidr": true, "macaddr": true,
+	},
+	flyqltype.Int: {
+		"smallint": true, "integer": true, "bigint": true,
+		"int2": true, "int4": true, "int8": true,
+		"serial": true, "bigserial": true, "smallserial": true,
+	},
+	flyqltype.Float: {
+		"real": true, "double precision": true, "numeric": true,
+		"decimal": true, "float4": true, "float8": true, "money": true,
+	},
+	flyqltype.Bool: {
+		"boolean": true, "bool": true,
+	},
+	flyqltype.Date: {
+		"date": true, "timestamp": true, "timestamptz": true,
+		"timestamp without time zone": true, "timestamp with time zone": true,
+		"time": true, "timetz": true,
+	},
+	flyqltype.Duration: {
+		"interval": true,
+	},
+	flyqltype.JSON: {
+		"jsonb": true, "json": true,
+	},
+	flyqltype.Map: {
+		"hstore": true,
+	},
+}
+
+// NormalizePostgreSQLType maps a raw PostgreSQL DB type string to its
+// canonical flyql.Type. Unknown raw types map to flyqltype.Unknown.
+func NormalizePostgreSQLType(pgType string) flyqltype.Type {
 	if pgType == "" {
-		return ""
+		return flyqltype.Unknown
 	}
 
 	normalized := strings.ToLower(strings.TrimSpace(pgType))
 
-	if typeRegexes[NormalizedTypeArray].MatchString(normalized) {
-		return NormalizedTypeArray
+	if typeRegexes[flyqltype.Array].MatchString(normalized) {
+		return flyqltype.Array
 	}
 
-	if typeRegexes[NormalizedTypeString].MatchString(normalized) {
-		return NormalizedTypeString
+	if typeRegexes[flyqltype.String].MatchString(normalized) {
+		return flyqltype.String
 	}
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeString][normalized] {
-		return NormalizedTypeString
-	}
-
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeInt][normalized] {
-		return NormalizedTypeInt
+	if flyqlTypeToPostgreSQLTypes[flyqltype.String][normalized] {
+		return flyqltype.String
 	}
 
-	if typeRegexes[NormalizedTypeFloat].MatchString(normalized) {
-		return NormalizedTypeFloat
-	}
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeFloat][normalized] {
-		return NormalizedTypeFloat
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Int][normalized] {
+		return flyqltype.Int
 	}
 
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeBool][normalized] {
-		return NormalizedTypeBool
+	if typeRegexes[flyqltype.Float].MatchString(normalized) {
+		return flyqltype.Float
+	}
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Float][normalized] {
+		return flyqltype.Float
 	}
 
-	if typeRegexes[NormalizedTypeDate].MatchString(normalized) {
-		return NormalizedTypeDate
-	}
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeDate][normalized] {
-		return NormalizedTypeDate
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Bool][normalized] {
+		return flyqltype.Bool
 	}
 
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeJSON][normalized] {
-		return NormalizedTypeJSON
+	if typeRegexes[flyqltype.Date].MatchString(normalized) {
+		return flyqltype.Date
+	}
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Date][normalized] {
+		return flyqltype.Date
 	}
 
-	if normalizedTypeToPostgreSQLTypes[NormalizedTypeHstore][normalized] {
-		return NormalizedTypeHstore
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Duration][normalized] {
+		return flyqltype.Duration
 	}
 
-	return ""
+	if flyqlTypeToPostgreSQLTypes[flyqltype.JSON][normalized] {
+		return flyqltype.JSON
+	}
+
+	if flyqlTypeToPostgreSQLTypes[flyqltype.Map][normalized] {
+		return flyqltype.Map
+	}
+
+	return flyqltype.Unknown
 }
 
+// Column is the opaque PostgreSQL-dialect column. Construct via
+// NewColumn(ColumnDef). Public surface is Name/RawIdentifier/JSONString/
+// Values/DisplayName plus the RawType() and FlyQLType() accessors.
 type Column struct {
-	Name           string   `json:"name" yaml:"name"`
-	JSONString     bool     `json:"jsonstring" yaml:"jsonstring"`
-	Type           string   `json:"type" yaml:"type"`
-	Values         []string `json:"values,omitempty" yaml:"values,omitempty"`
-	NormalizedType string   `json:"normalized_type" yaml:"normalized_type"`
-	IsArray        bool     `json:"is_array" yaml:"is_array"`
-	IsJSONB        bool     `json:"is_jsonb" yaml:"is_jsonb"`
-	IsHstore       bool     `json:"is_hstore" yaml:"is_hstore"`
+	Name string `json:"name" yaml:"name"`
+	// JSONString is an orthogonal capability flag — see flyql.Column.
+	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
+	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	// RawIdentifier, if set, is used as-is in generated SQL instead of
-	// EscapeIdentifier(Name). Use this for table-qualified references
-	// (e.g. "r.environment") when the column name would otherwise be
-	// ambiguous across joined tables.
+	// EscapeIdentifier(Name). Use this for table-qualified references.
 	RawIdentifier string `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
-	DisplayName   string `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+
+	rawType   string
+	flyqlType flyqltype.Type
 }
 
+// RawType returns the raw PostgreSQL DB type string the column was
+// constructed with. The primary dispatch input is FlyQLType.
+func (c *Column) RawType() string { return c.rawType }
+
+// FlyQLType returns the canonical flyql.Type for this column.
+func (c *Column) FlyQLType() flyqltype.Type { return c.flyqlType }
+
+// ColumnDef is the public input contract for constructing a Column.
 type ColumnDef struct {
 	Name          string   `json:"name" yaml:"name"`
 	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
@@ -89,18 +142,26 @@ type ColumnDef struct {
 	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
 }
 
+// NewColumn constructs a PostgreSQL Column from a ColumnDef.
 func NewColumn(def ColumnDef) *Column {
-	normalizedType := NormalizePostgreSQLType(def.Type)
 	return &Column{
-		Name:           def.Name,
-		JSONString:     def.JSONString,
-		Type:           def.Type,
-		Values:         def.Values,
-		NormalizedType: normalizedType,
-		IsArray:        normalizedType == NormalizedTypeArray,
-		IsJSONB:        normalizedType == NormalizedTypeJSON,
-		IsHstore:       normalizedType == NormalizedTypeHstore,
-		RawIdentifier:  def.RawIdentifier,
-		DisplayName:    def.DisplayName,
+		Name:          def.Name,
+		JSONString:    def.JSONString,
+		Values:        def.Values,
+		DisplayName:   def.DisplayName,
+		RawIdentifier: def.RawIdentifier,
+		rawType:       def.Type,
+		flyqlType:     NormalizePostgreSQLType(def.Type),
 	}
+}
+
+// ToFlyQLSchema bridges a slice of dialect Columns to a canonical
+// flyql.ColumnSchema for use with the validator.
+func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
+	m := make(map[string]*flyql.Column, len(cols))
+	for _, c := range cols {
+		fc := flyql.NewColumn(c.Name, c.JSONString, c.FlyQLType())
+		m[c.Name] = &fc
+	}
+	return flyql.NewColumnSchema(m)
 }

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/literal"
 	"github.com/iamtelescope/flyql/golang/transformers"
-	"github.com/iamtelescope/flyql/golang/types"
 )
 
 type Evaluator struct {
@@ -133,7 +133,7 @@ func (e *Evaluator) Evaluate(node *flyql.Node, record *Record) (bool, error) {
 }
 
 func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool, error) {
-	if expr.ValueType == types.Parameter {
+	if expr.ValueType == literal.Parameter {
 		if p, ok := expr.Value.(*flyql.Parameter); ok {
 			return false, fmt.Errorf("unbound parameter '$%s' — call BindParams() before evaluating", p.Name)
 		}
@@ -162,7 +162,7 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 
 	// Resolve COLUMN-typed RHS values from the record
 	exprValue := expr.Value
-	if expr.ValueType == types.Column {
+	if expr.ValueType == literal.Column {
 		if strVal, ok := exprValue.(string); ok {
 			rhsKey := NewKey(strVal)
 			if _, exists := record.data[rhsKey.Value]; exists {
@@ -172,7 +172,7 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 	}
 
 	// Resolve FUNCTION-typed RHS values to milliseconds since epoch
-	if expr.ValueType == types.Function {
+	if expr.ValueType == literal.Function {
 		fc, ok := expr.Value.(*flyql.FunctionCall)
 		if !ok {
 			return false, fmt.Errorf("expected FunctionCall value for function type")
@@ -275,7 +275,7 @@ func (e *Evaluator) resolveInValues(expr *flyql.Expression, record *Record) []an
 	}
 	resolved := make([]any, len(expr.Values))
 	for i, v := range expr.Values {
-		if i < len(expr.ValuesTypes) && expr.ValuesTypes[i] == types.Column {
+		if i < len(expr.ValuesTypes) && expr.ValuesTypes[i] == literal.Column {
 			if strVal, ok := v.(string); ok {
 				rhsKey := NewKey(strVal)
 				if _, exists := record.data[rhsKey.Value]; exists {

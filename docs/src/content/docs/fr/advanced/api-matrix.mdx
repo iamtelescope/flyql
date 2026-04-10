@@ -32,7 +32,7 @@ FlyQL provides identical functionality across Go, Python, and JavaScript. This m
 | Column schema | `ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 | Range | `Range` | `Range` | `Range` |
 | Operators | string constants | `Operator`, `BoolOperator` (enums) | `Operator`, `BoolOperator` |
-| Value types | `types.Integer`, etc. | `ValueType.INTEGER`, etc. | `ValueType.INTEGER`, etc. |
+| Value types | `types.Integer`, etc. | `LiteralKind.INTEGER`, etc. | `LiteralKind.INTEGER`, etc. |
 
 ## Generators — WHERE Clause
 
@@ -86,7 +86,7 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | Registry | `DefaultRegistry()` | `default_registry()` | `defaultRegistry()` |
 | **Types** | | | |
 | Transformer interface | `Transformer` (interface) | `Transformer` (ABC) | `Transformer` (class) |
-| Transformer type | `TransformerType` | `TransformerType` | `TransformerType` |
+| Transformer type | `Type` | `Type` | `Type` |
 | Arg spec | `ArgSpec` | `ArgSpec` | `ArgSpec` |
 | Registry type | `TransformerRegistry` | `TransformerRegistry` | `TransformerRegistry` |
 
@@ -104,8 +104,8 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 
 ## Top-Level Package Imports
 
-**Python** — `from flyql import parse, bind_params, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, ValueType`
+**Python** — `from flyql import parse, bind_params, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, Diagnostic, diagnose, LiteralKind`
 
-**JavaScript** — `import { parse, bindParams, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, ValueType } from 'flyql'`
+**JavaScript** — `import { parse, bindParams, Node, Expression, Parameter, FunctionCall, Key, Column, ColumnSchema, Operator, Range, LiteralKind } from 'flyql'`
 
 **Go** — `import "github.com/iamtelescope/flyql/golang"` (core), dialect-specific generator imports separately

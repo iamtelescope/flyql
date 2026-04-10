@@ -8,7 +8,7 @@ import pytest
 
 from flyql import parse, bind_params, FlyqlError
 from flyql.core.expression import Parameter
-from flyql.types import ValueType
+from flyql.literal import LiteralKind
 
 
 def load_bind_test_data() -> Dict[str, Any]:

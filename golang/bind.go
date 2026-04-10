@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/iamtelescope/flyql/golang/types"
+	"github.com/iamtelescope/flyql/golang/literal"
 )
 
 var durationUnits = map[string]bool{
@@ -18,33 +18,33 @@ var durationUnits = map[string]bool{
 
 // valueTypeFor maps a Go value to its FlyQL ValueType. Returns an error on
 // unsupported types.
-func valueTypeFor(value any) (types.ValueType, error) {
+func valueTypeFor(value any) (literal.LiteralKind, error) {
 	if value == nil {
-		return types.Null, nil
+		return literal.Null, nil
 	}
 	switch v := value.(type) {
 	case bool:
-		return types.Boolean, nil
+		return literal.Boolean, nil
 	case int:
-		return types.Integer, nil
+		return literal.Integer, nil
 	case int8, int16, int32, int64:
-		return types.Integer, nil
+		return literal.Integer, nil
 	case uint, uint8, uint16, uint32:
-		return types.Integer, nil
+		return literal.Integer, nil
 	case uint64:
 		if v > uint64(^uint64(0)>>1) { // > math.MaxInt64
-			return types.BigInt, nil
+			return literal.BigInt, nil
 		}
-		return types.Integer, nil
+		return literal.Integer, nil
 	case *big.Int:
 		if v.IsInt64() {
-			return types.Integer, nil
+			return literal.Integer, nil
 		}
-		return types.BigInt, nil
+		return literal.BigInt, nil
 	case float32, float64:
-		return types.Float, nil
+		return literal.Float, nil
 	case string:
-		return types.String, nil
+		return literal.String, nil
 	}
 	return "", fmt.Errorf("unsupported parameter value type: %T", value)
 }
@@ -187,7 +187,7 @@ func (s *bindState) bindExpression(expr *Expression) error {
 
 	if expr.Values != nil {
 		newValues := make([]any, len(expr.Values))
-		newTypes := make([]types.ValueType, len(expr.Values))
+		newTypes := make([]literal.LiteralKind, len(expr.Values))
 		for i, item := range expr.Values {
 			if p, ok := item.(*Parameter); ok {
 				val, err := s.resolveParam(p)

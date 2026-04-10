@@ -12,8 +12,8 @@ Cada transformador implementa 6 membros:
 | Membro | Tipo | Descrição |
 |--------|------|-------------|
 | `name` | string | Identificador único em minúsculas (por exemplo, `"firstoctet"`) |
-| `inputType` | TransformerType | Tipo de entrada esperado (`string`, `int`, `float`, `bool`, `array`) |
-| `outputType` | TransformerType | Tipo de saída após a transformação |
+| `inputType` | Type | Tipo de entrada esperado (`string`, `int`, `float`, `bool`, `array`) |
+| `outputType` | Type | Tipo de saída após a transformação |
 | `argSchema` | ArgSpec[] | Tipos de argumento declarados e aridade (por omissão: vazio = sem argumentos) |
 | `sql(dialect, columnRef, args)` | string | Gerar SQL específico do dialeto envolvendo a referência da coluna |
 | `apply(value, args)` | any | Transformar um valor em tempo de execução em memória |
@@ -26,7 +26,7 @@ Cada entrada em `argSchema` declara um argumento esperado:
 
 | Campo | Tipo | Por omissão | Descrição |
 |-------|------|-------------|-------------|
-| `type` | TransformerType | — | Tipo de argumento esperado (`string`, `int`, `float`, `bool`) |
+| `type` | Type | — | Tipo de argumento esperado (`string`, `int`, `float`, `bool`) |
 | `required` | boolean | `true` | Se o argumento deve ser fornecido |
 
 A aridade é derivada do comprimento do esquema: argumentos obrigatórios devem estar presentes, argumentos opcionais finais podem ser omitidos. Transformadores sem argumentos (como `upper`, `lower`, `len`) herdam o esquema vazio por omissão.
@@ -47,15 +47,15 @@ O padrão: obter um registo padrão, registar os seus transformadores personaliz
 Defina um transformador personalizado criando uma subclasse de `Transformer`:
 
 ```python
-from flyql.transformers import Transformer, TransformerType, default_registry
+from flyql.transformers import Transformer, Type, default_registry
 
 class FirstOctetTransformer(Transformer):
     @property
     def name(self): return "firstoctet"
     @property
-    def input_type(self): return TransformerType.STRING
+    def input_type(self): return Type.STRING
     @property
-    def output_type(self): return TransformerType.INT
+    def output_type(self): return Type.INT
     def sql(self, dialect, column_ref, args=None):
         if dialect == "clickhouse":
             return f"toUInt8(splitByChar('.', {column_ref})[1])"
@@ -72,8 +72,8 @@ from flyql.transformers.base import ArgSpec
 
 class SubstringTransformer(Transformer):
     arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
-        ArgSpec(type=TransformerType.INT),                    # start (required)
-        ArgSpec(type=TransformerType.INT, required=False),    # length (optional)
+        ArgSpec(type=Type.INT),                    # start (required)
+        ArgSpec(type=Type.INT, required=False),    # length (optional)
     )
     # ... name, input_type, output_type, sql, apply ...
 ```
@@ -109,12 +109,12 @@ evaluator.evaluate(result.root, record)  # True (193 > 192)
 Defina um transformador personalizado estendendo `Transformer`:
 
 ```javascript
-import { Transformer, TransformerType, ArgSpec, defaultRegistry } from 'flyql/transformers'
+import { Transformer, Type, ArgSpec, defaultRegistry } from 'flyql/transformers'
 
 class FirstOctetTransformer extends Transformer {
     get name() { return 'firstoctet' }
-    get inputType() { return TransformerType.STRING }
-    get outputType() { return TransformerType.INT }
+    get inputType() { return Type.STRING }
+    get outputType() { return Type.INT }
     sql(dialect, columnRef, args = []) {
         if (dialect === 'clickhouse') return `toUInt8(splitByChar('.', ${columnRef})[1])`
         return `CAST(SPLIT_PART(${columnRef}, '.', 1) AS INTEGER)`
@@ -129,8 +129,8 @@ O getter `argSchema` tem como valor por omissão `[]` (sem argumentos). Para dec
 class SubstringTransformer extends Transformer {
     get argSchema() {
         return [
-            new ArgSpec(TransformerType.INT, true),     // start (required)
-            new ArgSpec(TransformerType.INT, false),    // length (optional)
+            new ArgSpec(Type.INT, true),     // start (required)
+            new ArgSpec(Type.INT, false),    // length (optional)
         ]
     }
     // ... name, inputType, outputType, sql, apply ...
@@ -186,8 +186,8 @@ import (
 type FirstOctet struct{}
 
 func (f FirstOctet) Name() string               { return "firstoctet" }
-func (f FirstOctet) InputType() transformers.TransformerType  { return transformers.TransformerTypeString }
-func (f FirstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
+func (f FirstOctet) InputType() transformers.Type  { return transformers.TransformerTypeString }
+func (f FirstOctet) OutputType() transformers.Type { return transformers.TransformerTypeInt }
 func (f FirstOctet) ArgSchema() []transformers.ArgSpec        { return []transformers.ArgSpec{} }
 func (f FirstOctet) SQL(dialect, colRef string, args []any) string {
     if dialect == "clickhouse" {
@@ -266,7 +266,7 @@ from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import diagnose
 
 ast = parse("hstt|upper=X").root
-columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, _type="String", normalized_type="string")])
+columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, column_type=Type.String)])
 diags = diagnose(ast, columns)  # columns is a ColumnSchema
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```

@@ -19,15 +19,16 @@ edit to fix the error):
     invalid_ast          -> Range(0, 0)
 """
 
+import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, List, Literal, Optional
 
-from flyql.core.column import Column, ColumnSchema, normalized_to_transformer_type
+from flyql.core.column import ColumnSchema
 from flyql.core.expression import Expression
 from flyql.core.range import Range
 from flyql.core.tree import Node
-from flyql.types import ValueType
-from flyql.transformers.base import TransformerType
+from flyql.flyql_type import Type
+from flyql.literal import LiteralKind
 from flyql.transformers.base import Transformer as TransformerDef
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
@@ -42,24 +43,11 @@ CODE_INVALID_AST = "invalid_ast"
 CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
 CODE_INVALID_COLUMN_VALUE = "invalid_column_value"
 
-import re
-
 _VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
 
 
 @dataclass(frozen=True)
 class Diagnostic:
-    """A positioned diagnostic produced by diagnose().
-
-    Range semantics per code (highlight the smallest span the user must edit):
-      unknown_column       -> key.segment_ranges[0]
-      unknown_transformer  -> transformer.name_range
-      arg_count            -> transformer.range (full name(args...) span)
-      arg_type             -> transformer.argument_ranges[j]
-      chain_type           -> transformer.name_range
-      invalid_ast          -> Range(0, 0)
-    """
-
     range: Range
     message: str
     severity: DiagnosticSeverity
@@ -115,7 +103,6 @@ def _diagnose_expression(
 ) -> List[Diagnostic]:
     diags: List[Diagnostic] = []
 
-    # F15 guard: missing source ranges
     if (
         not expression.key.segments
         or not expression.key.segment_ranges
@@ -131,7 +118,7 @@ def _diagnose_expression(
         )
         return diags
 
-    # Nested traversal: walk all segments through schema
+    prev_output_type: Optional[Type] = None
     col = schema.get(expression.key.segments[0])
     if col is None:
         diags.append(
@@ -142,7 +129,6 @@ def _diagnose_expression(
                 message=f"column '{expression.key.segments[0]}' is not defined",
             )
         )
-        prev_output_type: Optional[TransformerType] = None
     else:
         for i in range(1, len(expression.key.segments)):
             seg = expression.key.segments[i]
@@ -172,10 +158,8 @@ def _diagnose_expression(
                 col = None
                 break
             col = child
-        if col is not None:
-            prev_output_type = normalized_to_transformer_type(col.normalized_type)
-        else:
-            prev_output_type = None
+        if col is not None and col.type != Type.Unknown:
+            prev_output_type = col.type
 
     for transformer in expression.key.transformers:
         t: Optional[TransformerDef] = registry.get(transformer.name)
@@ -192,7 +176,6 @@ def _diagnose_expression(
             prev_output_type = None
             continue
 
-        # Arity check
         required_count = sum(1 for s in t.arg_schema if s.required)
         max_count = len(t.arg_schema)
         got = len(transformer.arguments)
@@ -210,18 +193,16 @@ def _diagnose_expression(
                 )
             )
 
-        # Per-argument type check
         for j, arg in enumerate(transformer.arguments):
             if j >= len(t.arg_schema):
-                break  # already flagged by arity
+                break
             expected = t.arg_schema[j].type
-            actual = _python_to_transformer_type(arg)
+            actual = _python_to_flyql_type(arg)
             if actual is None:
                 continue
             if actual == expected:
                 continue
-            # int widens to float
-            if actual == TransformerType.INT and expected == TransformerType.FLOAT:
+            if actual == Type.Int and expected == Type.Float:
                 continue
             diags.append(
                 Diagnostic(
@@ -232,7 +213,6 @@ def _diagnose_expression(
                 )
             )
 
-        # Chain type check
         if prev_output_type is not None and prev_output_type != t.input_type:
             diags.append(
                 Diagnostic(
@@ -243,12 +223,10 @@ def _diagnose_expression(
                 )
             )
 
-        # Cascade: always use this transformer's output_type
         prev_output_type = t.output_type
 
-    # COLUMN value validation
     if (
-        expression.value_type == ValueType.COLUMN
+        expression.value_type == LiteralKind.COLUMN
         and isinstance(expression.value, str)
         and expression.value != ""
     ):
@@ -273,10 +251,9 @@ def _diagnose_expression(
                     )
                 )
 
-    # IN-list COLUMN value validation
     if expression.values_types is not None and expression.values is not None:
         for i, vt in enumerate(expression.values_types):
-            if vt == ValueType.COLUMN and isinstance(expression.values[i], str):
+            if vt == LiteralKind.COLUMN and isinstance(expression.values[i], str):
                 val: str = expression.values[i]
                 if not _VALID_COLUMN_NAME_RE.match(val):
                     if expression.value_ranges is not None and i < len(
@@ -306,14 +283,14 @@ def _diagnose_expression(
     return diags
 
 
-def _python_to_transformer_type(v: Any) -> Optional[TransformerType]:
+def _python_to_flyql_type(v: Any) -> Optional[Type]:
     # bool check MUST precede int check (bool is subclass of int in Python)
     if isinstance(v, bool):
-        return TransformerType.BOOL
+        return Type.Bool
     if isinstance(v, int):
-        return TransformerType.INT
+        return Type.Int
     if isinstance(v, float):
-        return TransformerType.FLOAT
+        return Type.Float
     if isinstance(v, str):
-        return TransformerType.STRING
+        return Type.String
     return None

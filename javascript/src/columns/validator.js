@@ -5,19 +5,11 @@ import {
     CODE_ARG_COUNT,
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
+    jsToFlyQLType,
 } from '../core/validator.js'
 import { Range } from '../core/range.js'
-import { normalizedToTransformerType } from '../core/column.js'
+import { Type } from '../flyql_type.js'
 import { defaultRegistry } from '../transformers/registry.js'
-import { TransformerType } from '../transformers/base.js'
-
-function _jsToTransformerType(v) {
-    if (typeof v === 'boolean') return TransformerType.BOOL
-    if (typeof v === 'number' && Number.isInteger(v)) return TransformerType.INT
-    if (typeof v === 'number') return TransformerType.FLOAT
-    if (typeof v === 'string') return TransformerType.STRING
-    return null
-}
 
 export function diagnose(parsedColumns, schema, registry = null) {
     if (!parsedColumns || parsedColumns.length === 0) return []
@@ -26,7 +18,6 @@ export function diagnose(parsedColumns, schema, registry = null) {
     const diags = []
 
     for (const col of parsedColumns) {
-        // Use segments for nested traversal; strip empty trailing segment from trailing dot
         const rawSegments = col.segments || col.name.split('.')
         const segments =
             rawSegments.length > 0 && rawSegments[rawSegments.length - 1] === ''
@@ -43,7 +34,7 @@ export function diagnose(parsedColumns, schema, registry = null) {
             }
             prevOutputType = null
         } else {
-            prevOutputType = normalizedToTransformerType(resolved.normalizedType)
+            prevOutputType = resolved.type && resolved.type !== Type.Unknown ? resolved.type : null
         }
 
         const transformerRanges = col.transformerRanges || []
@@ -68,7 +59,6 @@ export function diagnose(parsedColumns, schema, registry = null) {
                 continue
             }
 
-            // Arity check
             const requiredCount = t.argSchema.filter((s) => s.required).length
             const maxCount = t.argSchema.length
             const got = transformer.arguments.length
@@ -96,16 +86,14 @@ export function diagnose(parsedColumns, schema, registry = null) {
                 }
             }
 
-            // Per-argument type check
             const argRanges = ranges.argumentRanges || []
             for (let j = 0; j < transformer.arguments.length; j++) {
                 if (j >= t.argSchema.length) break
                 const expected = t.argSchema[j].type
-                const actual = _jsToTransformerType(transformer.arguments[j])
+                const actual = jsToFlyQLType(transformer.arguments[j])
                 if (actual == null) continue
                 if (actual === expected) continue
-                // int widens to float
-                if (actual === TransformerType.INT && expected === TransformerType.FLOAT) continue
+                if (actual === Type.Int && expected === Type.Float) continue
                 if (j < argRanges.length) {
                     diags.push(
                         new Diagnostic(
@@ -118,7 +106,6 @@ export function diagnose(parsedColumns, schema, registry = null) {
                 }
             }
 
-            // Chain type check
             if (prevOutputType != null && prevOutputType !== t.inputType) {
                 if (ranges.nameRange) {
                     diags.push(

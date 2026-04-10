@@ -3,7 +3,7 @@ from .core.tree import Node
 from .core.expression import Expression, FunctionCall, Duration, Parameter
 from .bind import bind_params
 from .core.key import Key, parse_key
-from .core.column import Column
+from .core.column import Column, ColumnSchema
 from .core.constants import BoolOperator, Operator
 from .core.range import Range
 from .core.validator import Diagnostic, diagnose
@@ -11,10 +11,10 @@ from .core.exceptions import FlyqlError, KeyParseError
 from .transformers import (
     Transformer,
     TransformerRegistry,
-    TransformerType,
     default_registry,
 )
-from .types import ValueType
+from .flyql_type import Type, parse_flyql_type
+from .literal import LiteralKind
 
 __all__ = [
     "parse",
@@ -29,6 +29,8 @@ __all__ = [
     "Key",
     "parse_key",
     "Column",
+    "ColumnSchema",
+    "parse_flyql_type",
     "Operator",
     "BoolOperator",
     "Range",
@@ -37,8 +39,8 @@ __all__ = [
     "FlyqlError",
     "KeyParseError",
     "Transformer",
-    "TransformerType",
     "TransformerRegistry",
     "default_registry",
-    "ValueType",
+    "Type",
+    "LiteralKind",
 ]

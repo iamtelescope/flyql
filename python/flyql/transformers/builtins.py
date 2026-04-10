@@ -1,6 +1,8 @@
 from typing import Any, ClassVar, List, Optional, Tuple
 
-from .base import ArgSpec, Transformer, TransformerType
+from flyql.flyql_type import Type
+
+from .base import ArgSpec, Transformer
 
 
 class UpperTransformer(Transformer):
@@ -9,12 +11,12 @@ class UpperTransformer(Transformer):
         return "upper"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(
         self, dialect: str, column_ref: str, args: Optional[List[Any]] = None
@@ -33,12 +35,12 @@ class LowerTransformer(Transformer):
         return "lower"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def output_type(self) -> Type:
+        return Type.String
 
     def sql(
         self, dialect: str, column_ref: str, args: Optional[List[Any]] = None
@@ -57,12 +59,12 @@ class LenTransformer(Transformer):
         return "len"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.INT
+    def output_type(self) -> Type:
+        return Type.Int
 
     def sql(
         self, dialect: str, column_ref: str, args: Optional[List[Any]] = None
@@ -77,7 +79,7 @@ class LenTransformer(Transformer):
 
 class SplitTransformer(Transformer):
     arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
-        ArgSpec(type=TransformerType.STRING, required=False),
+        ArgSpec(type=Type.String, required=False),
     )
 
     @property
@@ -85,12 +87,12 @@ class SplitTransformer(Transformer):
         return "split"
 
     @property
-    def input_type(self) -> TransformerType:
-        return TransformerType.STRING
+    def input_type(self) -> Type:
+        return Type.String
 
     @property
-    def output_type(self) -> TransformerType:
-        return TransformerType.ARRAY
+    def output_type(self) -> Type:
+        return Type.Array
 
     def sql(
         self, dialect: str, column_ref: str, args: Optional[List[Any]] = None

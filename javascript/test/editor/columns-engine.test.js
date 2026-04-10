@@ -143,7 +143,8 @@ describe('ColumnsEngine', () => {
             engine.setCursorPosition(0)
             await engine.updateSuggestions()
             const item = engine.suggestions.find((s) => s.label === 'level')
-            expect(item.detail).toBe('enum')
+            // Editor normalizes raw 'enum' input to canonical Type.String.
+            expect(item.detail).toBe('string')
         })
 
         it('shows message when no columns match', async () => {

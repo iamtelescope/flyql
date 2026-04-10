@@ -1,26 +1,29 @@
-"""Base Column class shared across all generator dialects.
+"""Canonical Column and ColumnSchema used by the validator.
 
-Generators extend this base with dialect-specific normalization and flags.
-The validator (``flyql.core.validator``) operates on the base type so it
-stays dialect-independent.
-
-``match_name`` is the raw, unescaped column name used for validator lookups.
-If a caller constructs a Column without setting ``normalized_type``, chain-type
-validation for that column is skipped (treated as unknown type).
+Dialect-specific generators have their own opaque Column classes; use the
+dialect's ``to_flyql_schema`` helper to bridge from a dialect column list
+to a :class:`ColumnSchema`.
 """
 
 from typing import Any, Dict, List, Optional
 
-from flyql.transformers.base import TransformerType
+from flyql.core.exceptions import FlyqlError
+from flyql.flyql_type import Type, parse_flyql_type
 
 
 class Column:
+    """The canonical, schema-aware column type used by the validator.
+
+    ``column_type`` (NOT ``type``) is the parameter name because ``type``
+    is a Python builtin and shadowing it inside ``__init__`` would
+    generate pylint warnings and risk silent bugs. See Tech Decision #15.
+    """
+
     def __init__(
         self,
         name: str,
         jsonstring: bool,
-        _type: str,
-        normalized_type: Optional[str],
+        column_type: Type,
         values: Optional[List[str]] = None,
         display_name: str = "",
         raw_identifier: str = "",
@@ -29,9 +32,10 @@ class Column:
         children: Optional[Dict[str, "Column"]] = None,
     ) -> None:
         self.name = name
+        # JSONString is an orthogonal capability flag — see Tech Decision #5.
+        # NOT validated against ``column_type``.
         self.jsonstring = jsonstring
-        self.type = _type
-        self.normalized_type = normalized_type
+        self.type: Type = column_type
         self.values = values or []
         self.display_name = display_name
         self.raw_identifier = raw_identifier
@@ -68,8 +72,7 @@ class ColumnSchema:
 
     def resolve(self, segments: List[str]) -> Optional["Column"]:
         """Walk nested column tree by segments (case-insensitive).
-        Returns None if any segment is unresolvable. Does NOT filter by suggest.
-        """
+        Returns None if any segment is unresolvable."""
         if not segments:
             return None
         col = self._by_lower_name.get(segments[0].lower())
@@ -85,8 +88,7 @@ class ColumnSchema:
 
     @classmethod
     def from_columns(cls, columns: List["Column"]) -> "ColumnSchema":
-        """Build a ColumnSchema from a flat Column list, keyed by match_name.
-        On duplicates, the first occurrence wins."""
+        """Build a ColumnSchema from a flat Column list, keyed by match_name."""
         m: Dict[str, Column] = {}
         for c in reversed(columns):
             m[c.match_name] = c
@@ -94,7 +96,14 @@ class ColumnSchema:
 
     @classmethod
     def from_plain_object(cls, obj: Dict[str, Any]) -> "ColumnSchema":
-        """Recursively convert {name: {type, children, suggest, values}} dicts."""
+        """Recursively convert ``{name: {type, children, suggest, values, jsonstring}}``
+        dicts.
+
+        Strict mode: an unknown ``type`` value raises :class:`FlyqlError`.
+        The legacy key ``normalized_type`` is detected and raises a
+        targeted migration error pointing at
+        ``docs.flyql.dev/advanced/column-types``.
+        """
         m: Dict[str, Column] = {}
         for name, raw in obj.items():
             col = _column_from_plain_object(name, raw)
@@ -104,7 +113,6 @@ class ColumnSchema:
 
 
 def _lowercase_children(col: Column) -> None:
-    """Recursively rebuild children dicts with lowercased keys."""
     if col.children is None:
         return
     lowered: Dict[str, Column] = {}
@@ -118,6 +126,12 @@ def _lowercase_children(col: Column) -> None:
 def _column_from_plain_object(name: str, raw: Any) -> Optional[Column]:
     if not isinstance(raw, dict):
         return None
+    if "normalized_type" in raw:
+        raise FlyqlError(
+            f"column {name!r}: 'normalized_type' field has been renamed to 'type' "
+            "in canonical column JSON; see migration guide at "
+            "docs.flyql.dev/advanced/column-types"
+        )
     children: Optional[Dict[str, Column]] = None
     if "children" in raw and isinstance(raw["children"], dict):
         children = {}
@@ -125,22 +139,14 @@ def _column_from_plain_object(name: str, raw: Any) -> Optional[Column]:
             child = _column_from_plain_object(child_name, child_raw)
             if child is not None:
                 children[child_name] = child
+    type_str = raw.get("type", "")
+    column_type = parse_flyql_type(type_str) if type_str else Type.Unknown
     return Column(
         name=name,
-        jsonstring=False,
-        _type=raw.get("type", ""),
-        normalized_type=raw.get("normalized_type"),
+        jsonstring=bool(raw.get("jsonstring", False)),
+        column_type=column_type,
         values=raw.get("values", []),
         suggest=raw.get("suggest", True),
         match_name=name,
         children=children,
     )
-
-
-def normalized_to_transformer_type(s: Optional[str]) -> Optional[TransformerType]:
-    if s is None:
-        return None
-    try:
-        return TransformerType(s)
-    except ValueError:
-        return None

@@ -1,11 +1,19 @@
-import { TransformerType } from '../transformers/base.js'
+import { FlyqlError } from './exceptions.js'
+import { Type, parseFlyQLType } from '../flyql_type.js'
 
+/**
+ * The canonical, schema-aware Column used by the validator. Dialect
+ * generators have their own opaque Column classes; bridge with the
+ * dialect's `toFlyQLSchema` helper to feed the validator.
+ *
+ * `JSONString` is an orthogonal capability flag — see Tech Decision #5.
+ * It is NOT validated against `type`.
+ */
 export class Column {
     constructor(
         name,
         jsonString,
         type,
-        normalizedType,
         {
             values = [],
             displayName = '',
@@ -19,7 +27,6 @@ export class Column {
         this.name = name
         this.jsonString = jsonString
         this.type = type
-        this.normalizedType = normalizedType
         this.values = values
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
@@ -81,8 +88,6 @@ export class ColumnSchema {
 
         for (let i = 1; i < segments.length; i++) {
             if (col.children == null) return null
-            // Children are lowercased internally, but we need canonical path
-            // Look up in the original columns for canonical casing
             const childCol = col.children[segments[i].toLowerCase()]
             if (childCol == null) return null
             parentPath += '.' + (childCol.name || segments[i])
@@ -91,6 +96,12 @@ export class ColumnSchema {
         return { column: col, parentPath }
     }
 
+    /**
+     * Build a ColumnSchema from a `{name: {type, children, suggest, values, jsonstring}}`
+     * dict. Strict mode: an unknown `type` value throws FlyqlError. The
+     * legacy key `normalized_type` is detected and throws a targeted
+     * migration error.
+     */
     static fromPlainObject(obj) {
         const columns = {}
         for (const [name, raw] of Object.entries(obj)) {
@@ -133,6 +144,13 @@ function _lowercaseChildren(col) {
 
 function _columnFromPlainObject(name, raw) {
     if (raw == null || typeof raw !== 'object') return null
+    if ('normalized_type' in raw || 'normalizedType' in raw) {
+        throw new FlyqlError(
+            `column "${name}": "normalized_type"/"normalizedType" field has been ` +
+                `renamed to "type" in canonical column JSON; see migration guide at ` +
+                `docs.flyql.dev/advanced/column-types`,
+        )
+    }
     let children = null
     if (raw.children != null && typeof raw.children === 'object') {
         children = {}
@@ -141,7 +159,20 @@ function _columnFromPlainObject(name, raw) {
             if (child != null) children[childName] = child
         }
     }
-    return new Column(name, false, raw.type || '', raw.normalizedType || null, {
+    // Lenient: unknown type strings are coerced to Type.Unknown so
+    // editor-style raw strings (e.g. 'enum') flow through without
+    // throwing; the editor normalizer remaps them at a later stage.
+    // The legacy `normalized_type` key is still a hard error (above).
+    const typeStr = raw.type || ''
+    let flyqlType = Type.Unknown
+    if (typeStr) {
+        try {
+            flyqlType = parseFlyQLType(typeStr)
+        } catch (_) {
+            flyqlType = typeStr // preserve raw string for the editor normalizer
+        }
+    }
+    return new Column(name, !!raw.jsonstring, flyqlType, {
         values: raw.values || [],
         suggest: raw.suggest !== undefined ? raw.suggest : true,
         matchName: name,
@@ -149,16 +180,4 @@ function _columnFromPlainObject(name, raw) {
         autocomplete: raw.autocomplete,
         displayName: raw.display_name || raw.displayName || '',
     })
-}
-
-export function normalizedToTransformerType(s) {
-    if (s == null) return null
-    const valid = new Set([
-        TransformerType.STRING,
-        TransformerType.INT,
-        TransformerType.FLOAT,
-        TransformerType.BOOL,
-        TransformerType.ARRAY,
-    ])
-    return valid.has(s) ? s : null
 }

@@ -1,6 +1,6 @@
 import { Operator, BoolOperator } from '../core/constants.js'
 import { FlyqlError } from '../core/exceptions.js'
-import { ValueType } from '../types.js'
+import { LiteralKind } from '../literal/literal_kind.js'
 import { FunctionCall, Parameter } from '../core/expression.js'
 import { parseKey } from '../core/key.js'
 import { defaultRegistry } from '../transformers/index.js'
@@ -214,7 +214,7 @@ export class Evaluator {
     _resolveInValues(expr, record) {
         if (!expr.valuesTypes) return expr.values
         return expr.values.map((v, i) => {
-            if (i < expr.valuesTypes.length && expr.valuesTypes[i] === ValueType.COLUMN && typeof v === 'string') {
+            if (i < expr.valuesTypes.length && expr.valuesTypes[i] === LiteralKind.COLUMN && typeof v === 'string') {
                 return this._resolveColumnValue(v, record)
             }
             return v
@@ -222,7 +222,7 @@ export class Evaluator {
     }
 
     evalExpression(expr, record) {
-        if (expr.valueType === ValueType.PARAMETER) {
+        if (expr.valueType === LiteralKind.PARAMETER) {
             if (expr.value instanceof Parameter) {
                 throw new FlyqlError(
                     `unbound parameter '$${expr.value.name}' \u2014 call bindParams() before evaluating`,
@@ -256,9 +256,9 @@ export class Evaluator {
 
         // Resolve COLUMN-typed RHS values from the record
         let exprValue = expr.value
-        if (expr.valueType === ValueType.COLUMN && typeof exprValue === 'string') {
+        if (expr.valueType === LiteralKind.COLUMN && typeof exprValue === 'string') {
             exprValue = this._resolveColumnValue(exprValue, record)
-        } else if (expr.valueType === ValueType.FUNCTION && exprValue instanceof FunctionCall) {
+        } else if (expr.valueType === LiteralKind.FUNCTION && exprValue instanceof FunctionCall) {
             exprValue = this._evaluateFunctionCall(exprValue, this._defaultTimezone)
             value = this._coerceToMs(value)
             if (value === null) return false

@@ -1,32 +1,14 @@
-const NormalizedTypeString = 'string'
-const NormalizedTypeInt = 'int'
-const NormalizedTypeFloat = 'float'
-const NormalizedTypeBool = 'bool'
-const NormalizedTypeDate = 'date'
-const NormalizedTypeArray = 'array'
-const NormalizedTypeJSON = 'json'
-const NormalizedTypeHstore = 'hstore'
-
-export {
-    NormalizedTypeString,
-    NormalizedTypeInt,
-    NormalizedTypeFloat,
-    NormalizedTypeBool,
-    NormalizedTypeDate,
-    NormalizedTypeArray,
-    NormalizedTypeJSON,
-    NormalizedTypeHstore,
-}
+import { Type } from '../../flyql_type.js'
 
 const typeRegexes = {
-    [NormalizedTypeString]: /^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)/i,
-    [NormalizedTypeFloat]: /^(numeric|decimal)\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,
-    [NormalizedTypeDate]: /^timestamp\s*\(\s*\d+\s*\)/i,
-    [NormalizedTypeArray]: /(\[\]$|^_)/i,
+    [Type.String]: /^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)/i,
+    [Type.Float]: /^(numeric|decimal)\s*\(\s*\d+\s*(,\s*\d+)?\s*\)/i,
+    [Type.Date]: /^timestamp\s*\(\s*\d+\s*\)/i,
+    [Type.Array]: /(\[\]$|^_)/i,
 }
 
-const normalizedTypeToPostgreSQLTypes = {
-    [NormalizedTypeString]: new Set([
+const flyqlTypeToPostgreSQLTypes = {
+    [Type.String]: new Set([
         'text',
         'varchar',
         'char',
@@ -39,7 +21,7 @@ const normalizedTypeToPostgreSQLTypes = {
         'cidr',
         'macaddr',
     ]),
-    [NormalizedTypeInt]: new Set([
+    [Type.Int]: new Set([
         'smallint',
         'integer',
         'bigint',
@@ -50,9 +32,9 @@ const normalizedTypeToPostgreSQLTypes = {
         'bigserial',
         'smallserial',
     ]),
-    [NormalizedTypeFloat]: new Set(['real', 'double precision', 'numeric', 'decimal', 'float4', 'float8', 'money']),
-    [NormalizedTypeBool]: new Set(['boolean', 'bool']),
-    [NormalizedTypeDate]: new Set([
+    [Type.Float]: new Set(['real', 'double precision', 'numeric', 'decimal', 'float4', 'float8', 'money']),
+    [Type.Bool]: new Set(['boolean', 'bool']),
+    [Type.Date]: new Set([
         'date',
         'timestamp',
         'timestamptz',
@@ -60,75 +42,59 @@ const normalizedTypeToPostgreSQLTypes = {
         'timestamp with time zone',
         'time',
         'timetz',
-        'interval',
     ]),
-    [NormalizedTypeJSON]: new Set(['jsonb', 'json']),
-    [NormalizedTypeHstore]: new Set(['hstore']),
+    [Type.Duration]: new Set(['interval']),
+    [Type.JSON]: new Set(['jsonb', 'json']),
+    [Type.Map]: new Set(['hstore']),
 }
 
 export function normalizePostgreSQLType(pgType) {
-    if (!pgType) {
-        return ''
-    }
+    if (!pgType) return Type.Unknown
 
     const normalized = pgType.trim().toLowerCase()
 
-    if (typeRegexes[NormalizedTypeArray].test(normalized)) {
-        return NormalizedTypeArray
-    }
+    if (typeRegexes[Type.Array].test(normalized)) return Type.Array
 
-    if (typeRegexes[NormalizedTypeString].test(normalized)) {
-        return NormalizedTypeString
-    }
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeString].has(normalized)) {
-        return NormalizedTypeString
-    }
+    if (typeRegexes[Type.String].test(normalized)) return Type.String
+    if (flyqlTypeToPostgreSQLTypes[Type.String].has(normalized)) return Type.String
 
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeInt].has(normalized)) {
-        return NormalizedTypeInt
-    }
+    if (flyqlTypeToPostgreSQLTypes[Type.Int].has(normalized)) return Type.Int
 
-    if (typeRegexes[NormalizedTypeFloat].test(normalized)) {
-        return NormalizedTypeFloat
-    }
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeFloat].has(normalized)) {
-        return NormalizedTypeFloat
-    }
+    if (typeRegexes[Type.Float].test(normalized)) return Type.Float
+    if (flyqlTypeToPostgreSQLTypes[Type.Float].has(normalized)) return Type.Float
 
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeBool].has(normalized)) {
-        return NormalizedTypeBool
-    }
+    if (flyqlTypeToPostgreSQLTypes[Type.Bool].has(normalized)) return Type.Bool
 
-    if (typeRegexes[NormalizedTypeDate].test(normalized)) {
-        return NormalizedTypeDate
-    }
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeDate].has(normalized)) {
-        return NormalizedTypeDate
-    }
+    if (typeRegexes[Type.Date].test(normalized)) return Type.Date
+    if (flyqlTypeToPostgreSQLTypes[Type.Date].has(normalized)) return Type.Date
 
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeJSON].has(normalized)) {
-        return NormalizedTypeJSON
-    }
+    if (flyqlTypeToPostgreSQLTypes[Type.Duration].has(normalized)) return Type.Duration
 
-    if (normalizedTypeToPostgreSQLTypes[NormalizedTypeHstore].has(normalized)) {
-        return NormalizedTypeHstore
-    }
+    if (flyqlTypeToPostgreSQLTypes[Type.JSON].has(normalized)) return Type.JSON
 
-    return ''
+    if (flyqlTypeToPostgreSQLTypes[Type.Map].has(normalized)) return Type.Map
+
+    return Type.Unknown
 }
 
 export class Column {
     constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
         this.name = name
         this.jsonString = !!jsonString
-        this.type = type
         this.values = values || []
-        this.normalizedType = normalizePostgreSQLType(type)
-        this.isArray = this.normalizedType === NormalizedTypeArray
-        this.isJSONB = this.normalizedType === NormalizedTypeJSON
-        this.isHstore = this.normalizedType === NormalizedTypeHstore
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
+        this.matchName = name
+        this._rawType = type
+        this._flyqlType = normalizePostgreSQLType(type)
+    }
+
+    rawType() {
+        return this._rawType
+    }
+
+    flyqlType() {
+        return this._flyqlType
     }
 
     withRawIdentifier(identifier) {

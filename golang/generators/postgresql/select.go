@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"fmt"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"strconv"
 	"strings"
 
@@ -77,7 +78,7 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 		return identifier, nil
 	}
 
-	if column.IsJSONB || column.JSONString {
+	if (column.FlyQLType() == flyqltype.JSON) || column.JSONString {
 		castIdentifier := identifier
 		if column.JSONString {
 			castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
@@ -90,7 +91,7 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 		return buildJSONBPathRaw(castIdentifier, path, pathQuoted), nil
 	}
 
-	if column.IsHstore {
+	if column.FlyQLType() == flyqltype.Map {
 		mapKey := strings.Join(path, ".")
 		escapedKey, err := EscapeParam(mapKey)
 		if err != nil {
@@ -99,7 +100,7 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 		return fmt.Sprintf("%s->%s", identifier, escapedKey), nil
 	}
 
-	if column.IsArray {
+	if column.FlyQLType() == flyqltype.Array {
 		indexStr := strings.Join(path, ".")
 		index, err := strconv.Atoi(indexStr)
 		if err != nil {
@@ -167,7 +168,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 			if err := validateTransformerChain(key.Transformers, reg); err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
 			}
-			if len(path) > 0 && (col.IsJSONB || col.JSONString) {
+			if len(path) > 0 && ((col.FlyQLType() == flyqltype.JSON) || col.JSONString) {
 				sqlExpr = fmt.Sprintf("(%s)::text", sqlExpr)
 			}
 			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "postgresql", reg)

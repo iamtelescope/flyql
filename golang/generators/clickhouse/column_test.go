@@ -1,6 +1,7 @@
 package clickhouse
 
 import (
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"strings"
 	"testing"
 )
@@ -37,14 +38,14 @@ func TestNormalizeClickHouseTypeWrapperWithSpaces(t *testing.T) {
 	spaces := strings.Repeat(" ", 10000)
 	input := "Nullable(" + spaces + "String" + spaces + ")"
 	result := NormalizeClickHouseType(input)
-	if result != NormalizedTypeString {
-		t.Errorf("NormalizeClickHouseType(%q...) = %q, want %q", input[:30], result, NormalizedTypeString)
+	if result != flyqltype.String {
+		t.Errorf("NormalizeClickHouseType(%q...) = %q, want %q", input[:30], result, flyqltype.String)
 	}
 }
 
 func TestNormalizeClickHouseTypeNestedWrapper(t *testing.T) {
 	result := NormalizeClickHouseType("Nullable(DateTime64(3))")
-	if result != NormalizedTypeDate {
-		t.Errorf("NormalizeClickHouseType(Nullable(DateTime64(3))) = %q, want %q", result, NormalizedTypeDate)
+	if result != flyqltype.Date {
+		t.Errorf("NormalizeClickHouseType(Nullable(DateTime64(3))) = %q, want %q", result, flyqltype.Date)
 	}
 }

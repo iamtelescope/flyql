@@ -13,7 +13,7 @@
 
 import { Parameter, FunctionCall, Duration } from './core/expression.js'
 import { FlyqlError } from './core/exceptions.js'
-import { ValueType } from './types.js'
+import { LiteralKind } from './literal/literal_kind.js'
 
 const MAX_SAFE = Number.MAX_SAFE_INTEGER
 const MIN_SAFE = Number.MIN_SAFE_INTEGER
@@ -26,18 +26,18 @@ function _typeName(value) {
 }
 
 function _valueTypeFor(value) {
-    if (value === null) return ValueType.NULL
-    if (typeof value === 'boolean') return ValueType.BOOLEAN
+    if (value === null) return LiteralKind.NULL
+    if (typeof value === 'boolean') return LiteralKind.BOOLEAN
     if (typeof value === 'number') {
         if (Number.isInteger(value)) {
             if (value > MAX_SAFE || value < MIN_SAFE) {
-                return ValueType.BIGINT
+                return LiteralKind.BIGINT
             }
-            return ValueType.INTEGER
+            return LiteralKind.INTEGER
         }
-        return ValueType.FLOAT
+        return LiteralKind.FLOAT
     }
-    if (typeof value === 'string') return ValueType.STRING
+    if (typeof value === 'string') return LiteralKind.STRING
     throw new FlyqlError(`unsupported parameter value type: ${_typeName(value)}`)
 }
 

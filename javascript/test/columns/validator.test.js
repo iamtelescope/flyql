@@ -12,14 +12,16 @@ import {
     CODE_CHAIN_TYPE,
 } from '../../src/core/validator.js'
 import { defaultRegistry } from '../../src/transformers/registry.js'
+import { Type, parseFlyQLType } from '../../src/flyql_type.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const FIXTURE_PATH = path.join(__dirname, '..', '..', '..', 'tests-data', 'columns', 'validator.json')
 const SHARED_DATA = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8'))
 
-function makeColumn(name, normalizedType) {
-    return new Column(name, false, normalizedType, normalizedType, { matchName: name })
+function makeColumn(name, typeStr) {
+    const t = typeStr ? parseFlyQLType(typeStr) : Type.Unknown
+    return new Column(name, false, t, { matchName: name })
 }
 
 function buildColumnFromDef(d) {
@@ -30,7 +32,8 @@ function buildColumnFromDef(d) {
             children[childName] = buildColumnFromDef(childDef)
         }
     }
-    return new Column(d.name, false, d.normalized_type, d.normalized_type, {
+    const t = d.type ? parseFlyQLType(d.type) : Type.Unknown
+    return new Column(d.name, false, t, {
         matchName: d.name,
         children,
     })

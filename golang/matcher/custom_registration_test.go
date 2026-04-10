@@ -7,17 +7,18 @@ import (
 	"testing"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
 type firstOctet struct{}
 
 func (f firstOctet) Name() string { return "firstoctet" }
-func (f firstOctet) InputType() transformers.TransformerType {
-	return transformers.TransformerTypeString
+func (f firstOctet) InputType() flyqltype.Type {
+	return flyqltype.String
 }
-func (f firstOctet) OutputType() transformers.TransformerType { return transformers.TransformerTypeInt }
-func (f firstOctet) ArgSchema() []transformers.ArgSpec        { return []transformers.ArgSpec{} }
+func (f firstOctet) OutputType() flyqltype.Type        { return flyqltype.Int }
+func (f firstOctet) ArgSchema() []transformers.ArgSpec { return []transformers.ArgSpec{} }
 func (f firstOctet) SQL(dialect, colRef string, args []any) string {
 	if dialect == "clickhouse" {
 		return fmt.Sprintf("toUInt8(splitByChar('.', %s)[1])", colRef)

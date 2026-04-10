@@ -3,6 +3,8 @@ package transformers
 import (
 	"strings"
 	"testing"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 func TestUpperTransformer(t *testing.T) {
@@ -11,11 +13,11 @@ func TestUpperTransformer(t *testing.T) {
 	if u.Name() != "upper" {
 		t.Errorf("Name() = %q, want %q", u.Name(), "upper")
 	}
-	if u.InputType() != TransformerTypeString {
-		t.Errorf("InputType() = %q, want %q", u.InputType(), TransformerTypeString)
+	if u.InputType() != flyqltype.String {
+		t.Errorf("InputType() = %q, want %q", u.InputType(), flyqltype.String)
 	}
-	if u.OutputType() != TransformerTypeString {
-		t.Errorf("OutputType() = %q, want %q", u.OutputType(), TransformerTypeString)
+	if u.OutputType() != flyqltype.String {
+		t.Errorf("OutputType() = %q, want %q", u.OutputType(), flyqltype.String)
 	}
 
 	// SQL per dialect
@@ -47,11 +49,11 @@ func TestLowerTransformer(t *testing.T) {
 	if l.Name() != "lower" {
 		t.Errorf("Name() = %q, want %q", l.Name(), "lower")
 	}
-	if l.InputType() != TransformerTypeString {
-		t.Errorf("InputType() = %q, want %q", l.InputType(), TransformerTypeString)
+	if l.InputType() != flyqltype.String {
+		t.Errorf("InputType() = %q, want %q", l.InputType(), flyqltype.String)
 	}
-	if l.OutputType() != TransformerTypeString {
-		t.Errorf("OutputType() = %q, want %q", l.OutputType(), TransformerTypeString)
+	if l.OutputType() != flyqltype.String {
+		t.Errorf("OutputType() = %q, want %q", l.OutputType(), flyqltype.String)
 	}
 
 	dialects := []struct {
@@ -81,11 +83,11 @@ func TestLenTransformer(t *testing.T) {
 	if l.Name() != "len" {
 		t.Errorf("Name() = %q, want %q", l.Name(), "len")
 	}
-	if l.InputType() != TransformerTypeString {
-		t.Errorf("InputType() = %q, want %q", l.InputType(), TransformerTypeString)
+	if l.InputType() != flyqltype.String {
+		t.Errorf("InputType() = %q, want %q", l.InputType(), flyqltype.String)
 	}
-	if l.OutputType() != TransformerTypeInt {
-		t.Errorf("OutputType() = %q, want %q", l.OutputType(), TransformerTypeInt)
+	if l.OutputType() != flyqltype.Int {
+		t.Errorf("OutputType() = %q, want %q", l.OutputType(), flyqltype.Int)
 	}
 
 	dialects := []struct {

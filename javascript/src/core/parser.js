@@ -5,7 +5,7 @@ import { ParserError, KeyParseError } from './exceptions.js'
 import { parseKey, Key } from './key.js'
 import { Range } from './range.js'
 import { convertUnquotedValue } from './utils.js'
-import { ValueType } from '../types.js'
+import { LiteralKind } from '../literal/literal_kind.js'
 import {
     State,
     CharType,
@@ -206,13 +206,13 @@ export class Parser {
                 this.inListQuoteChar === "'"
                     ? this.inListCurrentValue.replace(/\\'/g, "'")
                     : this.inListCurrentValue.replace(/\\"/g, '"')
-            explicitType = ValueType.STRING
+            explicitType = LiteralKind.STRING
         } else if (this.inListCurrentValue === 'null') {
             value = null
-            explicitType = ValueType.NULL
+            explicitType = LiteralKind.NULL
         } else if (this.inListCurrentValue === 'true' || this.inListCurrentValue === 'false') {
             value = this.inListCurrentValue === 'true'
-            explicitType = ValueType.BOOLEAN
+            explicitType = LiteralKind.BOOLEAN
         } else {
             const [convertedValue, detectedType] = convertUnquotedValue(this.inListCurrentValue)
             value = convertedValue
@@ -337,7 +337,7 @@ export class Parser {
                 null,
                 null,
                 null,
-                ValueType.NULL,
+                LiteralKind.NULL,
                 exprRange,
                 operatorRange,
                 valueRange,
@@ -354,7 +354,7 @@ export class Parser {
                 null,
                 null,
                 null,
-                ValueType.BOOLEAN,
+                LiteralKind.BOOLEAN,
                 exprRange,
                 operatorRange,
                 valueRange,
@@ -1216,7 +1216,7 @@ export class Parser {
             null,
             null,
             null,
-            ValueType.FUNCTION,
+            LiteralKind.FUNCTION,
             exprRange,
             operatorRange,
             valueRange,
@@ -1891,7 +1891,7 @@ export class Parser {
         }
         const param = new Parameter(name, name[0] >= '0' && name[0] <= '9')
         this.inListValues.push(param)
-        this.inListValuesTypes.push(ValueType.PARAMETER)
+        this.inListValuesTypes.push(LiteralKind.PARAMETER)
         if (this._inListValueStart >= 0) {
             this._inListValueRanges.push(new Range(this._inListValueStart, this._inListValueEnd))
         }
@@ -2037,7 +2037,7 @@ export class Parser {
             null,
             null,
             null,
-            ValueType.PARAMETER,
+            LiteralKind.PARAMETER,
             exprRange,
             operatorRange,
             valueRange,

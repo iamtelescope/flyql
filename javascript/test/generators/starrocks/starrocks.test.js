@@ -17,7 +17,7 @@ function buildColumns() {
     const columnsData = loadFixture('columns.json')
     const columns = {}
     for (const [key, col] of Object.entries(columnsData.columns)) {
-        columns[key] = newColumn(col.name, col.jsonstring, col.type, col.values)
+        columns[key] = newColumn(col.name, col.type, col.values)
     }
     return columns
 }

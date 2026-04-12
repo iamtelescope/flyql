@@ -54,7 +54,8 @@
     "test:coverage": "vitest run --coverage",
     "test-script": "node test-script.js",
     "lint": "eslint src/ test/",
-    "format": "prettier --write src/ test/"
+    "format": "prettier --write src/ test/",
+    "snippets": "node scripts/run-snippets.mjs"
   },
   "sideEffects": [
     "*.css"
@@ -92,6 +93,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
+    "@vue/compiler-sfc": "^3.5.0",
     "eslint": "^8.0.0",
     "prettier": "^3.0.0",
     "vitest": "^3.2.4",

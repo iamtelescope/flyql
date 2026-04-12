@@ -51,7 +51,7 @@ func makeValidatorSchema(defs []validatorColumnDef) *flyql.ColumnSchema {
 
 func buildColumn(d validatorColumnDef) flyql.Column {
 	t, _ := flyql.ParseType(d.Type)
-	col := flyql.NewColumn(d.Name, false, t)
+	col := flyql.NewColumn(d.Name, t)
 	if len(d.Children) > 0 {
 		col.Children = make(map[string]*flyql.Column, len(d.Children))
 		for childName, childDef := range d.Children {
@@ -111,7 +111,7 @@ func TestDiagnose_UnknownColumn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	columns := []flyql.Column{flyql.NewColumn("level", false, flyql.TypeString)}
+	columns := []flyql.Column{flyql.NewColumn("level", flyql.TypeString)}
 	diags := Diagnose(parsed, flyql.FromColumns(columns), nil)
 	if len(diags) != 1 {
 		t.Fatalf("Expected 1 diagnostic, got %d", len(diags))
@@ -129,7 +129,7 @@ func TestDiagnose_UnknownTransformer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	columns := []flyql.Column{flyql.NewColumn("level", false, flyql.TypeString)}
+	columns := []flyql.Column{flyql.NewColumn("level", flyql.TypeString)}
 	diags := Diagnose(parsed, flyql.FromColumns(columns), nil)
 	if len(diags) != 1 {
 		t.Fatalf("Expected 1 diagnostic, got %d", len(diags))
@@ -147,7 +147,7 @@ func TestDiagnose_ValidColumn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	columns := []flyql.Column{flyql.NewColumn("level", false, flyql.TypeString)}
+	columns := []flyql.Column{flyql.NewColumn("level", flyql.TypeString)}
 	diags := Diagnose(parsed, flyql.FromColumns(columns), nil)
 	if len(diags) != 0 {
 		t.Errorf("Expected 0 diagnostics, got %d", len(diags))
@@ -159,7 +159,7 @@ func TestDiagnose_DottedColumnHighlightsBase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	columns := []flyql.Column{flyql.NewColumn("level", false, flyql.TypeString)}
+	columns := []flyql.Column{flyql.NewColumn("level", flyql.TypeString)}
 	diags := Diagnose(parsed, flyql.FromColumns(columns), nil)
 	if len(diags) != 1 {
 		t.Fatalf("Expected 1 diagnostic, got %d", len(diags))

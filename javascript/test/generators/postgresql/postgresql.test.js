@@ -26,7 +26,7 @@ function buildColumns() {
     const columnsData = loadFixture('columns.json')
     const columns = {}
     for (const [key, col] of Object.entries(columnsData.columns)) {
-        const column = newColumn(col.name, col.jsonstring, col.type, col.values)
+        const column = newColumn(col.name, col.type, col.values)
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }

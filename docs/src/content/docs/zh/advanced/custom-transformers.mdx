@@ -147,7 +147,7 @@ const registry = defaultRegistry()
 registry.register(new FirstOctetTransformer())
 
 const result = parse("src_ip|firstoctet > 192")
-const columns = { src_ip: newColumn('src_ip', false, 'text') }
+const columns = { src_ip: newColumn('src_ip', 'text') }
 const sql = generateWhere(result.root, columns, registry)
 // CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
 ```
@@ -266,7 +266,7 @@ from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import diagnose
 
 ast = parse("hstt|upper=X").root
-columns = ColumnSchema.from_columns([Column(name="host", jsonstring=False, column_type=Type.String)])
+columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
 diags = diagnose(ast, columns)  # columns is a ColumnSchema
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
@@ -286,7 +286,7 @@ const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
-schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", false, "String", "string")})
+schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
 diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```

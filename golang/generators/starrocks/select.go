@@ -85,7 +85,7 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		return fmt.Sprintf("%s->%s", getIdentifier(column), strings.Join(pathParts, "->")), nil
 	}
 
-	if column.JSONString {
+	if column.FlyQLType() == flyqltype.JSONString {
 		pathParts := make([]string, len(path))
 		for i, part := range path {
 			pathParts[i] = QuoteJSONPathPart(part)

@@ -1,8 +1,8 @@
-"""ClickHouse-dialect Column. Construct via ``Column(name=, jsonstring=,
-_type=, ...)``. Public surface is ``name`` / ``raw_identifier`` /
-``jsonstring`` / ``values`` / ``display_name`` plus the ``raw_type`` and
-``flyql_type`` properties. The ``flyql_type`` is computed at construction
-from the raw DB type via :func:`normalize_clickhouse_type`."""
+"""ClickHouse-dialect Column. Construct via ``Column(name=, _type=,
+...)``. Public surface is ``name`` / ``raw_identifier`` / ``values`` /
+``display_name`` plus the ``raw_type`` and ``flyql_type`` properties.
+The ``flyql_type`` is computed at construction from the raw DB type via
+:func:`normalize_clickhouse_type`."""
 
 import re
 from typing import Dict, List, Optional
@@ -175,6 +175,9 @@ def normalize_clickhouse_type(ch_type: str) -> Type:
 
     normalized = ch_type.strip().lower()
 
+    if normalized == "jsonstring":
+        return Type.JSONString
+
     match = REGEX["wrapper"].match(normalized)
     if match:
         normalized = match.group(2).strip()
@@ -243,7 +246,6 @@ class Column:
     def __init__(
         self,
         name: str,
-        jsonstring: bool,
         _type: str,
         values: Optional[List[str]] = None,
         display_name: str = "",
@@ -252,9 +254,6 @@ class Column:
         # Public attributes
         self.name = _escape_identifier(name)
         self.match_name = name
-        # JSONString is an orthogonal capability flag. NOT validated against
-        # the computed flyql_type — see Tech Decision #5.
-        self.jsonstring = jsonstring
         self.values: List[str] = values or []
         self.display_name = display_name
         self.raw_identifier = raw_identifier

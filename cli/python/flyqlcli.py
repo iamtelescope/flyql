@@ -22,12 +22,18 @@ def parse_fields(fields_json: str) -> Dict[str, Column]:
 
     fields = {}
     for name, config in fields_data.items():
+        if "jsonstring" in config:
+            print(
+                "Error: the 'jsonstring' boolean field has been removed; "
+                "declare the column with \"type\": \"jsonstring\" instead; "
+                "see migration guide at docs.flyql.dev/advanced/column-types",
+                file=sys.stderr,
+            )
+            sys.exit(1)
         field_type = config.get("type", "String")
-        jsonstring = config.get("jsonstring", False)
         values = config.get("values", [])
         fields[name] = Column(
             name=name,
-            jsonstring=jsonstring,
             _type=field_type,
             values=values,
         )

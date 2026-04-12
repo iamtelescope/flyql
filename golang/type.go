@@ -10,15 +10,16 @@ import "github.com/iamtelescope/flyql/golang/flyqltype"
 type Type = flyqltype.Type
 
 const (
-	TypeString   = flyqltype.String
-	TypeInt      = flyqltype.Int
-	TypeFloat    = flyqltype.Float
-	TypeBool     = flyqltype.Bool
-	TypeDate     = flyqltype.Date
-	TypeDuration = flyqltype.Duration
-	TypeArray    = flyqltype.Array
-	TypeMap      = flyqltype.Map
-	TypeStruct   = flyqltype.Struct
-	TypeJSON     = flyqltype.JSON
-	TypeUnknown  = flyqltype.Unknown
+	TypeString     = flyqltype.String
+	TypeInt        = flyqltype.Int
+	TypeFloat      = flyqltype.Float
+	TypeBool       = flyqltype.Bool
+	TypeDate       = flyqltype.Date
+	TypeDuration   = flyqltype.Duration
+	TypeArray      = flyqltype.Array
+	TypeMap        = flyqltype.Map
+	TypeStruct     = flyqltype.Struct
+	TypeJSON       = flyqltype.JSON
+	TypeJSONString = flyqltype.JSONString
+	TypeUnknown    = flyqltype.Unknown
 )

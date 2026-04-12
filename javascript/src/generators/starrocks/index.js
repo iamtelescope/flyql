@@ -16,7 +16,7 @@ export { Column, newColumn, normalizeStarRocksType }
 export function toFlyQLSchema(cols) {
     const m = {}
     for (const c of cols) {
-        m[c.name] = new FCol(c.name, c.jsonString, c.flyqlType(), { matchName: c.matchName })
+        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName })
     }
     return new ColumnSchema(m)
 }
@@ -345,7 +345,7 @@ function expressionToSQLSegmented(expr, columns) {
             columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
         }
         return `${columnExp} ${reverseOperator}${operator} ${value}`
-    } else if (column.jsonString) {
+    } else if (column.flyqlType() === Type.JSONString) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) validateJSONPathPart(part)
         const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
@@ -426,7 +426,7 @@ function inExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
             return `${leafExpr} ${sqlOp} (${valuesSQL})`
-        } else if (column.jsonString) {
+        } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
             let leafExpr = `parse_json(${colId})->${jsonPathStr}`
@@ -490,7 +490,7 @@ function truthyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
             return `(${leafExpr} IS NOT NULL AND ${leafExpr} != '')`
-        } else if (column.jsonString) {
+        } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
             let leafExpr = `parse_json(${colId})->${jsonPathStr}`
@@ -509,10 +509,7 @@ function truthyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
-    if (column.jsonString) {
-        if (column.flyqlType() === Type.Map || column.flyqlType() === Type.Struct) {
-            return `(${colId} IS NOT NULL AND json_length(to_json(${colId})) > 0)`
-        }
+    if (column.flyqlType() === Type.JSONString) {
         return `(${colId} IS NOT NULL AND ${colId} != '' AND json_length(${colId}) > 0)`
     }
 
@@ -573,7 +570,7 @@ function falsyExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
             return `(${leafExpr} IS NULL OR ${leafExpr} = '')`
-        } else if (column.jsonString) {
+        } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
             let leafExpr = `parse_json(${colId})->${jsonPathStr}`
@@ -592,10 +589,7 @@ function falsyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
-    if (column.jsonString) {
-        if (column.flyqlType() === Type.Map || column.flyqlType() === Type.Struct) {
-            return `(${colId} IS NULL OR json_length(to_json(${colId})) = 0)`
-        }
+    if (column.flyqlType() === Type.JSONString) {
         return `(${colId} IS NULL OR ${colId} = '' OR json_length(${colId}) = 0)`
     }
 
@@ -673,7 +667,7 @@ function hasExpressionToSQL(expr, columns) {
                 return `INSTR(${leafExpr}, ${value}) = 0`
             }
             return `INSTR(${leafExpr}, ${value}) > 0`
-        } else if (column.jsonString) {
+        } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             for (const part of jsonPath) validateJSONPathPart(part)
             const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
@@ -866,7 +860,7 @@ function buildSelectExpr(column, path) {
         for (const part of path) validateJSONPathPart(part)
         return `${colId}->${path.map((p) => quoteJsonPathPart(p)).join('->')}`
     }
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         return `parse_json(${colId})->${path.map((p) => quoteJsonPathPart(p)).join('->')}`
     }
     if (column.flyqlType() === Type.Map) {

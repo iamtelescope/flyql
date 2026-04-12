@@ -60,6 +60,10 @@ func NormalizePostgreSQLType(pgType string) flyqltype.Type {
 
 	normalized := strings.ToLower(strings.TrimSpace(pgType))
 
+	if normalized == "jsonstring" {
+		return flyqltype.JSONString
+	}
+
 	if typeRegexes[flyqltype.Array].MatchString(normalized) {
 		return flyqltype.Array
 	}
@@ -109,12 +113,10 @@ func NormalizePostgreSQLType(pgType string) flyqltype.Type {
 }
 
 // Column is the opaque PostgreSQL-dialect column. Construct via
-// NewColumn(ColumnDef). Public surface is Name/RawIdentifier/JSONString/
+// NewColumn(ColumnDef). Public surface is Name/RawIdentifier/
 // Values/DisplayName plus the RawType() and FlyQLType() accessors.
 type Column struct {
-	Name string `json:"name" yaml:"name"`
-	// JSONString is an orthogonal capability flag — see flyql.Column.
-	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
+	Name        string   `json:"name" yaml:"name"`
 	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
 	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 	// RawIdentifier, if set, is used as-is in generated SQL instead of
@@ -135,7 +137,6 @@ func (c *Column) FlyQLType() flyqltype.Type { return c.flyqlType }
 // ColumnDef is the public input contract for constructing a Column.
 type ColumnDef struct {
 	Name          string   `json:"name" yaml:"name"`
-	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type          string   `json:"type" yaml:"type"`
 	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
 	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
@@ -146,7 +147,6 @@ type ColumnDef struct {
 func NewColumn(def ColumnDef) *Column {
 	return &Column{
 		Name:          def.Name,
-		JSONString:    def.JSONString,
 		Values:        def.Values,
 		DisplayName:   def.DisplayName,
 		RawIdentifier: def.RawIdentifier,
@@ -160,7 +160,7 @@ func NewColumn(def ColumnDef) *Column {
 func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
 	m := make(map[string]*flyql.Column, len(cols))
 	for _, c := range cols {
-		fc := flyql.NewColumn(c.Name, c.JSONString, c.FlyQLType())
+		fc := flyql.NewColumn(c.Name, c.FlyQLType())
 		m[c.Name] = &fc
 	}
 	return flyql.NewColumnSchema(m)

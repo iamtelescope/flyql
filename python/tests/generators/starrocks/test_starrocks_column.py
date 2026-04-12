@@ -30,53 +30,51 @@ def test_normalize_starrocks_type(input_type: str, expected: Type) -> None:
 
 class TestField:
     def test_field_creation_basic(self) -> None:
-        field = Column("test_field", False, "String")
+        field = Column("test_field", "String")
         assert field.name == "test_field"
-        assert field.jsonstring is False
         assert field.raw_type == "String"
         assert field.values == []
         assert field.flyql_type == Type.String
 
     def test_field_creation_with_values(self) -> None:
         values = ["value1", "value2"]
-        field = Column("enum_field", False, "Enum8", values)
+        field = Column("enum_field", "Enum8", values)
         assert field.values == values
 
     def test_field_creation_map(self) -> None:
-        field = Column("map_field", False, "Map<String, Int>")
+        field = Column("map_field", "Map<String, Int>")
         assert field.flyql_type == Type.Map
 
     def test_field_creation_array(self) -> None:
-        field = Column("array_field", False, "Array<String>")
+        field = Column("array_field", "Array<String>")
         assert field.flyql_type == Type.Array
 
     def test_field_creation_json_field(self) -> None:
-        field = Column("json_field", True, "String")
-        assert field.jsonstring is True
-        assert field.flyql_type == Type.String
+        field = Column("json_field", "jsonstring")
+        assert field.flyql_type == Type.JSONString
 
     def test_field_creation_int_types(self) -> None:
         for int_type in ["Int", "BIGINT", "tinyint", "SmallInt"]:
-            field = Column("int_field", False, int_type)
+            field = Column("int_field", int_type)
             assert field.flyql_type == Type.Int
 
     def test_field_creation_float_types(self) -> None:
         for float_type in ["float", "Decimal(10,2)", "DOUBLE"]:
-            field = Column("float_field", False, float_type)
+            field = Column("float_field", float_type)
             assert field.flyql_type == Type.Float
 
     def test_field_creation_json(self) -> None:
-        field = Column("json_field", False, "JSON")
+        field = Column("json_field", "JSON")
         assert field.flyql_type == Type.JSON
 
     def test_field_creation_json_with_params(self) -> None:
-        field = Column("json_field", False, "JSON(a.b UInt32)")
+        field = Column("json_field", "JSON(a.b UInt32)")
         assert field.flyql_type == Type.JSON
 
     def test_field_values_empty_list(self) -> None:
-        field = Column("test", False, "String", [])
+        field = Column("test", "String", [])
         assert field.values == []
 
     def test_field_creation_unknown_type(self) -> None:
-        field = Column("unknown_field", False, "SomeUnknownType")
+        field = Column("unknown_field", "SomeUnknownType")
         assert field.flyql_type == Type.Unknown

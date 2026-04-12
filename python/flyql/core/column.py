@@ -22,7 +22,6 @@ class Column:
     def __init__(
         self,
         name: str,
-        jsonstring: bool,
         column_type: Type,
         values: Optional[List[str]] = None,
         display_name: str = "",
@@ -32,9 +31,6 @@ class Column:
         children: Optional[Dict[str, "Column"]] = None,
     ) -> None:
         self.name = name
-        # JSONString is an orthogonal capability flag — see Tech Decision #5.
-        # NOT validated against ``column_type``.
-        self.jsonstring = jsonstring
         self.type: Type = column_type
         self.values = values or []
         self.display_name = display_name
@@ -132,6 +128,12 @@ def _column_from_plain_object(name: str, raw: Any) -> Optional[Column]:
             "in canonical column JSON; see migration guide at "
             "docs.flyql.dev/advanced/column-types"
         )
+    if "jsonstring" in raw:
+        raise FlyqlError(
+            f"column {name!r}: the 'jsonstring' boolean field has been removed; "
+            "declare the column with 'type': 'jsonstring' instead; "
+            "see migration guide at docs.flyql.dev/advanced/column-types"
+        )
     children: Optional[Dict[str, Column]] = None
     if "children" in raw and isinstance(raw["children"], dict):
         children = {}
@@ -143,7 +145,6 @@ def _column_from_plain_object(name: str, raw: Any) -> Optional[Column]:
     column_type = parse_flyql_type(type_str) if type_str else Type.Unknown
     return Column(
         name=name,
-        jsonstring=bool(raw.get("jsonstring", False)),
         column_type=column_type,
         values=raw.get("values", []),
         suggest=raw.get("suggest", True),

@@ -12,15 +12,7 @@ import (
 // starrocks.Column); use the dialect's ToFlyQLSchema helper to bridge
 // from a dialect column slice to a flyql.ColumnSchema.
 type Column struct {
-	Name string
-	// JSONString is an orthogonal capability flag that means "treat this
-	// column as a JSON document for the purposes of dialect-specific
-	// emptiness/path access". It is intentionally NOT validated against
-	// Type — meaningful combinations are dialect-defined; e.g. StarRocks
-	// implements semantic behavior for JSONString=true on TypeMap and
-	// TypeStruct columns. See the unify-column-type-system spec, Tech
-	// Decision #5.
-	JSONString    bool
+	Name          string
 	Type          Type
 	Values        []string
 	DisplayName   string
@@ -36,14 +28,13 @@ func (c *Column) IsNested() bool {
 }
 
 // NewColumn creates a Column with sensible defaults. MatchName is set to
-// name. Suggest defaults to true. JSONString is NOT validated against t.
-func NewColumn(name string, jsonString bool, t Type) Column {
+// name. Suggest defaults to true.
+func NewColumn(name string, t Type) Column {
 	return Column{
-		Name:       name,
-		JSONString: jsonString,
-		Type:       t,
-		MatchName:  name,
-		Suggest:    true,
+		Name:      name,
+		Type:      t,
+		MatchName: name,
+		Suggest:   true,
 	}
 }
 
@@ -141,17 +132,18 @@ func FromColumns(columns []Column) *ColumnSchema {
 // validFlyQLTypes is the set of accepted lowercase tokens for ParseType.
 // Keep in sync with flyqltype.Type.
 var validFlyQLTypes = map[string]Type{
-	"string":   TypeString,
-	"int":      TypeInt,
-	"float":    TypeFloat,
-	"bool":     TypeBool,
-	"date":     TypeDate,
-	"duration": TypeDuration,
-	"array":    TypeArray,
-	"map":      TypeMap,
-	"struct":   TypeStruct,
-	"json":     TypeJSON,
-	"unknown":  TypeUnknown,
+	"string":     TypeString,
+	"int":        TypeInt,
+	"float":      TypeFloat,
+	"bool":       TypeBool,
+	"date":       TypeDate,
+	"duration":   TypeDuration,
+	"array":      TypeArray,
+	"map":        TypeMap,
+	"struct":     TypeStruct,
+	"json":       TypeJSON,
+	"jsonstring": TypeJSONString,
+	"unknown":    TypeUnknown,
 }
 
 // ParseType strictly parses a string into a flyql.Type. It returns an
@@ -198,6 +190,12 @@ func columnFromPlainObject(name string, raw any) (*Column, error) {
 			name, "normalized_type", "type",
 		)
 	}
+	if _, hasJSONString := dict["jsonstring"]; hasJSONString {
+		return nil, fmt.Errorf(
+			"column %q: the 'jsonstring' boolean field has been removed; declare the column with \"type\": \"jsonstring\" instead; see migration guide at docs.flyql.dev/advanced/column-types",
+			name,
+		)
+	}
 	col := &Column{
 		Name:      name,
 		MatchName: name,
@@ -210,9 +208,6 @@ func columnFromPlainObject(name string, raw any) (*Column, error) {
 			return nil, fmt.Errorf("column %q: %w", name, err)
 		}
 		col.Type = parsed
-	}
-	if js, ok := dict["jsonstring"].(bool); ok {
-		col.JSONString = js
 	}
 	if s, ok := dict["suggest"].(bool); ok {
 		col.Suggest = s

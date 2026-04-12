@@ -63,9 +63,9 @@ describe('Custom Transformer Registration', () => {
     })
 
     describe('generators', () => {
-        const chColumns = { src_ip: chNewColumn('src_ip', false, 'String') }
-        const pgColumns = { src_ip: pgNewColumn('src_ip', false, 'text') }
-        const srColumns = { src_ip: srNewColumn('src_ip', false, 'VARCHAR') }
+        const chColumns = { src_ip: chNewColumn('src_ip', 'String') }
+        const pgColumns = { src_ip: pgNewColumn('src_ip', 'text') }
+        const srColumns = { src_ip: srNewColumn('src_ip', 'VARCHAR') }
 
         it('ClickHouse generates custom SQL', () => {
             const registry = customRegistry()

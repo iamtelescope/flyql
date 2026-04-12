@@ -67,7 +67,11 @@
       "name": "jsonstring_number_value",
       "input": "json_column.age=25",
       "expected_result": "success",
-      "expected_sql_contains": ["JSONExtractInt", "JSONExtractFloat", "JSONExtractBool"]
+      "expected_sql_contains": [
+        "JSONExtractInt",
+        "JSONExtractFloat",
+        "JSONExtractBool"
+      ]
     },
     {
       "name": "jsonstring_not_equals",

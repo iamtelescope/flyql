@@ -34,6 +34,9 @@ export const Type = Object.freeze({
     Struct: 'struct',
     /** Semi-structured JSON document. Absorbs CH JSON, PG json/jsonb, SR JSON. */
     JSON: 'json',
+    /** Text column whose contents are valid JSON. Operator set mirrors JSON;
+     *  generators wrap access with dialect-specific parse functions. */
+    JSONString: 'jsonstring',
     /** Documented fallback for types flyql cannot reason about. */
     Unknown: 'unknown',
 })

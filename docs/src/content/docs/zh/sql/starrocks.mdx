@@ -97,17 +97,17 @@ StarRocks 数组下标是 0-based：
 
 ```go
 columns := map[string]*starrocks.Column{
-    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
-    "data":    starrocks.NewColumn("data", false, "JSON", nil),
-    "log":     starrocks.NewColumn("log", true, "STRING", nil),
+    "message": starrocks.NewColumn(starrocks.ColumnDef{Name: "message", Type: "VARCHAR(255)"}),
+    "data":    starrocks.NewColumn(starrocks.ColumnDef{Name: "data", Type: "JSON"}),
+    "log":     starrocks.NewColumn(starrocks.ColumnDef{Name: "log", Type: "jsonstring"}),
 }
 ```
 
 ```javascript
 const columns = {
-    message: newColumn("message", false, "VARCHAR(255)", null),
-    data:    newColumn("data", false, "JSON", null),
-    log:     newColumn("log", true, "STRING", null),
+    message: newColumn("message", "VARCHAR(255)"),
+    data:    newColumn("data", "JSON"),
+    log:     newColumn("log", "jsonstring"),
 }
 ```
 

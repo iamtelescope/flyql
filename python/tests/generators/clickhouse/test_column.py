@@ -25,7 +25,7 @@ def columns_data():
 
 
 def _make(fd):
-    return Column(fd["name"], fd.get("jsonstring", False), fd["type"], fd.get("values"))
+    return Column(fd["name"], fd["type"], fd.get("values"))
 
 
 class TestColumnFromSharedData:
@@ -33,7 +33,6 @@ class TestColumnFromSharedData:
         for name, fd in columns_data["columns"].items():
             column = _make(fd)
             assert column.name == fd["name"]
-            assert column.jsonstring == fd.get("jsonstring", False)
             assert column.raw_type == fd["type"]
 
     def test_string_column(self, columns_data):
@@ -58,7 +57,7 @@ class TestColumnFromSharedData:
 
     def test_jsonstring_column(self, columns_data):
         column = _make(columns_data["columns"]["json_column"])
-        assert column.jsonstring is True
+        assert column.flyql_type == Type.JSONString
 
     def test_json_column(self, columns_data):
         column = _make(columns_data["columns"]["new_json"])

@@ -36,9 +36,9 @@ const SHARED_CASES = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8')).tests
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeColumn(name, typeStr, { jsonString = false, matchName = null } = {}) {
+function makeColumn(name, typeStr, { matchName = null } = {}) {
     const t = typeStr || Type.Unknown
-    return new Column(name, jsonString, t, { matchName })
+    return new Column(name, t, { matchName })
 }
 
 function parseAst(query) {
@@ -223,14 +223,14 @@ describe('Validator (language-specific)', () => {
         // After the unify-column-type-system refactor, dialect Columns are
         // opaque — bridge via flyql.Column to get a canonical column for
         // the validator.
-        const ch = new CHColumn('host', false, 'String')
-        const bridged = new Column(ch.name, ch.jsonString, ch.flyqlType(), { matchName: ch.matchName })
+        const ch = new CHColumn('host', 'String')
+        const bridged = new Column(ch.name, ch.flyqlType(), { matchName: ch.matchName })
         const ast = parseAst("host='X'")
         expect(diagnose(ast, ColumnSchema.fromColumns([bridged]), registry)).toEqual([])
     })
 
     it('should use matchName for escaped identifiers', () => {
-        const col = new CHColumn('1host', false, 'String')
+        const col = new CHColumn('1host', 'String')
         expect(col.name).toBe('`1host`')
         expect(col.matchName).toBe('1host')
     })

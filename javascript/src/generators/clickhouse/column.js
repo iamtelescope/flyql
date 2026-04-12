@@ -1,4 +1,5 @@
 import { Type } from '../../flyql_type.js'
+import { FlyqlError } from '../../core/exceptions.js'
 
 const wrapperRegex = /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\(/i
 
@@ -148,6 +149,8 @@ export function normalizeClickHouseType(chType) {
 
     let normalized = chType.trim().toLowerCase()
 
+    if (normalized === 'jsonstring') return Type.JSONString
+
     const wrapperMatch = normalized.match(wrapperRegex)
     if (wrapperMatch) {
         const afterKeyword = normalized.slice(wrapperMatch[0].length)
@@ -196,13 +199,11 @@ function escapeIdentifier(name) {
 /**
  * Opaque ClickHouse-dialect Column. Construct via `new Column(...)` or
  * `newColumn(...)`. The flyql semantic type is computed at construction
- * via `normalizeClickHouseType`. `jsonString` is an orthogonal capability
- * flag — see Tech Decision #5.
+ * via `normalizeClickHouseType`.
  */
 export class Column {
-    constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
+    constructor(name, type, values, displayName = '', rawIdentifier = '') {
         this.name = escapeIdentifier(name)
-        this.jsonString = jsonString
         this.values = values || []
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
@@ -225,6 +226,13 @@ export class Column {
     }
 }
 
-export function newColumn(name, jsonString, type, values) {
-    return new Column(name, jsonString, type, values)
+export function newColumn(name, type, values) {
+    if (typeof type !== 'string') {
+        throw new FlyqlError(
+            `newColumn: second argument must be a raw-type string (e.g. 'String', 'jsonstring'); got ${typeof type}. ` +
+                `If you are upgrading from the pre-spec API that took 'jsonString' as the second positional parameter, ` +
+                `it has been removed; see migration guide at docs.flyql.dev/advanced/column-types`,
+        )
+    }
+    return new Column(name, type, values)
 }

@@ -6,6 +6,6 @@ from flyql.generators.clickhouse.column import Column
 result = parse("message|upper = 'ERROR'")
 
 # Generate SQL for ClickHouse
-columns = {"message": Column("message", False, "String")}
+columns = {"message": Column("message", "String")}
 sql = to_sql_where(result.root, columns)
 print(sql)  # equals(upper(message), 'ERROR')

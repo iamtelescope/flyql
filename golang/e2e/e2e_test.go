@@ -30,7 +30,6 @@ type testCasesFile struct {
 
 type chColumnDef struct {
 	Name        string   `json:"name"`
-	JSONString  bool     `json:"jsonstring"`
 	Type        string   `json:"type"`
 	Values      []string `json:"values"`
 	DisplayName string   `json:"display_name"`
@@ -38,7 +37,6 @@ type chColumnDef struct {
 
 type pgColumnDef struct {
 	Name        string   `json:"name"`
-	JSONString  bool     `json:"jsonstring"`
 	Type        string   `json:"type"`
 	Values      []string `json:"values"`
 	DisplayName string   `json:"display_name"`
@@ -191,7 +189,6 @@ func loadClickHouseColumns(t *testing.T) map[string]*clickhousegen.Column {
 	for name, def := range f.Columns {
 		cols[name] = clickhousegen.NewColumn(clickhousegen.ColumnDef{
 			Name:        def.Name,
-			JSONString:  def.JSONString,
 			Type:        def.Type,
 			Values:      def.Values,
 			DisplayName: def.DisplayName,
@@ -214,7 +211,6 @@ func loadPostgreSQLColumns(t *testing.T) map[string]*postgresqlgen.Column {
 	for name, def := range f.Columns {
 		cols[name] = postgresqlgen.NewColumn(postgresqlgen.ColumnDef{
 			Name:        def.Name,
-			JSONString:  def.JSONString,
 			Type:        def.Type,
 			Values:      def.Values,
 			DisplayName: def.DisplayName,
@@ -225,7 +221,6 @@ func loadPostgreSQLColumns(t *testing.T) map[string]*postgresqlgen.Column {
 
 type srColumnDef struct {
 	Name        string   `json:"name"`
-	JSONString  bool     `json:"jsonstring"`
 	Type        string   `json:"type"`
 	Values      []string `json:"values"`
 	DisplayName string   `json:"display_name"`
@@ -249,7 +244,6 @@ func loadStarRocksColumns(t *testing.T) map[string]*starrocksgen.Column {
 	for name, def := range f.Columns {
 		cols[name] = starrocksgen.NewColumn(starrocksgen.ColumnDef{
 			Name:        def.Name,
-			JSONString:  def.JSONString,
 			Type:        def.Type,
 			Values:      def.Values,
 			DisplayName: def.DisplayName,
@@ -308,7 +302,6 @@ func containsDB(databases []string, db string) bool {
 
 type joinColumnDef struct {
 	Name          string   `json:"name"`
-	JSONString    bool     `json:"jsonstring"`
 	Type          string   `json:"type"`
 	Values        []string `json:"values"`
 	DisplayName   string   `json:"display_name"`
@@ -345,7 +338,6 @@ func loadPostgreSQLJoinColumns(t *testing.T) map[string]*postgresqlgen.Column {
 	for name, def := range f.Columns {
 		cols[name] = postgresqlgen.NewColumn(postgresqlgen.ColumnDef{
 			Name:          def.Name,
-			JSONString:    def.JSONString,
 			Type:          def.Type,
 			Values:        def.Values,
 			DisplayName:   def.DisplayName,
@@ -372,7 +364,6 @@ func loadClickHouseJoinColumns(t *testing.T) map[string]*clickhousegen.Column {
 	for name, def := range f.Columns {
 		cols[name] = clickhousegen.NewColumn(clickhousegen.ColumnDef{
 			Name:          def.Name,
-			JSONString:    def.JSONString,
 			Type:          def.Type,
 			Values:        def.Values,
 			DisplayName:   def.DisplayName,
@@ -399,7 +390,6 @@ func loadStarRocksJoinColumns(t *testing.T) map[string]*starrocksgen.Column {
 	for name, def := range f.Columns {
 		cols[name] = starrocksgen.NewColumn(starrocksgen.ColumnDef{
 			Name:          def.Name,
-			JSONString:    def.JSONString,
 			Type:          def.Type,
 			Values:        def.Values,
 			DisplayName:   def.DisplayName,

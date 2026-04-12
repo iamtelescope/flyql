@@ -1,4 +1,5 @@
 import { Type } from '../../flyql_type.js'
+import { FlyqlError } from '../../core/exceptions.js'
 
 const typeRegexes = {
     [Type.String]: /^(varchar|char|character varying|character)\s*\(\s*\d+\s*\)/i,
@@ -53,6 +54,8 @@ export function normalizePostgreSQLType(pgType) {
 
     const normalized = pgType.trim().toLowerCase()
 
+    if (normalized === 'jsonstring') return Type.JSONString
+
     if (typeRegexes[Type.Array].test(normalized)) return Type.Array
 
     if (typeRegexes[Type.String].test(normalized)) return Type.String
@@ -78,9 +81,8 @@ export function normalizePostgreSQLType(pgType) {
 }
 
 export class Column {
-    constructor(name, jsonString, type, values, displayName = '', rawIdentifier = '') {
+    constructor(name, type, values, displayName = '', rawIdentifier = '') {
         this.name = name
-        this.jsonString = !!jsonString
         this.values = values || []
         this.displayName = displayName
         this.rawIdentifier = rawIdentifier
@@ -103,6 +105,13 @@ export class Column {
     }
 }
 
-export function newColumn(name, jsonString, type, values) {
-    return new Column(name, jsonString, type, values)
+export function newColumn(name, type, values) {
+    if (typeof type !== 'string') {
+        throw new FlyqlError(
+            `newColumn: second argument must be a raw-type string (e.g. 'text', 'jsonstring'); got ${typeof type}. ` +
+                `If you are upgrading from the pre-spec API that took 'jsonString' as the second positional parameter, ` +
+                `it has been removed; see migration guide at docs.flyql.dev/advanced/column-types`,
+        )
+    }
+    return new Column(name, type, values)
 }

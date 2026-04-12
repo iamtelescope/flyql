@@ -4,128 +4,110 @@
   "columns": {
     "message": {
       "name": "message",
-      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "count": {
       "name": "count",
-      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "price": {
       "name": "price",
-      "jsonstring": false,
       "type": "real",
       "values": null
     },
     "active": {
       "name": "active",
-      "jsonstring": false,
       "type": "boolean",
       "values": null
     },
     "created_at": {
       "name": "created_at",
-      "jsonstring": false,
       "type": "date",
       "values": null
     },
     "jsonb_column": {
       "name": "jsonb_column",
-      "jsonstring": false,
       "type": "jsonb",
       "values": null
     },
     "tags": {
       "name": "tags",
-      "jsonstring": false,
       "type": "text[]",
       "values": null
     },
     "metadata": {
       "name": "metadata",
-      "jsonstring": false,
       "type": "hstore",
       "values": null
     },
     "enum_column": {
       "name": "enum_column",
-      "jsonstring": false,
       "type": "text",
-      "values": ["value1", "value2"]
+      "values": [
+        "value1",
+        "value2"
+      ]
     },
     "status": {
       "name": "status",
-      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "enabled": {
       "name": "enabled",
-      "jsonstring": false,
       "type": "boolean",
       "values": null
     },
     "archived": {
       "name": "archived",
-      "jsonstring": false,
       "type": "boolean",
       "values": null
     },
     "a": {
       "name": "a",
-      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "b": {
       "name": "b",
-      "jsonstring": false,
       "type": "integer",
       "values": null
     },
     "error": {
       "name": "error",
-      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "name": {
       "name": "name",
-      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "env": {
       "name": "env",
-      "jsonstring": false,
       "type": "text",
       "values": null
     },
     "u.name": {
       "name": "name",
-      "jsonstring": false,
       "type": "text",
       "values": null,
       "raw_identifier": "u.name"
     },
     "details": {
       "name": "details",
-      "jsonstring": false,
       "type": "jsonb",
       "values": null
     },
     "json_meta": {
       "name": "json_meta",
-      "jsonstring": true,
-      "type": "text",
+      "type": "jsonstring",
       "values": null
     },
     "field": {
       "name": "field",
-      "jsonstring": false,
       "type": "text",
       "values": null
     }

@@ -1,3 +1,5 @@
+.PHONY: all install fmt fmt-test vet lint gotest staticcheck snippets test coverage cleanup
+
 all: test
 install:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
@@ -15,6 +17,7 @@ gotest:
 staticcheck:
 	staticcheck ./...
 snippets:
+	@./scripts/verify-snippet-layout.sh
 	go build ./snippets/...
 test: fmt-test vet staticcheck gotest snippets
 coverage:

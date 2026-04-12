@@ -23,7 +23,6 @@ def load_columns():
     for name, fd in data["columns"].items():
         col = Column(
             fd["name"],
-            fd.get("jsonstring", False),
             fd["type"],
             fd.get("values"),
         )

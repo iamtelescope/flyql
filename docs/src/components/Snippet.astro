@@ -1,0 +1,15 @@
+---
+import { Code } from '@astrojs/starlight/components'
+import { extractSlice } from './snippet-slice.ts'
+
+interface Props {
+  code: string
+  lang: string
+  from?: string
+  to?: string
+}
+
+const { code, lang, from, to } = Astro.props
+const slice = extractSlice(code, from, to)
+---
+<Code code={slice} lang={lang} />

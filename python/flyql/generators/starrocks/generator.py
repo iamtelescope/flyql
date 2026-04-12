@@ -206,7 +206,7 @@ def truthy_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"({leaf_expr} IS NOT NULL AND " f"{leaf_expr} != '')"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             leaf_expr = f"parse_json({col_id})->{json_path_str}"
@@ -232,16 +232,11 @@ def truthy_expression_to_sql_where(
                 col_id, expression.key.transformers, "starrocks"
             )
             return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
-        elif column.jsonstring:
-            if (column.flyql_type == Type.Map) or (column.flyql_type == Type.Struct):
-                return (
-                    f"({col_id} IS NOT NULL AND " f"json_length(to_json({col_id})) > 0)"
-                )
-            else:
-                return (
-                    f"({col_id} IS NOT NULL AND {col_id} != '' AND "
-                    f"json_length({col_id}) > 0)"
-                )
+        elif column.flyql_type == Type.JSONString:
+            return (
+                f"({col_id} IS NOT NULL AND {col_id} != '' AND "
+                f"json_length({col_id}) > 0)"
+            )
         elif column.flyql_type == Type.Bool:
             return col_id
         elif column.flyql_type == Type.String:
@@ -323,7 +318,7 @@ def falsy_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"({leaf_expr} IS NULL OR " f"{leaf_expr} = '')"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             leaf_expr = f"parse_json({col_id})->{json_path_str}"
@@ -349,14 +344,10 @@ def falsy_expression_to_sql_where(
                 col_id, expression.key.transformers, "starrocks"
             )
             return f"({col_ref} IS NULL OR {col_ref} = '')"
-        elif column.jsonstring:
-            if (column.flyql_type == Type.Map) or (column.flyql_type == Type.Struct):
-                return f"({col_id} IS NULL OR " f"json_length(to_json({col_id})) = 0)"
-            else:
-                return (
-                    f"({col_id} IS NULL OR {col_id} = '' OR "
-                    f"json_length({col_id}) = 0)"
-                )
+        elif column.flyql_type == Type.JSONString:
+            return (
+                f"({col_id} IS NULL OR {col_id} = '' OR " f"json_length({col_id}) = 0)"
+            )
         elif column.flyql_type == Type.Bool:
             return f"NOT {col_id}"
         elif column.flyql_type == Type.String:
@@ -453,7 +444,7 @@ def in_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = "->".join(f"{quote_json_path_part(x)}" for x in json_path)
             leaf_expr = f"parse_json({col_id})->{json_path_str}"
@@ -544,7 +535,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"INSTR({leaf_expr}, {value}) = 0"
             return f"INSTR({leaf_expr}, {value}) > 0"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -800,7 +791,7 @@ def expression_to_sql_where(
                     column_exp, expression.key.transformers, "starrocks"
                 )
             text = f"{column_exp} {reverse_operator}{operator} {value}"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
@@ -1078,7 +1069,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
         json_path_str = "->".join(quote_json_path_part(part) for part in path)
         return f"{col_id}->{json_path_str}"
 
-    if column.jsonstring:
+    if column.flyql_type == Type.JSONString:
         json_path_str = "->".join(quote_json_path_part(part) for part in path)
         return f"parse_json({col_id})->{json_path_str}"
 

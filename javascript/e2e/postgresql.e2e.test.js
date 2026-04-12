@@ -56,7 +56,7 @@ function buildColumns() {
     const colData = loadJSON(path.join(testDataDir, 'postgresql', 'columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        const column = newColumn(col.name, col.jsonstring, col.type, col.values)
+        const column = newColumn(col.name, col.type, col.values)
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }
@@ -69,7 +69,7 @@ function buildJoinColumns() {
     const colData = loadJSON(path.join(testDataDir, 'postgresql', 'join_columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        const column = newColumn(col.name, col.jsonstring || false, col.type, col.values)
+        const column = newColumn(col.name, col.type, col.values)
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }

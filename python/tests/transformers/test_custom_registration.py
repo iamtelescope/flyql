@@ -79,7 +79,7 @@ class TestCustomRegistration:
 
 class TestCustomTransformerClickHouse:
     COLUMNS = {
-        "src_ip": ChColumn("src_ip", False, "String"),
+        "src_ip": ChColumn("src_ip", "String"),
     }
 
     def test_where_clause(self) -> None:
@@ -97,7 +97,7 @@ class TestCustomTransformerClickHouse:
 
 class TestCustomTransformerPostgreSQL:
     COLUMNS = {
-        "src_ip": PgColumn("src_ip", False, "text"),
+        "src_ip": PgColumn("src_ip", "text"),
     }
 
     def test_where_clause(self) -> None:
@@ -110,7 +110,7 @@ class TestCustomTransformerPostgreSQL:
 
 class TestCustomTransformerStarRocks:
     COLUMNS = {
-        "src_ip": SrColumn("src_ip", False, "VARCHAR"),
+        "src_ip": SrColumn("src_ip", "VARCHAR"),
     }
 
     def test_where_clause(self) -> None:

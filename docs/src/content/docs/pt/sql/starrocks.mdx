@@ -104,18 +104,18 @@ O parâmetro `jsonString` controla qual modo é utilizado (igual ao ClickHouse):
 ```go
 // Go
 columns := map[string]*starrocks.Column{
-    "message": starrocks.NewColumn("message", false, "VARCHAR(255)", nil),
-    "data":    starrocks.NewColumn("data", false, "JSON", nil),      // JSON nativo
-    "log":     starrocks.NewColumn("log", true, "STRING", nil),       // JSON string
+    "message": starrocks.NewColumn(starrocks.ColumnDef{Name: "message", Type: "VARCHAR(255)"}),
+    "data":    starrocks.NewColumn(starrocks.ColumnDef{Name: "data", Type: "JSON"}),      // JSON nativo
+    "log":     starrocks.NewColumn(starrocks.ColumnDef{Name: "log", Type: "jsonstring"}),       // JSON string
 }
 ```
 
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", false, "VARCHAR(255)", null),
-    data:    newColumn("data", false, "JSON", null),      // JSON nativo
-    log:     newColumn("log", true, "STRING", null),       // JSON string
+    message: newColumn("message", "VARCHAR(255)"),
+    data:    newColumn("data", "JSON"),      // JSON nativo
+    log:     newColumn("log", "jsonstring"),       // JSON string
 }
 ```
 

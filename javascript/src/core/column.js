@@ -5,14 +5,10 @@ import { Type, parseFlyQLType } from '../flyql_type.js'
  * The canonical, schema-aware Column used by the validator. Dialect
  * generators have their own opaque Column classes; bridge with the
  * dialect's `toFlyQLSchema` helper to feed the validator.
- *
- * `JSONString` is an orthogonal capability flag — see Tech Decision #5.
- * It is NOT validated against `type`.
  */
 export class Column {
     constructor(
         name,
-        jsonString,
         type,
         {
             values = [],
@@ -24,8 +20,15 @@ export class Column {
             autocomplete,
         } = {},
     ) {
+        if (typeof type !== 'string') {
+            throw new FlyqlError(
+                `Column: second argument must be a Type token string (e.g. 'string', 'jsonstring'); ` +
+                    `got ${typeof type}. If you are upgrading from the pre-spec API that accepted a ` +
+                    `boolean here, the 'jsonString' positional parameter has been removed; ` +
+                    `see migration guide at docs.flyql.dev/advanced/column-types`,
+            )
+        }
         this.name = name
-        this.jsonString = jsonString
         this.type = type
         this.values = values
         this.displayName = displayName
@@ -151,6 +154,13 @@ function _columnFromPlainObject(name, raw) {
                 `docs.flyql.dev/advanced/column-types`,
         )
     }
+    if ('jsonstring' in raw) {
+        throw new FlyqlError(
+            `column "${name}": the 'jsonstring' boolean field has been removed; ` +
+                `declare the column with 'type': 'jsonstring' instead; ` +
+                `see migration guide at docs.flyql.dev/advanced/column-types`,
+        )
+    }
     let children = null
     if (raw.children != null && typeof raw.children === 'object') {
         children = {}
@@ -172,7 +182,7 @@ function _columnFromPlainObject(name, raw) {
             flyqlType = typeStr // preserve raw string for the editor normalizer
         }
     }
-    return new Column(name, !!raw.jsonstring, flyqlType, {
+    return new Column(name, flyqlType, {
         values: raw.values || [],
         suggest: raw.suggest !== undefined ? raw.suggest : true,
         matchName: name,

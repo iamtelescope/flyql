@@ -4,115 +4,99 @@
   "columns": {
     "message": {
       "name": "message",
-      "jsonstring": false,
       "type": "String",
       "values": null
     },
     "count": {
       "name": "count",
-      "jsonstring": false,
       "type": "Int64",
       "values": null
     },
     "price": {
       "name": "price",
-      "jsonstring": false,
       "type": "Float64",
       "values": null
     },
     "active": {
       "name": "active",
-      "jsonstring": false,
       "type": "Bool",
       "values": null
     },
     "created_at": {
       "name": "created_at",
-      "jsonstring": false,
       "type": "Date",
       "values": null
     },
     "json_column": {
       "name": "json_column",
-      "jsonstring": true,
-      "type": "String",
+      "type": "jsonstring",
       "values": null
     },
     "new_json": {
       "name": "new_json",
-      "jsonstring": false,
       "type": "JSON",
       "values": null
     },
     "tags": {
       "name": "tags",
-      "jsonstring": false,
       "type": "Array(String)",
       "values": null
     },
     "metadata": {
       "name": "metadata",
-      "jsonstring": false,
       "type": "Map(String, String)",
       "values": null
     },
     "enum_column": {
       "name": "enum_column",
-      "jsonstring": false,
       "type": "Enum8",
-      "values": ["value1", "value2"]
+      "values": [
+        "value1",
+        "value2"
+      ]
     },
     "status": {
       "name": "status",
-      "jsonstring": false,
       "type": "Int32",
       "values": null
     },
     "enabled": {
       "name": "enabled",
-      "jsonstring": false,
       "type": "Bool",
       "values": null
     },
     "archived": {
       "name": "archived",
-      "jsonstring": false,
       "type": "Bool",
       "values": null
     },
     "a": {
       "name": "a",
-      "jsonstring": false,
       "type": "Int32",
       "values": null
     },
     "b": {
       "name": "b",
-      "jsonstring": false,
       "type": "Int32",
       "values": null
     },
     "error": {
       "name": "error",
-      "jsonstring": false,
       "type": "String",
       "values": null
     },
     "name": {
       "name": "name",
-      "jsonstring": false,
       "type": "String",
       "values": null
     },
     "env": {
       "name": "env",
-      "jsonstring": false,
       "type": "String",
       "values": null
     },
     "field": {
       "name": "field",
-      "jsonstring": false,
       "type": "String",
       "values": null
     }

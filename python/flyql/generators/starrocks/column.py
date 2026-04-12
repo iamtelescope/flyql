@@ -34,6 +34,9 @@ def normalize_starrocks_type(sr_type: str) -> Type:
 
     normalized = sr_type.strip().lower()
 
+    if normalized == "jsonstring":
+        return Type.JSONString
+
     if REGEX[Type.String].match(normalized):
         return Type.String
     if normalized in FLYQL_TYPE_TO_STARROCKS_TYPES[Type.String]:
@@ -78,17 +81,11 @@ def normalize_starrocks_type(sr_type: str) -> Type:
 
 
 class Column:
-    """Opaque StarRocks-dialect column.
-
-    Note: ``jsonstring=True`` combined with ``flyql_type == Type.Map`` or
-    ``Type.Struct`` is a meaningful, supported configuration in StarRocks
-    (the column is treated as a JSON document for emptiness checks via
-    ``json_length(to_json(...))``). See Tech Decision #5."""
+    """Opaque StarRocks-dialect column."""
 
     def __init__(
         self,
         name: str,
-        jsonstring: bool,
         _type: str,
         values: Optional[List[str]] = None,
         display_name: str = "",
@@ -96,7 +93,6 @@ class Column:
     ):
         self.name = name
         self.match_name = name
-        self.jsonstring = jsonstring
         self.values: List[str] = values or []
         self.display_name = display_name
         self.raw_identifier = raw_identifier

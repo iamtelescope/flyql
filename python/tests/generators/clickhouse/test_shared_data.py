@@ -21,9 +21,7 @@ def load_columns():
 
     columns = {}
     for name, fd in data["columns"].items():
-        columns[name] = Column(
-            fd["name"], fd.get("jsonstring", False), fd["type"], fd.get("values")
-        )
+        columns[name] = Column(fd["name"], fd["type"], fd.get("values"))
     return columns
 
 

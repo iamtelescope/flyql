@@ -29,7 +29,6 @@ SHARED_DATA = json.loads(open(FIXTURE_PATH, "r").read())
 def make_column(name: str, type_str: str) -> Column:
     return Column(
         name=name,
-        jsonstring=False,
         column_type=parse_flyql_type(type_str),
         match_name=name,
     )
@@ -43,7 +42,6 @@ def _build_column_from_def(d: dict) -> Column:
             children[child_name] = _build_column_from_def(child_def)
     return Column(
         name=d["name"],
-        jsonstring=False,
         column_type=parse_flyql_type(d["type"]),
         match_name=d["name"],
         children=children,

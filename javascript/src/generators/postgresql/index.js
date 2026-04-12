@@ -16,7 +16,7 @@ export { Column, newColumn, normalizePostgreSQLType }
 export function toFlyQLSchema(cols) {
     const m = {}
     for (const c of cols) {
-        m[c.name] = new FCol(c.name, c.jsonString, c.flyqlType(), { matchName: c.matchName })
+        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName })
     }
     return new ColumnSchema(m)
 }
@@ -389,15 +389,15 @@ function expressionToSQLSegmented(expr, columns) {
         throw new Error(`unknown column: ${columnName}`)
     }
 
-    if (column.flyqlType() && !column.jsonString && !expr.key.transformers.length) {
+    if (column.flyqlType() && column.flyqlType() !== Type.JSONString && !expr.key.transformers.length) {
         validateOperation(expr.value, column.flyqlType(), expr.operator)
     }
 
     const identifier = getIdentifier(column)
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
-    if (column.flyqlType() === Type.JSON || column.jsonString) {
-        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+    if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+        const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
         const jsonPath = expr.key.segments.slice(1)
         const allQuoted = extractQuotedSegments(expr.key.raw)
         const jsonPathQuoted = allQuoted.slice(1)
@@ -525,8 +525,8 @@ function inExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.flyqlType() === Type.JSON || column.jsonString) {
-            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+        if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+            const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
@@ -581,8 +581,8 @@ function truthyExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.flyqlType() === Type.JSON || column.jsonString) {
-            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+        if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+            const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
@@ -624,7 +624,7 @@ function truthyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         return `(${identifier} IS NOT NULL AND ${identifier} != '' AND CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) > 0 WHEN 'object' THEN ${identifier}::jsonb != '{}'::jsonb ELSE false END)`
     }
 
@@ -655,8 +655,8 @@ function falsyExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.flyqlType() === Type.JSON || column.jsonString) {
-            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+        if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+            const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
@@ -698,7 +698,7 @@ function falsyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         return `(${identifier} IS NULL OR ${identifier} = '' OR CASE jsonb_typeof(${identifier}::jsonb) WHEN 'array' THEN jsonb_array_length(${identifier}::jsonb) = 0 WHEN 'object' THEN ${identifier}::jsonb = '{}'::jsonb ELSE true END)`
     }
 
@@ -735,8 +735,8 @@ function hasExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.flyqlType() === Type.JSON || column.jsonString) {
-            const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+        if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+            const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
             const jsonPath = expr.key.segments.slice(1)
             const allQuoted = extractQuotedSegments(expr.key.raw)
             const jsonPathQuoted = allQuoted.slice(1)
@@ -800,8 +800,8 @@ function hasExpressionToSQL(expr, columns) {
         return `${value} = ANY(${identifier})`
     }
 
-    if (column.flyqlType() === Type.JSON || column.jsonString) {
-        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+    if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+        const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
         if (isNotHas) {
             return `NOT (${castIdentifier} ? ${value})`
         }
@@ -980,8 +980,8 @@ function buildSelectExpr(identifier, column, path, pathQuoted) {
         return identifier
     }
 
-    if (column.flyqlType() === Type.JSON || column.jsonString) {
-        const castIdentifier = column.jsonString ? `(${identifier}::jsonb)` : identifier
+    if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
+        const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
         for (let i = 0; i < path.length; i++) {
             validateJSONPathPart(path[i], pathQuoted[i])
         }
@@ -1019,7 +1019,7 @@ export function generateSelect(text, columns, registry = null) {
         let sqlExpr = buildSelectExpr(identifier, column, path, pathQuoted)
         if (key.transformers.length) {
             validateTransformerChain(key.transformers, registry)
-            if (path.length > 0 && (column.flyqlType() === Type.JSON || column.jsonString)) {
+            if (path.length > 0 && (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString)) {
                 sqlExpr = `(${sqlExpr})::text`
             }
             sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql', registry)

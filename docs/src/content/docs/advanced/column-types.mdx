@@ -5,7 +5,7 @@ description: The flyql.Type enum — the canonical, dialect-agnostic vocabulary 
 
 import { Tabs, TabItem } from '@astrojs/starlight/components'
 
-`flyql.Type` is the **single canonical vocabulary** for column and value types in flyql. Every transformer, validator, and SQL generator dispatches on this enum. Each language exposes the same 11 values with the same lowercase string identities, so JSON test fixtures and serialized columns are language-agnostic.
+`flyql.Type` is the **single canonical vocabulary** for column and value types in flyql. Every transformer, validator, and SQL generator dispatches on this enum. Each language exposes the same 12 values with the same lowercase string identities, so JSON test fixtures and serialized columns are language-agnostic.
 
 ## Inclusion criterion
 
@@ -17,7 +17,7 @@ A value belongs in the enum if **at least one** of the following holds:
 
 Speculative additions are explicitly avoided. If you encounter a real need for a new type, evaluate it against this criterion before proposing it.
 
-## The 11 values
+## The 12 values
 
 | Value | Purpose | Validator behavior | Generator dispatch | Raw DB types absorbed |
 |---|---|---|---|---|
@@ -31,6 +31,7 @@ Speculative additions are explicitly avoided. If you encounter a real need for a
 | **`Map`** | Key→value collection with dynamic keys | Segmented key access uses string keys | `col['key']` lookup | ClickHouse `Map(...)`, PostgreSQL `hstore` |
 | **`Struct`** | Fixed-shape record with named (or positional) fields | Segmented key access uses field names | Dialect-specific field access (`tupleElement(col,'name')` on ClickHouse, `` `col`.`field` `` on StarRocks) | ClickHouse `Tuple`, StarRocks `STRUCT` |
 | **`JSON`** | Semi-structured JSON document | Segmented key access uses JSON paths | JSON-path SQL (`JSON_VALUE`, `JSONExtractString`) | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | Text column whose contents are valid JSON | Same as `JSON` (operators, segmented path access) | Parse-at-query-time JSON SQL (`(col::jsonb)` on PG, `JSONExtract*` on CH, `parse_json(col)->…` on SR) | Declared explicitly via the synthetic raw-type token `"jsonstring"` |
 | **`Unknown`** | Documented fallback for types flyql cannot reason about | Operators fall through to defaults; path access errors with "unsupported column type"; transformers cannot accept it | No special dispatch; raw column reference only | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, anything unrecognized |
 
 :::note[Duration is forward-looking]
@@ -48,9 +49,9 @@ import (
 )
 
 // Use the prefixed names from the top-level flyql package:
-col := flyql.NewColumn("host", false, flyql.TypeString)
+col := flyql.NewColumn("host", flyql.TypeString)
 
-// All eleven values:
+// All twelve values:
 flyql.TypeString
 flyql.TypeInt
 flyql.TypeFloat
@@ -61,6 +62,7 @@ flyql.TypeArray
 flyql.TypeMap
 flyql.TypeStruct
 flyql.TypeJSON
+flyql.TypeJSONString
 flyql.TypeUnknown
 ```
 
@@ -72,9 +74,9 @@ The constants live in a leaf subpackage `golang/flyqltype/` to avoid an import c
 ```python
 from flyql import Column, Type
 
-col = Column(name="host", jsonstring=False, column_type=Type.String)
+col = Column(name="host", column_type=Type.String)
 
-# All eleven values:
+# All twelve values:
 Type.String
 Type.Int
 Type.Float
@@ -85,6 +87,7 @@ Type.Array
 Type.Map
 Type.Struct
 Type.JSON
+Type.JSONString
 Type.Unknown
 ```
 
@@ -98,9 +101,9 @@ Python's `Column.__init__` takes `column_type:` because `type` is a Python built
 ```javascript
 import { Column, Type } from 'flyql'
 
-const col = new Column('host', false, Type.String)
+const col = new Column('host', Type.String)
 
-// All eleven values:
+// All twelve values:
 Type.String
 Type.Int
 Type.Float
@@ -111,20 +114,38 @@ Type.Array
 Type.Map
 Type.Struct
 Type.JSON
+Type.JSONString
 Type.Unknown
 ```
 
 </TabItem>
 </Tabs>
 
-## JSONString — orthogonal capability flag
+## `Type.JSONString` — text columns containing JSON documents
 
-`JSONString` is a `bool` field on `flyql.Column` and on every dialect `ColumnDef`. It is **NOT validated against the `Type`** — meaningful combinations are dialect-defined. Examples:
+`Type.JSONString` is a canonical column type, not an orthogonal capability flag. Declare a column with `type: "jsonstring"` (plain-object schemas) or pass `Type.JSONString` / `flyqltype.JSONString` to the canonical `Column` / `NewColumn` constructors. The column is stored as text/varchar in the underlying DB but its contents are valid JSON, and generators wrap access with dialect-specific parse functions:
 
-- **ClickHouse**: `JSONString=true` on `TypeString` parses the column value as JSON for path access.
-- **StarRocks**: `JSONString=true` on `TypeMap` or `TypeStruct` treats the column as a JSON document for emptiness checks via `json_length(to_json(col))`.
+- **ClickHouse**: segmented key access uses `JSONExtract*` over the text column.
+- **PostgreSQL**: segmented key access uses a `(col::jsonb)` cast before applying JSON path operators.
+- **StarRocks**: segmented key access uses `parse_json(col)->'path'`.
 
-When in doubt, consult the dialect generator source or add a test for the specific combination.
+Segmented path access, `has`, truthy/falsy, equality/inequality all work. The validator does not apply any per-type operator restrictions — whatever a user can write against a `String` column today, they can write against a `JSONString` column after this refactor; the difference is purely in generator output SQL.
+
+### Migration from the previous `jsonstring` boolean
+
+Previously, a text column holding JSON was declared with two fields: `type: "String"` **plus** `jsonstring: true`. The boolean field has been **removed** from `flyql.Column`, every dialect `Column`/`ColumnDef`, and every plain-object loader. Legacy schemas must migrate:
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+Presence of a `jsonstring` key in a plain-object schema — including `"jsonstring": false` stragglers — now raises a targeted migration error from `FromPlainObject` / `from_plain_object` / `fromPlainObject`. Portable migration snippets:
+
+- **jq (≥1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+Avoid naive `sed` — it leaves orphan commas when `jsonstring` is the last key in an object and is not portable between GNU sed and BSD sed.
 
 ## Strict-mode parsing
 
@@ -148,6 +169,7 @@ import (
 cols := []*clickhouse.Column{
     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
 }
 schema := clickhouse.ToFlyQLSchema(cols)
 diags := flyql.Diagnose(ast, schema, nil)
@@ -161,8 +183,9 @@ from flyql import diagnose
 from flyql.generators import clickhouse
 
 cols = [
-    clickhouse.Column("host", jsonstring=False, _type="String"),
-    clickhouse.Column("count", jsonstring=False, _type="Int64"),
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
 ]
 schema = clickhouse.to_flyql_schema(cols)
 diags = diagnose(ast, schema)
@@ -176,8 +199,9 @@ import { diagnose } from 'flyql'
 import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
 
 const cols = [
-    new CHColumn('host', false, 'String'),
-    new CHColumn('count', false, 'Int64'),
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
 ]
 const schema = toFlyQLSchema(cols)
 const diags = diagnose(ast, schema)

@@ -145,7 +145,6 @@ def build_columns() -> dict[str, Column]:
     for key, col in col_data["columns"].items():
         columns[key] = Column(
             name=col["name"],
-            jsonstring=col.get("jsonstring", False),
             _type=col["type"],
             values=col.get("values"),
         )
@@ -158,7 +157,6 @@ def build_join_columns() -> dict[str, Column]:
     for key, col in col_data["columns"].items():
         c = Column(
             name=col["name"],
-            jsonstring=col.get("jsonstring", False),
             _type=col["type"],
             values=col.get("values"),
         )

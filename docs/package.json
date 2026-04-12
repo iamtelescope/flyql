@@ -7,11 +7,17 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "snapshot:capture": "node scripts/capture-snapshots.mjs",
+    "snapshot:verify": "node scripts/verify-snapshots.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.4.1",
     "@astrojs/starlight": "0.37.7",
     "astro": "5.18.1"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
   }
 }

@@ -1,18 +1,34 @@
+.PHONY: all install fmt fmt-test pytest type-test lint snippets test coverage cleanup
+
 all: test
+
+PYTHON ?= $(if $(VENV),$(VENV)/bin/python,python)
+VBIN := $(if $(VENV),$(VENV)/bin/,)
+
 install:
 	pip install -e .
 	pip install pytest black==26.3.1 mypy
 fmt:
-	black .
+	$(VBIN)black .
 fmt-test:
-	black --check .
+	$(VBIN)black --check .
 pytest:
-	pytest
+	$(VBIN)pytest
 type-test:
-	mypy flyql/
+	$(VBIN)mypy flyql/
 lint:
-	pylint flyql/
-test: fmt-test pytest type-test
+	$(VBIN)pylint flyql/
+	$(VBIN)pylint --rcfile=snippets/.pylintrc snippets/
+snippets:
+	@command -v $(PYTHON) >/dev/null 2>&1 || { \
+		echo "ERROR: $(PYTHON) not found. Set PYTHON=... or VENV=... override." >&2; \
+		exit 1; \
+	}
+	@set -e; for f in $$(find snippets -name '*.py' | sort); do \
+		echo "  run $$f"; \
+		$(PYTHON) "$$f" > /dev/null || { echo "FAIL: $$f"; exit 1; }; \
+	done
+test: fmt-test pytest type-test snippets
 coverage:
 	pytest --cov=flyql --cov-report=html --cov-report=term-missing
 cleanup:

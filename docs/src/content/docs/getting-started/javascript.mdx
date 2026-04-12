@@ -4,13 +4,15 @@ description: Install and use FlyQL in a JavaScript project
 ---
 
 import { Code } from '@astrojs/starlight/components'
-import parseSnippet from '@snippets/javascript/getting-started-parse.mjs?raw'
-import parseErrorSnippet from '@snippets/javascript/getting-started-parse-error.mjs?raw'
-import generateSnippet from '@snippets/javascript/getting-started-generate-clickhouse.mjs?raw'
-import matchSnippet from '@snippets/javascript/getting-started-match.mjs?raw'
-import columnsSnippet from '@snippets/javascript/getting-started-columns.mjs?raw'
-import transformersSnippet from '@snippets/javascript/getting-started-transformers.mjs?raw'
-import parametersSnippet from '@snippets/javascript/getting-started-parameters.mjs?raw'
+import Snippet from '../../../components/Snippet.astro'
+import parseSnippet from '@snippets/javascript/getting-started/parse.mjs?raw'
+import otherGeneratorsSnippet from '@snippets/javascript/getting-started/other-generators.mjs?raw'
+import parseErrorSnippet from '@snippets/javascript/getting-started/parse-error.mjs?raw'
+import generateSnippet from '@snippets/javascript/getting-started/generate-clickhouse.mjs?raw'
+import matchSnippet from '@snippets/javascript/getting-started/match.mjs?raw'
+import columnsSnippet from '@snippets/javascript/getting-started/columns.mjs?raw'
+import transformersSnippet from '@snippets/javascript/getting-started/transformers.mjs?raw'
+import parametersSnippet from '@snippets/javascript/getting-started/parameters.mjs?raw'
 
 ## Installation
 
@@ -40,12 +42,9 @@ Use a generator to turn the AST into a WHERE clause. Each database dialect is a 
 
 PostgreSQL and StarRocks generators follow the same pattern:
 
-```javascript
-import { generateWhere, newColumn } from 'flyql/generators/postgresql'
-import { generateWhere, newColumn } from 'flyql/generators/starrocks'
-```
+<Snippet code={otherGeneratorsSnippet} lang="javascript" />
 
-Note: PostgreSQL's `newColumn` has a different signature — `newColumn(name, type, values)` (no `jsonString` parameter).
+All three dialect `newColumn` factories share the same `(name, type, values)` signature. Columns that store JSON in a text/varchar field are declared with `type: "jsonstring"`.
 
 ## Match In-Memory
 

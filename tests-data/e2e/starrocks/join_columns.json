@@ -4,70 +4,60 @@
   "columns": {
     "t_id": {
       "name": "id",
-      "jsonstring": false,
       "type": "INT",
       "values": null,
       "raw_identifier": "t.`id`"
     },
     "t_message": {
       "name": "message",
-      "jsonstring": false,
       "type": "STRING",
       "values": null,
       "raw_identifier": "t.`message`"
     },
     "t_count": {
       "name": "count",
-      "jsonstring": false,
       "type": "BIGINT",
       "values": null,
       "raw_identifier": "t.`count`"
     },
     "t_active": {
       "name": "active",
-      "jsonstring": false,
       "type": "BOOLEAN",
       "values": null,
       "raw_identifier": "t.`active`"
     },
     "t_name": {
       "name": "name",
-      "jsonstring": false,
       "type": "STRING",
       "values": null,
       "raw_identifier": "t.`name`"
     },
     "t_env": {
       "name": "env",
-      "jsonstring": false,
       "type": "STRING",
       "values": null,
       "raw_identifier": "t.`env`"
     },
     "t_status": {
       "name": "status",
-      "jsonstring": false,
       "type": "INT",
       "values": null,
       "raw_identifier": "t.`status`"
     },
     "r_category": {
       "name": "category",
-      "jsonstring": false,
       "type": "STRING",
       "values": null,
       "raw_identifier": "r.`category`"
     },
     "r_priority": {
       "name": "priority",
-      "jsonstring": false,
       "type": "INT",
       "values": null,
       "raw_identifier": "r.`priority`"
     },
     "r_label": {
       "name": "label",
-      "jsonstring": false,
       "type": "STRING",
       "values": null,
       "raw_identifier": "r.`label`"

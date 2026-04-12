@@ -100,8 +100,8 @@ PostgreSQL 不需要 `jsonString` 参数，JSONB 类型通过列类型识别：
 
 ```go
 columns := map[string]*postgresql.Column{
-    "message": postgresql.NewColumn("message", "varchar", nil),
-    "data":    postgresql.NewColumn("data", "jsonb", nil),
+    "message": postgresql.NewColumn(postgresql.ColumnDef{Name: "message", Type: "varchar"}),
+    "data":    postgresql.NewColumn(postgresql.ColumnDef{Name: "data", Type: "jsonb"}),
 }
 ```
 

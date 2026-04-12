@@ -95,6 +95,10 @@ func NormalizeClickHouseType(chType string) flyqltype.Type {
 
 	normalized := strings.ToLower(strings.TrimSpace(chType))
 
+	if normalized == "jsonstring" {
+		return flyqltype.JSONString
+	}
+
 	if match := wrapperRegex.FindStringSubmatch(normalized); match != nil {
 		normalized = strings.TrimSpace(match[2])
 	}
@@ -162,18 +166,15 @@ func NormalizeClickHouseType(chType string) flyqltype.Type {
 }
 
 // Column is the opaque ClickHouse-dialect column. Construct via
-// NewColumn(ColumnDef). Public surface is Name/RawIdentifier/JSONString/
-// Values/DisplayName plus the RawType() and FlyQLType() accessors.
+// NewColumn(ColumnDef). Public surface is Name/RawIdentifier/Values/
+// DisplayName plus the RawType() and FlyQLType() accessors.
 type Column struct {
 	Name string `json:"name" yaml:"name"`
 	// RawIdentifier is the raw, unescaped column name as written by the
 	// user (used for matcher/validator lookups). Defaults to Name.
-	RawIdentifier string `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
-	// JSONString is an orthogonal capability flag — see flyql.Column for
-	// the full contract.
-	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
-	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
-	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
+	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 
 	rawType   string
 	flyqlType flyqltype.Type
@@ -211,7 +212,6 @@ func escapeIdentifier(name string) string {
 type ColumnDef struct {
 	Name          string   `json:"name" yaml:"name"`
 	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
-	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type          string   `json:"type" yaml:"type"`
 	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
 	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
@@ -219,13 +219,11 @@ type ColumnDef struct {
 
 // NewColumn constructs a ClickHouse Column from a ColumnDef. The raw
 // type is preserved verbatim and the flyql semantic type is computed
-// via NormalizeClickHouseType. JSONString is NOT validated against the
-// computed flyql type — see flyql.Column for the orthogonality contract.
+// via NormalizeClickHouseType.
 func NewColumn(def ColumnDef) *Column {
 	return &Column{
 		Name:          escapeIdentifier(def.Name),
 		RawIdentifier: def.RawIdentifier,
-		JSONString:    def.JSONString,
 		Values:        def.Values,
 		DisplayName:   def.DisplayName,
 		rawType:       def.Type,
@@ -240,7 +238,7 @@ func NewColumn(def ColumnDef) *Column {
 func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
 	m := make(map[string]*flyql.Column, len(cols))
 	for _, c := range cols {
-		fc := flyql.NewColumn(c.RawIdentifier, c.JSONString, c.FlyQLType())
+		fc := flyql.NewColumn(c.RawIdentifier, c.FlyQLType())
 		if fc.MatchName == "" {
 			fc.MatchName = c.Name
 		}

@@ -333,15 +333,19 @@ def expression_to_sql_segmented(
 
     if (
         column.flyql_type is not None
-        and not column.jsonstring
+        and column.flyql_type != Type.JSONString
         and not expression.key.transformers
     ):
         validate_operation(expression.value, column.flyql_type, expression.operator)
 
     identifier = get_identifier(column)
 
-    if (column.flyql_type == Type.JSON) or column.jsonstring:
-        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
+    if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
+        cast_identifier = (
+            f"({identifier}::jsonb)"
+            if column.flyql_type == Type.JSONString
+            else identifier
+        )
         json_path = expression.key.segments[1:]
         json_path_quoted = expression.key.quoted_segments[1:]
         for i, part in enumerate(json_path):
@@ -482,9 +486,11 @@ def in_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if (column.flyql_type == Type.JSON) or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
             cast_identifier = (
-                f"({identifier}::jsonb)" if column.jsonstring else identifier
+                f"({identifier}::jsonb)"
+                if column.flyql_type == Type.JSONString
+                else identifier
             )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
@@ -542,9 +548,11 @@ def truthy_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if (column.flyql_type == Type.JSON) or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
             cast_identifier = (
-                f"({identifier}::jsonb)" if column.jsonstring else identifier
+                f"({identifier}::jsonb)"
+                if column.flyql_type == Type.JSONString
+                else identifier
             )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
@@ -594,7 +602,7 @@ def truthy_expression_to_sql_where(
         )
         return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
 
-    if column.jsonstring:
+    if column.flyql_type == Type.JSONString:
         empty_obj = "'{}'::jsonb"
         return (
             f"({identifier} IS NOT NULL AND {identifier} != '' AND "
@@ -627,9 +635,11 @@ def falsy_expression_to_sql_where(
     identifier = get_identifier(column)
 
     if expression.key.is_segmented:
-        if (column.flyql_type == Type.JSON) or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
             cast_identifier = (
-                f"({identifier}::jsonb)" if column.jsonstring else identifier
+                f"({identifier}::jsonb)"
+                if column.flyql_type == Type.JSONString
+                else identifier
             )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
@@ -678,7 +688,7 @@ def falsy_expression_to_sql_where(
         )
         return f"({col_ref} IS NULL OR {col_ref} = '')"
 
-    if column.jsonstring:
+    if column.flyql_type == Type.JSONString:
         empty_obj = "'{}'::jsonb"
         return (
             f"({identifier} IS NULL OR {identifier} = '' OR "
@@ -716,9 +726,11 @@ def has_expression_to_sql_where(
     value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
 
     if expression.key.is_segmented:
-        if (column.flyql_type == Type.JSON) or column.jsonstring:
+        if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
             cast_identifier = (
-                f"({identifier}::jsonb)" if column.jsonstring else identifier
+                f"({identifier}::jsonb)"
+                if column.flyql_type == Type.JSONString
+                else identifier
             )
             json_path = expression.key.segments[1:]
             json_path_quoted = expression.key.quoted_segments[1:]
@@ -779,8 +791,12 @@ def has_expression_to_sql_where(
         if is_not_has:
             return f"NOT ({value} = ANY({identifier}))"
         return f"{value} = ANY({identifier})"
-    elif (column.flyql_type == Type.JSON) or column.jsonstring:
-        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
+    elif (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
+        cast_identifier = (
+            f"({identifier}::jsonb)"
+            if column.flyql_type == Type.JSONString
+            else identifier
+        )
         if is_not_has:
             return f"NOT ({cast_identifier} ? {value})"
         return f"{cast_identifier} ? {value}"
@@ -984,8 +1000,12 @@ def _build_select_expr(
     if not path:
         return identifier
 
-    if (column.flyql_type == Type.JSON) or column.jsonstring:
-        cast_identifier = f"({identifier}::jsonb)" if column.jsonstring else identifier
+    if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
+        cast_identifier = (
+            f"({identifier}::jsonb)"
+            if column.flyql_type == Type.JSONString
+            else identifier
+        )
         for i, part in enumerate(path):
             validate_json_path_part(
                 part, path_quoted[i] if i < len(path_quoted) else False
@@ -1028,7 +1048,9 @@ def to_sql_select(
         sql_expr = _build_select_expr(identifier, column, path, path_quoted)
         if key.transformers:
             validate_transformer_chain(key.transformers, registry=registry)
-            if path and ((column.flyql_type == Type.JSON) or column.jsonstring):
+            if path and (
+                (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString
+            ):
                 sql_expr = f"({sql_expr})::text"
             sql_expr = apply_transformer_sql(
                 sql_expr, key.transformers, "postgresql", registry=registry

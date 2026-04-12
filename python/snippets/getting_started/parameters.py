@@ -10,8 +10,8 @@ bind_params(result.root, {"code": 200, "env": "prod"})
 
 # Generate SQL
 columns = {
-    "status": Column("status", False, "Int32"),
-    "env": Column("env", False, "String"),
+    "status": Column("status", "Int32"),
+    "env": Column("env", "String"),
 }
 sql = to_sql_where(result.root, columns)
 print(sql)

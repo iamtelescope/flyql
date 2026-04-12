@@ -1,0 +1,16 @@
+[MASTER]
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    invalid-name,
+    unused-import,
+    unused-variable,
+    undefined-variable,
+    import-error,
+    redefined-outer-name,
+    wrong-import-position,
+    line-too-long,
+    too-few-public-methods,

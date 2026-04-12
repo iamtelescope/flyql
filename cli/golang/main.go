@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/generators/clickhouse"
@@ -162,12 +164,16 @@ func cmdGenerate(query, fieldsJSON, generator string) {
 
 func parseFields(fieldsJSON string) (map[string]*clickhouse.Column, error) {
 	var fieldsData map[string]struct {
-		Type       string   `json:"type"`
-		JSONString bool     `json:"jsonstring"`
-		Values     []string `json:"values"`
+		Type   string   `json:"type"`
+		Values []string `json:"values"`
 	}
 
-	if err := json.Unmarshal([]byte(fieldsJSON), &fieldsData); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader([]byte(fieldsJSON)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fieldsData); err != nil {
+		if strings.Contains(err.Error(), `"jsonstring"`) {
+			return nil, fmt.Errorf("the 'jsonstring' boolean field has been removed; declare the column with \"type\": \"jsonstring\" instead; see migration guide at docs.flyql.dev/advanced/column-types")
+		}
 		return nil, fmt.Errorf("invalid fields JSON: %w", err)
 	}
 
@@ -178,10 +184,9 @@ func parseFields(fieldsJSON string) (map[string]*clickhouse.Column, error) {
 			fieldType = "String"
 		}
 		fields[name] = clickhouse.NewColumn(clickhouse.ColumnDef{
-			Name:       name,
-			JSONString: config.JSONString,
-			Type:       fieldType,
-			Values:     config.Values,
+			Name:   name,
+			Type:   fieldType,
+			Values: config.Values,
 		})
 	}
 

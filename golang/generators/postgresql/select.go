@@ -78,9 +78,9 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 		return identifier, nil
 	}
 
-	if (column.FlyQLType() == flyqltype.JSON) || column.JSONString {
+	if (column.FlyQLType() == flyqltype.JSON) || column.FlyQLType() == flyqltype.JSONString {
 		castIdentifier := identifier
-		if column.JSONString {
+		if column.FlyQLType() == flyqltype.JSONString {
 			castIdentifier = fmt.Sprintf("(%s::jsonb)", identifier)
 		}
 		for i, part := range path {
@@ -168,7 +168,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 			if err := validateTransformerChain(key.Transformers, reg); err != nil {
 				return nil, fmt.Errorf("column %q: %w", raw.name, err)
 			}
-			if len(path) > 0 && ((col.FlyQLType() == flyqltype.JSON) || col.JSONString) {
+			if len(path) > 0 && ((col.FlyQLType() == flyqltype.JSON) || col.FlyQLType() == flyqltype.JSONString) {
 				sqlExpr = fmt.Sprintf("(%s)::text", sqlExpr)
 			}
 			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "postgresql", reg)

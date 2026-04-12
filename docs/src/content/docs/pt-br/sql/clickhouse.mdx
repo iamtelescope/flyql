@@ -102,18 +102,18 @@ O parâmetro `jsonString` controla qual modo é usado:
 ```go
 // Go
 columns := map[string]*clickhouse.Column{
-    "message": clickhouse.NewColumn("message", false, "String", nil),
-    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // JSON nativo
-    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+    "message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
+    "data":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "data", Type: "JSON"}),      // JSON nativo
+    "log":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "log", Type: "jsonstring"}),       // JSON string
 }
 ```
 
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", false, "String", null),
-    data:    newColumn("data", false, "JSON", null),      // JSON nativo
-    log:     newColumn("log", true, "String", null),       // JSON string
+    message: newColumn("message", "String"),
+    data:    newColumn("data", "JSON"),      // JSON nativo
+    log:     newColumn("log", "jsonstring"),       // JSON string
 }
 ```
 

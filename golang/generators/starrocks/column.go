@@ -57,6 +57,10 @@ func NormalizeStarRocksType(srType string) flyqltype.Type {
 
 	normalized := strings.ToLower(strings.TrimSpace(srType))
 
+	if normalized == "jsonstring" {
+		return flyqltype.JSONString
+	}
+
 	if typeRegexes[flyqltype.String].MatchString(normalized) {
 		return flyqltype.String
 	}
@@ -117,15 +121,10 @@ func NormalizeStarRocksType(srType string) flyqltype.Type {
 
 // Column is the opaque StarRocks-dialect column.
 type Column struct {
-	Name          string `json:"name" yaml:"name"`
-	RawIdentifier string `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
-	// JSONString is an orthogonal capability flag — see flyql.Column.
-	// In StarRocks, JSONString=true on TypeMap and TypeStruct columns is
-	// a meaningful, supported combination (the column is treated as a
-	// JSON document for emptiness checks via json_length(to_json(...))).
-	JSONString  bool     `json:"jsonstring" yaml:"jsonstring"`
-	Values      []string `json:"values,omitempty" yaml:"values,omitempty"`
-	DisplayName string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
+	Name          string   `json:"name" yaml:"name"`
+	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
+	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
+	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
 
 	rawType   string
 	flyqlType flyqltype.Type
@@ -142,7 +141,6 @@ func (c *Column) FlyQLType() flyqltype.Type { return c.flyqlType }
 type ColumnDef struct {
 	Name          string   `json:"name" yaml:"name"`
 	RawIdentifier string   `json:"raw_identifier,omitempty" yaml:"raw_identifier,omitempty"`
-	JSONString    bool     `json:"jsonstring" yaml:"jsonstring"`
 	Type          string   `json:"type" yaml:"type"`
 	Values        []string `json:"values,omitempty" yaml:"values,omitempty"`
 	DisplayName   string   `json:"display_name,omitempty" yaml:"display_name,omitempty"`
@@ -153,7 +151,6 @@ func NewColumn(def ColumnDef) *Column {
 	return &Column{
 		Name:          def.Name,
 		RawIdentifier: def.RawIdentifier,
-		JSONString:    def.JSONString,
 		Values:        def.Values,
 		DisplayName:   def.DisplayName,
 		rawType:       def.Type,
@@ -166,7 +163,7 @@ func NewColumn(def ColumnDef) *Column {
 func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
 	m := make(map[string]*flyql.Column, len(cols))
 	for _, c := range cols {
-		fc := flyql.NewColumn(c.Name, c.JSONString, c.FlyQLType())
+		fc := flyql.NewColumn(c.Name, c.FlyQLType())
 		m[c.Name] = &fc
 	}
 	return flyql.NewColumnSchema(m)

@@ -192,7 +192,7 @@ import (
 func main() {
 	result, _ := flyql.Parse("message|upper = 'ERROR'")
 	columns := map[string]*clickhousegen.Column{
-		"message": clickhousegen.NewColumn("message", false, "String", nil),
+		"message": clickhousegen.NewColumn(clickhousegen.ColumnDef{Name: "message", Type: "String"}),
 	}
 	sql, _ := clickhousegen.ToSQLWhere(result.Root, columns)
 	fmt.Println(sql) // equals(upper(message), 'ERROR')

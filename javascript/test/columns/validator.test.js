@@ -21,7 +21,7 @@ const SHARED_DATA = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8'))
 
 function makeColumn(name, typeStr) {
     const t = typeStr ? parseFlyQLType(typeStr) : Type.Unknown
-    return new Column(name, false, t, { matchName: name })
+    return new Column(name, t, { matchName: name })
 }
 
 function buildColumnFromDef(d) {
@@ -33,7 +33,7 @@ function buildColumnFromDef(d) {
         }
     }
     const t = d.type ? parseFlyQLType(d.type) : Type.Unknown
-    return new Column(d.name, false, t, {
+    return new Column(d.name, t, {
         matchName: d.name,
         children,
     })

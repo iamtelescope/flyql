@@ -64,6 +64,14 @@ class Type(str, Enum):
     """Semi-structured JSON document. Segmented key access uses JSON
     paths. Absorbs ClickHouse JSON, PostgreSQL json/jsonb, StarRocks JSON."""
 
+    JSONString = "jsonstring"
+    """Text column whose contents are valid JSON. Segmented key access
+    uses JSON paths; operator set mirrors JSON. Generators wrap access
+    with a dialect-specific parse function (``parse_json`` for StarRocks,
+    ``(col::jsonb)`` for PostgreSQL, ``JSONExtract*`` for ClickHouse).
+    Absorbs text/varchar/String columns declared with the synthetic
+    flyql raw-type token ``"jsonstring"``."""
+
     Unknown = "unknown"
     """Documented fallback for types flyql cannot reason about. Operators
     fall through to defaults; path access errors with "unsupported

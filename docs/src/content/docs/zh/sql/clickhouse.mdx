@@ -93,17 +93,17 @@ ClickHouse 支持两种 JSON 形式。
 
 ```go
 columns := map[string]*clickhouse.Column{
-    "message": clickhouse.NewColumn("message", false, "String", nil),
-    "data":    clickhouse.NewColumn("data", false, "JSON", nil),
-    "log":     clickhouse.NewColumn("log", true, "String", nil),
+    "message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
+    "data":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "data", Type: "JSON"}),
+    "log":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "log", Type: "jsonstring"}),
 }
 ```
 
 ```javascript
 const columns = {
-    message: newColumn("message", false, "String", null),
-    data:    newColumn("data", false, "JSON", null),
-    log:     newColumn("log", true, "String", null),
+    message: newColumn("message", "String"),
+    data:    newColumn("data", "JSON"),
+    log:     newColumn("log", "jsonstring"),
 }
 ```
 

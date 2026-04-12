@@ -79,7 +79,9 @@
       "name": "segmented_jsonstring_column_rhs",
       "input": "json_column.field=message",
       "expected_result": "success",
-      "expected_sql_contains": ["JSONExtractString(json_column, 'field'), message)"]
+      "expected_sql_contains": [
+        "JSONExtractString(json_column, 'field'), message)"
+      ]
     },
     {
       "name": "segmented_json_column_rhs",
@@ -91,7 +93,9 @@
       "name": "segmented_map_column_rhs",
       "input": "metadata.key=message",
       "expected_result": "success",
-      "expected_sql_contains": ["metadata['key'], message)"]
+      "expected_sql_contains": [
+        "metadata['key'], message)"
+      ]
     }
   ]
 }

@@ -36,6 +36,7 @@ export default defineConfig({
         "@snippets/python": resolve("../python/snippets"),
         "@snippets/javascript": resolve("../javascript/snippets"),
         "@snippets/go": resolve("../golang/snippets"),
+        "@data": resolve("./src/data"),
       },
     },
   },

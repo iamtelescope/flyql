@@ -149,7 +149,7 @@ def truthy_expression_to_sql_where(
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.jsonstring:
+        if column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
@@ -203,7 +203,7 @@ def truthy_expression_to_sql_where(
                 col_id, expression.key.transformers, "clickhouse"
             )
             return f"({col_ref} IS NOT NULL AND {col_ref} != '')"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             return (
                 f"({col_id} IS NOT NULL AND {col_id} != '' AND "
                 f"JSONLength({col_id}) > 0)"
@@ -240,7 +240,7 @@ def falsy_expression_to_sql_where(
     col_id = get_identifier(column)
 
     if expression.key.is_segmented:
-        if column.jsonstring:
+        if column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
@@ -295,7 +295,7 @@ def falsy_expression_to_sql_where(
                 col_id, expression.key.transformers, "clickhouse"
             )
             return f"({col_ref} IS NULL OR {col_ref} = '')"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             return (
                 f"({col_id} IS NULL OR {col_id} = '' OR " f"JSONLength({col_id}) = 0)"
             )
@@ -361,7 +361,7 @@ def in_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             return f"{leaf_expr} {sql_op} ({values_sql})"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
             leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
@@ -434,7 +434,7 @@ def has_expression_to_sql_where(
             if is_not_has:
                 return f"position({leaf_expr}, {value}) = 0"
             return f"position({leaf_expr}, {value}) > 0"
-        elif column.jsonstring:
+        elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join(escape_param(x) for x in json_path)
             leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
@@ -499,7 +499,7 @@ def has_expression_to_sql_where(
         if is_not_has:
             return f"NOT JSON_EXISTS({col_ref}, concat('$.', {value}))"
         return f"JSON_EXISTS({col_ref}, concat('$.', {value}))"
-    elif column.jsonstring:
+    elif column.flyql_type == Type.JSONString:
         if is_not_has:
             return f"NOT JSONHas({col_ref}, {value})"
         return f"JSONHas({col_ref}, {value})"
@@ -643,7 +643,7 @@ def expression_to_sql_where(
 
         col_id = get_identifier(column)
 
-        if column.jsonstring:
+        if column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
 
@@ -999,7 +999,7 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
         path_parts = [f"`{part}`" for part in path]
         return f"{col_id}.{'.'.join(path_parts)}"
 
-    if column.jsonstring:
+    if column.flyql_type == Type.JSONString:
         json_path_parts = [escape_param(p) for p in path]
         return f"JSONExtractString({col_id}, {', '.join(json_path_parts)})"
 

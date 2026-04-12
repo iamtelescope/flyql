@@ -9,8 +9,8 @@ bindParams(result.root, { code: 200, env: 'prod' })
 
 // Generate SQL
 const columns = {
-    status: newColumn("status", false, "Int32", null),
-    env: newColumn("env", false, "String", null),
+    status: newColumn('status', 'Int32'),
+    env: newColumn('env', 'String'),
 }
 const sql = generateWhere(result.root, columns)
 console.log(sql)

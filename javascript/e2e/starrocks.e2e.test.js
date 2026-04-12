@@ -50,7 +50,7 @@ function buildColumns() {
     const colData = loadJSON(path.join(testDataDir, 'starrocks', 'columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        columns[key] = newColumn(col.name, col.jsonstring, col.type, col.values)
+        columns[key] = newColumn(col.name, col.type, col.values)
     }
     return columns
 }
@@ -59,7 +59,7 @@ function buildJoinColumns() {
     const colData = loadJSON(path.join(testDataDir, 'starrocks', 'join_columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        const column = newColumn(col.name, col.jsonstring || false, col.type, col.values)
+        const column = newColumn(col.name, col.type, col.values)
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }

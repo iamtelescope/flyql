@@ -8,17 +8,27 @@
 import { describe, it, expect } from 'vitest'
 import { execFileSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 
 const snippetsDir = resolve(import.meta.dirname, '..', 'snippets')
-const snippets = readdirSync(snippetsDir)
-    .filter((f) => f.endsWith('.mjs'))
-    .sort()
+
+function walk(dir) {
+    const out = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) out.push(...walk(full))
+        else if (entry.isFile() && entry.name.endsWith('.mjs')) out.push(full)
+    }
+    return out
+}
+
+const snippets = walk(snippetsDir).sort()
 
 describe('doc snippets', () => {
     for (const file of snippets) {
-        it(file.replace('.mjs', ''), () => {
-            const result = execFileSync('node', [join(snippetsDir, file)], {
+        const rel = relative(snippetsDir, file)
+        it(rel.replace('.mjs', ''), () => {
+            const result = execFileSync('node', [file], {
                 cwd: resolve(snippetsDir, '..'),
                 timeout: 30000,
                 encoding: 'utf-8',

@@ -1,6 +1,10 @@
 name: E2E Tests
 
 on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       flyql_version:
@@ -96,11 +100,15 @@ jobs:
         run: cd e2e && make install
 
       - name: Write version file
+        env:
+          CLICKHOUSE_VERSION: ${{ inputs.clickhouse_version || '25.12' }}
+          POSTGRESQL_VERSION: ${{ inputs.postgresql_version || '16' }}
+          STARROCKS_VERSION: ${{ inputs.starrocks_version || '3.3-latest' }}
         run: |
-          cat > e2e/versions/ci.env <<'EOF'
-          CLICKHOUSE_VERSION=${{ inputs.clickhouse_version }}
-          POSTGRESQL_VERSION=${{ inputs.postgresql_version }}
-          STARROCKS_VERSION=${{ inputs.starrocks_version }}
+          cat > e2e/versions/ci.env <<EOF
+          CLICKHOUSE_VERSION=${CLICKHOUSE_VERSION}
+          POSTGRESQL_VERSION=${POSTGRESQL_VERSION}
+          STARROCKS_VERSION=${STARROCKS_VERSION}
           EOF
 
       - name: Run E2E tests

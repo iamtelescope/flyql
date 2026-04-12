@@ -91,7 +91,7 @@ func testRegistry() *transformers.TransformerRegistry {
 
 func makeColumn(name, typeStr string) Column {
 	t, _ := ParseType(typeStr)
-	return NewColumn(name, false, t)
+	return NewColumn(name, t)
 }
 
 func parseAST(t *testing.T, query string) *Node {

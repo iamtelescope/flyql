@@ -19,7 +19,7 @@ export { Column, newColumn, normalizeClickHouseType }
 export function toFlyQLSchema(cols) {
     const m = {}
     for (const c of cols) {
-        m[c.name] = new FCol(c.name, c.jsonString, c.flyqlType(), { matchName: c.matchName })
+        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName })
     }
     return new ColumnSchema(m)
 }
@@ -330,7 +330,7 @@ function expressionToSQLSegmented(expr, columns) {
 
     const colId = getIdentifier(column)
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         const jsonPath = expr.key.segments.slice(1)
         const jsonPathParts = jsonPath.map((p) => escapeParam(p))
         const jsonPathStr = jsonPathParts.join(', ')
@@ -472,7 +472,7 @@ function inExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             return `${leafExpr} ${sqlOp} (${valuesSQL})`
-        } else if (column.jsonString) {
+        } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
@@ -525,7 +525,7 @@ function truthyExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.jsonString) {
+        if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
@@ -576,7 +576,7 @@ function truthyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NOT NULL AND ${colRef} != '')`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         return `(${colId} IS NOT NULL AND ${colId} != '' AND JSONLength(${colId}) > 0)`
     }
 
@@ -607,7 +607,7 @@ function falsyExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.jsonString) {
+        if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
@@ -658,7 +658,7 @@ function falsyExpressionToSQL(expr, columns) {
         return `(${colRef} IS NULL OR ${colRef} = '')`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         return `(${colId} IS NULL OR ${colId} = '' OR JSONLength(${colId}) = 0)`
     }
 
@@ -695,7 +695,7 @@ function hasExpressionToSQL(expr, columns) {
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
     if (expr.key.isSegmented) {
-        if (column.jsonString) {
+        if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
@@ -784,7 +784,7 @@ function hasExpressionToSQL(expr, columns) {
         return `JSON_EXISTS(${colRef}, concat('$.', ${value}))`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         if (isNotHas) {
             return `NOT JSONHas(${colRef}, ${value})`
         }
@@ -964,7 +964,7 @@ function buildSelectExpr(column, path) {
         return `${colId}.${pathParts.join('.')}`
     }
 
-    if (column.jsonString) {
+    if (column.flyqlType() === Type.JSONString) {
         const jsonPathParts = path.map((p) => escapeParam(p))
         return `JSONExtractString(${colId}, ${jsonPathParts.join(', ')})`
     }

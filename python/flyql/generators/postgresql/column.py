@@ -73,6 +73,9 @@ def normalize_postgresql_type(pg_type: str) -> Type:
 
     normalized = pg_type.strip().lower()
 
+    if normalized == "jsonstring":
+        return Type.JSONString
+
     if REGEX[Type.Array].search(normalized):
         return Type.Array
 
@@ -115,7 +118,6 @@ class Column:
     def __init__(
         self,
         name: str,
-        jsonstring: bool,
         _type: str,
         values: Optional[List[str]] = None,
         display_name: str = "",
@@ -123,8 +125,6 @@ class Column:
     ):
         self.name = name
         self.match_name = name
-        # JSONString is an orthogonal capability flag — see Tech Decision #5.
-        self.jsonstring = jsonstring
         self.values: List[str] = values or []
         self.display_name = display_name
         self.raw_identifier = raw_identifier

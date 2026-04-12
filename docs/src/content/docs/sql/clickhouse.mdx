@@ -109,23 +109,23 @@ Array columns use 0-based bracket indexing with `equals()`:
 
 ### Column Setup
 
-The `jsonString` parameter controls which mode is used:
+Text/varchar columns whose contents are valid JSON are declared with the synthetic `jsonstring` raw type:
 
 ```go
 // Go
 columns := map[string]*clickhouse.Column{
-    "message": clickhouse.NewColumn("message", false, "String", nil),
-    "data":    clickhouse.NewColumn("data", false, "JSON", nil),      // native JSON
-    "log":     clickhouse.NewColumn("log", true, "String", nil),       // JSON string
+    "message": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "message", Type: "String"}),
+    "data":    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "data", Type: "JSON"}),       // native JSON
+    "log":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "log", Type: "jsonstring"}),  // JSON-in-text
 }
 ```
 
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", false, "String", null),
-    data:    newColumn("data", false, "JSON", null),      // native JSON
-    log:     newColumn("log", true, "String", null),       // JSON string
+    message: newColumn("message", "String"),
+    data:    newColumn("data", "JSON"),        // native JSON
+    log:     newColumn("log", "jsonstring"),    // JSON-in-text
 }
 ```
 

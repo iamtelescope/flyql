@@ -112,21 +112,23 @@ PostgreSQL arrays are 1-based — FlyQL automatically converts the 0-based index
 
 ### Column Setup
 
-PostgreSQL columns do not have a `jsonString` parameter — JSONB type is detected from the column type:
+Native `jsonb`/`json` columns are detected from the raw DB type. Text/varchar columns whose contents are valid JSON are declared with the synthetic `jsonstring` raw type:
 
 ```go
 // Go
 columns := map[string]*postgresql.Column{
-    "message": postgresql.NewColumn("message", "varchar", nil),
-    "data":    postgresql.NewColumn("data", "jsonb", nil),
+    "message": postgresql.NewColumn(postgresql.ColumnDef{Name: "message", Type: "varchar"}),
+    "data":    postgresql.NewColumn(postgresql.ColumnDef{Name: "data", Type: "jsonb"}),
+    "log":     postgresql.NewColumn(postgresql.ColumnDef{Name: "log", Type: "jsonstring"}),
 }
 ```
 
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", "varchar", null),
-    data:    newColumn("data", "jsonb", null),
+    message: newColumn("message", "varchar"),
+    data:    newColumn("data", "jsonb"),
+    log:     newColumn("log", "jsonstring"),
 }
 ```
 

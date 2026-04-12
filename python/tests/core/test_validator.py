@@ -65,14 +65,12 @@ def make_column(
     name: str,
     type_str: str,
     *,
-    jsonstring: bool = False,
     match_name: str | None = None,
 ) -> Column:
     from flyql.flyql_type import parse_flyql_type
 
     return Column(
         name=name,
-        jsonstring=jsonstring,
         column_type=parse_flyql_type(type_str) if type_str else Type.Unknown,
         match_name=match_name,
     )
@@ -263,10 +261,9 @@ class TestDialectBridge:
         # column.flyql_type).
         from flyql.generators.clickhouse.column import Column as CHColumn
 
-        ch = CHColumn("host", False, "String")
+        ch = CHColumn("host", "String")
         bridged = Column(
             name=ch.name,
-            jsonstring=ch.jsonstring,
             column_type=ch.flyql_type,
             match_name=ch.match_name,
         )

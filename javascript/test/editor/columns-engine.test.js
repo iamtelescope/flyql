@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { ColumnsEngine } from '../../src/editor/columns-engine.js'
 import { ColumnSchema } from '../../src/core/column.js'
+import { Transformer, TransformerRegistry, defaultRegistry } from '../../src/transformers/index.js'
+import { Type } from '../../src/flyql_type.js'
 
 const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true },
@@ -650,6 +652,85 @@ describe('ColumnsEngine', () => {
             const content = readFileSync(resolve(import.meta.dirname, '../../src/editor/columns-engine.js'), 'utf-8')
             expect(content).not.toMatch(/from\s+['"]vue['"]/)
             expect(content).not.toMatch(/from\s+['"]react['"]/)
+        })
+    })
+
+    describe('custom transformer registry', () => {
+        class MyCustomTransformer extends Transformer {
+            get name() {
+                return 'myCustom'
+            }
+            get inputType() {
+                return Type.String
+            }
+            get outputType() {
+                return Type.String
+            }
+            apply(value) {
+                return value
+            }
+        }
+
+        function customRegistry() {
+            const reg = defaultRegistry()
+            reg.register(new MyCustomTransformer())
+            return reg
+        }
+
+        it('shows custom transformer in suggestions', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { ...TRANSFORMERS_OPTS, registry: customRegistry() })
+            engine.setQuery('message|')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('myCustom')
+            expect(labels).toContain('upper')
+        })
+
+        it('custom transformer produces no unknown diagnostic', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { ...TRANSFORMERS_OPTS, registry: customRegistry() })
+            engine.setQuery('message|myCustom, level')
+            const diags = engine.getDiagnostics()
+            const unknownTransformer = diags.filter((d) => d.code === 'unknown_transformer')
+            expect(unknownTransformer).toEqual([])
+        })
+
+        it('default registry shows built-in transformers', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('message|')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            const builtins = defaultRegistry().names()
+            for (const name of builtins) {
+                expect(labels).toContain(name)
+            }
+            expect(labels).not.toContain('myCustom')
+        })
+
+        it('custom registry with additional transformer shows both built-in and custom', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { ...TRANSFORMERS_OPTS, registry: customRegistry() })
+            engine.setQuery('message|')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('upper')
+            expect(labels).toContain('lower')
+            expect(labels).toContain('len')
+            expect(labels).toContain('split')
+            expect(labels).toContain('myCustom')
+        })
+
+        it('setRegistry updates suggestion output', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('message|')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.map((s) => s.label)).not.toContain('myCustom')
+
+            engine.setRegistry(customRegistry())
+            await engine.updateSuggestions()
+            expect(engine.suggestions.map((s) => s.label)).toContain('myCustom')
         })
     })
 })

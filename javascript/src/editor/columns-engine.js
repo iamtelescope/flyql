@@ -68,18 +68,6 @@ const STATE_LABELS = {
     none: '',
 }
 
-const _colRegistry = defaultRegistry()
-const _colTransformerNames = _colRegistry.names()
-
-function transformerDetail(name) {
-    const t = _colRegistry.get(name)
-    if (!t) return ''
-    const schema = t.argSchema
-    if (!schema || schema.length === 0) return `${t.inputType} → ${t.outputType}`
-    const parts = schema.map((a) => (a.optional ? a.type + '?' : a.type))
-    return '(' + parts.join(', ') + ') ' + t.inputType + ' → ' + t.outputType
-}
-
 function escapeHtml(str) {
     return str
         .replace(/&/g, '&amp;')
@@ -108,7 +96,7 @@ export class ColumnsEngine {
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
-        this.registry = options.registry || null
+        this.registry = options.registry || defaultRegistry()
         this.keyCache = {}
         this.state = new EditorState()
         this.context = null
@@ -125,6 +113,19 @@ export class ColumnsEngine {
         for (const col of Object.values(this.columns.columns)) {
             if (col) _applyEditorTypeNormalization(col)
         }
+    }
+
+    setRegistry(registry) {
+        this.registry = registry || defaultRegistry()
+    }
+
+    _transformerDetail(name) {
+        const t = this.registry.get(name)
+        if (!t) return ''
+        const schema = t.argSchema
+        if (!schema || schema.length === 0) return `${t.inputType} → ${t.outputType}`
+        const parts = schema.map((a) => (a.optional ? a.type + '?' : a.type))
+        return '(' + parts.join(', ') + ') ' + t.inputType + ' → ' + t.outputType
     }
 
     setQuery(text) {
@@ -359,12 +360,12 @@ export class ColumnsEngine {
                 return { ctx, seq }
             }
             const prefix = ctx.transformer.toLowerCase()
-            const hasExactMatch = prefix && _colTransformerNames.some((m) => m.toLowerCase() === prefix)
+            const names = this.registry.names()
+            const hasExactMatch = prefix && names.some((m) => m.toLowerCase() === prefix)
 
             if (hasExactMatch) {
-                // Exact transformer match — show next steps, then other matching transformers
-                const matchedName = _colTransformerNames.find((m) => m.toLowerCase() === prefix)
-                const t = matchedName ? _colRegistry.get(matchedName) : null
+                const matchedName = names.find((m) => m.toLowerCase() === prefix)
+                const t = matchedName ? this.registry.get(matchedName) : null
                 const hasArgs = t && t.argSchema && t.argSchema.length > 0
                 const nextSteps = [
                     {
@@ -379,7 +380,7 @@ export class ColumnsEngine {
                         label: '()',
                         insertText: '()',
                         type: 'delimiter',
-                        detail: transformerDetail(prefix),
+                        detail: this._transformerDetail(prefix),
                         cursorOffset: -1,
                     })
                 }
@@ -390,22 +391,27 @@ export class ColumnsEngine {
                     detail: 'transformer (pipe)',
                 })
                 const otherMods = []
-                for (const mod of _colTransformerNames) {
+                for (const mod of names) {
                     if (mod.toLowerCase() === prefix) continue
                     if (!mod.toLowerCase().startsWith(prefix)) continue
-                    otherMods.push({ label: mod, insertText: mod, type: 'transformer', detail: transformerDetail(mod) })
+                    otherMods.push({
+                        label: mod,
+                        insertText: mod,
+                        type: 'transformer',
+                        detail: this._transformerDetail(mod),
+                    })
                 }
                 this.suggestions = [...otherMods, ...nextSteps]
                 this.suggestionType = 'next'
             } else {
                 const suggestions = []
-                for (const mod of _colTransformerNames) {
+                for (const mod of names) {
                     if (prefix && !mod.toLowerCase().startsWith(prefix)) continue
                     suggestions.push({
                         label: mod,
                         insertText: mod,
                         type: 'transformer',
-                        detail: transformerDetail(mod),
+                        detail: this._transformerDetail(mod),
                     })
                 }
                 this.suggestions = suggestions
@@ -708,7 +714,7 @@ export class ColumnsEngine {
         }
 
         const validatorColumns = this._buildValidatorColumns()
-        const reg = this.registry || _colRegistry
+        const reg = this.registry
 
         try {
             this.diagnostics = diagnose(parsedColumns, validatorColumns, reg)

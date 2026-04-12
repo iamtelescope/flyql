@@ -109,7 +109,7 @@ export class EditorEngine {
         this.onAutocomplete = options.onAutocomplete || null
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
-        this.registry = options.registry || null
+        this.registry = options.registry || defaultRegistry()
         this.parameters = options.parameters || []
         this.debounceMs = options.debounceMs ?? 300
         this.state = new EditorState()
@@ -169,6 +169,10 @@ export class EditorEngine {
      */
     setParameters(params) {
         this.parameters = params || []
+    }
+
+    setRegistry(registry) {
+        this.registry = registry || defaultRegistry()
     }
 
     _buildValidatorColumns() {
@@ -232,7 +236,7 @@ export class EditorEngine {
             return this.diagnostics
         }
         const columns = this._validatorColumns || this._buildValidatorColumns()
-        const reg = this.registry || defaultRegistry()
+        const reg = this.registry
         try {
             this.diagnostics = diagnose(parser.root, columns, reg)
         } catch {

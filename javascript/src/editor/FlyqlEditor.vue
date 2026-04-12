@@ -210,13 +210,14 @@ const props = defineProps({
     debug: { type: Boolean, default: false },
     debounceMs: { type: Number, default: 150 },
     dark: { type: Boolean, default: false },
+    registry: { type: Object, default: null },
 })
 
 const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus', 'blur', 'diagnostics'])
 
 // ── Engine ──
 
-const engine = new EditorEngine(props.columns, {
+const editorOpts = {
     onAutocomplete: props.onAutocomplete,
     onKeyDiscovery: props.onKeyDiscovery,
     debounceMs: props.debounceMs,
@@ -225,7 +226,11 @@ const engine = new EditorEngine(props.columns, {
         isLoading.value = loading
         stateLabel.value = engine.getStateLabel()
     },
-})
+}
+if (props.registry) {
+    editorOpts.registry = props.registry
+}
+const engine = new EditorEngine(props.columns, editorOpts)
 
 // ── Instance ID for unique ARIA references ──
 
@@ -800,6 +805,16 @@ watch(
     () => props.onKeyDiscovery,
     (newFn) => {
         engine.onKeyDiscovery = newFn || null
+    },
+)
+
+watch(
+    () => props.registry,
+    (newReg) => {
+        engine.setRegistry(newReg)
+        engine.getDiagnostics()
+        syncFromEngine()
+        emit('diagnostics', diagnostics.value)
     },
 )
 

@@ -156,6 +156,7 @@ const props = defineProps({
     autofocus: { type: Boolean, default: false },
     debug: { type: Boolean, default: false },
     dark: { type: Boolean, default: false },
+    registry: { type: Object, default: null },
 })
 
 const emit = defineEmits([
@@ -178,6 +179,9 @@ const engineOpts = {
 }
 if (props.capabilities) {
     engineOpts.capabilities = props.capabilities
+}
+if (props.registry) {
+    engineOpts.registry = props.registry
 }
 const engine = new ColumnsEngine(props.columns, engineOpts)
 
@@ -606,6 +610,16 @@ watch(
     () => props.columns,
     (newColumns) => {
         engine.setColumns(newColumns)
+        engine.getDiagnostics()
+        diagnostics.value = engine.diagnostics
+        emit('diagnostics', engine.diagnostics)
+    },
+)
+
+watch(
+    () => props.registry,
+    (newReg) => {
+        engine.setRegistry(newReg)
         engine.getDiagnostics()
         diagnostics.value = engine.diagnostics
         emit('diagnostics', engine.diagnostics)

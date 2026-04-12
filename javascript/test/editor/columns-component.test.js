@@ -29,6 +29,10 @@ describe('FlyqlColumns component', () => {
             expect(vueContent).toContain('columns: { type: Object')
         })
 
+        it('accepts registry prop', () => {
+            expect(vueContent).toContain('registry: { type: Object')
+        })
+
         it('accepts placeholder prop', () => {
             expect(vueContent).toContain('placeholder: { type: String')
         })

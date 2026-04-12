@@ -7,6 +7,8 @@
 
 A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, evaluates in-memory, and ships with a Vue 3 editor — with full cross-language parity in Go, Python, and JavaScript.
 
+> **Pre-1.0 notice** — FlyQL is actively preparing for a stable 1.0.0 release. Until then, minor versions may contain breaking changes to the public API.
+
 ## Installation
 
 **Go:**

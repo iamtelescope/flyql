@@ -59,6 +59,24 @@ describe('Columns Parser', () => {
         })
     })
 
+    describe('renderers parsing', () => {
+        const testData = loadTestData('renderers.json')
+        testData.tests.forEach((testCase) => {
+            it(`should handle ${testCase.name}`, () => {
+                runTestCase(testCase, testData.default_capabilities)
+            })
+        })
+    })
+
+    describe('renderers error handling', () => {
+        const testData = loadTestData('renderers_errors.json')
+        testData.tests.forEach((testCase) => {
+            it(`should handle ${testCase.name}`, () => {
+                runTestCase(testCase, testData.default_capabilities)
+            })
+        })
+    })
+
     describe('range tracking', () => {
         it('single column has nameRange', () => {
             const result = parse('level', { transformers: true })

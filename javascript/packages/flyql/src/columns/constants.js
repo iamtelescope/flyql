@@ -59,4 +59,7 @@ export const CharType = {
     ARGUMENT: 'argument',
     SPACE: 'space',
     ERROR: 'error',
+    RENDERER: 'renderer',
+    RENDERER_ARGUMENT: 'renderer_argument',
+    RENDERER_PIPE: 'renderer_pipe',
 }

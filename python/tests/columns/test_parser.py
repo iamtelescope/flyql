@@ -40,6 +40,8 @@ def run_test_case(test_case, suite_capabilities=None):
 _basic_data = load_test_data("basic.json")
 _transformers_data = load_test_data("transformers.json")
 _errors_data = load_test_data("errors.json")
+_renderers_data = load_test_data("renderers.json")
+_renderers_errors_data = load_test_data("renderers_errors.json")
 
 
 @pytest.mark.parametrize("test_case", _basic_data["tests"])
@@ -55,6 +57,16 @@ def test_transformers_parsing(test_case):
 @pytest.mark.parametrize("test_case", _errors_data["tests"])
 def test_errors(test_case):
     run_test_case(test_case, _errors_data.get("default_capabilities"))
+
+
+@pytest.mark.parametrize("test_case", _renderers_data["tests"])
+def test_renderers_parsing(test_case):
+    run_test_case(test_case, _renderers_data.get("default_capabilities"))
+
+
+@pytest.mark.parametrize("test_case", _renderers_errors_data["tests"])
+def test_renderers_errors(test_case):
+    run_test_case(test_case, _renderers_errors_data.get("default_capabilities"))
 
 
 def test_single_column_name_range():

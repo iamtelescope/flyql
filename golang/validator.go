@@ -30,6 +30,9 @@ const (
 	CodeInvalidAST         = "invalid_ast"
 	CodeUnknownColumnValue = "unknown_column_value"
 	CodeInvalidColumnValue = "invalid_column_value"
+	CodeUnknownRenderer    = "unknown_renderer"
+	CodeRendererArgCount   = "renderer_arg_count"
+	CodeRendererArgType    = "renderer_arg_type"
 )
 
 // Diagnostic is a positioned diagnostic produced by Diagnose.

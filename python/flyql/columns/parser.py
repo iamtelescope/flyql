@@ -13,7 +13,7 @@ from flyql.core.range import Range
 
 class Parser:
     def __init__(self, capabilities: Optional[Dict[str, Any]] = None) -> None:
-        defaults: Dict[str, Any] = {"transformers": False}
+        defaults: Dict[str, Any] = {"transformers": False, "renderers": False}
         if capabilities is not None:
             defaults.update(capabilities)
         self.capabilities = defaults
@@ -31,12 +31,20 @@ class Parser:
         self.transformer_argument_type = "auto"
         self.transformers: List[Dict[str, Any]] = []
         self.transformer_arguments: List[Any] = []
+        self.renderer = ""
+        self.renderer_argument = ""
+        self.renderer_argument_type = "auto"
+        self.renderers: List[Dict[str, Any]] = []
+        self.renderer_arguments: List[Any] = []
         self.columns: List[Dict[str, Any]] = []
         self.text = ""
         self._column_start: int = -1
         self._transformer_start: int = -1
         self._transformer_arg_start: int = -1
         self._transformer_arg_ranges: List[Range] = []
+        self._renderer_start: int = -1
+        self._renderer_arg_start: int = -1
+        self._renderer_arg_ranges: List[Range] = []
 
     def set_text(self, text: str) -> None:
         self.text = text
@@ -51,6 +59,7 @@ class Parser:
             {
                 "name": self.column,
                 "transformers": self.transformers,
+                "renderers": list(self.renderers),
                 "alias": self.alias if self.alias else None,
                 "name_range": name_range,
             }
@@ -101,6 +110,48 @@ class Parser:
             self._transformer_arg_ranges.append(Range(self._transformer_arg_start, end))
         self.reset_transformer_argument()
 
+    def store_renderer(self) -> None:
+        name_range = (
+            Range(
+                self._renderer_start,
+                self._renderer_start + len(self.renderer),
+            )
+            if self._renderer_start >= 0
+            else None
+        )
+        self.renderers.append(
+            {
+                "name": self.renderer,
+                "arguments": self.renderer_arguments,
+                "name_range": name_range,
+                "argument_ranges": list(self._renderer_arg_ranges),
+            }
+        )
+        self.reset_renderer()
+
+    def store_renderer_argument(self) -> None:
+        value: Any = self.renderer_argument
+        if self.renderer_argument_type == "auto":
+            try:
+                value = int(value)
+            except ValueError:
+                try:
+                    value = float(value)
+                except ValueError:
+                    pass
+        self.renderer_arguments.append(value)
+        if self._renderer_arg_start >= 0:
+            if self.renderer_argument_type == "str":
+                end = (
+                    self.char.pos + 1
+                    if self.char
+                    else self._renderer_arg_start + len(self.renderer_argument) + 2
+                )
+            else:
+                end = self._renderer_arg_start + len(self.renderer_argument)
+            self._renderer_arg_ranges.append(Range(self._renderer_arg_start, end))
+        self.reset_renderer_argument()
+
     def set_char(self, char: Char) -> None:
         self.char = char
 
@@ -132,11 +183,29 @@ class Parser:
         self.transformer_argument_type = "auto"
         self._transformer_arg_start = -1
 
+    def reset_renderer(self) -> None:
+        self.renderer = ""
+        self.renderer_arguments = []
+        self.renderer_argument = ""
+        self._renderer_start = -1
+        self._renderer_arg_start = -1
+        self._renderer_arg_ranges = []
+
+    def reset_renderers(self) -> None:
+        self.renderers = []
+
+    def reset_renderer_argument(self) -> None:
+        self.renderer_argument = ""
+        self.renderer_argument_type = "auto"
+        self._renderer_arg_start = -1
+
     def reset_data(self) -> None:
         self.reset_column()
         self.reset_alias()
         self.reset_transformer()
         self.reset_transformers()
+        self.reset_renderer()
+        self.reset_renderers()
         self.reset_alias_operator()
         self._column_start = -1
 
@@ -166,6 +235,18 @@ class Parser:
             if self._transformer_arg_start < 0:
                 self._transformer_arg_start = self.char.pos
             self.transformer_argument += self.char.value
+
+    def extend_renderer(self) -> None:
+        if self.char:
+            if self._renderer_start < 0:
+                self._renderer_start = self.char.pos
+            self.renderer += self.char.value
+
+    def extend_renderer_argument(self) -> None:
+        if self.char:
+            if self._renderer_arg_start < 0:
+                self._renderer_arg_start = self.char.pos
+            self.renderer_argument += self.char.value
 
     def extend_alias(self) -> None:
         if self.char:
@@ -230,6 +311,22 @@ class Parser:
                 self.in_state_transformer_argument_single_quoted()
             elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER:
                 self.in_state_expect_transformer_argument_delimiter()
+            elif self.state == State.EXPECT_RENDERER:
+                self.in_state_expect_renderer()
+            elif self.state == State.RENDERER:
+                self.in_state_renderer()
+            elif self.state == State.RENDERER_COMPLETE:
+                self.in_state_renderer_complete()
+            elif self.state == State.EXPECT_RENDERER_ARGUMENT:
+                self.in_state_expect_renderer_argument()
+            elif self.state == State.RENDERER_ARGUMENT:
+                self.in_state_renderer_argument()
+            elif self.state == State.RENDERER_ARGUMENT_DOUBLE_QUOTED:
+                self.in_state_renderer_argument_double_quoted()
+            elif self.state == State.RENDERER_ARGUMENT_SINGLE_QUOTED:
+                self.in_state_renderer_argument_single_quoted()
+            elif self.state == State.EXPECT_RENDERER_ARGUMENT_DELIMITER:
+                self.in_state_expect_renderer_argument_delimiter()
             else:
                 self.set_error_state(f"unknown state: {self.state}", 1)
             i += 1
@@ -298,6 +395,27 @@ class Parser:
         elif self.state == State.EXPECT_TRANSFORMER:
             # Ended after | with no transformer name
             self.set_error_state("expected transformer after operator", 7)
+        elif self.state == State.RENDERER:
+            if self.renderer:
+                self.store_renderer()
+            if self.column:
+                self.store_column()
+        elif self.state == State.RENDERER_COMPLETE:
+            self.store_renderer()
+            self.store_column()
+        elif (
+            self.state == State.RENDERER_ARGUMENT_DOUBLE_QUOTED
+            or self.state == State.RENDERER_ARGUMENT_SINGLE_QUOTED
+        ):
+            self.set_error_state("unexpected end of quoted argument value", 12)
+        elif self.state == State.EXPECT_RENDERER_ARGUMENT_DELIMITER:
+            self.set_error_state("unexpected end of arguments list", 15)
+        elif self.state == State.EXPECT_RENDERER_ARGUMENT:
+            self.set_error_state("expected closing parenthesis", 16)
+        elif self.state == State.RENDERER_ARGUMENT:
+            self.set_error_state("expected closing parenthesis", 16)
+        elif self.state == State.EXPECT_RENDERER:
+            self.set_error_state("expected renderer after operator", 7)
 
     def in_state_expect_column(self) -> None:
         if not self.char:
@@ -508,6 +626,155 @@ class Parser:
         elif self.char.is_columns_delimiter():
             self.set_state(State.EXPECT_COLUMN)
             self.store_column()
+        elif self.char.is_transformer_operator():
+            if not self.capabilities["renderers"]:
+                self.set_error_state("renderers are not enabled", 11)
+                return
+            if not self.alias:
+                self.set_error_state("renderers require an alias", 11)
+                return
+            self.set_state(State.EXPECT_RENDERER)
+
+    def in_state_expect_renderer(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_transformer_value():
+            self.extend_renderer()
+            self.set_state(State.RENDERER)
+        else:
+            self.set_error_state("invalid character, expected renderer", 7)
+
+    def in_state_renderer(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_transformer_value():
+            self.extend_renderer()
+        elif self.char.is_columns_delimiter():
+            self.store_renderer()
+            self.store_column()
+            self.set_state(State.EXPECT_COLUMN)
+        elif self.char.is_transformer_operator():
+            self.store_renderer()
+            self.set_state(State.EXPECT_RENDERER)
+        elif self.char.is_space():
+            # Do NOT store here — RENDERER_COMPLETE handlers (on ',', '|',
+            # or EOF via in_state_last_char) perform the single store.
+            # Storing here would create a phantom empty renderer on any
+            # subsequent separator, because those handlers re-store.
+            self.set_state(State.RENDERER_COMPLETE)
+        elif self.char.is_bracket_open():
+            self.set_state(State.EXPECT_RENDERER_ARGUMENT)
+        else:
+            self.set_error_state("invalid character in renderer name", 7)
+
+    def in_state_expect_renderer_argument(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_space():
+            return
+        if self.char.is_double_quote():
+            self.renderer_argument_type = "str"
+            self._renderer_arg_start = self.char.pos
+            self.set_state(State.RENDERER_ARGUMENT_DOUBLE_QUOTED)
+        elif self.char.is_single_quote():
+            self.renderer_argument_type = "str"
+            self._renderer_arg_start = self.char.pos
+            self.set_state(State.RENDERER_ARGUMENT_SINGLE_QUOTED)
+        elif self.char.is_transformer_argument_value():
+            self.extend_renderer_argument()
+            self.set_state(State.RENDERER_ARGUMENT)
+        elif self.char.is_bracket_close():
+            if self.renderer_argument:
+                self.store_renderer_argument()
+            self.set_state(State.RENDERER_COMPLETE)
+
+    def in_state_renderer_argument(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_transformer_argument_delimiter():
+            self.store_renderer_argument()
+            self.set_state(State.EXPECT_RENDERER_ARGUMENT)
+        elif self.char.is_transformer_argument_value():
+            self.extend_renderer_argument()
+        elif self.char.is_bracket_close():
+            self.store_renderer_argument()
+            self.set_state(State.RENDERER_COMPLETE)
+
+    def in_state_expect_renderer_argument_delimiter(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_transformer_argument_delimiter():
+            self.set_state(State.EXPECT_RENDERER_ARGUMENT)
+        elif self.char.is_bracket_close():
+            self.set_state(State.RENDERER_COMPLETE)
+        else:
+            self.set_error_state(
+                "invalid character. Expected bracket close or renderer argument delimiter",
+                9,
+            )
+
+    def in_state_renderer_argument_double_quoted(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_backslash():
+            next_pos = self.char.pos + 1
+            try:
+                next_char = self.text[next_pos]
+            except IndexError:
+                self.extend_renderer_argument()
+            else:
+                if next_char != DOUBLE_QUOTE:
+                    self.extend_renderer_argument()
+        elif self.char.is_transformer_double_quoted_argument_value():
+            self.extend_renderer_argument()
+        elif self.char.is_double_quote():
+            prev_pos = self.char.pos - 1
+            if self.text[prev_pos] == "\\":
+                self.extend_renderer_argument()
+            else:
+                self.store_renderer_argument()
+                self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
+        else:
+            self.set_error_state("invalid character", 10)
+
+    def in_state_renderer_argument_single_quoted(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_backslash():
+            next_pos = self.char.pos + 1
+            try:
+                next_char = self.text[next_pos]
+            except IndexError:
+                self.extend_renderer_argument()
+            else:
+                if next_char != SINGLE_QUOTE:
+                    self.extend_renderer_argument()
+        elif self.char.is_transformer_single_quoted_argument_value():
+            self.extend_renderer_argument()
+        elif self.char.is_single_quote():
+            prev_pos = self.char.pos - 1
+            if self.text[prev_pos] == "\\":
+                self.extend_renderer_argument()
+            else:
+                self.store_renderer_argument()
+                self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
+        else:
+            self.set_error_state("invalid character", 10)
+
+    def in_state_renderer_complete(self) -> None:
+        if not self.char:
+            return
+        if self.char.is_space():
+            return
+        elif self.char.is_columns_delimiter():
+            self.store_renderer()
+            self.store_column()
+            self.set_state(State.EXPECT_COLUMN)
+        elif self.char.is_transformer_operator():
+            self.store_renderer()
+            self.set_state(State.EXPECT_RENDERER)
+        else:
+            self.set_error_state("invalid character", 8)
 
     def in_state_expect_alias_delimiter(self) -> None:
         if not self.char:

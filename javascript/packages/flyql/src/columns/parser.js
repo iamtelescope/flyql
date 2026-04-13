@@ -6,7 +6,7 @@ import { Range } from '../core/range.js'
 
 export class Parser {
     constructor(capabilities) {
-        const defaults = { transformers: false }
+        const defaults = { transformers: false, renderers: false }
         this.capabilities = capabilities ? { ...defaults, ...capabilities } : { ...defaults }
         this.line = 0
         this.linePos = 0
@@ -22,6 +22,11 @@ export class Parser {
         this.transformerArgumentType = 'auto'
         this.transformers = []
         this.transformerArguments = []
+        this.renderer = ''
+        this.rendererArgument = ''
+        this.rendererArgumentType = 'auto'
+        this.renderers = []
+        this.rendererArguments = []
         this.columns = []
         this.text = ''
         this.typedChars = []
@@ -29,6 +34,9 @@ export class Parser {
         this._transformerStart = -1
         this._transformerArgStart = -1
         this._transformerArgRanges = []
+        this._rendererStart = -1
+        this._rendererArgStart = -1
+        this._rendererArgRanges = []
     }
 
     trackChar(charType) {
@@ -47,6 +55,7 @@ export class Parser {
         this.columns.push({
             name: this.column,
             transformers: this.transformers,
+            renderers: [...this.renderers],
             alias: this.alias || null,
             nameRange,
         })
@@ -90,6 +99,81 @@ export class Parser {
             this._transformerArgRanges.push(new Range(this._transformerArgStart, end))
         }
         this.resetTransformerArgument()
+    }
+
+    storeRenderer() {
+        const nameRange =
+            this._rendererStart >= 0 ? new Range(this._rendererStart, this._rendererStart + this.renderer.length) : null
+        this.renderers.push({
+            name: this.renderer,
+            arguments: this.rendererArguments,
+            nameRange,
+            argumentRanges: this._rendererArgRanges,
+        })
+        this.resetRenderer()
+    }
+
+    storeRendererArgument() {
+        let value = this.rendererArgument
+        if (this.rendererArgumentType === 'auto') {
+            const intValue = parseInt(value, 10)
+            const floatValue = parseFloat(value)
+            if (!isNaN(intValue) && intValue.toString() === value) {
+                value = intValue
+            } else if (!isNaN(floatValue)) {
+                value = floatValue
+            }
+        }
+        this.rendererArguments.push(value)
+        if (this._rendererArgStart >= 0) {
+            let end
+            if (this.rendererArgumentType === 'str') {
+                end = this.char ? this.char.pos + 1 : this._rendererArgStart + this.rendererArgument.length + 2
+            } else {
+                end = this._rendererArgStart + this.rendererArgument.length
+            }
+            this._rendererArgRanges.push(new Range(this._rendererArgStart, end))
+        }
+        this.resetRendererArgument()
+    }
+
+    resetRenderer() {
+        this.renderer = ''
+        this.rendererArguments = []
+        this.rendererArgument = ''
+        this._rendererStart = -1
+        this._rendererArgStart = -1
+        this._rendererArgRanges = []
+    }
+
+    resetRenderers() {
+        this.renderers = []
+    }
+
+    resetRendererArgument() {
+        this.rendererArgument = ''
+        this.rendererArgumentType = 'auto'
+        this._rendererArgStart = -1
+    }
+
+    extendRenderer() {
+        if (this.char) {
+            if (this._rendererStart < 0) {
+                this._rendererStart = this.char.pos
+            }
+            this.renderer += this.char.value
+            this.trackChar(CharType.RENDERER)
+        }
+    }
+
+    extendRendererArgument() {
+        if (this.char) {
+            if (this._rendererArgStart < 0) {
+                this._rendererArgStart = this.char.pos
+            }
+            this.rendererArgument += this.char.value
+            this.trackChar(CharType.RENDERER_ARGUMENT)
+        }
     }
 
     setChar(char) {
@@ -136,6 +220,8 @@ export class Parser {
         this.resetAlias()
         this.resetTransformer()
         this.resetTransformers()
+        this.resetRenderer()
+        this.resetRenderers()
         this.resetAliasOperator()
         this._columnStart = -1
     }
@@ -251,6 +337,22 @@ export class Parser {
                 this.inStateTransformerArgumentSingleQuoted()
             } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER) {
                 this.inStateExpectTransformerArgumentDelimiter()
+            } else if (this.state === State.EXPECT_RENDERER) {
+                this.inStateExpectRenderer()
+            } else if (this.state === State.RENDERER) {
+                this.inStateRenderer()
+            } else if (this.state === State.RENDERER_COMPLETE) {
+                this.inStateRendererComplete()
+            } else if (this.state === State.EXPECT_RENDERER_ARGUMENT) {
+                this.inStateExpectRendererArgument()
+            } else if (this.state === State.RENDERER_ARGUMENT) {
+                this.inStateRendererArgument()
+            } else if (this.state === State.RENDERER_ARGUMENT_DOUBLE_QUOTED) {
+                this.inStateRendererArgumentDoubleQuoted()
+            } else if (this.state === State.RENDERER_ARGUMENT_SINGLE_QUOTED) {
+                this.inStateRendererArgumentSingleQuoted()
+            } else if (this.state === State.EXPECT_RENDERER_ARGUMENT_DELIMITER) {
+                this.inStateExpectRendererArgumentDelimiter()
             } else {
                 this.setErrorState(`unknown state: ${this.state}`, 1)
             }
@@ -313,6 +415,29 @@ export class Parser {
             this.setErrorState('expected closing parenthesis', 16)
         } else if (this.state === State.EXPECT_TRANSFORMER) {
             this.setErrorState('expected transformer after operator', 7)
+        } else if (this.state === State.RENDERER) {
+            if (this.renderer) {
+                this.storeRenderer()
+            }
+            if (this.column) {
+                this.storeColumn()
+            }
+        } else if (this.state === State.RENDERER_COMPLETE) {
+            this.storeRenderer()
+            this.storeColumn()
+        } else if (
+            this.state === State.RENDERER_ARGUMENT_DOUBLE_QUOTED ||
+            this.state === State.RENDERER_ARGUMENT_SINGLE_QUOTED
+        ) {
+            this.setErrorState('unexpected end of quoted argument value', 12)
+        } else if (this.state === State.EXPECT_RENDERER_ARGUMENT_DELIMITER) {
+            this.setErrorState('unexpected end of arguments list', 15)
+        } else if (this.state === State.EXPECT_RENDERER_ARGUMENT) {
+            this.setErrorState('expected closing parenthesis', 16)
+        } else if (this.state === State.RENDERER_ARGUMENT) {
+            this.setErrorState('expected closing parenthesis', 16)
+        } else if (this.state === State.EXPECT_RENDERER) {
+            this.setErrorState('expected renderer after operator', 7)
         }
     }
 
@@ -568,6 +693,19 @@ export class Parser {
             this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
+        } else if (this.char.isTransformerOperator()) {
+            if (!this.capabilities.renderers) {
+                this.trackChar(CharType.ERROR)
+                this.setErrorState('renderers are not enabled', 11)
+                return
+            }
+            if (!this.alias) {
+                this.trackChar(CharType.ERROR)
+                this.setErrorState('renderers require an alias', 11)
+                return
+            }
+            this.trackChar(CharType.RENDERER_PIPE)
+            this.setState(State.EXPECT_RENDERER)
         }
     }
 
@@ -579,6 +717,178 @@ export class Parser {
         } else {
             this.trackChar(CharType.ERROR)
             this.setErrorState('invalid character, expected alias delimiter', 5)
+        }
+    }
+
+    inStateExpectRenderer() {
+        if (!this.char) return
+        if (this.char.isTransformerValue()) {
+            this.extendRenderer()
+            this.setState(State.RENDERER)
+        } else {
+            this.trackChar(CharType.ERROR)
+            this.setErrorState('invalid character, expected renderer', 7)
+        }
+    }
+
+    inStateRenderer() {
+        if (!this.char) return
+        if (this.char.isTransformerValue()) {
+            this.extendRenderer()
+        } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
+            this.storeRenderer()
+            this.storeColumn()
+            this.setState(State.EXPECT_COLUMN)
+        } else if (this.char.isTransformerOperator()) {
+            this.trackChar(CharType.RENDERER_PIPE)
+            this.storeRenderer()
+            this.setState(State.EXPECT_RENDERER)
+        } else if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
+            // Do NOT store here — RENDERER_COMPLETE handlers (on ',', '|',
+            // or EOF via inStateLastChar) perform the single store. Storing
+            // here would create a phantom empty renderer on any subsequent
+            // separator.
+            this.setState(State.RENDERER_COMPLETE)
+        } else if (this.char.isBracketOpen()) {
+            this.trackChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_RENDERER_ARGUMENT)
+        } else {
+            this.trackChar(CharType.ERROR)
+            this.setErrorState('invalid character in renderer name', 7)
+        }
+    }
+
+    inStateRendererComplete() {
+        if (!this.char) return
+        if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
+            return
+        } else if (this.char.isColumnsDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
+            this.storeRenderer()
+            this.storeColumn()
+            this.setState(State.EXPECT_COLUMN)
+        } else if (this.char.isTransformerOperator()) {
+            this.trackChar(CharType.RENDERER_PIPE)
+            this.storeRenderer()
+            this.setState(State.EXPECT_RENDERER)
+        } else {
+            this.trackChar(CharType.ERROR)
+            this.setErrorState('invalid character', 8)
+        }
+    }
+
+    inStateExpectRendererArgument() {
+        if (!this.char) return
+        if (this.char.isSpace()) {
+            this.trackChar(CharType.SPACE)
+            return
+        }
+        if (this.char.isDoubleQuote()) {
+            this.rendererArgumentType = 'str'
+            this._rendererArgStart = this.char.pos
+            this.trackChar(CharType.RENDERER_ARGUMENT)
+            this.setState(State.RENDERER_ARGUMENT_DOUBLE_QUOTED)
+        } else if (this.char.isSingleQuote()) {
+            this.rendererArgumentType = 'str'
+            this._rendererArgStart = this.char.pos
+            this.trackChar(CharType.RENDERER_ARGUMENT)
+            this.setState(State.RENDERER_ARGUMENT_SINGLE_QUOTED)
+        } else if (this.char.isTransformerArgumentValue()) {
+            this.extendRendererArgument()
+            this.setState(State.RENDERER_ARGUMENT)
+        } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
+            if (this.rendererArgument) {
+                this.storeRendererArgument()
+            }
+            this.setState(State.RENDERER_COMPLETE)
+        }
+    }
+
+    inStateRendererArgument() {
+        if (!this.char) return
+        if (this.char.isTransformerArgumentDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
+            this.storeRendererArgument()
+            this.setState(State.EXPECT_RENDERER_ARGUMENT)
+        } else if (this.char.isTransformerArgumentValue()) {
+            this.extendRendererArgument()
+        } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
+            this.storeRendererArgument()
+            this.setState(State.RENDERER_COMPLETE)
+        }
+    }
+
+    inStateExpectRendererArgumentDelimiter() {
+        if (!this.char) return
+        if (this.char.isTransformerArgumentDelimiter()) {
+            this.trackChar(CharType.OPERATOR)
+            this.setState(State.EXPECT_RENDERER_ARGUMENT)
+        } else if (this.char.isBracketClose()) {
+            this.trackChar(CharType.OPERATOR)
+            this.setState(State.RENDERER_COMPLETE)
+        } else {
+            this.setErrorState('invalid character. Expected bracket close or renderer argument delimiter', 9)
+        }
+    }
+
+    inStateRendererArgumentDoubleQuoted() {
+        if (!this.char) return
+        if (this.char.isBackslash()) {
+            const nextPos = this.char.pos + 1
+            if (nextPos < this.text.length) {
+                const nextChar = this.text[nextPos]
+                if (nextChar !== DOUBLE_QUOTE) {
+                    this.extendRendererArgument()
+                }
+            } else {
+                this.extendRendererArgument()
+            }
+        } else if (this.char.isTransformerDoubleQuotedArgumentValue()) {
+            this.extendRendererArgument()
+        } else if (this.char.isDoubleQuote()) {
+            const prevPos = this.char.pos - 1
+            if (this.text[prevPos] === '\\') {
+                this.extendRendererArgument()
+            } else {
+                this.trackChar(CharType.RENDERER_ARGUMENT)
+                this.storeRendererArgument()
+                this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
+            }
+        } else {
+            this.setErrorState('invalid character', 10)
+        }
+    }
+
+    inStateRendererArgumentSingleQuoted() {
+        if (!this.char) return
+        if (this.char.isBackslash()) {
+            const nextPos = this.char.pos + 1
+            if (nextPos < this.text.length) {
+                const nextChar = this.text[nextPos]
+                if (nextChar !== SINGLE_QUOTE) {
+                    this.extendRendererArgument()
+                }
+            } else {
+                this.extendRendererArgument()
+            }
+        } else if (this.char.isTransformerSingleQuotedArgumentValue()) {
+            this.extendRendererArgument()
+        } else if (this.char.isSingleQuote()) {
+            const prevPos = this.char.pos - 1
+            if (this.text[prevPos] === '\\') {
+                this.extendRendererArgument()
+            } else {
+                this.trackChar(CharType.RENDERER_ARGUMENT)
+                this.storeRendererArgument()
+                this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
+            }
+        } else {
+            this.setErrorState('invalid character', 10)
         }
     }
 }

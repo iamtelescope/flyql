@@ -15,6 +15,7 @@ import {
     COLUMNS_DELIMITER,
 } from 'flyql/columns'
 import { defaultRegistry } from 'flyql/transformers'
+import { defaultRegistry as defaultRendererRegistryFn } from 'flyql/renderers'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 import { Column, ColumnSchema, Diagnostic, Range, CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from 'flyql/core'
@@ -58,11 +59,15 @@ const COL_CHAR_TYPE_CLASS = {
     [CharType.ARGUMENT]: 'flyql-col-argument',
     [CharType.ALIAS]: 'flyql-col-alias',
     [CharType.ERROR]: 'flyql-col-error',
+    [CharType.RENDERER]: 'flyql-col-renderer',
+    [CharType.RENDERER_ARGUMENT]: 'flyql-col-renderer-argument',
+    [CharType.RENDERER_PIPE]: 'flyql-col-renderer-pipe',
 }
 
 const STATE_LABELS = {
     column: 'column name',
     transformer: 'transformers',
+    renderer: 'renderers',
     delimiter: 'next',
     alias: 'next',
     argument: 'arguments',
@@ -94,8 +99,17 @@ export class ColumnsEngine {
         for (const col of Object.values(this.columns.columns)) {
             if (col) _applyEditorTypeNormalization(col)
         }
-        const capDefaults = { transformers: true }
+        this.rendererRegistry = options.rendererRegistry || null
+        const capDefaults = { transformers: true, renderers: this.rendererRegistry !== null }
         this.capabilities = options.capabilities ? { ...capDefaults, ...options.capabilities } : { ...capDefaults }
+        // Opt-in: if no renderer registry was supplied, the parser rejects
+        // post-alias '|' with errno 11 (Decision 19). If the dev explicitly
+        // set capabilities.renderers=true without supplying a registry, we
+        // still honor their opt-in — they'll get unknown_renderer diagnostics
+        // but won't be blocked at parser level.
+        if (this.rendererRegistry === null && options.capabilities && options.capabilities.renderers !== true) {
+            this.capabilities.renderers = false
+        }
         this.onKeyDiscovery = options.onKeyDiscovery || null
         this.onLoadingChange = options.onLoadingChange || null
         this.registry = options.registry || defaultRegistry()
@@ -121,6 +135,11 @@ export class ColumnsEngine {
         this.registry = registry || defaultRegistry()
     }
 
+    setRendererRegistry(registry) {
+        this.rendererRegistry = registry || null
+        this.capabilities.renderers = this.rendererRegistry !== null
+    }
+
     _transformerDetail(name) {
         const t = this.registry.get(name)
         if (!t) return ''
@@ -128,6 +147,16 @@ export class ColumnsEngine {
         if (!schema || schema.length === 0) return `${t.inputType} → ${t.outputType}`
         const parts = schema.map((a) => (a.optional ? a.type + '?' : a.type))
         return '(' + parts.join(', ') + ') ' + t.inputType + ' → ' + t.outputType
+    }
+
+    _rendererDetail(name) {
+        if (!this.rendererRegistry) return ''
+        const r = this.rendererRegistry.get(name)
+        if (!r) return ''
+        const schema = r.argSchema
+        if (!schema || schema.length === 0) return ''
+        const parts = schema.map((a) => (a.required === false ? a.type + '?' : a.type))
+        return '(' + parts.join(', ') + ')'
     }
 
     setQuery(text) {
@@ -195,6 +224,9 @@ export class ColumnsEngine {
             ctx.expecting = 'column'
         } else if (parser.state === State.EXPECT_TRANSFORMER || parser.state === State.TRANSFORMER) {
             ctx.expecting = 'transformer'
+        } else if (parser.state === State.EXPECT_RENDERER || parser.state === State.RENDERER) {
+            ctx.expecting = 'renderer'
+            ctx.renderer = parser.renderer || ''
         } else if (
             parser.state === State.EXPECT_ALIAS ||
             parser.state === State.EXPECT_ALIAS_OPERATOR ||
@@ -421,6 +453,29 @@ export class ColumnsEngine {
                 if (suggestions.length === 0 && prefix) {
                     this.message = 'No matching transformers'
                 }
+            }
+        } else if (ctx.expecting === 'renderer') {
+            if (!this.rendererRegistry) {
+                this.message = 'renderers are not enabled'
+                this.suggestionType = ''
+                return { ctx, seq }
+            }
+            const prefix = (ctx.renderer || '').toLowerCase()
+            const names = this.rendererRegistry.names()
+            const suggestions = []
+            for (const n of names) {
+                if (prefix && !n.toLowerCase().startsWith(prefix)) continue
+                suggestions.push({
+                    label: n,
+                    insertText: n,
+                    type: 'renderer',
+                    detail: this._rendererDetail(n),
+                })
+            }
+            this.suggestions = suggestions
+            this.suggestionType = 'renderer'
+            if (suggestions.length === 0 && prefix) {
+                this.message = 'No matching renderers'
             }
         } else if (ctx.expecting === 'alias') {
             if (ctx.state === State.EXPECT_ALIAS) {
@@ -717,9 +772,10 @@ export class ColumnsEngine {
 
         const validatorColumns = this._buildValidatorColumns()
         const reg = this.registry
+        const rReg = this.rendererRegistry
 
         try {
-            this.diagnostics = diagnose(parsedColumns, validatorColumns, reg)
+            this.diagnostics = diagnose(parsedColumns, validatorColumns, reg, rReg)
         } catch {
             this.diagnostics = []
         }

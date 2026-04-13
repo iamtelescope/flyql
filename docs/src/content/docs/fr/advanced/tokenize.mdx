@@ -159,12 +159,12 @@ Une entrée vide retourne une liste vide, jamais un token d'erreur final.
 
 ## Limitations
 
-- **Le mode columns est réservé à JavaScript.** Le parseur de colonnes Python n'a pas de sortie à caractères typés, et il n'y a pas de parseur de colonnes en Go.
+- **Le mode columns est réservé à JavaScript.** Seul le parseur de colonnes JavaScript enregistre une sortie à caractères typés ; les parseurs de colonnes Python et Go ne le font pas, donc `tokenize()` dans ces langages ne peut pas s'étendre au mode columns.
 - **Garanties uniquement ASCII.** La parité d'offsets entre langages n'est garantie que pour des entrées ASCII. Les entrées non-ASCII peuvent produire des valeurs `start`/`end` différentes selon le langage à cause des différences octet/codepoint/unité UTF-16.
 - **Pas de numéros de ligne ou de colonne.** Les tokens n'exposent que des offsets de caractère. Si tu as besoin de paires `(ligne, colonne)` pour un éditeur, calcule-les à partir de `start` et du texte source.
 
 ## Voir aussi
 
-- [Matrice d'API multi-langages](./api-matrix) — le nom de fonction canonique pour chaque langage.
-- [Démarrage JavaScript](../getting-started/javascript) — liste complète des imports par subpath du paquet, y compris `flyql/highlight` pour une sortie HTML.
-- [AST et generateurs personnalises](./ast) — l'arbre de plus haut niveau que tu obtiens de `parse()`. `tokenize()` le complète, il ne le remplace pas : il te donne une vue plate là où `parse()` te donne un arbre.
+- [Matrice d'API multi-langages](/fr/advanced/api-matrix/) — le nom de fonction canonique pour chaque langage.
+- [Démarrage JavaScript](/fr/getting-started/javascript/) — liste complète des imports par subpath du paquet, y compris `flyql/highlight` pour une sortie HTML.
+- [AST et generateurs personnalises](/fr/advanced/ast/) — l'arbre de plus haut niveau que tu obtiens de `parse()`. `tokenize()` le complète, il ne le remplace pas : il te donne une vue plate là où `parse()` te donne un arbre.

@@ -159,12 +159,12 @@ tokenize('x!y')
 
 ## 限制
 
-- **columns 模式仅限 JavaScript。** Python 的 columns 解析器没有带类型的字符输出，Go 根本没有 columns 解析器。
+- **columns 模式仅限 JavaScript。** 只有 JavaScript 的 columns 解析器会记录带类型的字符输出；Python 和 Go 的 columns 解析器都不会，因此这两种语言的 `tokenize()` 无法扩展到 columns 模式。
 - **仅保证 ASCII。** 跨语言的偏移一致性仅对 ASCII 输入保证。非 ASCII 输入由于字节 / 码点 / UTF-16 单元的差异，在不同语言中 `start`/`end` 可能不同。
 - **没有行号或列号。** token 只暴露字符偏移。若编辑器需要 `(line, column)`，请基于 `start` 和源文本自行计算。
 
 ## 参见
 
-- [跨语言 API 矩阵](./api-matrix) —— 每种语言中的规范函数名。
-- [JavaScript 快速入门](../getting-started/javascript) —— 包 subpath import 的完整列表，包含用于 HTML 输出的 `flyql/highlight`。
-- [AST 与自定义生成器](./ast) —— `parse()` 返回的更高层的树。`tokenize()` 是它的补充，而不是替代：`parse()` 给你一棵树，`tokenize()` 给你扁平视图。
+- [跨语言 API 矩阵](/zh/advanced/api-matrix/) —— 每种语言中的规范函数名。
+- [JavaScript 快速入门](/zh/getting-started/javascript/) —— 包 subpath import 的完整列表，包含用于 HTML 输出的 `flyql/highlight`。
+- [AST 与自定义生成器](/zh/advanced/ast/) —— `parse()` 返回的更高层的树。`tokenize()` 是它的补充，而不是替代：`parse()` 给你一棵树，`tokenize()` 给你扁平视图。

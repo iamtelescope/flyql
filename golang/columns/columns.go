@@ -30,6 +30,19 @@ type TransformerRange struct {
 	ArgumentRanges []flyql.Range `json:"-"`
 }
 
+// Renderer represents a post-alias renderer descriptor (e.g., href("/x")).
+// Renderers are parsed/validated metadata; they never affect SQL.
+type Renderer struct {
+	Name      string `json:"name"`
+	Arguments []any  `json:"arguments"`
+}
+
+// RendererRange holds source ranges for a renderer name and its arguments.
+type RendererRange struct {
+	NameRange      flyql.Range   `json:"-"`
+	ArgumentRanges []flyql.Range `json:"-"`
+}
+
 // ParsedColumn represents a fully parsed column with segments and metadata.
 type ParsedColumn struct {
 	Name              string             `json:"name"`
@@ -38,8 +51,10 @@ type ParsedColumn struct {
 	Segments          []string           `json:"segments"`
 	IsSegmented       bool               `json:"is_segmented"`
 	DisplayName       string             `json:"display_name"`
+	Renderers         []Renderer         `json:"renderers,omitempty"`
 	NameRange         flyql.Range        `json:"-"`
 	TransformerRanges []TransformerRange `json:"-"`
+	RendererRanges    []RendererRange    `json:"-"`
 }
 
 type state int
@@ -58,6 +73,14 @@ const (
 	stateTransformerArgumentDoubleQuoted
 	stateTransformerArgumentSingleQuoted
 	stateExpectTransformerArgumentDelimiter
+	stateExpectRenderer
+	stateRenderer
+	stateRendererComplete
+	stateExpectRendererArgument
+	stateRendererArgument
+	stateRendererArgumentDoubleQuoted
+	stateRendererArgumentSingleQuoted
+	stateExpectRendererArgumentDelimiter
 	stateError
 )
 
@@ -76,17 +99,25 @@ type transformerRangeData struct {
 	argumentRanges []flyql.Range
 }
 
+type rendererRangeData struct {
+	nameRange      flyql.Range
+	argumentRanges []flyql.Range
+}
+
 type columnData struct {
 	name              string
 	transformers      []Transformer
+	renderers         []Renderer
 	alias             string
 	nameRange         flyql.Range
 	transformerRanges []transformerRangeData
+	rendererRanges    []rendererRangeData
 }
 
 // Capabilities controls which parser features are enabled.
 type Capabilities struct {
 	Transformers bool
+	Renderers    bool
 }
 
 type parser struct {
@@ -105,12 +136,21 @@ type parser struct {
 	transformerArgumentType string
 	transformers            []Transformer
 	transformerArguments    []any
+	renderer                string
+	rendererArgument        string
+	rendererArgumentType    string
+	renderers               []Renderer
+	rendererArguments       []any
 	columns                 []columnData
 	columnStart             int
 	transformerStart        int
 	transformerArgStart     int
 	transformerArgRanges    []flyql.Range
 	transformerRanges       []transformerRangeData
+	rendererStart           int
+	rendererArgStart        int
+	rendererArgRanges       []flyql.Range
+	rendererRanges          []rendererRangeData
 }
 
 func newParser(capabilities Capabilities) *parser {
@@ -118,13 +158,20 @@ func newParser(capabilities Capabilities) *parser {
 		capabilities:            capabilities,
 		state:                   stateExpectColumn,
 		transformerArgumentType: "auto",
+		rendererArgumentType:    "auto",
 		transformers:            []Transformer{},
 		transformerArguments:    []any{},
+		renderers:               []Renderer{},
+		rendererArguments:       []any{},
 		columnStart:             -1,
 		transformerStart:        -1,
 		transformerArgStart:     -1,
 		transformerArgRanges:    []flyql.Range{},
 		transformerRanges:       []transformerRangeData{},
+		rendererStart:           -1,
+		rendererArgStart:        -1,
+		rendererArgRanges:       []flyql.Range{},
+		rendererRanges:          []rendererRangeData{},
 	}
 }
 
@@ -136,11 +183,70 @@ func (p *parser) storeColumn() {
 	p.columns = append(p.columns, columnData{
 		name:              p.column,
 		transformers:      p.transformers,
+		renderers:         p.renderers,
 		alias:             p.alias,
 		nameRange:         nameRange,
 		transformerRanges: p.transformerRanges,
+		rendererRanges:    p.rendererRanges,
 	})
 	p.resetData()
+}
+
+func (p *parser) storeRenderer() {
+	p.renderers = append(p.renderers, Renderer{
+		Name:      p.renderer,
+		Arguments: p.rendererArguments,
+	})
+	var nameRange flyql.Range
+	if p.rendererStart >= 0 {
+		nameRange = flyql.Range{Start: p.rendererStart, End: p.rendererStart + len(p.renderer)}
+	}
+	argRanges := p.rendererArgRanges
+	if argRanges == nil {
+		argRanges = []flyql.Range{}
+	}
+	p.rendererRanges = append(p.rendererRanges, rendererRangeData{
+		nameRange:      nameRange,
+		argumentRanges: argRanges,
+	})
+	p.resetRendererData()
+}
+
+func (p *parser) storeRendererArgument() {
+	var value any = p.rendererArgument
+	if p.rendererArgumentType == "auto" {
+		if iv, err := strconv.Atoi(p.rendererArgument); err == nil {
+			value = iv
+		} else if fv, err := strconv.ParseFloat(p.rendererArgument, 64); err == nil {
+			value = fv
+		}
+	}
+	p.rendererArguments = append(p.rendererArguments, value)
+	if p.rendererArgStart >= 0 {
+		var end int
+		if p.rendererArgumentType == "str" {
+			end = p.charPos + 1
+		} else {
+			end = p.rendererArgStart + len(p.rendererArgument)
+		}
+		p.rendererArgRanges = append(p.rendererArgRanges, flyql.Range{Start: p.rendererArgStart, End: end})
+	}
+	p.resetRendererArgument()
+}
+
+func (p *parser) resetRendererData() {
+	p.renderer = ""
+	p.rendererArguments = []any{}
+	p.rendererArgument = ""
+	p.rendererStart = -1
+	p.rendererArgStart = -1
+	p.rendererArgRanges = []flyql.Range{}
+}
+
+func (p *parser) resetRendererArgument() {
+	p.rendererArgument = ""
+	p.rendererArgumentType = "auto"
+	p.rendererArgStart = -1
 }
 
 func (p *parser) storeTransformer() {
@@ -214,6 +320,15 @@ func (p *parser) resetData() {
 	p.transformerArgStart = -1
 	p.transformerArgRanges = []flyql.Range{}
 	p.transformerRanges = []transformerRangeData{}
+	p.renderer = ""
+	p.renderers = []Renderer{}
+	p.rendererArguments = []any{}
+	p.rendererArgument = ""
+	p.rendererArgumentType = "auto"
+	p.rendererStart = -1
+	p.rendererArgStart = -1
+	p.rendererArgRanges = []flyql.Range{}
+	p.rendererRanges = []rendererRangeData{}
 }
 
 func (p *parser) setErrorState(errorText string, errno int) {
@@ -323,6 +438,22 @@ func (p *parser) parse(text string) error {
 			p.inStateTransformerArgumentSingleQuoted()
 		case stateExpectTransformerArgumentDelimiter:
 			p.inStateExpectTransformerArgumentDelimiter()
+		case stateExpectRenderer:
+			p.inStateExpectRenderer()
+		case stateRenderer:
+			p.inStateRenderer()
+		case stateRendererComplete:
+			p.inStateRendererComplete()
+		case stateExpectRendererArgument:
+			p.inStateExpectRendererArgument()
+		case stateRendererArgument:
+			p.inStateRendererArgument()
+		case stateRendererArgumentDoubleQuoted:
+			p.inStateRendererArgumentDoubleQuoted()
+		case stateRendererArgumentSingleQuoted:
+			p.inStateRendererArgumentSingleQuoted()
+		case stateExpectRendererArgumentDelimiter:
+			p.inStateExpectRendererArgumentDelimiter()
 		default:
 			p.setErrorState(fmt.Sprintf("unknown state: %d", p.state), 1)
 		}
@@ -384,6 +515,26 @@ func (p *parser) inStateLastChar() {
 		p.setErrorState("expected closing parenthesis", 16)
 	case stateExpectTransformer:
 		p.setErrorState("expected transformer after operator", 7)
+	case stateRenderer:
+		if p.renderer != "" {
+			p.storeRenderer()
+		}
+		if p.column != "" {
+			p.storeColumn()
+		}
+	case stateRendererComplete:
+		p.storeRenderer()
+		p.storeColumn()
+	case stateRendererArgumentDoubleQuoted, stateRendererArgumentSingleQuoted:
+		p.setErrorState("unexpected end of quoted argument value", 12)
+	case stateExpectRendererArgumentDelimiter:
+		p.setErrorState("unexpected end of arguments list", 15)
+	case stateExpectRendererArgument:
+		p.setErrorState("expected closing parenthesis", 16)
+	case stateRendererArgument:
+		p.setErrorState("expected closing parenthesis", 16)
+	case stateExpectRenderer:
+		p.setErrorState("expected renderer after operator", 7)
 	}
 }
 
@@ -618,6 +769,171 @@ func (p *parser) inStateExpectAlias() {
 	} else if p.charValue == "," {
 		p.state = stateExpectColumn
 		p.storeColumn()
+	} else if p.charValue == "|" {
+		if !p.capabilities.Renderers {
+			p.setErrorState("renderers are not enabled", 11)
+			return
+		}
+		if p.alias == "" {
+			p.setErrorState("renderers require an alias", 11)
+			return
+		}
+		p.state = stateExpectRenderer
+	}
+}
+
+func (p *parser) inStateExpectRenderer() {
+	if isTransformerValue(p.charValue) {
+		if p.rendererStart < 0 {
+			p.rendererStart = p.charPos
+		}
+		p.renderer += p.charValue
+		p.state = stateRenderer
+	} else {
+		p.setErrorState("invalid character, expected renderer", 7)
+	}
+}
+
+func (p *parser) inStateRenderer() {
+	if isTransformerValue(p.charValue) {
+		if p.rendererStart < 0 {
+			p.rendererStart = p.charPos
+		}
+		p.renderer += p.charValue
+	} else if p.charValue == "," {
+		p.storeRenderer()
+		p.storeColumn()
+		p.state = stateExpectColumn
+	} else if p.charValue == "|" {
+		p.storeRenderer()
+		p.state = stateExpectRenderer
+	} else if p.charValue == " " {
+		// Do NOT store here — stateRendererComplete handlers (on ',', '|',
+		// or EOF via inStateLastChar) perform the single store. Storing here
+		// would create a phantom empty renderer on any subsequent separator.
+		p.state = stateRendererComplete
+	} else if p.charValue == "(" {
+		p.state = stateExpectRendererArgument
+	} else {
+		p.setErrorState("invalid character in renderer name", 7)
+	}
+}
+
+func (p *parser) inStateRendererComplete() {
+	if p.charValue == " " {
+		return
+	} else if p.charValue == "," {
+		p.storeRenderer()
+		p.storeColumn()
+		p.state = stateExpectColumn
+	} else if p.charValue == "|" {
+		p.storeRenderer()
+		p.state = stateExpectRenderer
+	} else {
+		p.setErrorState("invalid character", 8)
+	}
+}
+
+func (p *parser) inStateExpectRendererArgument() {
+	if p.charValue == " " {
+		return
+	}
+	if p.charValue == "\"" {
+		p.rendererArgumentType = "str"
+		p.rendererArgStart = p.charPos
+		p.state = stateRendererArgumentDoubleQuoted
+	} else if p.charValue == "'" {
+		p.rendererArgumentType = "str"
+		p.rendererArgStart = p.charPos
+		p.state = stateRendererArgumentSingleQuoted
+	} else if isTransformerArgumentValue(p.charValue) {
+		if p.rendererArgStart < 0 {
+			p.rendererArgStart = p.charPos
+		}
+		p.rendererArgument += p.charValue
+		p.state = stateRendererArgument
+	} else if p.charValue == ")" {
+		if p.rendererArgument != "" {
+			p.storeRendererArgument()
+		}
+		p.state = stateRendererComplete
+	}
+}
+
+func (p *parser) inStateRendererArgument() {
+	if p.charValue == "," {
+		p.storeRendererArgument()
+		p.state = stateExpectRendererArgument
+	} else if isTransformerArgumentValue(p.charValue) {
+		if p.rendererArgStart < 0 {
+			p.rendererArgStart = p.charPos
+		}
+		p.rendererArgument += p.charValue
+	} else if p.charValue == ")" {
+		p.storeRendererArgument()
+		p.state = stateRendererComplete
+	}
+}
+
+func (p *parser) inStateExpectRendererArgumentDelimiter() {
+	if p.charValue == "," {
+		p.state = stateExpectRendererArgument
+	} else if p.charValue == ")" {
+		p.state = stateRendererComplete
+	} else {
+		p.setErrorState("invalid character. Expected bracket close or renderer argument delimiter", 9)
+	}
+}
+
+func (p *parser) inStateRendererArgumentDoubleQuoted() {
+	if p.charValue == "\\" {
+		nextPos := p.charPos + 1
+		if nextPos < len(p.text) {
+			nextChar := p.text[nextPos]
+			if nextChar != '"' {
+				p.rendererArgument += p.charValue
+			}
+		} else {
+			p.rendererArgument += p.charValue
+		}
+	} else if p.charValue != "\"" {
+		p.rendererArgument += p.charValue
+	} else if p.charValue == "\"" {
+		prevPos := p.charPos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.rendererArgument += p.charValue
+		} else {
+			p.storeRendererArgument()
+			p.state = stateExpectRendererArgumentDelimiter
+		}
+	} else {
+		p.setErrorState("invalid character", 10)
+	}
+}
+
+func (p *parser) inStateRendererArgumentSingleQuoted() {
+	if p.charValue == "\\" {
+		nextPos := p.charPos + 1
+		if nextPos < len(p.text) {
+			nextChar := p.text[nextPos]
+			if nextChar != '\'' {
+				p.rendererArgument += p.charValue
+			}
+		} else {
+			p.rendererArgument += p.charValue
+		}
+	} else if p.charValue != "'" {
+		p.rendererArgument += p.charValue
+	} else if p.charValue == "'" {
+		prevPos := p.charPos - 1
+		if prevPos >= 0 && p.text[prevPos] == '\\' {
+			p.rendererArgument += p.charValue
+		} else {
+			p.storeRendererArgument()
+			p.state = stateExpectRendererArgumentDelimiter
+		}
+	} else {
+		p.setErrorState("invalid character", 10)
 	}
 }
 
@@ -679,6 +995,30 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 				ArgumentRanges: argRanges,
 			}
 		}
+
+		var renderers []Renderer
+		if len(col.renderers) > 0 {
+			renderers = make([]Renderer, len(col.renderers))
+			for i, r := range col.renderers {
+				args := r.Arguments
+				if args == nil {
+					args = []any{}
+				}
+				renderers[i] = Renderer{Name: r.Name, Arguments: args}
+			}
+		}
+		rRanges := make([]RendererRange, len(col.rendererRanges))
+		for ri, rd := range col.rendererRanges {
+			argRanges := rd.argumentRanges
+			if argRanges == nil {
+				argRanges = []flyql.Range{}
+			}
+			rRanges[ri] = RendererRange{
+				NameRange:      rd.nameRange,
+				ArgumentRanges: argRanges,
+			}
+		}
+
 		result = append(result, ParsedColumn{
 			Name:              col.name,
 			Transformers:      transformers,
@@ -686,8 +1026,10 @@ func Parse(text string, capabilities Capabilities) ([]ParsedColumn, error) {
 			Segments:          segments,
 			IsSegmented:       key.IsSegmented(),
 			DisplayName:       displayName,
+			Renderers:         renderers,
 			NameRange:         col.nameRange,
 			TransformerRanges: trRanges,
+			RendererRanges:    rRanges,
 		})
 	}
 

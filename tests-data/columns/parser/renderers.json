@@ -1,0 +1,321 @@
+{
+  "version": "1.0",
+  "description": "Columns parser - post-alias renderer chain parsing",
+  "test_suite": "columns_parser_renderers",
+  "default_capabilities": {
+    "transformers": true,
+    "renderers": true
+  },
+  "tests": [
+    {
+      "name": "single_renderer_no_args",
+      "input": "url as link|plain",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "plain",
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "single_renderer_with_string_arg",
+      "input": "url as link|href(\"http://{{value}}\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "href",
+              "arguments": ["http://{{value}}"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "single_renderer_with_multi_args",
+      "input": "amount as a|currency(\"USD\", 2)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "amount",
+          "transformers": [],
+          "alias": "a",
+          "segments": ["amount"],
+          "is_segmented": false,
+          "display_name": "a",
+          "renderers": [
+            {
+              "name": "currency",
+              "arguments": ["USD", 2]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "chained_renderers",
+      "input": "url as link|href(\"http://{{value}}\")|badge(\"info\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "href",
+              "arguments": ["http://{{value}}"]
+            },
+            {
+              "name": "badge",
+              "arguments": ["info"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_after_transformer_chain",
+      "input": "url|upper as u|href(\"https://{{value}}\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ],
+          "alias": "u",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "u",
+          "renderers": [
+            {
+              "name": "href",
+              "arguments": ["https://{{value}}"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_with_single_quoted_arg",
+      "input": "url as link|href('http://{{value}}')",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "href",
+              "arguments": ["http://{{value}}"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_on_nested_column",
+      "input": "user.email as e|mailto(\"{{value}}\")",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "user.email",
+          "transformers": [],
+          "alias": "e",
+          "segments": ["user", "email"],
+          "is_segmented": true,
+          "display_name": "e",
+          "renderers": [
+            {
+              "name": "mailto",
+              "arguments": ["{{value}}"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "multiple_columns_some_with_renderers",
+      "input": "id, url as link|href(\"/{{value}}\"), ts as t",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "id",
+          "transformers": [],
+          "alias": null,
+          "segments": ["id"],
+          "is_segmented": false,
+          "display_name": ""
+        },
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "href",
+              "arguments": ["/{{value}}"]
+            }
+          ]
+        },
+        {
+          "name": "ts",
+          "transformers": [],
+          "alias": "t",
+          "segments": ["ts"],
+          "is_segmented": false,
+          "display_name": "t"
+        }
+      ]
+    },
+    {
+      "name": "renderer_with_int_arg",
+      "input": "score as s|stars(5)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "score",
+          "transformers": [],
+          "alias": "s",
+          "segments": ["score"],
+          "is_segmented": false,
+          "display_name": "s",
+          "renderers": [
+            {
+              "name": "stars",
+              "arguments": [5]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_with_float_arg",
+      "input": "price as p|money(2.5)",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "price",
+          "transformers": [],
+          "alias": "p",
+          "segments": ["price"],
+          "is_segmented": false,
+          "display_name": "p",
+          "renderers": [
+            {
+              "name": "money",
+              "arguments": [2.5]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_noargs_trailing_space",
+      "input": "url as link|plain ",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "plain",
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "renderer_noargs_trailing_space_then_comma",
+      "input": "url as link|plain ,id",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "plain",
+              "arguments": []
+            }
+          ]
+        },
+        {
+          "name": "id",
+          "transformers": [],
+          "alias": null,
+          "segments": ["id"],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "renderer_noargs_trailing_space_then_pipe",
+      "input": "url as link|plain |badge",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "url",
+          "transformers": [],
+          "alias": "link",
+          "segments": ["url"],
+          "is_segmented": false,
+          "display_name": "link",
+          "renderers": [
+            {
+              "name": "plain",
+              "arguments": []
+            },
+            {
+              "name": "badge",
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

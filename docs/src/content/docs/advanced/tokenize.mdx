@@ -159,12 +159,12 @@ Empty input returns an empty list, never a trailing error.
 
 ## Limitations
 
-- **Columns mode is JavaScript-only.** The Python columns parser has no typed-character output and there is no Go columns parser.
+- **Columns mode is JavaScript-only.** Only the JavaScript columns parser records typed-character output; the Python and Go columns parsers don't, so `tokenize()` in those languages can't extend to columns mode.
 - **ASCII-only guarantees.** Cross-language offset parity is guaranteed for ASCII input. Non-ASCII inputs may produce different `start`/`end` values across languages because of byte-vs-codepoint-vs-UTF16-unit differences.
 - **No line or column numbers.** Tokens expose only character offsets. If you need `(line, column)` pairs for an editor, compute them from `start` against the source text.
 
 ## See also
 
-- [Cross-Language API Matrix](./api-matrix) — the canonical function name for each language.
-- [JavaScript Quickstart](../getting-started/javascript) — full list of package subpath imports, including `flyql/highlight` for HTML output.
-- [AST & Custom Generators](./ast) — the higher-level tree you get from `parse()`. `tokenize()` is a complement, not a replacement: it gives you a flat view where `parse()` gives you a tree.
+- [Cross-Language API Matrix](/advanced/api-matrix/) — the canonical function name for each language.
+- [JavaScript Quickstart](/getting-started/javascript/) — full list of package subpath imports, including `flyql/highlight` for HTML output.
+- [AST & Custom Generators](/advanced/ast/) — the higher-level tree you get from `parse()`. `tokenize()` is a complement, not a replacement: it gives you a flat view where `parse()` gives you a tree.

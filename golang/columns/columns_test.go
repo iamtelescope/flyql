@@ -21,6 +21,11 @@ type expectedTransformer struct {
 	Arguments []any  `json:"arguments"`
 }
 
+type expectedRenderer struct {
+	Name      string `json:"name"`
+	Arguments []any  `json:"arguments"`
+}
+
 type expectedColumn struct {
 	Name         string                `json:"name"`
 	Transformers []expectedTransformer `json:"transformers"`
@@ -28,6 +33,7 @@ type expectedColumn struct {
 	Segments     []string              `json:"segments"`
 	IsSegmented  bool                  `json:"is_segmented"`
 	DisplayName  string                `json:"display_name"`
+	Renderers    []expectedRenderer    `json:"renderers,omitempty"`
 }
 
 type expectedError struct {
@@ -37,6 +43,7 @@ type expectedError struct {
 
 type testCapabilities struct {
 	Transformers *bool `json:"transformers,omitempty"`
+	Renderers    *bool `json:"renderers,omitempty"`
 }
 
 type testCase struct {
@@ -59,8 +66,13 @@ func resolveCapabilities(tc testCase, suite testSuite) Capabilities {
 	if src == nil {
 		src = suite.DefaultCapabilities
 	}
-	if src != nil && src.Transformers != nil {
-		caps.Transformers = *src.Transformers
+	if src != nil {
+		if src.Transformers != nil {
+			caps.Transformers = *src.Transformers
+		}
+		if src.Renderers != nil {
+			caps.Renderers = *src.Renderers
+		}
 	}
 	return caps
 }
@@ -131,6 +143,23 @@ func compareParsedColumn(t *testing.T, idx int, got ParsedColumn, want expectedC
 	if gotTrJSON != wantTrJSON {
 		t.Errorf("column[%d].Transformers = %s, want %s", idx, gotTrJSON, wantTrJSON)
 	}
+
+	// Compare renderers via JSON (only when the fixture declares renderers)
+	if len(want.Renderers) > 0 || len(got.Renderers) > 0 {
+		wantR := want.Renderers
+		if wantR == nil {
+			wantR = []expectedRenderer{}
+		}
+		gotR := got.Renderers
+		if gotR == nil {
+			gotR = []Renderer{}
+		}
+		gotRJSON := normalizeForComparison(t, gotR)
+		wantRJSON := normalizeForComparison(t, wantR)
+		if gotRJSON != wantRJSON {
+			t.Errorf("column[%d].Renderers = %s, want %s", idx, gotRJSON, wantRJSON)
+		}
+	}
 }
 
 func TestBasic(t *testing.T) {
@@ -187,6 +216,62 @@ func TestTransformers(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	suite := loadTestSuite(t, "errors.json")
+
+	for _, tc := range suite.Tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			caps := resolveCapabilities(tc, suite)
+			_, err := Parse(tc.Input, caps)
+			if err == nil {
+				t.Fatalf("Parse(%q) expected error, got nil", tc.Input)
+			}
+
+			parserErr, ok := err.(*ParserError)
+			if !ok {
+				t.Fatalf("Parse(%q) error is not *ParserError: %T", tc.Input, err)
+			}
+
+			if tc.ExpectedError != nil {
+				if parserErr.Errno != tc.ExpectedError.Errno {
+					t.Errorf("Parse(%q) errno = %d, want %d", tc.Input, parserErr.Errno, tc.ExpectedError.Errno)
+				}
+				if tc.ExpectedError.MessageContains != "" {
+					if !strings.Contains(parserErr.Message, tc.ExpectedError.MessageContains) {
+						t.Errorf("Parse(%q) error message %q does not contain %q", tc.Input, parserErr.Message, tc.ExpectedError.MessageContains)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestRenderers(t *testing.T) {
+	suite := loadTestSuite(t, "renderers.json")
+
+	for _, tc := range suite.Tests {
+		t.Run(tc.Name, func(t *testing.T) {
+			caps := resolveCapabilities(tc, suite)
+			columns, err := Parse(tc.Input, caps)
+			if tc.ExpectedResult == "success" {
+				if err != nil {
+					t.Fatalf("Parse(%q) returned error: %v", tc.Input, err)
+				}
+				if len(columns) != len(tc.ExpectedColumns) {
+					t.Fatalf("Parse(%q) returned %d columns, want %d", tc.Input, len(columns), len(tc.ExpectedColumns))
+				}
+				for i, col := range columns {
+					compareParsedColumn(t, i, col, tc.ExpectedColumns[i])
+				}
+			} else {
+				if err == nil {
+					t.Fatalf("Parse(%q) expected error, got nil", tc.Input)
+				}
+			}
+		})
+	}
+}
+
+func TestRenderersErrors(t *testing.T) {
+	suite := loadTestSuite(t, "renderers_errors.json")
 
 	for _, tc := range suite.Tests {
 		t.Run(tc.Name, func(t *testing.T) {

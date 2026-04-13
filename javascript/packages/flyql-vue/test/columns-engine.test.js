@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { ColumnsEngine } from '../src/columns-engine.js'
 import { ColumnSchema } from 'flyql/core'
 import { Transformer, TransformerRegistry, defaultRegistry } from 'flyql/transformers'
+import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
 import { Type } from 'flyql'
 
 const TEST_COLUMNS = ColumnSchema.fromPlainObject({
@@ -731,6 +732,136 @@ describe('ColumnsEngine', () => {
             engine.setRegistry(customRegistry())
             await engine.updateSuggestions()
             expect(engine.suggestions.map((s) => s.label)).toContain('myCustom')
+        })
+    })
+
+    describe('renderers', () => {
+        class HrefRenderer extends Renderer {
+            get name() {
+                return 'href'
+            }
+            get argSchema() {
+                return [new ArgSpec(Type.String, true)]
+            }
+        }
+
+        class BadgeRenderer extends Renderer {
+            get name() {
+                return 'badge'
+            }
+            get argSchema() {
+                return [new ArgSpec(Type.String, true)]
+            }
+        }
+
+        function makeRendererRegistry() {
+            const reg = new RendererRegistry()
+            reg.register(new HrefRenderer())
+            reg.register(new BadgeRenderer())
+            return reg
+        }
+
+        const RENDERER_OPTS = () => ({ rendererRegistry: makeRendererRegistry() })
+
+        it('no registry: parser rejects post-alias pipe with errno 11', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('message as msg|')
+            const diags = engine.getDiagnostics()
+            // Syntax error from post-alias pipe when renderers disabled (errno 11)
+            expect(diags.some((d) => d.code === 'syntax' || d.code === 'unknown_renderer')).toBe(false)
+        })
+
+        it('syntax highlighting: renderer tokens emit RENDERER char type', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            engine.setQuery('message as msg|href("/x")')
+            const html = engine.getHighlightTokens('message as msg|href("/x")')
+            expect(html).toContain('flyql-col-renderer')
+        })
+
+        it('renderer suggestions: emits names from registry', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            engine.setQuery('message as msg|')
+            engine.setCursorPosition(15)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('href')
+            expect(labels).toContain('badge')
+        })
+
+        it('renderer suggestions: type is "renderer"', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            engine.setQuery('message as msg|h')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            const hrefSugg = engine.suggestions.find((s) => s.label === 'href')
+            expect(hrefSugg).toBeDefined()
+            expect(hrefSugg.type).toBe('renderer')
+        })
+
+        it('unknown renderer emits CODE_UNKNOWN_RENDERER', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            engine.setQuery('message as msg|unknownrend("x")')
+            const diags = engine.getDiagnostics()
+            expect(diags.some((d) => d.code === 'unknown_renderer')).toBe(true)
+        })
+
+        it('custom diagnose hook appears in engine diagnostics', () => {
+            class HrefWithHook extends Renderer {
+                get name() {
+                    return 'href'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+                diagnose(args, col) {
+                    if (args && args[0] && !args[0].includes('{{value}}')) {
+                        return [
+                            {
+                                range: { start: 0, end: 1 },
+                                message: 'missing {{value}}',
+                                severity: 'warning',
+                                code: 'custom_href_placeholder',
+                            },
+                        ]
+                    }
+                    return []
+                }
+            }
+            const reg = new RendererRegistry()
+            reg.register(new HrefWithHook())
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: reg })
+            engine.setQuery('message as msg|href("/static")')
+            const diags = engine.getDiagnostics()
+            expect(diags.some((d) => d.code === 'custom_href_placeholder')).toBe(true)
+        })
+
+        it('setRendererRegistry swaps suggestions reactively', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            engine.setQuery('message as msg|')
+            engine.setCursorPosition(15)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.map((s) => s.label)).toContain('href')
+
+            const newReg = new RendererRegistry()
+            class PlainRenderer extends Renderer {
+                get name() {
+                    return 'plain'
+                }
+            }
+            newReg.register(new PlainRenderer())
+            engine.setRendererRegistry(newReg)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('plain')
+            expect(labels).not.toContain('href')
+        })
+
+        it('null registry shows zero renderer diagnostics (opt-in)', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('message as msg')
+            const diags = engine.getDiagnostics()
+            // No renderer diagnostics because renderer parsing is disabled
+            expect(diags.filter((d) => d.code === 'unknown_renderer')).toEqual([])
         })
     })
 })

@@ -159,12 +159,12 @@ tokenize('x!y')
 
 ## 제한 사항
 
-- **columns 모드는 JavaScript 전용.** Python columns parser에는 타입이 지정된 문자 출력이 없고, Go에는 columns parser 자체가 없습니다.
+- **columns 모드는 JavaScript 전용.** 타입이 지정된 문자 출력을 기록하는 건 JavaScript columns parser뿐이며, Python과 Go의 columns parser는 그렇지 않습니다. 따라서 해당 언어에서 `tokenize()`는 columns 모드로 확장될 수 없습니다.
 - **ASCII 전용 보장.** 언어 간 오프셋 동일성은 ASCII 입력에서만 보장됩니다. 비 ASCII 입력은 바이트/코드포인트/UTF-16 단위 차이 때문에 언어마다 `start`/`end`가 다를 수 있습니다.
 - **줄/열 번호 없음.** 토큰은 문자 오프셋만 노출합니다. 에디터에서 `(line, column)`이 필요하다면 원본 텍스트와 `start`에서 계산하세요.
 
 ## 관련 문서
 
-- [언어 간 API 매트릭스](./api-matrix) — 각 언어의 정식 함수 이름.
-- [JavaScript 빠른 시작](../getting-started/javascript) — 패키지 subpath import 전체 목록. HTML 출력용 `flyql/highlight`도 포함됩니다.
-- [AST와 사용자 정의 Generator](./ast) — `parse()`에서 얻는 상위 레벨 트리. `tokenize()`는 이를 보완할 뿐 대체하지 않습니다 — `parse()`가 트리를 준다면 `tokenize()`는 평면 뷰를 제공합니다.
+- [언어 간 API 매트릭스](/ko/advanced/api-matrix/) — 각 언어의 정식 함수 이름.
+- [JavaScript 빠른 시작](/ko/getting-started/javascript/) — 패키지 subpath import 전체 목록. HTML 출력용 `flyql/highlight`도 포함됩니다.
+- [AST와 사용자 정의 Generator](/ko/advanced/ast/) — `parse()`에서 얻는 상위 레벨 트리. `tokenize()`는 이를 보완할 뿐 대체하지 않습니다 — `parse()`가 트리를 준다면 `tokenize()`는 평면 뷰를 제공합니다.

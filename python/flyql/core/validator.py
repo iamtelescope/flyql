@@ -42,6 +42,9 @@ CODE_CHAIN_TYPE = "chain_type"
 CODE_INVALID_AST = "invalid_ast"
 CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
 CODE_INVALID_COLUMN_VALUE = "invalid_column_value"
+CODE_UNKNOWN_RENDERER = "unknown_renderer"
+CODE_RENDERER_ARG_COUNT = "renderer_arg_count"
+CODE_RENDERER_ARG_TYPE = "renderer_arg_type"
 
 _VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
 
@@ -66,6 +69,9 @@ __all__ = [
     "CODE_INVALID_AST",
     "CODE_UNKNOWN_COLUMN_VALUE",
     "CODE_INVALID_COLUMN_VALUE",
+    "CODE_UNKNOWN_RENDERER",
+    "CODE_RENDERER_ARG_COUNT",
+    "CODE_RENDERER_ARG_TYPE",
 ]
 
 

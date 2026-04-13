@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "description": "Columns parser - post-alias renderer chain error cases",
+  "test_suite": "columns_parser_renderers_errors",
+  "default_capabilities": {
+    "transformers": true,
+    "renderers": true
+  },
+  "tests": [
+    {
+      "name": "renderers_disabled",
+      "input": "url as link|href(\"x\")",
+      "capabilities": {
+        "transformers": true,
+        "renderers": false
+      },
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 11,
+        "message_contains": "renderers are not enabled"
+      }
+    },
+    {
+      "name": "renderer_without_alias",
+      "input": "url as |href(\"x\")",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 11,
+        "message_contains": "renderers require an alias"
+      }
+    },
+    {
+      "name": "expected_renderer_after_pipe",
+      "input": "url as link|",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": "expected renderer"
+      }
+    },
+    {
+      "name": "invalid_char_in_renderer_name",
+      "input": "url as link|he@ref(\"x\")",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "unclosed_renderer_paren",
+      "input": "url as link|href(",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 16,
+        "message_contains": "expected closing parenthesis"
+      }
+    },
+    {
+      "name": "unclosed_renderer_quoted_arg",
+      "input": "url as link|href(\"x",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 12,
+        "message_contains": "unexpected end of quoted argument"
+      }
+    },
+    {
+      "name": "empty_renderer_after_chain_pipe",
+      "input": "url as link|href(\"x\")|",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": "expected renderer"
+      }
+    }
+  ]
+}

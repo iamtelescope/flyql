@@ -12,6 +12,9 @@ export const CODE_CHAIN_TYPE = 'chain_type'
 export const CODE_INVALID_AST = 'invalid_ast'
 export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
 export const CODE_INVALID_COLUMN_VALUE = 'invalid_column_value'
+export const CODE_UNKNOWN_RENDERER = 'unknown_renderer'
+export const CODE_RENDERER_ARG_COUNT = 'renderer_arg_count'
+export const CODE_RENDERER_ARG_TYPE = 'renderer_arg_type'
 
 const VALID_COLUMN_NAME_RE = /^[a-zA-Z0-9_.:/@|-]+$/
 

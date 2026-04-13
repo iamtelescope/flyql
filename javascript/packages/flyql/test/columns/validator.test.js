@@ -10,8 +10,14 @@ import {
     CODE_ARG_COUNT,
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
+    CODE_UNKNOWN_RENDERER,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
+    Diagnostic,
 } from '../../src/core/validator.js'
 import { defaultRegistry } from '../../src/transformers/registry.js'
+import { Range } from '../../src/core/range.js'
+import { Renderer, RendererRegistry, ArgSpec } from '../../src/renderers/index.js'
 import { Type, parseFlyQLType } from '../../src/flyql_type.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -135,6 +141,109 @@ describe('Columns Validator', () => {
             expect(diags).toHaveLength(1)
             expect(diags[0].range.start).toBe(0)
             expect(diags[0].range.end).toBe(8) // "resource"
+        })
+    })
+
+    describe('renderers', () => {
+        const caps = { transformers: true, renderers: true }
+
+        class HrefRenderer extends Renderer {
+            get name() {
+                return 'href'
+            }
+            get argSchema() {
+                return [new ArgSpec(Type.String, true)]
+            }
+        }
+
+        class TruncateRenderer extends Renderer {
+            get name() {
+                return 'truncate'
+            }
+            get argSchema() {
+                return [new ArgSpec(Type.Int, true)]
+            }
+        }
+
+        function makeURLSchema() {
+            return makeSchemaFromColumn('url', 'string')
+        }
+
+        function registry() {
+            const reg = new RendererRegistry()
+            reg.register(new HrefRenderer())
+            reg.register(new TruncateRenderer())
+            return reg
+        }
+
+        it('unknown renderer returns CODE_UNKNOWN_RENDERER', () => {
+            const cols = parse('url as link|unknown("x")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, registry())
+            expect(diags).toHaveLength(1)
+            expect(diags[0].code).toBe(CODE_UNKNOWN_RENDERER)
+        })
+
+        it('valid renderer returns zero diagnostics', () => {
+            const cols = parse('url as link|href("/x")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, registry())
+            expect(diags).toHaveLength(0)
+        })
+
+        it('renderer arg count mismatch returns CODE_RENDERER_ARG_COUNT', () => {
+            const cols = parse('url as link|href("/x", "extra")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, registry())
+            expect(diags.some((d) => d.code === CODE_RENDERER_ARG_COUNT)).toBe(true)
+        })
+
+        it('renderer arg type mismatch returns CODE_RENDERER_ARG_TYPE', () => {
+            const cols = parse('url as link|href(42)', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, registry())
+            expect(diags.some((d) => d.code === CODE_RENDERER_ARG_TYPE)).toBe(true)
+        })
+
+        it('per-renderer diagnose hook appends custom diagnostics', () => {
+            class HrefWithHook extends Renderer {
+                get name() {
+                    return 'href'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+                diagnose(args, col) {
+                    if (args && args[0] && !args[0].includes('{{value}}')) {
+                        return [new Diagnostic(new Range(0, 1), 'href missing placeholder', 'warning', 'custom_href')]
+                    }
+                    return []
+                }
+            }
+            const reg = new RendererRegistry()
+            reg.register(new HrefWithHook())
+            const cols = parse('url as link|href("/static")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, reg)
+            expect(diags.some((d) => d.code === 'custom_href')).toBe(true)
+        })
+
+        it('registry-level chain diagnose hook appends diagnostics', () => {
+            const reg = registry()
+            reg.setDiagnose((col, chain) => {
+                const names = chain.map((r) => r.name)
+                const ti = names.indexOf('truncate')
+                const hi = names.indexOf('href')
+                if (ti >= 0 && hi >= 0 && ti < hi) {
+                    return [new Diagnostic(new Range(0, 1), 'href cannot follow truncate', 'error', 'chain_forbidden')]
+                }
+                return []
+            })
+            const cols = parse('url as link|truncate(10)|href("/x")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, reg)
+            expect(diags.some((d) => d.code === 'chain_forbidden')).toBe(true)
+        })
+
+        it('null registry emits unknown_renderer for every renderer', () => {
+            const cols = parse('url as link|href("/x")', caps)
+            const diags = diagnose(cols, makeURLSchema(), null, null)
+            expect(diags).toHaveLength(1)
+            expect(diags[0].code).toBe(CODE_UNKNOWN_RENDERER)
         })
     })
 })

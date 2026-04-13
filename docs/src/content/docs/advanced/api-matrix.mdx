@@ -32,7 +32,7 @@ FlyQL provides identical functionality across Go, Python, and JavaScript. This m
 | Column schema | `ColumnSchema` | `ColumnSchema` | `ColumnSchema` |
 | Range | `Range` | `Range` | `Range` |
 | Operators | string constants | `Operator`, `BoolOperator` (enums) | `Operator`, `BoolOperator` |
-| Column/value type ([`flyql.Type`](./column-types)) | `flyql.Type` (`flyql.TypeString`, ...) | `Type` (`Type.String`, ...) | `Type` (`Type.String`, ...) |
+| Column/value type ([`flyql.Type`](/advanced/column-types/)) | `flyql.Type` (`flyql.TypeString`, ...) | `Type` (`Type.String`, ...) | `Type` (`Type.String`, ...) |
 | Parser literal kind | `literal.Integer`, etc. | `LiteralKind.INTEGER`, etc. | `LiteralKind.INTEGER`, etc. |
 
 ## Generators — WHERE Clause
@@ -82,7 +82,7 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 
 ## Tokenizer
 
-The [tokenizer](./tokenize) is a shared primitive that groups the parser's per-character output into typed tokens with `{text, type, start, end}`. Use it to build custom highlighters or formatters on top of FlyQL.
+The [tokenizer](/advanced/tokenize/) is a shared primitive that groups the parser's per-character output into typed tokens with `{text, type, start, end}`. Use it to build custom highlighters or formatters on top of FlyQL.
 
 | Operation | Go | Python | JavaScript |
 |-----------|------|--------|------------|
@@ -118,7 +118,7 @@ Columns mode is JavaScript-only. Python raises `ValueError` and Go returns a non
 
 ## Dialect → flyql.ColumnSchema bridges
 
-Each dialect package exposes a helper that bridges from a list of dialect-specific Columns to a canonical `flyql.ColumnSchema` for use with the validator. See [Column Types](./column-types) for the full contract.
+Each dialect package exposes a helper that bridges from a list of dialect-specific Columns to a canonical `flyql.ColumnSchema` for use with the validator. See [Column Types](/advanced/column-types/) for the full contract.
 
 | Dialect | Go | Python | JavaScript |
 |---------|------|--------|------------|

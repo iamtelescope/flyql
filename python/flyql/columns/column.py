@@ -14,6 +14,8 @@ class ParsedColumn:
         display_name: str = "",
         name_range: Optional[Range] = None,
         transformer_ranges: Optional[List[Dict[str, Any]]] = None,
+        renderers: Optional[List[Dict[str, Any]]] = None,
+        renderer_ranges: Optional[List[Dict[str, Any]]] = None,
     ):
         self.name = name
         self.transformers = transformers
@@ -22,6 +24,8 @@ class ParsedColumn:
         self.display_name = display_name
         self.name_range = name_range
         self.transformer_ranges = transformer_ranges
+        self.renderers = renderers or []
+        self.renderer_ranges = renderer_ranges
 
     @property
     def segments(self) -> List[str]:
@@ -32,7 +36,7 @@ class ParsedColumn:
         return self.key.is_segmented if self.key else False
 
     def as_dict(self) -> Dict[str, Any]:
-        return {
+        result: Dict[str, Any] = {
             "name": self.name,
             "transformers": [
                 {"name": t["name"], "arguments": t["arguments"]}
@@ -43,6 +47,11 @@ class ParsedColumn:
             "is_segmented": self.is_segmented,
             "display_name": self.display_name,
         }
+        if self.renderers:
+            result["renderers"] = [
+                {"name": r["name"], "arguments": r["arguments"]} for r in self.renderers
+            ]
+        return result
 
     def as_json(self) -> str:
         return json.dumps(self.as_dict())

@@ -159,12 +159,12 @@ tokenize('x!y')
 
 ## 制限事項
 
-- **columns モードは JavaScript 専用。** Python の columns parser には型付き文字出力がなく、Go には columns parser そのものがありません。
+- **columns モードは JavaScript 専用。** 型付き文字出力を記録するのは JavaScript の columns parser のみで、Python と Go の columns parser は記録しません。そのため、これらの言語では `tokenize()` を columns モードに拡張できません。
 - **ASCII のみを保証。** 言語間でのオフセット一致は ASCII 入力に対してのみ保証されます。非 ASCII 入力ではバイト／コードポイント／UTF-16 単位の違いにより、言語間で `start`/`end` が異なる場合があります。
 - **行・列番号はなし。** トークンは文字オフセットのみを公開します。エディター用に `(line, column)` が必要な場合は、`start` と元のテキストから計算してください。
 
 ## 関連
 
-- [言語横断 API マトリクス](./api-matrix) — 各言語における正規の関数名。
-- [JavaScript クイックスタート](../getting-started/javascript) — パッケージのサブパス import の全リスト。HTML 出力用の `flyql/highlight` も含みます。
-- [AST とカスタム Generator](./ast) — `parse()` から得られる高レベルな木構造。`tokenize()` はそれを補完するもので置き換えるものではありません — `parse()` が木を返すのに対し、`tokenize()` は平坦なビューを返します。
+- [言語横断 API マトリクス](/ja/advanced/api-matrix/) — 各言語における正規の関数名。
+- [JavaScript クイックスタート](/ja/getting-started/javascript/) — パッケージのサブパス import の全リスト。HTML 出力用の `flyql/highlight` も含みます。
+- [AST とカスタム Generator](/ja/advanced/ast/) — `parse()` から得られる高レベルな木構造。`tokenize()` はそれを補完するもので置き換えるものではありません — `parse()` が木を返すのに対し、`tokenize()` は平坦なビューを返します。

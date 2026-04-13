@@ -5,7 +5,7 @@ export class ParsedColumn {
         alias,
         key = null,
         displayName = '',
-        { nameRange = null, transformerRanges = null } = {},
+        { nameRange = null, transformerRanges = null, renderers = null, rendererRanges = null } = {},
     ) {
         this.name = name
         this.transformers = transformers
@@ -14,6 +14,8 @@ export class ParsedColumn {
         this.displayName = displayName
         this.nameRange = nameRange
         this.transformerRanges = transformerRanges
+        this.renderers = renderers || []
+        this.rendererRanges = rendererRanges
     }
 
     get segments() {
@@ -25,7 +27,7 @@ export class ParsedColumn {
     }
 
     asDict() {
-        return {
+        const result = {
             name: this.name,
             transformers: this.transformers.map((t) => ({ name: t.name, arguments: t.arguments })),
             alias: this.alias,
@@ -33,6 +35,10 @@ export class ParsedColumn {
             is_segmented: this.isSegmented,
             display_name: this.displayName,
         }
+        if (this.renderers && this.renderers.length > 0) {
+            result.renderers = this.renderers.map((r) => ({ name: r.name, arguments: r.arguments }))
+        }
+        return result
     }
 
     asJson() {

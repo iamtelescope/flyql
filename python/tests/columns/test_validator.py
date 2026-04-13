@@ -6,13 +6,19 @@ import pytest
 from flyql.columns import parse, diagnose
 from flyql.core.column import Column, ColumnSchema
 from flyql.core.validator import (
-    CODE_UNKNOWN_COLUMN,
-    CODE_UNKNOWN_TRANSFORMER,
     CODE_ARG_COUNT,
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_RENDERER,
+    CODE_UNKNOWN_TRANSFORMER,
+    Diagnostic,
 )
+from flyql.core.range import Range
 from flyql.flyql_type import Type, parse_flyql_type
+from flyql.renderers import ArgSpec, Renderer, RendererRegistry
 
 FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -128,3 +134,119 @@ def test_dotted_column_highlights_base():
     assert len(diags) == 1
     assert diags[0].range.start == 0
     assert diags[0].range.end == 8  # "resource"
+
+
+class _HrefRenderer(Renderer):
+    arg_schema = (ArgSpec(type=Type.String, required=True),)
+
+    @property
+    def name(self) -> str:
+        return "href"
+
+
+class _StarsRenderer(Renderer):
+    arg_schema = (ArgSpec(type=Type.Int, required=True),)
+
+    @property
+    def name(self) -> str:
+        return "stars"
+
+
+class _TruncateRenderer(Renderer):
+    arg_schema = (ArgSpec(type=Type.Int, required=True),)
+
+    @property
+    def name(self) -> str:
+        return "truncate"
+
+
+class TestRendererValidation:
+    def _caps(self):
+        return {"transformers": True, "renderers": True}
+
+    def _schema(self):
+        return _schema_from_column("url", "string")
+
+    def _registry(self):
+        reg = RendererRegistry()
+        reg.register(_HrefRenderer())
+        reg.register(_StarsRenderer())
+        reg.register(_TruncateRenderer())
+        return reg
+
+    def test_unknown_renderer(self):
+        cols = parse('url as link|unknown("x")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=self._registry())
+        assert len(diags) == 1
+        assert diags[0].code == CODE_UNKNOWN_RENDERER
+
+    def test_valid_renderer_zero_diagnostics(self):
+        cols = parse('url as link|href("/x")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=self._registry())
+        assert diags == []
+
+    def test_renderer_arg_count(self):
+        cols = parse('url as link|href("/x", "extra")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=self._registry())
+        assert any(d.code == CODE_RENDERER_ARG_COUNT for d in diags)
+
+    def test_renderer_arg_type(self):
+        cols = parse("url as link|href(42)", capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=self._registry())
+        assert any(d.code == CODE_RENDERER_ARG_TYPE for d in diags)
+
+    def test_per_renderer_diagnose_hook(self):
+        class _HrefWithHook(Renderer):
+            arg_schema = (ArgSpec(type=Type.String, required=True),)
+
+            @property
+            def name(self) -> str:
+                return "href"
+
+            def diagnose(self, arguments, parsed_column):
+                if arguments and "{{value}}" not in arguments[0]:
+                    return [
+                        Diagnostic(
+                            range=Range(0, 1),
+                            message="href template should contain {{value}}",
+                            severity="warning",
+                            code="custom_href_no_placeholder",
+                        )
+                    ]
+                return []
+
+        reg = RendererRegistry()
+        reg.register(_HrefWithHook())
+        cols = parse('url as link|href("/static")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=reg)
+        assert any(d.code == "custom_href_no_placeholder" for d in diags)
+
+    def test_registry_level_diagnose_hook(self):
+        reg = self._registry()
+
+        def chain_hook(parsed_column, chain):
+            names = [r["name"] for r in chain]
+            if "truncate" in names and "href" in names:
+                ti = names.index("truncate")
+                hi = names.index("href")
+                if ti < hi:
+                    return [
+                        Diagnostic(
+                            range=Range(0, 1),
+                            message="href cannot follow truncate",
+                            severity="error",
+                            code="chain_forbidden",
+                        )
+                    ]
+            return []
+
+        reg.set_diagnose(chain_hook)
+        cols = parse('url as link|truncate(10)|href("/x")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=reg)
+        assert any(d.code == "chain_forbidden" for d in diags)
+
+    def test_none_registry_emits_unknown_renderer(self):
+        cols = parse('url as link|href("/x")', capabilities=self._caps())
+        diags = diagnose(cols, self._schema(), renderer_registry=None)
+        assert len(diags) == 1
+        assert diags[0].code == CODE_UNKNOWN_RENDERER

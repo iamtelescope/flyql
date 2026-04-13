@@ -159,12 +159,12 @@ Leere Eingabe gibt eine leere Liste zurück, niemals ein Trailing-Error-Token.
 
 ## Einschränkungen
 
-- **Columns-Modus ist nur in JavaScript verfügbar.** Der Python-Columns-Parser hat keine typisierte Zeichenausgabe, und es gibt keinen Go-Columns-Parser.
+- **Columns-Modus ist nur in JavaScript verfügbar.** Nur der JavaScript-Columns-Parser erfasst typisierte Zeichenausgaben; die Columns-Parser in Python und Go tun das nicht, daher kann `tokenize()` in diesen Sprachen nicht auf den Columns-Modus erweitert werden.
 - **Nur ASCII-Garantien.** Sprachübergreifende Offset-Parität ist nur für ASCII-Eingaben garantiert. Nicht-ASCII-Eingaben können wegen Byte/Codepoint/UTF16-Unit-Unterschieden unterschiedliche `start`/`end`-Werte liefern.
 - **Keine Zeilen- oder Spaltennummern.** Tokens exponieren nur Zeichen-Offsets. Wenn du `(line, column)`-Paare für einen Editor brauchst, berechne sie aus `start` relativ zum Quelltext.
 
 ## Siehe auch
 
-- [Sprachübergreifende API-Matrix](./api-matrix) — der kanonische Funktionsname für jede Sprache.
-- [JavaScript Quickstart](../getting-started/javascript) — vollständige Liste der Paket-Subpath-Imports, einschließlich `flyql/highlight` für HTML-Ausgabe.
-- [AST und benutzerdefinierte Generatoren](./ast) — der höhere Baum, den du von `parse()` bekommst. `tokenize()` ergänzt ihn, ersetzt ihn nicht: Es gibt dir eine flache Sicht, wo `parse()` dir einen Baum gibt.
+- [Sprachübergreifende API-Matrix](/de/advanced/api-matrix/) — der kanonische Funktionsname für jede Sprache.
+- [JavaScript Quickstart](/de/getting-started/javascript/) — vollständige Liste der Paket-Subpath-Imports, einschließlich `flyql/highlight` für HTML-Ausgabe.
+- [AST und benutzerdefinierte Generatoren](/de/advanced/ast/) — der höhere Baum, den du von `parse()` bekommst. `tokenize()` ergänzt ihn, ersetzt ihn nicht: Es gibt dir eine flache Sicht, wo `parse()` dir einen Baum gibt.

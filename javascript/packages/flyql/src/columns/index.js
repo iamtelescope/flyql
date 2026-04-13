@@ -18,10 +18,17 @@ export function parse(text, capabilities) {
             nameRange: t.nameRange || null,
             argumentRanges: t.argumentRanges || [],
         }))
+        const rendererDicts = columnDict.renderers || []
+        const rendererRanges = rendererDicts.map((r) => ({
+            nameRange: r.nameRange || null,
+            argumentRanges: r.argumentRanges || [],
+        }))
         columns.push(
             new ParsedColumn(columnDict.name, columnDict.transformers, alias, key, alias || '', {
                 nameRange: columnDict.nameRange || null,
                 transformerRanges,
+                renderers: rendererDicts,
+                rendererRanges,
             }),
         )
     }

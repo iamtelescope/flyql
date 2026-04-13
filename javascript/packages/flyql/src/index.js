@@ -1,5 +1,6 @@
 export * from './core/index.js'
 export * from './transformers/index.js'
+export { Renderer, RendererRegistry, defaultRegistry as defaultRendererRegistry } from './renderers/index.js'
 export { LiteralKind } from './literal/literal_kind.js'
 export { Type, parseFlyQLType } from './flyql_type.js'
 export { bindParams } from './bind.js'

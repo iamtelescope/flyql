@@ -152,6 +152,7 @@ export default defineConfig({
             "syntax/values",
             "syntax/nested-keys",
             "syntax/transformers",
+            "syntax/renderers",
             "syntax/parameters",
           ],
         },
@@ -214,6 +215,7 @@ export default defineConfig({
           items: [
             "advanced/ast",
             "advanced/custom-transformers",
+            "advanced/custom-renderers",
             "advanced/tokenize",
             "advanced/api-matrix",
           ],

@@ -33,6 +33,18 @@ describe('FlyqlColumns component', () => {
             expect(vueContent).toContain('registry: { type: Object')
         })
 
+        it('accepts rendererRegistry prop', () => {
+            expect(vueContent).toContain('rendererRegistry: { type: Object')
+        })
+
+        it('threads rendererRegistry into engine options', () => {
+            expect(vueContent).toContain('engineOpts.rendererRegistry = props.rendererRegistry')
+        })
+
+        it('reactive watcher on rendererRegistry prop', () => {
+            expect(vueContent).toContain('engine.setRendererRegistry')
+        })
+
         it('accepts placeholder prop', () => {
             expect(vueContent).toContain('placeholder: { type: String')
         })

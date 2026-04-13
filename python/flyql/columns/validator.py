@@ -12,11 +12,18 @@ from flyql.core.validator import (
     CODE_ARG_COUNT,
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
     CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
     Diagnostic,
 )
 from flyql.flyql_type import Type
+from flyql.renderers.registry import (
+    RendererRegistry,
+    default_registry as default_renderer_registry,
+)
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 from .column import ParsedColumn
@@ -39,11 +46,14 @@ def diagnose(
     parsed_columns: List[ParsedColumn],
     schema: ColumnSchema,
     registry: Optional[TransformerRegistry] = None,
+    renderer_registry: Optional[RendererRegistry] = None,
 ) -> List[Diagnostic]:
     if not parsed_columns:
         return []
     if registry is None:
         registry = default_registry()
+    if renderer_registry is None:
+        renderer_registry = default_renderer_registry()
 
     diags: List[Diagnostic] = []
 
@@ -152,6 +162,82 @@ def diagnose(
                     )
 
             prev_output_type = t.output_type
+
+        renderer_ranges = col.renderer_ranges or []
+        for ri, renderer in enumerate(col.renderers):
+            r_ranges = renderer_ranges[ri] if ri < len(renderer_ranges) else {}
+            r_name_range = r_ranges.get("name_range")
+            r_arg_ranges = r_ranges.get("argument_ranges", [])
+            r = renderer_registry.get(renderer["name"])
+
+            if r is None:
+                if r_name_range is not None:
+                    diags.append(
+                        Diagnostic(
+                            range=r_name_range,
+                            message=f"unknown renderer: '{renderer['name']}'",
+                            severity="error",
+                            code=CODE_UNKNOWN_RENDERER,
+                        )
+                    )
+                continue
+
+            required_count = sum(
+                1 for s in r.arg_schema if getattr(s, "required", True)
+            )
+            max_count = len(r.arg_schema)
+            got = len(renderer["arguments"])
+            if got < required_count or got > max_count:
+                if required_count == max_count:
+                    expect_str = f"{required_count} arguments"
+                else:
+                    expect_str = f"{required_count}..{max_count} arguments"
+                if r_name_range is not None:
+                    full_range = r_name_range
+                    if r_arg_ranges:
+                        full_range = Range(
+                            r_name_range.start,
+                            r_arg_ranges[-1].end + 1,
+                        )
+                    diags.append(
+                        Diagnostic(
+                            range=full_range,
+                            message=f"{renderer['name']} expects {expect_str}, got {got}",
+                            severity="error",
+                            code=CODE_RENDERER_ARG_COUNT,
+                        )
+                    )
+
+            for j, arg in enumerate(renderer["arguments"]):
+                if j >= len(r.arg_schema):
+                    break
+                expected = r.arg_schema[j].type
+                actual = _python_to_flyql_type(arg)
+                if actual is None:
+                    continue
+                if actual == expected:
+                    continue
+                if actual == Type.Int and expected == Type.Float:
+                    continue
+                if j < len(r_arg_ranges):
+                    diags.append(
+                        Diagnostic(
+                            range=r_arg_ranges[j],
+                            message=f"argument {j + 1} of {renderer['name']}: expected {expected}, got {actual}",
+                            severity="error",
+                            code=CODE_RENDERER_ARG_TYPE,
+                        )
+                    )
+
+            hook_diags = r.diagnose(renderer["arguments"], col)
+            if hook_diags:
+                diags.extend(hook_diags)
+
+        chain_hook = renderer_registry.get_diagnose()
+        if chain_hook is not None and col.renderers:
+            chain_diags = chain_hook(col, col.renderers)
+            if chain_diags:
+                diags.extend(chain_diags)
 
     return diags
 

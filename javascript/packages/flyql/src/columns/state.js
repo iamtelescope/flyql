@@ -17,4 +17,12 @@ export const State = {
     SINGLE_QUOTED_ARGUMENT: 'SingleQuotedArgument',
     DOUBLE_QUOTED_ARGUMENT: 'DoubleQuotedArgument',
     TRANSFORMER_ARGUMENT_DELIMITER: 'ArgumentDelimiter',
+    EXPECT_RENDERER: 'ExpectRenderer',
+    RENDERER: 'Renderer',
+    RENDERER_COMPLETE: 'RendererComplete',
+    EXPECT_RENDERER_ARGUMENT: 'ExpectRendererArgument',
+    RENDERER_ARGUMENT: 'RendererArgument',
+    RENDERER_ARGUMENT_DOUBLE_QUOTED: 'RendererArgumentDoubleQuoted',
+    RENDERER_ARGUMENT_SINGLE_QUOTED: 'RendererArgumentSingleQuoted',
+    EXPECT_RENDERER_ARGUMENT_DELIMITER: 'ExpectRendererArgumentDelimiter',
 }

@@ -44,6 +44,14 @@ def parse(
             }
             for t in column_dict["transformers"]
         ]
+        renderer_dicts = column_dict.get("renderers", [])
+        renderer_ranges = [
+            {
+                "name_range": r.get("name_range"),
+                "argument_ranges": r.get("argument_ranges", []),
+            }
+            for r in renderer_dicts
+        ]
         columns.append(
             ParsedColumn(
                 name=column_dict["name"],
@@ -53,6 +61,8 @@ def parse(
                 display_name=alias if alias else "",
                 name_range=column_dict.get("name_range"),
                 transformer_ranges=transformer_ranges,
+                renderers=renderer_dicts,
+                renderer_ranges=renderer_ranges,
             )
         )
     return columns

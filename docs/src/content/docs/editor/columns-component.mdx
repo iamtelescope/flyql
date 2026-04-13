@@ -43,11 +43,35 @@ function onParsed(parsed) {
 | `modelValue` | `String` | `''` | Expression text (v-model) |
 | `columns` | `Object` | `{}` | Column [schema](/editor/schema/) |
 | `capabilities` | `Object` | `null` | Parser capabilities (e.g., `{ transformers: true }`) |
+| `registry` | `TransformerRegistry` | `null` | Custom transformer registry (see [Custom Transformers](/advanced/custom-transformers/)) |
+| `rendererRegistry` | `RendererRegistry` | `null` | Custom renderer registry (see [Custom Renderers](/advanced/custom-renderers/)). When `null` the editor disables renderer parsing entirely; supplying any registry (even an empty one) enables the post-alias `\|` grammar. |
 | `onKeyDiscovery` | `Function` | `null` | Remote key discovery callback |
 | `placeholder` | `String` | `''` | Placeholder text |
 | `autofocus` | `Boolean` | `false` | Auto-focus on mount |
 | `debug` | `Boolean` | `false` | Debug logging |
 | `dark` | `Boolean` | `false` | Enable dark theme ([see theming](/editor/theming/)) |
+
+### Example — with renderer registry
+
+```vue
+<script setup>
+import { FlyqlColumns } from 'flyql-vue'
+import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
+import { Type } from 'flyql'
+
+class HrefRenderer extends Renderer {
+    get name() { return 'href' }
+    get argSchema() { return [new ArgSpec(Type.String, true)] }
+}
+
+const rendererRegistry = new RendererRegistry()
+rendererRegistry.register(new HrefRenderer())
+</script>
+
+<template>
+  <FlyqlColumns v-model="query" :columns="schema" :renderer-registry="rendererRegistry" />
+</template>
+```
 
 ## Events
 

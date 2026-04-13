@@ -159,12 +159,12 @@ Entrada vazia retorna lista vazia, nunca um token error final.
 
 ## Limitações
 
-- **O modo columns é exclusivo do JavaScript.** O parser de colunas do Python não tem saída tipada por caractere e não há parser de colunas em Go.
+- **O modo columns é exclusivo do JavaScript.** Apenas o parser de colunas do JavaScript registra saída tipada por caractere; os parsers de colunas do Python e do Go não fazem isso, então `tokenize()` nessas linguagens não consegue se estender ao modo columns.
 - **Garantias apenas para ASCII.** A paridade de offsets entre linguagens só é garantida para entradas ASCII. Entradas não-ASCII podem produzir valores `start`/`end` diferentes entre linguagens por causa de diferenças byte/codepoint/unidade UTF-16.
 - **Sem números de linha ou coluna.** Os tokens só expõem offsets de caractere. Se você precisa de pares `(linha, coluna)` para um editor, calcule a partir de `start` sobre o texto original.
 
 ## Veja também
 
-- [Matriz de API multi-linguagem](./api-matrix) — o nome canônico da função em cada linguagem.
-- [Início rápido de JavaScript](../getting-started/javascript) — lista completa dos imports de subpath do pacote, incluindo `flyql/highlight` para saída HTML.
-- [AST e Geradores Customizados](./ast) — a árvore de mais alto nível que você obtém de `parse()`. `tokenize()` complementa, não substitui: dá uma visão plana onde `parse()` dá uma árvore.
+- [Matriz de API multi-linguagem](/pt-br/advanced/api-matrix/) — o nome canônico da função em cada linguagem.
+- [Início rápido de JavaScript](/pt-br/getting-started/javascript/) — lista completa dos imports de subpath do pacote, incluindo `flyql/highlight` para saída HTML.
+- [AST e Geradores Customizados](/pt-br/advanced/ast/) — a árvore de mais alto nível que você obtém de `parse()`. `tokenize()` complementa, não substitui: dá uma visão plana onde `parse()` dá uma árvore.

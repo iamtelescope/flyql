@@ -245,7 +245,7 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 Custom transformers participate in the same type chain validation as built-ins. If you chain `field|firstoctet|upper`, the system detects that `firstoctet` outputs `int` but `upper` requires `string`.
 
-Available types: see [`flyql.Type`](./column-types) — the canonical 11-value enum (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
+Available types: see [`flyql.Type`](/advanced/column-types/) — the canonical 11-value enum (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
 
 ## Validation with `diagnose()`
 
@@ -294,3 +294,9 @@ Pass a custom registry as the third argument if you have custom transformers reg
 ## Security
 
 Custom transformers' `sql()` methods only receive column references (from the schema), never user-provided values. User values are escaped by the generator. This preserves FlyQL's injection-proof guarantee — custom SQL wraps column names, not user input.
+
+## See also
+
+- [Custom Renderers](/advanced/custom-renderers/) — register post-alias display
+  metadata descriptors. Unlike transformers, renderers never affect generated
+  SQL; they only describe how your application should render a value.

@@ -88,8 +88,8 @@ jobs:
         with:
           packages-dir: python/dist/
 
-  javascript:
-    name: Publish JavaScript to npm
+  flyql:
+    name: Publish flyql to npm
     needs: validate-javascript
     if: inputs.target == 'all' || inputs.target == 'javascript'
     runs-on: ubuntu-latest
@@ -107,8 +107,10 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
+
       - name: Upgrade npm for trusted publishing
         run: npm install -g npm@^11.5.1
+
       - name: Install dependencies
         working-directory: javascript
         run: pnpm install
@@ -116,6 +118,33 @@ jobs:
       - name: Publish flyql to npm
         working-directory: javascript/packages/flyql
         run: pnpm publish --access public --no-git-checks
+
+  flyql-vue:
+    name: Publish flyql-vue to npm
+    needs: flyql
+    if: inputs.target == 'all' || inputs.target == 'javascript'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - name: Install dependencies
+        working-directory: javascript
+        run: pnpm install
 
       - name: Publish flyql-vue to npm
         working-directory: javascript/packages/flyql-vue

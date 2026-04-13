@@ -1,0 +1,78 @@
+{
+    "version": "1.0",
+    "description": "Tokenizer test cases for cross-language parity (columns mode, JS only). ASCII-only. Fixtures hand-authored from the columns parser oracle. Covers: column, alias, aliasOperator, operator, transformer, space, error.",
+    "test_suite": "tokenize_columns",
+    "ascii_only": true,
+    "coverage": [
+        "column",
+        "alias",
+        "aliasOperator",
+        "operator",
+        "transformer",
+        "space",
+        "error"
+    ],
+    "tests": [
+        {
+            "name": "empty",
+            "input": "",
+            "expected_tokens": []
+        },
+        {
+            "name": "simple_column",
+            "input": "id",
+            "expected_tokens": [
+                { "text": "id", "type": "column", "start": 0, "end": 2 }
+            ]
+        },
+        {
+            "name": "column_with_alias",
+            "input": "id as user_id",
+            "expected_tokens": [
+                { "text": "id", "type": "column", "start": 0, "end": 2 },
+                { "text": " ", "type": "space", "start": 2, "end": 3 },
+                { "text": "as", "type": "aliasOperator", "start": 3, "end": 5 },
+                { "text": " ", "type": "space", "start": 5, "end": 6 },
+                { "text": "user_id", "type": "alias", "start": 6, "end": 13 }
+            ]
+        },
+        {
+            "name": "json_path_column",
+            "input": "meta.region",
+            "expected_tokens": [
+                { "text": "meta.region", "type": "column", "start": 0, "end": 11 }
+            ]
+        },
+        {
+            "name": "multiple_columns",
+            "input": "id, name, email",
+            "expected_tokens": [
+                { "text": "id", "type": "column", "start": 0, "end": 2 },
+                { "text": ",", "type": "operator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "name", "type": "column", "start": 4, "end": 8 },
+                { "text": ",", "type": "operator", "start": 8, "end": 9 },
+                { "text": " ", "type": "space", "start": 9, "end": 10 },
+                { "text": "email", "type": "column", "start": 10, "end": 15 }
+            ]
+        },
+        {
+            "name": "column_with_transformer",
+            "input": "id|upper",
+            "expected_tokens": [
+                { "text": "id", "type": "column", "start": 0, "end": 2 },
+                { "text": "|", "type": "operator", "start": 2, "end": 3 },
+                { "text": "upper", "type": "transformer", "start": 3, "end": 8 }
+            ]
+        },
+        {
+            "name": "error_trailing",
+            "input": "id |",
+            "expected_tokens": [
+                { "text": "id", "type": "column", "start": 0, "end": 2 },
+                { "text": " ", "type": "space", "start": 2, "end": 3 },
+                { "text": "|", "type": "error", "start": 3, "end": 4 }
+            ]
+        }
+    ]
+}

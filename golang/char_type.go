@@ -28,4 +28,5 @@ const (
 	CharTypeWildcard       = "flyqlWildcard"
 	CharTypeColumn         = "flyqlColumn"
 	CharTypeParameter      = "flyqlParameter"
+	CharTypeError          = "flyqlError"
 )

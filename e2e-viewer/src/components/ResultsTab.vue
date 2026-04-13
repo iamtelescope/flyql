@@ -357,8 +357,8 @@
 
 <script setup>
 import { ref, computed, watch, reactive } from "vue";
-import { highlight } from "../../../javascript/src/highlight.js";
-import "../../../javascript/src/editor/flyql.css";
+import { highlight } from "../../../javascript/packages/flyql/src/highlight.js";
+import "../../../javascript/packages/flyql-vue/src/flyql.css";
 import { DB_ICONS, DB_ICONS_DARK, dbLabel, langLabel } from "./labels.js";
 
 const props = defineProps({

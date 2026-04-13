@@ -1,0 +1,170 @@
+---
+title: 토크나이저
+description: FlyQL 표현식을 타입이 지정된 토큰의 평면 리스트로 변환합니다 — 하이라이터, 포매터, 에디터 도구를 위한 공유 프리미티브
+---
+
+`tokenize()`는 FlyQL 표현식을 타입이 지정된 토큰의 평면 리스트로 변환하는 순수 함수입니다. 모든 FlyQL 구문 하이라이터, pretty-printer, 포매터가 그 위에 구축될 수 있는 공통 기반입니다. 이 함수는 세 언어 모두에서 바이트 단위로 동일한 의미를 갖습니다 — 동일한 입력은 JavaScript, Python, Go에서 동일한 토큰을 생성합니다.
+
+렌더링을 토큰 단위로 제어해야 할 때 사용하세요 (ANSI 콘솔 출력, 커스텀 HTML, 에디터 데코레이션, 토큰 기반 linter). HTML 문자열만 필요하다면 더 상위 레벨의 헬퍼인 [`flyql/highlight`](/ko/getting-started/javascript/#사용-가능한-하위-경로-import)(JavaScript 전용)를 사용하세요.
+
+## 토큰 형태
+
+각 토큰은 네 개의 필드를 가진 단순한 레코드입니다.
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `text` | `string` | 이 토큰이 다루는 원본 입력의 조각 |
+| `type` | `string` | `CharType` 값 중 하나 ([아래](#토큰-타입) 참조) |
+| `start` | `int` | `text` 첫 문자의 0 기반 오프셋 |
+| `end` | `int` | 마지막 문자 바로 뒤의 0 기반 오프셋 — `end == start + len(text)` |
+
+토큰은 신뢰할 수 있는 두 가지 불변식을 만족합니다.
+
+- **왕복:** 각 토큰의 `text`를 순서대로 이어 붙이면 원본 입력이 정확히 재현됩니다.
+- **빈틈 없는 오프셋:** `tokens[0].start == 0`, 모든 `i > 0`에 대해 `tokens[i].start == tokens[i-1].end`, 그리고 비어있지 않은 입력에서 `tokens[-1].end == len(input)`.
+
+이 두 속성 덕분에 포매터는 토큰 리스트를 순회하면서 각 `text` 주위에 데코레이션을 붙일 수 있고, 문자를 놓치거나 경계를 겹치게 하지 않습니다.
+
+## API
+
+`tokenize`는 입력 문자열과 선택적 모드를 받습니다. `"query"` 모드는 세 언어 모두에서 구현되어 있으며, `"columns"` 모드는 JavaScript 전용입니다.
+
+### JavaScript
+
+```javascript
+import { tokenize } from 'flyql/tokenize'
+
+const tokens = tokenize("status=200 and region='us-east'")
+// [
+//   { text: 'status',    type: 'flyqlKey',      start:  0, end:  6 },
+//   { text: '=',         type: 'flyqlOperator', start:  6, end:  7 },
+//   { text: '200',       type: 'number',        start:  7, end: 10 },
+//   { text: ' ',         type: 'space',         start: 10, end: 11 },
+//   { text: 'and',       type: 'flyqlOperator', start: 11, end: 14 },
+//   { text: ' ',         type: 'space',         start: 14, end: 15 },
+//   { text: 'region',    type: 'flyqlKey',      start: 15, end: 21 },
+//   { text: '=',         type: 'flyqlOperator', start: 21, end: 22 },
+//   { text: "'us-east'", type: 'string',        start: 22, end: 31 },
+// ]
+
+// columns 모드 (JavaScript 전용)
+const columnTokens = tokenize('id as user_id', { mode: 'columns' })
+```
+
+### Python
+
+```python
+from flyql import tokenize
+
+tokens = tokenize("status=200 and region='us-east'")
+for t in tokens:
+    print(t.text, t.type.value, t.start, t.end)
+
+# Python Token은 text, type, start, end 필드를 가진 frozen dataclass입니다
+```
+
+Python에서는 columns 모드를 지원하지 않으며 `ValueError`를 발생시킵니다.
+
+```python
+tokenize("id", mode="columns")
+# ValueError: columns mode is only available in the JavaScript package
+```
+
+### Go
+
+```go
+import "github.com/iamtelescope/flyql/golang"
+
+tokens, err := flyql.Tokenize("status=200 and region='us-east'", "query")
+if err != nil {
+    // 지원되지 않는 모드에서 non-nil. "query"는 절대 에러를 반환하지 않습니다
+}
+for _, t := range tokens {
+    fmt.Println(t.Text, t.Type, t.Start, t.End)
+}
+```
+
+columns 모드는 non-nil 에러를 반환합니다: `columns mode is only available in the JavaScript package`.
+
+## 토큰 타입
+
+토크나이저는 코어 parser의 `CharType` 상수를 방출합니다. query 모드에서 주요 타입은 다음과 같습니다.
+
+| 타입 | 예시 | 생성되는 시점 |
+|------|------|---------------|
+| `flyqlKey` | `status`, `meta.region` | 연산자 좌측의 필드명 |
+| `flyqlOperator` | `=`, `!=`, `>=`, `and`, `or`, `not` | 비교 및 불리언 연산자 |
+| `number` | `200`, `-42`, `3.14`, `1e5` | 숫자 리터럴 ([표준 숫자 규칙](#표준-숫자-규칙) 참조) |
+| `string` | `'ok'`, `"hello"` | 따옴표로 둘러싸인 문자열 리터럴 |
+| `flyqlBoolean` | `true`, `false` | 불리언 리터럴 |
+| `flyqlNull` | `null` | null 리터럴 |
+| `flyqlColumn` | `alice`, `Infinity` | 리터럴이 아닌 비인용 값 — 컬럼 참조로 취급 |
+| `flyqlPipe` | `\|` | transformer 구분자 파이프 |
+| `flyqlTransformer` | `upper`, `chars` | transformer 이름 |
+| `flyqlArgument` | `25` (`chars(25)` 내부) | transformer 인자 |
+| `flyqlParameter` | `$name`, `$1` | 파라미터 플레이스홀더 |
+| `flyqlWildcard` | `*` | 값 내부의 와일드카드 |
+| `space` | ` ` | 토큰 사이의 공백 |
+| `flyqlError` | `x!y`의 `y` | parser가 소비하지 못한 입력 꼬리 |
+
+columns 모드는 자체 집합을 사용합니다: `column`, `alias`, `aliasOperator`, `operator`, `transformer`, `argument`, `space`, `error`.
+
+`flyqlValue`는 **출력에 절대 나타나지 않습니다** — parser의 원시 값 토큰은 `tokenize`가 반환하기 전에 아래 규칙으로 업그레이드됩니다.
+
+## VALUE 업그레이드 규칙
+
+parser는 처음에 모든 값 문자를 `flyqlValue`로 태그합니다. 반환 직전에 `tokenize`는 각 값 토큰을 더 구체적인 타입으로 업그레이드합니다.
+
+1. `"true"` 또는 `"false"` → `flyqlBoolean`
+2. `"null"` → `flyqlNull`
+3. [표준 숫자 규칙](#표준-숫자-규칙)과 일치 → `number`
+4. `'` 또는 `"`로 시작 → `string`
+5. 그 외 → `flyqlColumn`
+
+이 로직은 query 모드에서만 동작합니다. columns 모드에는 값이라는 개념이 없습니다.
+
+## 표준 숫자 규칙
+
+값 토큰은 다음 정규표현식에 정확히 일치할 때만 `number`로 분류됩니다.
+
+```
+^-?\d+(\.\d+)?([eE][+-]?\d+)?$
+```
+
+이는 JavaScript `parseFloat`, Python `float()`, Go `strconv.ParseFloat`보다 **의도적으로 더 좁습니다**. 다음 입력은 숫자가 **아니며** `flyqlColumn`으로 떨어집니다.
+
+- `Infinity`, `-Infinity`
+- `NaN`
+- `0x1F`와 같은 16진수 리터럴
+- `  42  `와 같이 공백으로 감싸인 숫자
+
+세 언어 모두 동일한 정규표현식을 공유하므로 `val=Infinity`는 JavaScript, Python, Go에서 동일하게 토크나이즈됩니다.
+
+## 꼬리 ERROR 토큰
+
+parser가 입력을 전부 소비하기 전에 멈추면 `tokenize`는 파싱되지 않은 꼬리를 덮는 마지막 토큰 하나를 추가합니다.
+
+```javascript
+tokenize('x!y')
+// [
+//   { text: 'x', type: 'flyqlKey',      start: 0, end: 1 },
+//   { text: '!', type: 'flyqlOperator', start: 1, end: 2 },
+//   { text: 'y', type: 'flyqlError',    start: 2, end: 3 },
+// ]
+```
+
+이렇게 하면 잘못된 입력에 대해서도 왕복 불변식이 유지됩니다. 포매터는 꼬리 `flyqlError` 토큰(columns 모드에서는 `error` 토큰)을 별도의 스타일로 렌더링할 수 있습니다 — JavaScript의 `highlight()` 헬퍼는 CSS 클래스 `flyql-error`를 사용합니다.
+
+빈 입력은 빈 리스트를 반환하며, 꼬리 error 토큰은 붙지 않습니다.
+
+## 제한 사항
+
+- **columns 모드는 JavaScript 전용.** Python columns parser에는 타입이 지정된 문자 출력이 없고, Go에는 columns parser 자체가 없습니다.
+- **ASCII 전용 보장.** 언어 간 오프셋 동일성은 ASCII 입력에서만 보장됩니다. 비 ASCII 입력은 바이트/코드포인트/UTF-16 단위 차이 때문에 언어마다 `start`/`end`가 다를 수 있습니다.
+- **줄/열 번호 없음.** 토큰은 문자 오프셋만 노출합니다. 에디터에서 `(line, column)`이 필요하다면 원본 텍스트와 `start`에서 계산하세요.
+
+## 관련 문서
+
+- [언어 간 API 매트릭스](./api-matrix) — 각 언어의 정식 함수 이름.
+- [JavaScript 빠른 시작](../getting-started/javascript) — 패키지 subpath import 전체 목록. HTML 출력용 `flyql/highlight`도 포함됩니다.
+- [AST와 사용자 정의 Generator](./ast) — `parse()`에서 얻는 상위 레벨 트리. `tokenize()`는 이를 보완할 뿐 대체하지 않습니다 — `parse()`가 트리를 준다면 `tokenize()`는 평면 뷰를 제공합니다.

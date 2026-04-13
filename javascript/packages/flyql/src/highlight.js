@@ -14,8 +14,9 @@
  *   highlight("id, message, meta_str.region as region", { mode: 'columns' })
  */
 
-import { Parser as QueryParser, CharType as QueryCharType, State as QueryState, isNumeric } from './core/index.js'
-import { Parser as ColumnsParser, CharType as ColumnsCharType } from './columns/index.js'
+import { tokenize } from './tokenize.js'
+import { CharType as QueryCharType } from './core/index.js'
+import { CharType as ColumnsCharType } from './columns/index.js'
 
 const QUERY_CLASS = {
     [QueryCharType.KEY]: 'flyql-key',
@@ -32,6 +33,7 @@ const QUERY_CLASS = {
     [QueryCharType.WILDCARD]: 'flyql-wildcard',
     [QueryCharType.COLUMN]: 'flyql-column',
     [QueryCharType.PARAMETER]: 'flyql-parameter',
+    [QueryCharType.ERROR]: 'flyql-error',
 }
 
 const COLUMNS_CLASS = {
@@ -54,32 +56,6 @@ function wrapSpan(cls, text) {
     return cls ? `<span class="${cls}">${escaped}</span>` : escaped
 }
 
-function buildHtml(text, typedChars, classMap, resolveType) {
-    let html = ''
-    let currentType = null
-    let currentText = ''
-
-    const flush = () => {
-        if (!currentText) return
-        const spanType = resolveType ? resolveType(currentType, currentText) : currentType
-        html += wrapSpan(classMap[spanType], currentText)
-    }
-
-    for (let i = 0; i < typedChars.length; i++) {
-        const charType = typedChars[i][1]
-        const ch = text[i] !== undefined ? text[i] : typedChars[i][0].value
-        if (charType === currentType) {
-            currentText += ch
-        } else {
-            flush()
-            currentType = charType
-            currentText = ch
-        }
-    }
-    flush()
-    return html
-}
-
 /**
  * Highlight a FlyQL expression string into HTML.
  * @param {string} text - FlyQL expression
@@ -90,39 +66,7 @@ function buildHtml(text, typedChars, classMap, resolveType) {
 export function highlight(text, options) {
     if (!text) return ''
     const mode = options?.mode || 'query'
-
-    if (mode === 'columns') {
-        const parser = new ColumnsParser({ transformers: true })
-        parser.parse(text, false, false)
-        const typedChars = parser.typedChars
-        if (!typedChars || typedChars.length === 0) return escapeHtml(text)
-
-        let html = buildHtml(text, typedChars, COLUMNS_CLASS)
-        if (typedChars.length < text.length) {
-            html += `<span class="flyql-error">${escapeHtml(text.substring(typedChars.length))}</span>`
-        }
-        return html
-    }
-
-    // query mode
-    const parser = new QueryParser()
-    parser.parse(text, false, false)
-    const typedChars = parser.typedChars
-    if (!typedChars || typedChars.length === 0) return escapeHtml(text)
-
-    const resolveType = (type, val) => {
-        if (type === QueryCharType.VALUE) {
-            if (val === 'true' || val === 'false') return QueryCharType.BOOLEAN
-            if (val === 'null') return QueryCharType.NULL
-            if (isNumeric(val)) return QueryCharType.NUMBER
-            if (val.length > 0 && val[0] !== "'" && val[0] !== '"') return QueryCharType.COLUMN
-        }
-        return type
-    }
-
-    let html = buildHtml(text, typedChars, QUERY_CLASS, resolveType)
-    if (parser.state === QueryState.ERROR && typedChars.length < text.length) {
-        html += `<span class="flyql-error">${escapeHtml(text.substring(typedChars.length))}</span>`
-    }
-    return html
+    const tokens = tokenize(text, { mode })
+    const classMap = mode === 'columns' ? COLUMNS_CLASS : QUERY_CLASS
+    return tokens.map((t) => wrapSpan(classMap[t.type], t.text)).join('')
 }

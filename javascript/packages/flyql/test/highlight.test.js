@@ -24,8 +24,13 @@ describe('highlight', () => {
 
     it('highlights string values', () => {
         const html = highlight("name='alice'")
-        expect(html).toContain('flyql-value')
+        expect(html).toContain('flyql-string')
         expect(html).toContain("'alice'")
+    })
+
+    it('renders quoted string values with flyql-string class', () => {
+        expect(highlight("name='alice'")).toContain('<span class="flyql-string">\'alice\'</span>')
+        expect(highlight('name="alice"')).toContain('<span class="flyql-string">&quot;alice&quot;</span>')
     })
 
     it('highlights json paths as keys', () => {
@@ -66,5 +71,10 @@ describe('highlight', () => {
         const html = highlight('a="hello"')
         expect(html).not.toMatch(/="hello"/)
         expect(html).toContain('&quot;')
+    })
+
+    it('renders malformed input with flyql-error trailing span', () => {
+        const html = highlight('x!y')
+        expect(html).toContain('class="flyql-error"')
     })
 })

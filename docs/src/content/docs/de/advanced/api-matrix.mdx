@@ -79,6 +79,19 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
+## Tokenizer
+
+Der [Tokenizer](./tokenize) ist ein gemeinsames Primitiv, das die zeichenweise Ausgabe des Parsers zu typisierten Tokens mit `{text, type, start, end}` zusammenfasst. Nutze ihn, um eigene Highlighter oder Formatter auf Basis von FlyQL zu bauen.
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Tokenize query | `Tokenize(text, "query")` | `tokenize(text)` | `tokenize(text)` |
+| Tokenize columns | _(N/A)_ | _(wirft `ValueError`)_ | `tokenize(text, { mode: 'columns' })` |
+| **Types** | | | |
+| Token | `Token` (plain struct) | `Token` (frozen dataclass) | plain object |
+
+Der Columns-Modus ist nur in JavaScript verfügbar. Python wirft `ValueError` und Go gibt einen nicht-nil Fehler mit der Meldung `columns mode is only available in the JavaScript package` zurück.
+
 ## Transformers
 
 | Operation | Go | Python | JavaScript |

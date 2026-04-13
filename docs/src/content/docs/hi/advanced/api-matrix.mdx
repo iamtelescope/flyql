@@ -79,6 +79,19 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
+## टोकनाइज़र
+
+[टोकनाइज़र](./tokenize) एक साझा प्रिमिटिव है जो parser के प्रति-अक्षर आउटपुट को `{text, type, start, end}` आकार के टाइप किए गए टोकनों में समूहित करता है। FlyQL के ऊपर कस्टम हाइलाइटर या फ़ॉर्मेटर बनाने के लिए इसका उपयोग करें।
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Tokenize query | `Tokenize(text, "query")` | `tokenize(text)` | `tokenize(text)` |
+| Tokenize columns | _(N/A)_ | _(`ValueError` फेंकता है)_ | `tokenize(text, { mode: 'columns' })` |
+| **Types** | | | |
+| Token | `Token` (plain struct) | `Token` (frozen dataclass) | plain object |
+
+Columns मोड केवल JavaScript में है। Python `ValueError` फेंकता है और Go संदेश `columns mode is only available in the JavaScript package` के साथ non-nil त्रुटि लौटाता है।
+
 ## Transformers
 
 | Operation | Go | Python | JavaScript |

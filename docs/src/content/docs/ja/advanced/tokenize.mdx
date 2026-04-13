@@ -1,0 +1,170 @@
+---
+title: トークナイザー
+description: FlyQL 式を型付きトークンのフラットなリストに変換する — ハイライター、フォーマッター、エディターツールの共通プリミティブ
+---
+
+`tokenize()` は FlyQL 式を型付きトークンのフラットなリストに変換する純粋な関数です。これは、あらゆる FlyQL シンタックスハイライター、pretty-printer、フォーマッターが構築できる共通基盤です。3 言語すべてで提供され、バイト単位で同一のセマンティクスを持ちます。同じ入力は JavaScript、Python、Go で同じトークンを生成します。
+
+レンダリングをトークン単位で制御したい場合（ANSI コンソール出力、独自の HTML、エディターの装飾、トークン対応 linter など）に使います。HTML 文字列だけが必要なら、より高レベルな [`flyql/highlight`](/ja/getting-started/javascript/#利用できるサブパス-import)（JavaScript のみ）を使ってください。
+
+## トークンの形
+
+各トークンは 4 つのフィールドを持つシンプルなレコードです。
+
+| フィールド | 型 | 説明 |
+|------------|----|------|
+| `text` | `string` | このトークンが覆う元の入力の部分文字列 |
+| `type` | `string` | `CharType` の値のいずれか（[後述](#トークン種別)） |
+| `start` | `int` | `text` の最初の文字の 0 始まりオフセット |
+| `end` | `int` | 最後の文字の 1 つ先の 0 始まりオフセット（`end == start + len(text)`） |
+
+トークンは信頼できる 2 つの不変条件を満たします。
+
+- **ラウンドトリップ:** 各トークンの `text` を順に連結すると、元の入力が正確に再現される。
+- **隙間のないオフセット:** `tokens[0].start == 0`、`i > 0` について `tokens[i].start == tokens[i-1].end`、そして `tokens[-1].end == len(input)`（非空の入力の場合）。
+
+この 2 つの性質により、フォーマッターはトークンリストを歩きながら各 `text` を装飾でき、文字を取りこぼしたり境界が重なったりすることがありません。
+
+## API
+
+`tokenize` は入力文字列とオプションのモードを受け取ります。`"query"` モードのみ 3 言語すべてで実装されており、`"columns"` モードは JavaScript 専用です。
+
+### JavaScript
+
+```javascript
+import { tokenize } from 'flyql/tokenize'
+
+const tokens = tokenize("status=200 and region='us-east'")
+// [
+//   { text: 'status',    type: 'flyqlKey',      start:  0, end:  6 },
+//   { text: '=',         type: 'flyqlOperator', start:  6, end:  7 },
+//   { text: '200',       type: 'number',        start:  7, end: 10 },
+//   { text: ' ',         type: 'space',         start: 10, end: 11 },
+//   { text: 'and',       type: 'flyqlOperator', start: 11, end: 14 },
+//   { text: ' ',         type: 'space',         start: 14, end: 15 },
+//   { text: 'region',    type: 'flyqlKey',      start: 15, end: 21 },
+//   { text: '=',         type: 'flyqlOperator', start: 21, end: 22 },
+//   { text: "'us-east'", type: 'string',        start: 22, end: 31 },
+// ]
+
+// columns モード（JavaScript のみ）
+const columnTokens = tokenize('id as user_id', { mode: 'columns' })
+```
+
+### Python
+
+```python
+from flyql import tokenize
+
+tokens = tokenize("status=200 and region='us-east'")
+for t in tokens:
+    print(t.text, t.type.value, t.start, t.end)
+
+# Python の Token は text, type, start, end を持つ frozen な dataclass です
+```
+
+Python では columns モードはサポートされておらず、`ValueError` を送出します。
+
+```python
+tokenize("id", mode="columns")
+# ValueError: columns mode is only available in the JavaScript package
+```
+
+### Go
+
+```go
+import "github.com/iamtelescope/flyql/golang"
+
+tokens, err := flyql.Tokenize("status=200 and region='us-east'", "query")
+if err != nil {
+    // 未対応モードでは non-nil。"query" は決してエラーを返しません
+}
+for _, t := range tokens {
+    fmt.Println(t.Text, t.Type, t.Start, t.End)
+}
+```
+
+columns モードは non-nil エラー `columns mode is only available in the JavaScript package` を返します。
+
+## トークン種別
+
+トークナイザーはコア parser の `CharType` 定数を出力します。query モードで重要な型は次のとおりです。
+
+| 種別 | 例 | 生成されるタイミング |
+|------|----|----------------------|
+| `flyqlKey` | `status`, `meta.region` | 演算子の左側のフィールド名 |
+| `flyqlOperator` | `=`, `!=`, `>=`, `and`, `or`, `not` | 比較演算子とブール演算子 |
+| `number` | `200`, `-42`, `3.14`, `1e5` | 数値リテラル（[標準的な数値規則](#標準的な数値規則)を参照） |
+| `string` | `'ok'`, `"hello"` | クオートされた文字列リテラル |
+| `flyqlBoolean` | `true`, `false` | 真偽値リテラル |
+| `flyqlNull` | `null` | null リテラル |
+| `flyqlColumn` | `alice`, `Infinity` | リテラルではない非クオート値 — カラム参照として扱う |
+| `flyqlPipe` | `\|` | transformer 区切りのパイプ |
+| `flyqlTransformer` | `upper`, `chars` | transformer 名 |
+| `flyqlArgument` | `25`（`chars(25)` 内） | transformer 引数 |
+| `flyqlParameter` | `$name`, `$1` | パラメータプレースホルダ |
+| `flyqlWildcard` | `*` | 値の中のワイルドカード |
+| `space` | ` ` | トークン間の空白 |
+| `flyqlError` | `x!y` の `y` | parser が消費できなかった入力の末尾 |
+
+columns モードは独自の集合を使います: `column`, `alias`, `aliasOperator`, `operator`, `transformer`, `argument`, `space`, `error`。
+
+`flyqlValue` は**出力に決して現れません**。parser が生成した生の値トークンは、`tokenize` が返る前に以下の規則によってすべて昇格されます。
+
+## VALUE 昇格規則
+
+parser はまずすべての値の文字を `flyqlValue` として記録します。戻る前に `tokenize` は各値トークンをより具体的な型へ昇格させます。
+
+1. `"true"` または `"false"` → `flyqlBoolean`
+2. `"null"` → `flyqlNull`
+3. [標準的な数値規則](#標準的な数値規則)に一致 → `number`
+4. `'` または `"` で始まる → `string`
+5. それ以外 → `flyqlColumn`
+
+このロジックは query モードでのみ動きます。columns モードには値という概念がありません。
+
+## 標準的な数値規則
+
+値トークンが `number` に分類されるのは、次の正規表現に完全に一致する場合のみです。
+
+```
+^-?\d+(\.\d+)?([eE][+-]?\d+)?$
+```
+
+これは JavaScript の `parseFloat`、Python の `float()`、Go の `strconv.ParseFloat` よりも**意図的に狭く**なっています。以下の入力は数値**ではなく** `flyqlColumn` にフォールバックします。
+
+- `Infinity`, `-Infinity`
+- `NaN`
+- `0x1F` のような 16 進リテラル
+- `  42  ` のような空白付きの数値
+
+3 言語すべてが同じ正規表現を共有するため、`val=Infinity` は JavaScript、Python、Go で同じように tokenize されます。
+
+## 末尾の ERROR トークン
+
+parser が入力をすべて読み切る前に停止した場合、`tokenize` は未解析の末尾を覆う 1 つの最終トークンを追加します。
+
+```javascript
+tokenize('x!y')
+// [
+//   { text: 'x', type: 'flyqlKey',      start: 0, end: 1 },
+//   { text: '!', type: 'flyqlOperator', start: 1, end: 2 },
+//   { text: 'y', type: 'flyqlError',    start: 2, end: 3 },
+// ]
+```
+
+これにより、不正な入力でもラウンドトリップ不変条件が保たれます。フォーマッターは末尾の `flyqlError` トークン（columns モードの `error` トークン）を別スタイルで描画できます。JavaScript の `highlight()` ヘルパーは CSS クラス `flyql-error` を使います。
+
+空入力は空のリストを返し、末尾 error トークンは付きません。
+
+## 制限事項
+
+- **columns モードは JavaScript 専用。** Python の columns parser には型付き文字出力がなく、Go には columns parser そのものがありません。
+- **ASCII のみを保証。** 言語間でのオフセット一致は ASCII 入力に対してのみ保証されます。非 ASCII 入力ではバイト／コードポイント／UTF-16 単位の違いにより、言語間で `start`/`end` が異なる場合があります。
+- **行・列番号はなし。** トークンは文字オフセットのみを公開します。エディター用に `(line, column)` が必要な場合は、`start` と元のテキストから計算してください。
+
+## 関連
+
+- [言語横断 API マトリクス](./api-matrix) — 各言語における正規の関数名。
+- [JavaScript クイックスタート](../getting-started/javascript) — パッケージのサブパス import の全リスト。HTML 出力用の `flyql/highlight` も含みます。
+- [AST とカスタム Generator](./ast) — `parse()` から得られる高レベルな木構造。`tokenize()` はそれを補完するもので置き換えるものではありません — `parse()` が木を返すのに対し、`tokenize()` は平坦なビューを返します。

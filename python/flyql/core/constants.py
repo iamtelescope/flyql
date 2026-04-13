@@ -18,6 +18,7 @@ class CharType(Enum):
     WILDCARD = "flyqlWildcard"
     COLUMN = "flyqlColumn"
     PARAMETER = "flyqlParameter"
+    ERROR = "flyqlError"
 
 
 class Operator(Enum):

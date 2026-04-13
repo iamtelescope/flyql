@@ -79,6 +79,19 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
+## 分词器
+
+[分词器](./tokenize)是一个共享原语，它把 parser 的逐字符输出按 `{text, type, start, end}` 形态聚合为带类型的 token。你可以在 FlyQL 之上用它来搭建自定义的高亮器或格式化器。
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Tokenize query | `Tokenize(text, "query")` | `tokenize(text)` | `tokenize(text)` |
+| Tokenize columns | _(N/A)_ | _(抛出 `ValueError`)_ | `tokenize(text, { mode: 'columns' })` |
+| **Types** | | | |
+| Token | `Token` (plain struct) | `Token` (frozen dataclass) | plain object |
+
+Columns 模式仅限 JavaScript。Python 会抛出 `ValueError`，Go 返回带消息 `columns mode is only available in the JavaScript package` 的 non-nil 错误。
+
 ## Transformers
 
 | Operation | Go | Python | JavaScript |

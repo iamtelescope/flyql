@@ -36,6 +36,7 @@ export const CharType = Object.freeze({
     WILDCARD: 'flyqlWildcard',
     COLUMN: 'flyqlColumn',
     PARAMETER: 'flyqlParameter',
+    ERROR: 'flyqlError',
 })
 
 export const State = Object.freeze({

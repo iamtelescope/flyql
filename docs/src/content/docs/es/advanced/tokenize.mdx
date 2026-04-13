@@ -1,0 +1,170 @@
+---
+title: Tokenizador
+description: Convierte una expresión FlyQL en una lista plana de tokens tipados — una primitiva compartida para resaltadores, formateadores y herramientas de editor
+---
+
+`tokenize()` es una función pura que convierte una expresión FlyQL en una lista plana de tokens tipados. Es la base común sobre la que todo resaltador de sintaxis, pretty-printer o formateador de FlyQL puede construirse. La función está disponible en los tres lenguajes con semántica idéntica byte a byte — la misma entrada produce los mismos tokens en JavaScript, Python y Go.
+
+Úsala cuando necesites control a nivel de token sobre el renderizado (salida ANSI en consola, HTML personalizado, decoraciones de editor, linters que trabajan con tokens). Si solo necesitas una cadena HTML, prefiere el ayudante de más alto nivel [`flyql/highlight`](/es/getting-started/javascript/#subrutas-de-importación-disponibles) (solo JavaScript).
+
+## Forma del token
+
+Cada token es un registro simple con cuatro campos:
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `text` | `string` | El fragmento de la entrada original que este token cubre. |
+| `type` | `string` | Uno de los valores `CharType` (ver [más abajo](#tipos-de-token)). |
+| `start` | `int` | Desplazamiento de carácter basado en cero del primer carácter en `text`. |
+| `end` | `int` | Desplazamiento de carácter basado en cero uno más allá del último carácter — `end == start + len(text)`. |
+
+Los tokens cumplen dos invariantes en las que puedes confiar:
+
+- **Ida y vuelta:** concatenar el `text` de cada token en orden reproduce exactamente la entrada original.
+- **Offsets sin huecos:** `tokens[0].start == 0`, `tokens[i].start == tokens[i-1].end` para todo `i > 0`, y `tokens[-1].end == len(input)` (entradas no vacías).
+
+Estas dos propiedades juntas significan que un formateador puede recorrer la lista de tokens, emitir decoraciones alrededor de cada `text`, y nunca perder un carácter ni solapar un límite.
+
+## API
+
+`tokenize` acepta una cadena de entrada y un modo opcional. Solo el modo `"query"` está implementado en los tres lenguajes; el modo `"columns"` es exclusivo de JavaScript.
+
+### JavaScript
+
+```javascript
+import { tokenize } from 'flyql/tokenize'
+
+const tokens = tokenize("status=200 and region='us-east'")
+// [
+//   { text: 'status',    type: 'flyqlKey',      start:  0, end:  6 },
+//   { text: '=',         type: 'flyqlOperator', start:  6, end:  7 },
+//   { text: '200',       type: 'number',        start:  7, end: 10 },
+//   { text: ' ',         type: 'space',         start: 10, end: 11 },
+//   { text: 'and',       type: 'flyqlOperator', start: 11, end: 14 },
+//   { text: ' ',         type: 'space',         start: 14, end: 15 },
+//   { text: 'region',    type: 'flyqlKey',      start: 15, end: 21 },
+//   { text: '=',         type: 'flyqlOperator', start: 21, end: 22 },
+//   { text: "'us-east'", type: 'string',        start: 22, end: 31 },
+// ]
+
+// Modo columns (solo JavaScript)
+const columnTokens = tokenize('id as user_id', { mode: 'columns' })
+```
+
+### Python
+
+```python
+from flyql import tokenize
+
+tokens = tokenize("status=200 and region='us-east'")
+for t in tokens:
+    print(t.text, t.type.value, t.start, t.end)
+
+# El Token de Python es un dataclass congelado con campos: text, type, start, end
+```
+
+El modo columns no es compatible en Python y lanza `ValueError`:
+
+```python
+tokenize("id", mode="columns")
+# ValueError: columns mode is only available in the JavaScript package
+```
+
+### Go
+
+```go
+import "github.com/iamtelescope/flyql/golang"
+
+tokens, err := flyql.Tokenize("status=200 and region='us-east'", "query")
+if err != nil {
+    // no-nil para modos no admitidos; "query" nunca da error
+}
+for _, t := range tokens {
+    fmt.Println(t.Text, t.Type, t.Start, t.End)
+}
+```
+
+El modo columns devuelve un error no-nil: `columns mode is only available in the JavaScript package`.
+
+## Tipos de token
+
+El tokenizador emite constantes `CharType` del parser central. En modo query, los tipos interesantes son:
+
+| Tipo | Ejemplo | Cuándo se produce |
+|------|---------|-------------------|
+| `flyqlKey` | `status`, `meta.region` | Nombres de campo a la izquierda de un operador |
+| `flyqlOperator` | `=`, `!=`, `>=`, `and`, `or`, `not` | Operadores de comparación y booleanos |
+| `number` | `200`, `-42`, `3.14`, `1e5` | Literales numéricos (ver [regla numérica canónica](#regla-numérica-canónica)) |
+| `string` | `'ok'`, `"hello"` | Literales de cadena entre comillas |
+| `flyqlBoolean` | `true`, `false` | Literales booleanos |
+| `flyqlNull` | `null` | Literal null |
+| `flyqlColumn` | `alice`, `Infinity` | Valor sin comillas que no es un literal — tratado como referencia a columna |
+| `flyqlPipe` | `\|` | La barra separadora de transformers |
+| `flyqlTransformer` | `upper`, `chars` | Nombres de transformers |
+| `flyqlArgument` | `25` (dentro de `chars(25)`) | Argumento de transformer |
+| `flyqlParameter` | `$name`, `$1` | Marcadores de parámetros |
+| `flyqlWildcard` | `*` | Comodín dentro de valores |
+| `space` | ` ` | Espacio en blanco entre tokens |
+| `flyqlError` | `y` en `x!y` | Final de la entrada que el parser no pudo consumir |
+
+El modo columns usa su propio conjunto: `column`, `alias`, `aliasOperator`, `operator`, `transformer`, `argument`, `space`, `error`.
+
+Ten en cuenta que `flyqlValue` **nunca aparece** en la salida — cada token de valor crudo del parser es actualizado por la regla siguiente antes de que `tokenize` retorne.
+
+## La regla de upgrade de VALUE
+
+El parser etiqueta inicialmente cada carácter de valor con `flyqlValue`. Antes de retornar, `tokenize` actualiza cada token de valor a un tipo más específico:
+
+1. `"true"` o `"false"` → `flyqlBoolean`
+2. `"null"` → `flyqlNull`
+3. coincide con la [regla numérica canónica](#regla-numérica-canónica) → `number`
+4. empieza por `'` o `"` → `string`
+5. en otro caso → `flyqlColumn`
+
+Esta lógica solo se ejecuta en modo query. El modo columns no tiene concepto de valor.
+
+## Regla numérica canónica
+
+Un token de valor se clasifica como `number` solo cuando coincide exactamente con esta expresión regular:
+
+```
+^-?\d+(\.\d+)?([eE][+-]?\d+)?$
+```
+
+Esto es **intencionalmente más estrecho** que `parseFloat` de JavaScript, `float()` de Python o `strconv.ParseFloat` de Go. Las siguientes entradas **no** son números y caen a `flyqlColumn`:
+
+- `Infinity`, `-Infinity`
+- `NaN`
+- literales hexadecimales como `0x1F`
+- números rodeados de espacios como `  42  `
+
+Los tres lenguajes comparten la misma expresión regular, por lo que `val=Infinity` se tokeniza idénticamente en JavaScript, Python y Go.
+
+## Token ERROR final
+
+Si el parser se detiene antes de consumir toda la entrada, `tokenize` añade un último token que cubre el resto no analizado:
+
+```javascript
+tokenize('x!y')
+// [
+//   { text: 'x', type: 'flyqlKey',      start: 0, end: 1 },
+//   { text: '!', type: 'flyqlOperator', start: 1, end: 2 },
+//   { text: 'y', type: 'flyqlError',    start: 2, end: 3 },
+// ]
+```
+
+Esto preserva la invariante de ida y vuelta incluso con entrada mal formada. Los formateadores pueden renderizar el token final `flyqlError` (o el token `error` en modo columns) con un estilo distinto — el ayudante `highlight()` de JavaScript usa la clase CSS `flyql-error`.
+
+Una entrada vacía devuelve una lista vacía, nunca un token de error final.
+
+## Limitaciones
+
+- **El modo columns es exclusivo de JavaScript.** El parser de columnas de Python no tiene salida tipada por carácter y no existe un parser de columnas en Go.
+- **Garantías solo ASCII.** La paridad de offsets entre lenguajes solo está garantizada para entradas ASCII. Entradas no ASCII pueden producir valores `start`/`end` distintos entre lenguajes debido a diferencias entre bytes, codepoints y unidades UTF-16.
+- **Sin números de línea o columna.** Los tokens solo exponen offsets de carácter. Si necesitas pares `(línea, columna)` para un editor, calcúlalos a partir de `start` sobre el texto fuente.
+
+## Véase también
+
+- [Matriz de API entre lenguajes](./api-matrix) — el nombre canónico de la función en cada lenguaje.
+- [Inicio rápido de JavaScript](../getting-started/javascript) — lista completa de importaciones de subpath del paquete, incluyendo `flyql/highlight` para salida HTML.
+- [AST y generadores personalizados](./ast) — el árbol de mayor nivel que obtienes de `parse()`. `tokenize()` lo complementa, no lo reemplaza: te da una vista plana donde `parse()` te da un árbol.

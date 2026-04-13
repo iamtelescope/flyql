@@ -79,6 +79,19 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
+## 토크나이저
+
+[토크나이저](./tokenize)는 parser의 문자 단위 출력을 `{text, type, start, end}` 형태의 타입이 지정된 토큰으로 묶는 공유 프리미티브입니다. FlyQL 위에 커스텀 하이라이터나 포매터를 구축할 때 사용하세요.
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Tokenize query | `Tokenize(text, "query")` | `tokenize(text)` | `tokenize(text)` |
+| Tokenize columns | _(N/A)_ | _(`ValueError` 발생)_ | `tokenize(text, { mode: 'columns' })` |
+| **Types** | | | |
+| Token | `Token` (plain struct) | `Token` (frozen dataclass) | plain object |
+
+columns 모드는 JavaScript 전용입니다. Python은 `ValueError`를 던지고, Go는 `columns mode is only available in the JavaScript package`라는 메시지와 함께 non-nil 에러를 반환합니다.
+
 ## Transformers
 
 | Operation | Go | Python | JavaScript |

@@ -50,7 +50,6 @@ export const TRANSFORMER_INFO = {
 
 export const KNOWN_TRANSFORMERS = Object.keys(TRANSFORMER_INFO)
 
-// Token types for Monaco editor syntax highlighting
 export const CharType = {
     COLUMN: 'column',
     ALIAS: 'alias',
@@ -61,14 +60,3 @@ export const CharType = {
     SPACE: 'space',
     ERROR: 'error',
 }
-
-export const tokenTypes = [
-    CharType.COLUMN,
-    CharType.ALIAS,
-    CharType.ALIAS_OPERATOR,
-    CharType.OPERATOR,
-    CharType.TRANSFORMER,
-    CharType.ARGUMENT,
-    CharType.SPACE,
-    CharType.ERROR,
-]

@@ -12,6 +12,12 @@ export function loadTestData(filename) {
     return JSON.parse(content)
 }
 
+export function loadTokenizeTestData(filename) {
+    const testDataPath = path.join(__dirname, '..', '..', '..', '..', 'tests-data', 'tokenize', filename)
+    const content = fs.readFileSync(testDataPath, 'utf-8')
+    return JSON.parse(content)
+}
+
 export function astToDict(node) {
     if (node === null) {
         return null

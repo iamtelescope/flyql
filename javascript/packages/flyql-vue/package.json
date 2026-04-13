@@ -1,6 +1,6 @@
 {
     "name": "flyql-vue",
-    "version": "0.0.38",
+    "version": "0.0.39",
     "description": "Vue 3 editor components for FlyQL query language",
     "type": "module",
     "main": "./src/index.js",

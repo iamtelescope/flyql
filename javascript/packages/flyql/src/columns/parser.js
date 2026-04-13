@@ -2,7 +2,6 @@ import { Char } from './char.js'
 import { State } from './state.js'
 import { ParserError } from './exceptions.js'
 import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, CharType } from './constants.js'
-import { generateMonacoTokens as generateTokens } from './monaco.js'
 import { Range } from '../core/range.js'
 
 export class Parser {
@@ -30,10 +29,6 @@ export class Parser {
         this._transformerStart = -1
         this._transformerArgStart = -1
         this._transformerArgRanges = []
-    }
-
-    generateMonacoTokens() {
-        return generateTokens(this)
     }
 
     trackChar(charType) {

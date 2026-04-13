@@ -1,6 +1,6 @@
 {
     "name": "flyql",
-    "version": "0.0.38",
+    "version": "0.0.39",
     "description": "A lightweight, injection-proof query language for multi-dialect SQL generation",
     "type": "module",
     "main": "./src/index.js",
@@ -22,6 +22,9 @@
         },
         "./highlight": {
             "import": "./src/highlight.js"
+        },
+        "./tokenize": {
+            "import": "./src/tokenize.js"
         },
         "./generators/clickhouse": {
             "import": "./src/generators/clickhouse/index.js"

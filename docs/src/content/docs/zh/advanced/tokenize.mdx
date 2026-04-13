@@ -1,0 +1,170 @@
+---
+title: 分词器
+description: 将 FlyQL 表达式转换为带类型的扁平 token 列表 —— 面向高亮器、格式化器与编辑器工具的共享原语
+---
+
+`tokenize()` 是一个纯函数，它将 FlyQL 表达式转换为带类型的扁平 token 列表。它是所有 FlyQL 语法高亮器、pretty-printer 和格式化器的共同基础。该函数在三种语言中都可用，且语义按字节完全相同 —— 同一份输入在 JavaScript、Python 和 Go 中产生相同的 token。
+
+当你需要对渲染做 token 级控制时使用它（ANSI 控制台输出、自定义 HTML、编辑器装饰、基于 token 的 linter）。如果只需要 HTML 字符串，请优先使用更高层的 [`flyql/highlight`](/zh/getting-started/javascript/#可用的子路径导入) 辅助函数（仅 JavaScript）。
+
+## Token 结构
+
+每个 token 都是一条带四个字段的普通记录：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `text` | `string` | 原始输入中该 token 覆盖的片段 |
+| `type` | `string` | `CharType` 值之一（见[下文](#token-类型)） |
+| `start` | `int` | `text` 第一个字符从 0 开始的偏移 |
+| `end` | `int` | 最后一个字符之后一位、从 0 开始的偏移 —— `end == start + len(text)` |
+
+Token 满足两个可依赖的不变量：
+
+- **往返一致性：** 按顺序拼接每个 token 的 `text` 能精确复现原输入。
+- **无间隙的偏移：** `tokens[0].start == 0`，对所有 `i > 0` 有 `tokens[i].start == tokens[i-1].end`，并且 `tokens[-1].end == len(input)`（非空输入）。
+
+这两条性质合在一起意味着，格式化器可以遍历 token 列表、在每个 `text` 周围输出装饰，不会漏掉字符或让边界发生重叠。
+
+## API
+
+`tokenize` 接受一个输入字符串和一个可选的 mode。只有 `"query"` 模式在三种语言中都已实现；`"columns"` 模式仅 JavaScript 支持。
+
+### JavaScript
+
+```javascript
+import { tokenize } from 'flyql/tokenize'
+
+const tokens = tokenize("status=200 and region='us-east'")
+// [
+//   { text: 'status',    type: 'flyqlKey',      start:  0, end:  6 },
+//   { text: '=',         type: 'flyqlOperator', start:  6, end:  7 },
+//   { text: '200',       type: 'number',        start:  7, end: 10 },
+//   { text: ' ',         type: 'space',         start: 10, end: 11 },
+//   { text: 'and',       type: 'flyqlOperator', start: 11, end: 14 },
+//   { text: ' ',         type: 'space',         start: 14, end: 15 },
+//   { text: 'region',    type: 'flyqlKey',      start: 15, end: 21 },
+//   { text: '=',         type: 'flyqlOperator', start: 21, end: 22 },
+//   { text: "'us-east'", type: 'string',        start: 22, end: 31 },
+// ]
+
+// Columns 模式（仅 JavaScript）
+const columnTokens = tokenize('id as user_id', { mode: 'columns' })
+```
+
+### Python
+
+```python
+from flyql import tokenize
+
+tokens = tokenize("status=200 and region='us-east'")
+for t in tokens:
+    print(t.text, t.type.value, t.start, t.end)
+
+# Python 的 Token 是一个 frozen dataclass，字段为 text、type、start、end
+```
+
+Python 不支持 columns 模式，会抛出 `ValueError`：
+
+```python
+tokenize("id", mode="columns")
+# ValueError: columns mode is only available in the JavaScript package
+```
+
+### Go
+
+```go
+import "github.com/iamtelescope/flyql/golang"
+
+tokens, err := flyql.Tokenize("status=200 and region='us-east'", "query")
+if err != nil {
+    // 对于不支持的模式返回 non-nil；"query" 永远不会报错
+}
+for _, t := range tokens {
+    fmt.Println(t.Text, t.Type, t.Start, t.End)
+}
+```
+
+Columns 模式会返回 non-nil 错误：`columns mode is only available in the JavaScript package`。
+
+## Token 类型
+
+分词器输出的是核心解析器中的 `CharType` 常量。在 query 模式下，值得注意的类型包括：
+
+| 类型 | 示例 | 生成时机 |
+|------|------|----------|
+| `flyqlKey` | `status`, `meta.region` | 运算符左侧的字段名 |
+| `flyqlOperator` | `=`, `!=`, `>=`, `and`, `or`, `not` | 比较与布尔运算符 |
+| `number` | `200`, `-42`, `3.14`, `1e5` | 数值字面量（见[标准数值规则](#标准数值规则)） |
+| `string` | `'ok'`, `"hello"` | 带引号的字符串字面量 |
+| `flyqlBoolean` | `true`, `false` | 布尔字面量 |
+| `flyqlNull` | `null` | null 字面量 |
+| `flyqlColumn` | `alice`, `Infinity` | 非字面量的无引号值 —— 视为列引用 |
+| `flyqlPipe` | `\|` | transformer 分隔管道 |
+| `flyqlTransformer` | `upper`, `chars` | transformer 名称 |
+| `flyqlArgument` | `25`（`chars(25)` 内） | transformer 参数 |
+| `flyqlParameter` | `$name`, `$1` | 参数占位符 |
+| `flyqlWildcard` | `*` | 值中的通配符 |
+| `space` | ` ` | token 之间的空白 |
+| `flyqlError` | `x!y` 中的 `y` | 解析器无法消费的输入尾部 |
+
+Columns 模式使用自己的集合：`column`、`alias`、`aliasOperator`、`operator`、`transformer`、`argument`、`space`、`error`。
+
+注意 `flyqlValue` **从不出现**在输出中 —— 解析器产生的原始值 token 在 `tokenize` 返回之前都会被下面的规则升级。
+
+## VALUE 升级规则
+
+解析器最初将每个值字符标记为 `flyqlValue`。在返回之前，`tokenize` 将每个值 token 升级为更具体的类型：
+
+1. `"true"` 或 `"false"` → `flyqlBoolean`
+2. `"null"` → `flyqlNull`
+3. 匹配[标准数值规则](#标准数值规则) → `number`
+4. 以 `'` 或 `"` 开头 → `string`
+5. 否则 → `flyqlColumn`
+
+该逻辑只在 query 模式下运行。columns 模式没有“值”的概念。
+
+## 标准数值规则
+
+值 token 只有在完全匹配下面这个正则表达式时才被归类为 `number`：
+
+```
+^-?\d+(\.\d+)?([eE][+-]?\d+)?$
+```
+
+它**有意比** JavaScript `parseFloat`、Python `float()` 或 Go `strconv.ParseFloat` **更窄**。下列输入**不是**数字，会回落为 `flyqlColumn`：
+
+- `Infinity`、`-Infinity`
+- `NaN`
+- 像 `0x1F` 这样的十六进制字面量
+- 像 `  42  ` 这样两侧带空格的数字
+
+三种语言共享同一正则，因此 `val=Infinity` 在 JavaScript、Python 和 Go 中分词完全相同。
+
+## 尾部 ERROR token
+
+如果解析器在消费完整输入之前就停止，`tokenize` 会追加一个最终 token，覆盖未解析的尾部：
+
+```javascript
+tokenize('x!y')
+// [
+//   { text: 'x', type: 'flyqlKey',      start: 0, end: 1 },
+//   { text: '!', type: 'flyqlOperator', start: 1, end: 2 },
+//   { text: 'y', type: 'flyqlError',    start: 2, end: 3 },
+// ]
+```
+
+这样即便输入非法，往返一致性不变量也能保持。格式化器可以用一个独特的样式来渲染尾部的 `flyqlError` token（或 columns 模式下的 `error` token）—— JavaScript 的 `highlight()` 辅助函数使用 CSS 类 `flyql-error`。
+
+空输入返回空列表，不会产生尾部 error token。
+
+## 限制
+
+- **columns 模式仅限 JavaScript。** Python 的 columns 解析器没有带类型的字符输出，Go 根本没有 columns 解析器。
+- **仅保证 ASCII。** 跨语言的偏移一致性仅对 ASCII 输入保证。非 ASCII 输入由于字节 / 码点 / UTF-16 单元的差异，在不同语言中 `start`/`end` 可能不同。
+- **没有行号或列号。** token 只暴露字符偏移。若编辑器需要 `(line, column)`，请基于 `start` 和源文本自行计算。
+
+## 参见
+
+- [跨语言 API 矩阵](./api-matrix) —— 每种语言中的规范函数名。
+- [JavaScript 快速入门](../getting-started/javascript) —— 包 subpath import 的完整列表，包含用于 HTML 输出的 `flyql/highlight`。
+- [AST 与自定义生成器](./ast) —— `parse()` 返回的更高层的树。`tokenize()` 是它的补充，而不是替代：`parse()` 给你一棵树，`tokenize()` 给你扁平视图。

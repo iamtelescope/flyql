@@ -79,6 +79,19 @@ All three dialects (ClickHouse, PostgreSQL, StarRocks) expose the same function 
 | **Types** | | | |
 | Parsed column | `ParsedColumn` | `ParsedColumn` | `ParsedColumn` |
 
+## トークナイザー
+
+[トークナイザー](./tokenize) は、parser の文字単位の出力を `{text, type, start, end}` という型付きトークンにまとめる共有プリミティブです。FlyQL の上に独自のハイライターやフォーマッターを構築する際に使ってください。
+
+| Operation | Go | Python | JavaScript |
+|-----------|------|--------|------------|
+| Tokenize query | `Tokenize(text, "query")` | `tokenize(text)` | `tokenize(text)` |
+| Tokenize columns | _(N/A)_ | _(`ValueError` を送出)_ | `tokenize(text, { mode: 'columns' })` |
+| **Types** | | | |
+| Token | `Token` (plain struct) | `Token` (frozen dataclass) | plain object |
+
+columns モードは JavaScript 専用です。Python は `ValueError` を送出し、Go は `columns mode is only available in the JavaScript package` というメッセージで non-nil エラーを返します。
+
 ## Transformers
 
 | Operation | Go | Python | JavaScript |

@@ -1,0 +1,170 @@
+---
+title: टोकनाइज़र
+description: एक FlyQL अभिव्यक्ति को टाइप किए गए टोकनों की सपाट सूची में बदलें — हाइलाइटर, फ़ॉर्मेटर और एडिटर टूलिंग के लिए एक साझा प्रिमिटिव
+---
+
+`tokenize()` एक शुद्ध फ़ंक्शन है जो FlyQL अभिव्यक्ति को टाइप किए गए टोकनों की सपाट सूची में बदलता है। यह वह साझा आधार है जिस पर हर FlyQL सिंटैक्स हाइलाइटर, pretty-printer, या फ़ॉर्मेटर बनाया जा सकता है। यह फ़ंक्शन तीनों भाषाओं में उपलब्ध है और बाइट-दर-बाइट समान सेमैंटिक्स रखता है — वही इनपुट JavaScript, Python और Go में वही टोकन उत्पन्न करता है।
+
+इसका उपयोग तब करें जब आपको रेंडरिंग पर टोकन-स्तरीय नियंत्रण चाहिए (ANSI कंसोल आउटपुट, कस्टम HTML, एडिटर डेकोरेशन, टोकन-आधारित linter)। यदि आपको केवल एक HTML स्ट्रिंग चाहिए, तो उच्च-स्तरीय [`flyql/highlight`](/hi/getting-started/javascript/#उपलब्ध-सबपाथ-इम्पोर्ट) हेल्पर (केवल JavaScript) का उपयोग करें।
+
+## टोकन का स्वरूप
+
+हर टोकन चार फ़ील्ड वाला एक सादा रिकॉर्ड है:
+
+| फ़ील्ड | प्रकार | विवरण |
+|--------|--------|-------|
+| `text` | `string` | मूल इनपुट का वह भाग जिसे यह टोकन कवर करता है |
+| `type` | `string` | `CharType` मानों में से एक ([नीचे](#टोकन-प्रकार) देखें) |
+| `start` | `int` | `text` के पहले अक्षर का शून्य-आधारित ऑफ़सेट |
+| `end` | `int` | अंतिम अक्षर के ठीक आगे का शून्य-आधारित ऑफ़सेट — `end == start + len(text)` |
+
+टोकन दो विश्वसनीय अपरिवर्तनीयताओं को संतुष्ट करते हैं:
+
+- **राउंड-ट्रिप:** हर टोकन के `text` को क्रम में जोड़ने से मूल इनपुट ठीक-ठीक पुनः प्राप्त होता है।
+- **अंतराल-रहित ऑफ़सेट:** `tokens[0].start == 0`, सभी `i > 0` के लिए `tokens[i].start == tokens[i-1].end`, और गैर-खाली इनपुट के लिए `tokens[-1].end == len(input)`।
+
+इन दोनों गुणों का अर्थ है कि एक फ़ॉर्मेटर टोकन सूची पर चल सकता है, हर `text` के चारों ओर सजावट जोड़ सकता है, और कभी भी कोई अक्षर नहीं छूटेगा और न ही कोई सीमा ओवरलैप होगी।
+
+## API
+
+`tokenize` एक इनपुट स्ट्रिंग और एक वैकल्पिक मोड लेता है। केवल `"query"` मोड तीनों भाषाओं में लागू है; `"columns"` मोड केवल JavaScript में है।
+
+### JavaScript
+
+```javascript
+import { tokenize } from 'flyql/tokenize'
+
+const tokens = tokenize("status=200 and region='us-east'")
+// [
+//   { text: 'status',    type: 'flyqlKey',      start:  0, end:  6 },
+//   { text: '=',         type: 'flyqlOperator', start:  6, end:  7 },
+//   { text: '200',       type: 'number',        start:  7, end: 10 },
+//   { text: ' ',         type: 'space',         start: 10, end: 11 },
+//   { text: 'and',       type: 'flyqlOperator', start: 11, end: 14 },
+//   { text: ' ',         type: 'space',         start: 14, end: 15 },
+//   { text: 'region',    type: 'flyqlKey',      start: 15, end: 21 },
+//   { text: '=',         type: 'flyqlOperator', start: 21, end: 22 },
+//   { text: "'us-east'", type: 'string',        start: 22, end: 31 },
+// ]
+
+// Columns मोड (केवल JavaScript)
+const columnTokens = tokenize('id as user_id', { mode: 'columns' })
+```
+
+### Python
+
+```python
+from flyql import tokenize
+
+tokens = tokenize("status=200 and region='us-east'")
+for t in tokens:
+    print(t.text, t.type.value, t.start, t.end)
+
+# Python Token एक frozen dataclass है जिसमें text, type, start, end फ़ील्ड हैं
+```
+
+Python में columns मोड समर्थित नहीं है और `ValueError` फेंकता है:
+
+```python
+tokenize("id", mode="columns")
+# ValueError: columns mode is only available in the JavaScript package
+```
+
+### Go
+
+```go
+import "github.com/iamtelescope/flyql/golang"
+
+tokens, err := flyql.Tokenize("status=200 and region='us-east'", "query")
+if err != nil {
+    // असमर्थित मोड के लिए non-nil; "query" कभी त्रुटि नहीं देता
+}
+for _, t := range tokens {
+    fmt.Println(t.Text, t.Type, t.Start, t.End)
+}
+```
+
+Columns मोड एक non-nil त्रुटि देता है: `columns mode is only available in the JavaScript package`.
+
+## टोकन प्रकार
+
+टोकनाइज़र कोर पार्सर से `CharType` स्थिरांक उत्पन्न करता है। query मोड में महत्वपूर्ण प्रकार ये हैं:
+
+| प्रकार | उदाहरण | कब उत्पन्न होता है |
+|--------|--------|-------------------|
+| `flyqlKey` | `status`, `meta.region` | ऑपरेटर के बाईं ओर के फ़ील्ड नाम |
+| `flyqlOperator` | `=`, `!=`, `>=`, `and`, `or`, `not` | तुलना और बूलियन ऑपरेटर |
+| `number` | `200`, `-42`, `3.14`, `1e5` | संख्यात्मक लिटरल ([मानक संख्यात्मक नियम](#मानक-संख्यात्मक-नियम) देखें) |
+| `string` | `'ok'`, `"hello"` | उद्धरण चिह्नों में स्ट्रिंग लिटरल |
+| `flyqlBoolean` | `true`, `false` | बूलियन लिटरल |
+| `flyqlNull` | `null` | null लिटरल |
+| `flyqlColumn` | `alice`, `Infinity` | उद्धरण-रहित मान जो लिटरल नहीं है — कॉलम संदर्भ माना जाता है |
+| `flyqlPipe` | `\|` | transformer विभाजक पाइप |
+| `flyqlTransformer` | `upper`, `chars` | transformer नाम |
+| `flyqlArgument` | `25` (`chars(25)` के अंदर) | transformer तर्क |
+| `flyqlParameter` | `$name`, `$1` | पैरामीटर प्लेसहोल्डर |
+| `flyqlWildcard` | `*` | मानों के अंदर वाइल्डकार्ड |
+| `space` | ` ` | टोकनों के बीच खाली जगह |
+| `flyqlError` | `x!y` में `y` | इनपुट की पूंछ जिसे पार्सर उपभोग नहीं कर सका |
+
+Columns मोड अपना स्वयं का सेट उपयोग करता है: `column`, `alias`, `aliasOperator`, `operator`, `transformer`, `argument`, `space`, `error`.
+
+ध्यान दें कि `flyqlValue` आउटपुट में **कभी प्रकट नहीं होता** — पार्सर से प्राप्त हर कच्चा मान टोकन `tokenize` के लौटने से पहले नीचे दिए गए नियम द्वारा अपग्रेड कर दिया जाता है।
+
+## VALUE अपग्रेड नियम
+
+पार्सर शुरू में हर मान वर्ण को `flyqlValue` के रूप में टैग करता है। लौटने से पहले `tokenize` हर मान टोकन को अधिक विशिष्ट प्रकार में अपग्रेड करता है:
+
+1. `"true"` या `"false"` → `flyqlBoolean`
+2. `"null"` → `flyqlNull`
+3. [मानक संख्यात्मक नियम](#मानक-संख्यात्मक-नियम) से मेल खाता है → `number`
+4. `'` या `"` से शुरू होता है → `string`
+5. अन्यथा → `flyqlColumn`
+
+यह तर्क केवल query मोड में चलता है। columns मोड में मान की कोई अवधारणा नहीं है।
+
+## मानक संख्यात्मक नियम
+
+एक मान टोकन को केवल तभी `number` के रूप में वर्गीकृत किया जाता है जब वह ठीक इस regex से मेल खाता है:
+
+```
+^-?\d+(\.\d+)?([eE][+-]?\d+)?$
+```
+
+यह जानबूझकर JavaScript के `parseFloat`, Python के `float()` या Go के `strconv.ParseFloat` से **संकीर्ण** है। निम्न इनपुट संख्याएँ **नहीं** हैं और `flyqlColumn` पर गिरते हैं:
+
+- `Infinity`, `-Infinity`
+- `NaN`
+- हेक्स लिटरल जैसे `0x1F`
+- `  42  ` जैसी श्वेत स्थान से घिरी संख्याएँ
+
+तीनों भाषाएँ एक ही regex साझा करती हैं, इसलिए `val=Infinity` JavaScript, Python और Go में समान रूप से टोकनाइज़ होता है।
+
+## अंतिम ERROR टोकन
+
+यदि पार्सर पूरे इनपुट को उपभोग करने से पहले रुक जाता है, तो `tokenize` अनपार्स्ड पूंछ को कवर करने वाला एक अंतिम टोकन जोड़ता है:
+
+```javascript
+tokenize('x!y')
+// [
+//   { text: 'x', type: 'flyqlKey',      start: 0, end: 1 },
+//   { text: '!', type: 'flyqlOperator', start: 1, end: 2 },
+//   { text: 'y', type: 'flyqlError',    start: 2, end: 3 },
+// ]
+```
+
+यह दुर्घटनापूर्ण इनपुट के लिए भी राउंड-ट्रिप अपरिवर्तनीयता को बनाए रखता है। फ़ॉर्मेटर अंतिम `flyqlError` टोकन (या columns मोड में `error` टोकन) को अलग शैली में रेंडर कर सकते हैं — JavaScript का `highlight()` हेल्पर CSS क्लास `flyql-error` का उपयोग करता है।
+
+खाली इनपुट एक खाली सूची देता है, कभी अंतिम error टोकन नहीं।
+
+## सीमाएँ
+
+- **Columns मोड केवल JavaScript में।** Python columns पार्सर के पास टाइप किए गए वर्ण आउटपुट नहीं है, और Go में columns पार्सर ही नहीं है।
+- **केवल ASCII गारंटी।** भाषाओं के बीच ऑफ़सेट समानता केवल ASCII इनपुट के लिए गारंटीकृत है। गैर-ASCII इनपुट बाइट/कोडपॉइंट/UTF-16 इकाई के अंतर के कारण भाषाओं में भिन्न `start`/`end` मान उत्पन्न कर सकता है।
+- **कोई पंक्ति या कॉलम संख्या नहीं।** टोकन केवल वर्ण ऑफ़सेट को उजागर करते हैं। यदि आपको एक एडिटर के लिए `(line, column)` जोड़ी चाहिए, तो इसे स्रोत पाठ पर `start` से गणना करें।
+
+## यह भी देखें
+
+- [क्रॉस-लैंग्वेज API मैट्रिक्स](./api-matrix) — हर भाषा में मानक फ़ंक्शन नाम।
+- [JavaScript क्विकस्टार्ट](../getting-started/javascript) — पैकेज subpath इंपोर्ट्स की पूरी सूची, HTML आउटपुट के लिए `flyql/highlight` सहित।
+- [AST और कस्टम जनरेटर](./ast) — `parse()` से प्राप्त उच्च-स्तरीय वृक्ष। `tokenize()` इसे पूरक करता है, प्रतिस्थापित नहीं करता: यह आपको एक सपाट दृश्य देता है जहाँ `parse()` आपको एक वृक्ष देता है।

@@ -39,6 +39,18 @@ def load_test_data(filename: str) -> Dict[str, Any]:
         return json.load(f)
 
 
+def load_tokenize_data(filename: str) -> Dict[str, Any]:
+    """Load tokenizer test data from tests-data/tokenize directory"""
+    test_data_path = (
+        Path(__file__).parent.parent.parent.parent
+        / "tests-data"
+        / "tokenize"
+        / filename
+    )
+    with open(test_data_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
 def ast_to_dict(node) -> Optional[Dict[str, Any]]:
     """Convert AST node to dictionary for comparison"""
     if node is None:

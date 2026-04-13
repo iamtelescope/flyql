@@ -15,6 +15,7 @@ from .transformers import (
 )
 from .flyql_type import Type, parse_flyql_type
 from .literal import LiteralKind
+from .tokenize import tokenize, Token
 
 __all__ = [
     "parse",
@@ -43,4 +44,6 @@ __all__ = [
     "default_registry",
     "Type",
     "LiteralKind",
+    "tokenize",
+    "Token",
 ]

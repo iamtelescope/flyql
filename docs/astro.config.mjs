@@ -214,6 +214,7 @@ export default defineConfig({
           items: [
             "advanced/ast",
             "advanced/custom-transformers",
+            "advanced/tokenize",
             "advanced/api-matrix",
           ],
         },

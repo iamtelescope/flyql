@@ -249,9 +249,9 @@ const schemaColumns = otelLogs.schemaColumns
 
 const editorColumns = ColumnSchema.fromPlainObject(otelLogs.editorColumns)
 
-const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, type]) => [name, chNewColumn(name, '', type)]))
-const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, type]) => [name, pgNewColumn(name, false, type)]))
-const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, type]) => [name, srNewColumn(name, '', type)]))
+const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, type]) => [name, chNewColumn(name, type)]))
+const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, type]) => [name, pgNewColumn(name, type)]))
+const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, type]) => [name, srNewColumn(name, type)]))
 
 const dialects = [
     { key: 'ch', name: 'ClickHouse', icon: chIconLight, iconDark: chIconDark },

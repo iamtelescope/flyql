@@ -8,7 +8,7 @@ The `columns` prop accepts a `ColumnSchema` instance that drives editor suggesti
 ## Basic Schema
 
 ```javascript
-import { ColumnSchema } from 'flyql/editor'
+import { ColumnSchema } from 'flyql-vue'
 
 const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },
@@ -165,7 +165,7 @@ If a column has both `children` and `onKeyDiscovery`, the static `children` take
 ## Full Example
 
 ```javascript
-import { ColumnSchema } from 'flyql/editor'
+import { ColumnSchema } from 'flyql-vue'
 
 const columns = ColumnSchema.fromPlainObject({
     // Enum with static values

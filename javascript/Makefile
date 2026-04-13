@@ -1,16 +1,17 @@
-.PHONY: all install fmt fmt-test vitest snippets test coverage
+.PHONY: all install fmt fmt-test test coverage
 
 all: test
 install:
 	pnpm install
 fmt:
-	npx prettier --config .prettierrc --write src/ test/
+	$(MAKE) -C packages/flyql fmt
+	$(MAKE) -C packages/flyql-vue fmt
 fmt-test:
-	npx prettier --config .prettierrc --check src/ test/
-vitest:
-	npm run test:run
-snippets:
-	npm run snippets
-test: fmt-test vitest snippets
+	$(MAKE) -C packages/flyql fmt-test
+	$(MAKE) -C packages/flyql-vue fmt-test
+test:
+	$(MAKE) -C packages/flyql test
+	$(MAKE) -C packages/flyql-vue test
 coverage:
-	npm run test:coverage
+	$(MAKE) -C packages/flyql coverage
+	$(MAKE) -C packages/flyql-vue coverage

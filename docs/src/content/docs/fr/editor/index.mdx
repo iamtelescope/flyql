@@ -10,7 +10,7 @@ L'editeur FlyQL est un composant Vue 3 qui fournit un champ de saisie de requete
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,7 +45,7 @@ Cela affiche un champ de saisie avec des suggestions d'autocompletion pour les c
 ## Installation
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
 L'editeur necessite Vue 3 comme dependance pair :
@@ -54,10 +54,10 @@ L'editeur necessite Vue 3 comme dependance pair :
 npm install vue
 ```
 
-Importez depuis le sous-chemin `flyql/editor` :
+Importez depuis le sous-chemin `flyql-vue` :
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
 Les deux composants importent `flyql.css` en interne, qui fournit les variables de theme, les styles du panneau de suggestions et la coloration des tokens. Avec les bundlers standards (Vite, webpack, etc.), cela fonctionne automatiquement.
@@ -65,7 +65,7 @@ Les deux composants importent `flyql.css` en interne, qui fournit les variables 
 Si votre configuration ne traite pas les imports CSS depuis JS, importez la feuille de styles manuellement :
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
 
 ## Props
@@ -105,7 +105,7 @@ Acces via une ref de template :
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ Fournissez un callback `onAutocomplete` pour recuperer les suggestions de valeur
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

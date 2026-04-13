@@ -10,7 +10,7 @@ description: Как встроить редактор запросов FlyQL в 
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,7 +45,7 @@ function onParseError(error) {
 ## Установка
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
 Редактор требует Vue 3 в качестве peer-зависимости:
@@ -54,10 +54,10 @@ npm install flyql
 npm install vue
 ```
 
-Импортируйте из подпути `flyql/editor`:
+Импортируйте из подпути `flyql-vue`:
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
 Оба компонента внутренне импортируют `flyql.css`, который содержит переменные темы, стили панели подсказок и подсветку токенов. При использовании стандартных сборщиков (Vite, webpack и т.д.) это работает автоматически.
@@ -65,7 +65,7 @@ import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
 Если ваша конфигурация не обрабатывает CSS-импорты из JS, импортируйте стили вручную:
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
 
 ## Props
@@ -105,7 +105,7 @@ import 'flyql/editor/flyql.css'
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ function checkStatus() {
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

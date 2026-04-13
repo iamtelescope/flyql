@@ -163,7 +163,7 @@ match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
 用于编辑器自动补全 —— 自定义转换器会与内置转换器一起出现：
 
 ```javascript
-import { EditorEngine } from 'flyql/editor'
+import { EditorEngine } from 'flyql-vue'
 
 const engine = new EditorEngine(columns, { registry })
 // After typing "src_ip|", suggestions include "firstoctet", "upper", "lower", "len"

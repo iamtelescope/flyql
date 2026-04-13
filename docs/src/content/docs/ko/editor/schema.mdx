@@ -8,7 +8,7 @@ description: FlyQL editor를 위한 컬럼 schema 구조
 ## 기본 schema
 
 ```javascript
-import { ColumnSchema } from 'flyql/editor'
+import { ColumnSchema } from 'flyql-vue'
 
 const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },

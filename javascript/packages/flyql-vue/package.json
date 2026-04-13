@@ -1,0 +1,54 @@
+{
+    "name": "flyql-vue",
+    "version": "0.0.38",
+    "description": "Vue 3 editor components for FlyQL query language",
+    "type": "module",
+    "main": "./src/index.js",
+    "exports": {
+        ".": {
+            "import": "./src/index.js"
+        },
+        "./flyql.css": "./src/flyql.css"
+    },
+    "files": [
+        "src/**/*.js",
+        "src/**/*.vue",
+        "src/**/*.css"
+    ],
+    "sideEffects": [
+        "*.css"
+    ],
+    "keywords": [
+        "flyql",
+        "vue",
+        "editor",
+        "query"
+    ],
+    "author": "Ilia (HumanUser) Khomutov",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/iamtelescope/flyql.git",
+        "directory": "javascript/packages/flyql-vue"
+    },
+    "bugs": {
+        "url": "https://github.com/iamtelescope/flyql/issues"
+    },
+    "homepage": "https://docs.flyql.dev",
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "dependencies": {
+        "flyql": "workspace:^"
+    },
+    "peerDependencies": {
+        "vue": "^3.0.0"
+    },
+    "devDependencies": {
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vue/compiler-sfc": "^3.5.0",
+        "prettier": "^3.0.0",
+        "vitest": "^3.2.4",
+        "vue": "^3.5.0"
+    }
+}

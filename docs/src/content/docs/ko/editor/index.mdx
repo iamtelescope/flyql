@@ -10,7 +10,7 @@ FlyQL editor는 schema 기반 쿼리 입력, autocomplete, syntax highlighting, 
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,7 +45,7 @@ function onParseError(error) {
 ## 설치
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
 Editor는 peer dependency로 Vue 3를 필요로 합니다.
@@ -54,10 +54,10 @@ Editor는 peer dependency로 Vue 3를 필요로 합니다.
 npm install vue
 ```
 
-`flyql/editor` 하위 경로에서 import하세요.
+`flyql-vue` 하위 경로에서 import하세요.
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
 두 컴포넌트 모두 내부에서 `flyql.css`를 import합니다. 이 파일은 테마 변수, 제안 패널 스타일, 토큰 하이라이팅을 제공합니다. 일반적인 bundler(Vite, webpack 등)에서는 자동으로 동작합니다.
@@ -65,7 +65,7 @@ import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
 설정상 JS에서 CSS import를 처리하지 않는다면 스타일시트를 수동으로 import하세요.
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
 
 ## Props
@@ -105,7 +105,7 @@ Template ref로 접근합니다.
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ function checkStatus() {
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

@@ -8,7 +8,7 @@ La prop `columns` definit le schema de donnees qui pilote les suggestions de l'e
 ## Schema de base
 
 ```javascript
-import { ColumnSchema } from 'flyql/editor'
+import { ColumnSchema } from 'flyql-vue'
 
 const columns = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info', 'error'] },

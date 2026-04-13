@@ -10,7 +10,7 @@ FlyQL एडिटर एक Vue 3 कम्पोनेंट है जो ऑ
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,7 +45,7 @@ function onParseError(error) {
 ## इंस्टॉलेशन
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
 एडिटर को पीयर डिपेंडेंसी के रूप में Vue 3 की आवश्यकता है:
@@ -54,10 +54,10 @@ npm install flyql
 npm install vue
 ```
 
-`flyql/editor` सबपाथ से इम्पोर्ट करें:
+`flyql-vue` सबपाथ से इम्पोर्ट करें:
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
 दोनों कम्पोनेंट आंतरिक रूप से `flyql.css` इम्पोर्ट करते हैं, जो थीम वेरिएबल, सुझाव पैनल स्टाइल, और टोकन हाइलाइटिंग प्रदान करता है। मानक बंडलर (Vite, webpack, आदि) के साथ यह स्वचालित रूप से काम करता है।
@@ -65,7 +65,7 @@ import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
 यदि आपका सेटअप JS से CSS इम्पोर्ट प्रोसेस नहीं करता, तो स्टाइलशीट को मैन्युअल रूप से इम्पोर्ट करें:
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
 
 ## Props
@@ -105,7 +105,7 @@ import 'flyql/editor/flyql.css'
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ function checkStatus() {
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

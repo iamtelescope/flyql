@@ -163,7 +163,7 @@ match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
 editor autocomplete:
 
 ```javascript
-import { EditorEngine } from 'flyql/editor'
+import { EditorEngine } from 'flyql-vue'
 
 const engine = new EditorEngine(columns, { registry })
 // "src_ip|"를 입력하면 "firstoctet", "upper", "lower", "len" 제안이 함께 표시됩니다

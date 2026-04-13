@@ -3,14 +3,14 @@ title: Editor Component
 description: Integrate the FlyQL query editor in your Vue 3 application
 ---
 
-The FlyQL editor is a Vue 3 component that provides a schema-driven query input with autocomplete, syntax highlighting, and keyboard navigation.
+The FlyQL editor is a Vue 3 component published as the [`flyql-vue`](https://www.npmjs.com/package/flyql-vue) npm package. It provides a schema-driven query input with autocomplete, syntax highlighting, and keyboard navigation.
 
 ## Quick Setup
 
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,28 +45,28 @@ This renders a text input with autocomplete suggestions for columns, type-aware 
 ## Installation
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
-The editor requires Vue 3 as a peer dependency:
+`flyql-vue` automatically pulls in the `flyql` core package as a regular dependency, so you do not need to install it separately. The editor requires Vue 3 as a peer dependency:
 
 ```bash
 npm install vue
 ```
 
-Import from the `flyql/editor` subpath:
+Import from `flyql-vue`:
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
-Both components import `flyql.css` internally, which provides theme variables, suggestion panel styles, and token highlighting. With standard bundlers (Vite, webpack, etc.) this works automatically.
-
-If your setup doesn't process CSS imports from JS, import the stylesheet manually:
+The components do not import the stylesheet automatically — import `flyql.css` once in your application entrypoint:
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
+
+This provides theme variables, suggestion panel styles, and token highlighting.
 
 ## Props
 
@@ -105,7 +105,7 @@ Access via template ref:
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ Provide an `onAutocomplete` callback to fetch value suggestions from your API:
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

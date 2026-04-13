@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { match } from '../src/matcher/index.js'
+import { match } from 'flyql/matcher'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

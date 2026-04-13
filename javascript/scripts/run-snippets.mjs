@@ -6,7 +6,7 @@ import { parse as parseVue } from '@vue/compiler-sfc'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-const SNIPPETS = join(__dirname, '..', 'snippets')
+const SNIPPETS = join(__dirname, '..', 'packages', 'flyql', 'snippets')
 
 async function* walk(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {

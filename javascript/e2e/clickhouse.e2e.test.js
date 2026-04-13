@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { parse } from '../src/core/parser.js'
-import { generateWhere, generateSelect, newColumn } from '../src/generators/clickhouse/index.js'
+import { parse } from 'flyql/core'
+import { generateWhere, generateSelect, newColumn } from 'flyql/generators/clickhouse'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

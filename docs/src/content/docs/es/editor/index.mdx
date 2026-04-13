@@ -10,7 +10,7 @@ El editor de FlyQL es un componente de Vue 3 que ofrece una entrada de consultas
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({
@@ -45,7 +45,7 @@ Esto renderiza un campo de texto con sugerencias de autocompletado para columnas
 ## Instalación
 
 ```bash
-npm install flyql
+npm install flyql-vue
 ```
 
 El editor requiere Vue 3 como dependencia `peer`:
@@ -54,10 +54,10 @@ El editor requiere Vue 3 como dependencia `peer`:
 npm install vue
 ```
 
-Importa desde la subruta `flyql/editor`:
+Importa desde la subruta `flyql-vue`:
 
 ```javascript
-import { FlyqlEditor, FlyqlColumns } from 'flyql/editor'
+import { FlyqlEditor, FlyqlColumns } from 'flyql-vue'
 ```
 
 Ambos componentes importan internamente `flyql.css`, que proporciona variables de tema, estilos del panel de sugerencias y resaltado de tokens. Con bundlers habituales como Vite o webpack, esto funciona automáticamente.
@@ -65,7 +65,7 @@ Ambos componentes importan internamente `flyql.css`, que proporciona variables d
 Si tu entorno no procesa importaciones CSS desde JS, importa la hoja de estilos manualmente:
 
 ```javascript
-import 'flyql/editor/flyql.css'
+import 'flyql-vue/flyql.css'
 ```
 
 ## Props
@@ -105,7 +105,7 @@ Accede a ellos mediante una referencia de plantilla:
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor } from 'flyql/editor'
+import { FlyqlEditor } from 'flyql-vue'
 
 const editorRef = ref(null)
 
@@ -134,7 +134,7 @@ Proporciona un callback `onAutocomplete` para obtener sugerencias de valores des
 ```vue
 <script setup>
 import { ref } from 'vue'
-import { FlyqlEditor, ColumnSchema } from 'flyql/editor'
+import { FlyqlEditor, ColumnSchema } from 'flyql-vue'
 
 const query = ref('')
 const columns = ColumnSchema.fromPlainObject({

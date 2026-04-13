@@ -163,7 +163,7 @@ match("src_ip|firstoctet > 192", { src_ip: "193.0.0.1" }, registry) // true
 Pour l'autocompletion de l'editeur — les transformateurs personnalises apparaissent aux cotes des transformateurs integres :
 
 ```javascript
-import { EditorEngine } from 'flyql/editor'
+import { EditorEngine } from 'flyql-vue'
 
 const engine = new EditorEngine(columns, { registry })
 // After typing "src_ip|", suggestions include "firstoctet", "upper", "lower", "len"

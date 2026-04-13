@@ -34,7 +34,7 @@ export default defineConfig({
     resolve: {
       alias: {
         "@snippets/python": resolve("../python/snippets"),
-        "@snippets/javascript": resolve("../javascript/snippets"),
+        "@snippets/javascript": resolve("../javascript/packages/flyql/snippets"),
         "@snippets/go": resolve("../golang/snippets"),
         "@data": resolve("./src/data"),
       },

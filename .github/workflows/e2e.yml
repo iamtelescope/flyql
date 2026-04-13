@@ -74,15 +74,19 @@ jobs:
             sed -i '/sys.path.insert/d' "$f"
           done
 
-          cd javascript && npm install "flyql@${FLYQL_VERSION}" && cd ..
-          for f in javascript/e2e/*.test.js; do
-            sed -i "s|from '\.\./src/core/parser\.js'|from 'flyql/core'|g" "$f"
-            sed -i "s|from '\.\./src/generators/clickhouse/index\.js'|from 'flyql/generators/clickhouse'|g" "$f"
-            sed -i "s|from '\.\./src/generators/postgresql/index\.js'|from 'flyql/generators/postgresql'|g" "$f"
-            sed -i "s|from '\.\./src/generators/starrocks/index\.js'|from 'flyql/generators/starrocks'|g" "$f"
-            sed -i "s|from '\.\./src/matcher/index\.js'|from 'flyql/matcher'|g" "$f"
-            sed -i "s|from '\.\./src/highlight\.js'|from 'flyql/highlight'|g" "$f"
-          done
+          # Swap the workspace flyql dep in the javascript root package.json for the
+          # published version so pnpm resolves javascript/node_modules/flyql from the
+          # npm registry. The e2e test files use bare 'flyql/*' specifiers, so no
+          # source rewrites are needed — they naturally pick up whichever flyql is
+          # installed at javascript/node_modules/flyql.
+          node -e '
+            const fs = require("fs");
+            const path = "javascript/package.json";
+            const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+            pkg.devDependencies.flyql = "^" + process.env.FLYQL_VERSION;
+            fs.writeFileSync(path, JSON.stringify(pkg, null, 4) + "\n");
+          '
+          cd javascript && pnpm install --no-frozen-lockfile && cd ..
 
           cd golang/e2e
           sed -i '/^replace /d' go.mod
@@ -94,7 +98,7 @@ jobs:
         if: ${{ inputs.flyql_version == '' }}
         run: |
           cd python && python3 -m venv .venv && .venv/bin/pip install -e . && .venv/bin/pip install pytest
-          cd ../javascript && npm ci
+          cd ../javascript && pnpm install --frozen-lockfile
 
       - name: Install E2E dependencies
         run: cd e2e && make install

@@ -8,8 +8,8 @@ COPY docs/package*.json ./
 RUN npm ci
 
 COPY python/snippets/ /repo/python/snippets/
-COPY javascript/snippets/ /repo/javascript/snippets/
-COPY javascript/src/ /repo/javascript/src/
+COPY javascript/packages/flyql/snippets/ /repo/javascript/packages/flyql/snippets/
+COPY javascript/packages/flyql/src/ /repo/javascript/packages/flyql/src/
 COPY golang/snippets/ /repo/golang/snippets/
 COPY docs/ .
 

@@ -8,15 +8,43 @@ importers:
 
   .:
     devDependencies:
+      '@vue/compiler-sfc':
+        specifier: ^3.5.0
+        version: 3.5.32
+      flyql:
+        specifier: workspace:*
+        version: link:packages/flyql
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4
+
+  packages/flyql:
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^3.2.4
+        version: 3.2.4(vitest@3.2.4)
+      eslint:
+        specifier: ^8.0.0
+        version: 8.57.1
+      prettier:
+        specifier: ^3.0.0
+        version: 3.8.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4
+
+  packages/flyql-vue:
+    dependencies:
+      flyql:
+        specifier: workspace:^
+        version: link:../flyql
+    devDependencies:
       '@vitest/coverage-v8':
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4)
       '@vue/compiler-sfc':
         specifier: ^3.5.0
         version: 3.5.32
-      eslint:
-        specifier: ^8.0.0
-        version: 8.57.1
       prettier:
         specifier: ^3.0.0
         version: 3.8.2

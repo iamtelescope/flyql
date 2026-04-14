@@ -43,7 +43,7 @@
       "name": "complex_nested",
       "input": "status='200' and ((message='ok' and count>0) or (message='error' and count=0))",
       "expected_result": "success",
-      "expected_sql": "(\"status\" = '200' AND ((\"message\" = 'ok' AND \"count\" > 0) OR (\"message\" = 'error' AND \"count\" = '0')))"
+      "expected_sql": "(\"status\" = '200' AND ((\"message\" = 'ok' AND \"count\" > 0) OR (\"message\" = 'error' AND \"count\" = 0)))"
     }
   ]
 }

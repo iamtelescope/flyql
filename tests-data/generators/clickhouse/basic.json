@@ -31,13 +31,13 @@
       "name": "int_equals",
       "input": "count=42",
       "expected_result": "success",
-      "expected_sql": "count = '42'"
+      "expected_sql": "count = 42"
     },
     {
       "name": "int_not_equals",
       "input": "count!=42",
       "expected_result": "success",
-      "expected_sql": "count != '42'"
+      "expected_sql": "count != 42"
     },
     {
       "name": "int_greater_than",
@@ -67,7 +67,7 @@
       "name": "float_equals",
       "input": "price=19.99",
       "expected_result": "success",
-      "expected_sql": "price = '19.99'"
+      "expected_sql": "price = 19.99"
     },
     {
       "name": "float_less_than",
@@ -98,6 +98,12 @@
       "input": "enum_column='value1'",
       "expected_result": "success",
       "expected_sql": "enum_column = 'value1'"
+    },
+    {
+      "name": "int_equals_and_greater",
+      "input": "status = 1 and status > 2",
+      "expected_result": "success",
+      "expected_sql": "(status = 1 AND status > 2)"
     }
   ]
 }

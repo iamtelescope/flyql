@@ -36,7 +36,7 @@ Diese Abfrage funktioniert identisch, egal ob dein Backend ClickHouse, PostgreSQ
     status: '`status` ist 400 oder größer',
     level: 'Feld `level` ist gleich `"error"`',
     message: '`message` entspricht dem Regex-Muster',
-    boolean: 'boolesche Logik mit Priorität',
+    boolean: 'boolesche Logik, Auswertung von links nach rechts',
     grouping: 'explizite Gruppierung',
   }}
 />
@@ -53,6 +53,6 @@ Diese Abfrage funktioniert identisch, egal ob dein Backend ClickHouse, PostgreSQ
 
 | Datenbank | Go | Python | JavaScript |
 |-----------|----|--------|------------|
-| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/clickhouse_light.svg" iconDark="/icons/clickhouse_dark.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
 | <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Yes | Yes | Yes |
 | <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Yes | Yes | Yes |

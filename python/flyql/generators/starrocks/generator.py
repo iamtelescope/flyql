@@ -904,7 +904,7 @@ def expression_to_sql_where(
                     bool_literal = "true" if expression.value else "false"
                     text = f"{col_ref} {expression.operator} {bool_literal}"
                 else:
-                    value = escape_param(str(expression.value))
+                    value = escape_param(expression.value)
                     text = f"{col_ref} {expression.operator} {value}"
             else:
                 value = escape_param(expression.value)

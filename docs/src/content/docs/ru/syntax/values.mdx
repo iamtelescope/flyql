@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 Экранирование кавычек обратным слешем:
 
-```
-user = 'John's account'
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+Одинарные и двойные кавычки взаимозаменяемы — выбирайте те, что позволяют обойтись без экранирования. Если значение содержит апостроф, используйте двойные кавычки; если оно содержит двойную кавычку — одинарные.
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 Escape de aspas com barra invertida:
 
-```
-user = 'John
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+As aspas simples e duplas são intercambiáveis, então você pode escolher o delimitador que evita o escape. Use aspas duplas quando o valor contém apóstrofos e aspas simples quando contém aspas duplas:
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

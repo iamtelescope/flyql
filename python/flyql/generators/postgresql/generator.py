@@ -315,7 +315,7 @@ def expression_to_sql_simple(
                 bool_literal = "TRUE" if expression.value else "FALSE"
                 return f"{identifier} {expression.operator} {bool_literal}"
             else:
-                value = escape_param(str(expression.value))
+                value = escape_param(expression.value)
                 return f"{identifier} {expression.operator} {value}"
         else:
             value = escape_param(expression.value)

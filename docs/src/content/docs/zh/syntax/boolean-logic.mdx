@@ -1,6 +1,6 @@
 ---
 title: 布尔逻辑
-description: FlyQL 中的布尔操作符、优先级与括号分组
+description: FlyQL 中的布尔操作符、标准优先级（NOT > AND > OR）与括号分组
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
@@ -14,7 +14,7 @@ FlyQL 使用三个布尔操作符组合条件：
 |--------|------|------|
 | <FlyqlToken type="operator">and</FlyqlToken> | 两个条件都必须为真 | <FlyqlCode code={`status = 200 and active`} inline /> |
 | <FlyqlToken type="operator">or</FlyqlToken> | 任意一个条件为真即可 | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
-| <FlyqlToken type="operator">not</FlyqlToken> | 取反一个表达式 | <FlyqlCode code={`not archived`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | 对紧随其后的表达式或分组取反 | <FlyqlCode code={`not archived`} inline /> |
 
 ### 与取反组合
 
@@ -25,7 +25,15 @@ FlyQL 使用三个布尔操作符组合条件：
 
 ## 操作符优先级
 
-<FlyqlToken type="operator">and</FlyqlToken> 的优先级高于 <FlyqlToken type="operator">or</FlyqlToken>。例如：
+FlyQL 遵循**标准操作符优先级**——与 SQL、Python、JavaScript、Go 以及每一种主流查询语言使用相同的规则：
+
+| 优先级 | 操作符 | 结合方式 |
+|-------:|--------|----------|
+| 1（最紧） | <FlyqlToken type="operator">not</FlyqlToken> | 绑定到其直接操作数——紧随其后的表达式或括号分组 |
+| 2 | <FlyqlToken type="operator">and</FlyqlToken> | 比 <FlyqlToken type="operator">or</FlyqlToken> 结合得更紧 |
+| 3（最松） | <FlyqlToken type="operator">or</FlyqlToken> | 结合最松——用于组合整条 AND 链 |
+
+具体来说：
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
@@ -33,21 +41,25 @@ FlyQL 使用三个布尔操作符组合条件：
 
 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
-如果要覆盖默认优先级，请显式使用括号。
+因为 <FlyqlToken type="operator">and</FlyqlToken> 比 <FlyqlToken type="operator">or</FlyqlToken> 结合得更紧。同级操作符按**左结合**处理，因此 <FlyqlCode code={`a = 1 and b = 2 and c = 3`} inline /> 会被解析为 <FlyqlCode code={`(a = 1 and b = 2) and c = 3`} inline />。
+
+<FlyqlToken type="operator">not</FlyqlToken> 结合得最紧，只作用于紧随其后的表达式或分组——绝不会作用于它前面的整条表达式。
 
 ## 括号分组
 
-括号可以控制表达式的计算顺序：
+使用括号可以覆盖默认优先级，当你希望 <FlyqlToken type="operator">or</FlyqlToken> 先于 <FlyqlToken type="operator">and</FlyqlToken> 求值时：
 
 <FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
-如果不加括号，<FlyqlToken type="operator">and</FlyqlToken> 会先绑定：
+如果不加括号，相同的源代码
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-等价于：
+会被解析为
 
 <FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+
+这是一个完全不同的查询。当你希望 <FlyqlToken type="operator">or</FlyqlToken> 占主导时，请显式使用括号。
 
 ### 嵌套分组
 

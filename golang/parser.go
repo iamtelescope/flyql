@@ -465,6 +465,33 @@ func maxInt(a, b int) int {
 	return b
 }
 
+var boolOpPrecedence = map[string]int{"and": 2, "or": 1}
+
+func precedence(op string) int {
+	return boolOpPrecedence[op]
+}
+
+// foldWithPrecedence folds `atom` into `current` under operator `op`
+// respecting AND > OR precedence. One-level descent is sufficient
+// because flyql has exactly two binary precedence levels.
+func (p *Parser) foldWithPrecedence(current *Node, op string, atom *Node) *Node {
+	if precedence(op) <= precedence(current.BoolOperator) {
+		bopR := p.popBoolOpRange()
+		n := NewBranchNode(op, current, atom)
+		n.Range = Range{Start: current.Range.Start, End: atom.Range.End}
+		n.BoolOperatorRange = bopR
+		return n
+	}
+	// Incoming strictly higher precedence — descend one level
+	bopR := p.popBoolOpRange()
+	n := NewBranchNode(op, current.Right, atom)
+	n.Range = Range{Start: current.Right.Range.Start, End: atom.Range.End}
+	n.BoolOperatorRange = bopR
+	current.Right = n
+	current.Range = Range{Start: current.Range.Start, End: atom.Range.End}
+	return current
+}
+
 func (p *Parser) extendTreeWithExpression(expression *Expression) {
 	negated := p.consumePendingNegation()
 	exprRange := Range{}
@@ -472,13 +499,33 @@ func (p *Parser) extendTreeWithExpression(expression *Expression) {
 		exprRange = expression.Range
 	}
 	if p.currentNode != nil && p.currentNode.Left == nil {
-		node := NewNode("", expression, nil, nil, negated)
-		node.Range = exprRange
-		p.currentNode.Left = node
-		p.currentNode.BoolOperator = p.boolOperator
-		p.currentNode.Range = Range{
-			Start: minInt(p.currentNode.Range.Start, exprRange.Start),
-			End:   maxInt(p.currentNode.Range.End, exprRange.End),
+		if p.currentNode.Right != nil {
+			// Grouped-prefix wrapper: Right holds a merged group sub-tree
+			// from extendTreeFromStack's if-branch. Preserve source order
+			// by promoting the group to Left and placing the new leaf in
+			// Right.
+			newLeaf := NewNode("", expression, nil, nil, negated)
+			newLeaf.Range = exprRange
+			p.currentNode.Left = p.currentNode.Right
+			p.currentNode.Right = newLeaf
+			p.currentNode.BoolOperator = p.boolOperator
+			bopR := p.popBoolOpRange()
+			if bopR != nil {
+				p.currentNode.BoolOperatorRange = bopR
+			}
+			p.currentNode.Range = Range{
+				Start: p.currentNode.Range.Start,
+				End:   maxInt(p.currentNode.Range.End, exprRange.End),
+			}
+		} else {
+			node := NewNode("", expression, nil, nil, negated)
+			node.Range = exprRange
+			p.currentNode.Left = node
+			p.currentNode.BoolOperator = p.boolOperator
+			p.currentNode.Range = Range{
+				Start: minInt(p.currentNode.Range.Start, exprRange.Start),
+				End:   maxInt(p.currentNode.Range.End, exprRange.End),
+			}
 		}
 	} else if p.currentNode != nil && p.currentNode.Right == nil {
 		node := NewNode("", expression, nil, nil, negated)
@@ -496,11 +543,7 @@ func (p *Parser) extendTreeWithExpression(expression *Expression) {
 	} else {
 		right := NewNode("", expression, nil, nil, negated)
 		right.Range = exprRange
-		bopR := p.popBoolOpRange()
-		node := NewBranchNode(p.boolOperator, p.currentNode, right)
-		node.Range = Range{Start: p.currentNode.Range.Start, End: exprRange.End}
-		node.BoolOperatorRange = bopR
-		p.currentNode = node
+		p.currentNode = p.foldWithPrecedence(p.currentNode, p.boolOperator, right)
 	}
 }
 
@@ -517,6 +560,25 @@ func (p *Parser) applyNegationToTree(node *Node, negated bool) {
 	} else {
 		node.Negated = negated
 	}
+}
+
+// unwrapTrivialLeafWrapper returns the inner leaf if `node` is a trivial
+// single-leaf wrapper (a non-negated binary-op node with a leaf in Left
+// and nothing in Right). Used at group-merge sites so a sub-tree produced
+// by a single-leaf group like `(a=1)` lands as a leaf in its parent,
+// not as a malformed `AND{Left=leaf, Right=nil}` child node.
+func (p *Parser) unwrapTrivialLeafWrapper(node *Node) *Node {
+	if node != nil &&
+		!node.Negated &&
+		node.Expression == nil &&
+		node.Left != nil &&
+		node.Left.Expression != nil &&
+		node.Left.Left == nil &&
+		node.Left.Right == nil &&
+		node.Right == nil {
+		return node.Left
+	}
+	return node
 }
 
 func (p *Parser) extendTreeFromStack(boolOperator string) {
@@ -542,6 +604,7 @@ func (p *Parser) extendTreeFromStack(boolOperator string) {
 	if node.Right == nil {
 		if p.currentNode != nil {
 			p.applyNegationToTree(p.currentNode, negated)
+			p.currentNode = p.unwrapTrivialLeafWrapper(p.currentNode)
 		}
 		node.Right = p.currentNode
 		if boolOperator != "" {
@@ -560,21 +623,33 @@ func (p *Parser) extendTreeFromStack(boolOperator string) {
 	} else {
 		if p.currentNode != nil {
 			p.applyNegationToTree(p.currentNode, negated)
+			p.currentNode = p.unwrapTrivialLeafWrapper(p.currentNode)
 		}
-		var bopR *Range
-		if boolOperator != "" {
-			bopR = p.popBoolOpRange()
+		// Edge case: `node` is a grouped-prefix wrapper from a prior
+		// if-branch merge — shape `{Left=nil, Right=<sub-tree>}`. Discard
+		// the wrapper entirely and build the new root directly, preserving
+		// the OUTER group's `(` position from node.Range.Start rather
+		// than popping groupStart (which tracks only the INNER group).
+		if node.Left == nil && node.Right != nil {
+			var bopR *Range
+			if boolOperator != "" {
+				bopR = p.popBoolOpRange()
+			}
+			rightEnd := p.currentNode.Range.End
+			if p.char != nil {
+				rightEnd = p.char.pos + 1
+			}
+			newNode := NewBranchNode(boolOperator, node.Right, p.currentNode)
+			newNode.Range = Range{Start: node.Range.Start, End: rightEnd}
+			newNode.BoolOperatorRange = bopR
+			p.currentNode = newNode
+		} else {
+			newNode := p.foldWithPrecedence(node, boolOperator, p.currentNode)
+			if p.char != nil {
+				newNode.Range = Range{Start: newNode.Range.Start, End: p.char.pos + 1}
+			}
+			p.currentNode = newNode
 		}
-		leftStart := node.Range.Start
-		rightEnd := p.currentNode.Range.End
-		if groupStart != nil && p.char != nil {
-			leftStart = *groupStart
-			rightEnd = p.char.pos + 1
-		}
-		newNode := NewBranchNode(boolOperator, node, p.currentNode)
-		newNode.Range = Range{Start: leftStart, End: rightEnd}
-		newNode.BoolOperatorRange = bopR
-		p.currentNode = newNode
 	}
 }
 

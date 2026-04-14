@@ -1225,8 +1225,7 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 			}
 			return fmt.Sprintf("%s %s %s", identifier, expr.Operator, boolLiteral), nil
 		}
-		valueStr := fmt.Sprintf("%v", expr.Value)
-		escapedValue, err := EscapeParam(valueStr)
+		escapedValue, err := EscapeParam(expr.Value)
 		if err != nil {
 			return "", err
 		}

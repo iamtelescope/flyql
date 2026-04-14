@@ -1,15 +1,20 @@
 ---
 interface Props {
   icon: string
+  iconDark?: string
   label: string
   variant?: 'default' | 'go' | 'db'
 }
 
-const { icon, label, variant = 'default' } = Astro.props
+const { icon, iconDark, label, variant = 'default' } = Astro.props
+
+const iconStyle = iconDark
+  ? `--tech-icon: url('${icon}'); --tech-icon-dark: url('${iconDark}');`
+  : `--tech-icon: url('${icon}'); --tech-icon-dark: url('${icon}');`
 ---
 
 <span class={`tech-label tech-label--${variant}`}>
-  <img src={icon} alt="" aria-hidden="true" loading="lazy" />
+  <span class="tech-label__icon" aria-hidden="true" style={iconStyle}></span>
   <span>{label}</span>
 </span>
 
@@ -21,16 +26,22 @@ const { icon, label, variant = 'default' } = Astro.props
     white-space: nowrap;
   }
 
-  .tech-label img {
+  .tech-label__icon {
     width: 1rem;
     height: 1rem;
-    object-fit: contain;
     flex: none;
+    background-image: var(--tech-icon);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
   }
 
-  .tech-label--go img {
+  .tech-label--go .tech-label__icon {
     width: 1.2rem;
     height: 1.2rem;
   }
 
+  :root[data-theme='dark'] .tech-label__icon {
+    background-image: var(--tech-icon-dark);
+  }
 </style>

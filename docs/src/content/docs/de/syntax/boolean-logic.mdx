@@ -1,6 +1,6 @@
 ---
 title: Boolesche Logik
-description: Boolesche Operatoren, Priorität und Klammer-Gruppierung in FlyQL
+description: Boolesche Operatoren, Standard-Priorität (NOT > AND > OR) und Klammer-Gruppierung in FlyQL
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
@@ -14,7 +14,7 @@ FlyQL verwendet drei boolesche Operatoren, um Bedingungen zu kombinieren:
 |----------|-----------|----------|
 | <FlyqlToken type="operator">and</FlyqlToken> | Beide Bedingungen müssen true sein | <FlyqlCode code={`status = 200 and active`} inline /> |
 | <FlyqlToken type="operator">or</FlyqlToken> | Eine der beiden Bedingungen kann true sein | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
-| <FlyqlToken type="operator">not</FlyqlToken> | Negiert einen Ausdruck | <FlyqlCode code={`not archived`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Negiert den unmittelbar folgenden Ausdruck oder die folgende Gruppe | <FlyqlCode code={`not archived`} inline /> |
 
 ### Kombinierte Negation
 
@@ -25,7 +25,15 @@ FlyQL verwendet drei boolesche Operatoren, um Bedingungen zu kombinieren:
 
 ## Operator-Priorität
 
-<FlyqlToken type="operator">and</FlyqlToken> bindet stärker als <FlyqlToken type="operator">or</FlyqlToken>. Das bedeutet:
+FlyQL folgt der **Standard-Operator-Priorität** — denselben Regeln wie SQL, Python, JavaScript, Go und jede gängige Abfragesprache:
+
+| Priorität | Operator | Bindung |
+|----------:|----------|---------|
+| 1 (stärkste) | <FlyqlToken type="operator">not</FlyqlToken> | An seinen unmittelbaren Operanden — den folgenden Ausdruck oder die geklammerte Gruppe |
+| 2 | <FlyqlToken type="operator">and</FlyqlToken> | Bindet stärker als <FlyqlToken type="operator">or</FlyqlToken> |
+| 3 (schwächste) | <FlyqlToken type="operator">or</FlyqlToken> | Schwächste Bindung — kombiniert ganze AND-Ketten |
+
+Konkret:
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
@@ -33,21 +41,25 @@ wird geparst als:
 
 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
-Verwende Klammern, um die Priorität explizit zu überschreiben.
+da <FlyqlToken type="operator">and</FlyqlToken> stärker bindet als <FlyqlToken type="operator">or</FlyqlToken>. Ketten mit gleicher Priorität sind linksassoziativ — <FlyqlCode code={`a = 1 and b = 2 and c = 3`} inline /> wird als <FlyqlCode code={`(a = 1 and b = 2) and c = 3`} inline /> geparst.
+
+<FlyqlToken type="operator">not</FlyqlToken> bindet am stärksten und wirkt nur auf den unmittelbar folgenden Ausdruck oder die folgende Gruppe — niemals auf den gesamten vorangehenden Ausdruck.
 
 ## Gruppierung mit Klammern
 
-Verwende Klammern, um die Auswertungsreihenfolge zu steuern:
+Verwende Klammern, um die Standard-Priorität zu überschreiben, wenn <FlyqlToken type="operator">or</FlyqlToken> vor <FlyqlToken type="operator">and</FlyqlToken> ausgewertet werden soll:
 
 <FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
-Ohne Klammern würde <FlyqlToken type="operator">and</FlyqlToken> stärker binden:
+Ohne die Klammern wird derselbe Quelltext
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-ist äquivalent zu:
+geparst als
 
 <FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+
+was eine andere Abfrage ergibt. Wenn <FlyqlToken type="operator">or</FlyqlToken> dominieren soll, setze die Klammern explizit.
 
 ### Verschachtelte Gruppierung
 

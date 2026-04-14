@@ -273,14 +273,11 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
                 const boolLiteral = expr.value ? 'true' : 'false'
                 return `${colRef} ${expr.operator} ${boolLiteral}`
             }
-            const escapedValue = escapeParam(String(expr.value))
+            const escapedValue = escapeParam(expr.value)
             return `${colRef} ${expr.operator} ${escapedValue}`
         }
         default: {
-            if (typeof expr.value === 'number' || typeof expr.value === 'bigint') {
-                return `${colRef} ${expr.operator} ${expr.value}`
-            }
-            const value = escapeParam(String(expr.value))
+            const value = escapeParam(expr.value)
             return `${colRef} ${expr.operator} ${value}`
         }
     }

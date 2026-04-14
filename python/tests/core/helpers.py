@@ -121,11 +121,28 @@ def ast_to_dict(node) -> Optional[Dict[str, Any]]:
 
 
 def normalize_ast_for_comparison(node_dict) -> Optional[Dict[str, Any]]:
-    """Normalize AST structure - handle parser's wrapping behavior"""
+    """Normalize AST structure to cope with two parser wrapper shapes.
+
+    Two live cases, both required for root shapes the parser still emits
+    after the standard-precedence rewrite:
+
+    - Case 1 — trivial single-leaf wrapper: `{bool_op=any, expr=None,
+      left=<leaf>, right=None}`. Emitted for queries with a single
+      key=value expression (e.g. `a=1`). Collapsed to the leaf.
+    - Case 2 — grouped-prefix wrapper: `{bool_op=any, expr=None, left=None,
+      right=<sub-tree>}`. Emitted for root-only grouped expressions with
+      no continuation (e.g. `(a=1 or b=2)`). Collapsed to the sub-tree.
+
+    Case 3 that previously lived here was dead code — its precondition
+    was a strict subset of Case 2's and therefore unreachable.
+
+    The recursive default below only structurally recurses into children
+    — it does not flatten operators, reorder, or merge ranges — so it is
+    a no-op on any canonical precedence-correct tree."""
     if node_dict is None:
         return None
 
-    # Case 1: Simple expression in left child (flatten to direct expression)
+    # Case 1: trivial single-leaf wrapper
     if (
         node_dict["expression"] is None
         and node_dict["left"] is not None
@@ -142,7 +159,7 @@ def normalize_ast_for_comparison(node_dict) -> Optional[Dict[str, Any]]:
             "right": None,
         }
 
-    # Case 2: Grouped expression in right child (unwrap the grouping)
+    # Case 2: root-only grouped-prefix wrapper
     if (
         node_dict["expression"] is None
         and node_dict["left"] is None
@@ -150,17 +167,7 @@ def normalize_ast_for_comparison(node_dict) -> Optional[Dict[str, Any]]:
     ):
         return normalize_ast_for_comparison(node_dict["right"])
 
-    # Case 3: Nested grouping in left child of right child (flatten double nesting)
-    if (
-        node_dict["expression"] is None
-        and node_dict["left"] is None
-        and node_dict["right"] is not None
-        and node_dict["right"]["left"] is None
-        and node_dict["right"]["right"] is not None
-    ):
-        return normalize_ast_for_comparison(node_dict["right"])
-
-    # Recursively normalize children
+    # Recursively normalize children (structural recursion, no reshaping)
     result = node_dict.copy()
     if result["left"] is not None:
         result["left"] = normalize_ast_for_comparison(result["left"])

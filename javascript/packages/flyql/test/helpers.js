@@ -77,11 +77,25 @@ export function astToDict(node) {
     return result
 }
 
+// Collapse the two wrapper shapes the parser still emits after the
+// standard-precedence rewrite:
+//
+//   - Case 1 — trivial single-leaf wrapper: {bool_op=any, expr=null,
+//     left=<leaf>, right=null}. Emitted for queries with a single
+//     key=value expression (e.g. `a=1`). Collapsed to the leaf.
+//   - Case 2 — root-only grouped-prefix wrapper: {bool_op=any, expr=null,
+//     left=null, right=<sub-tree>}. Emitted for root-only grouped
+//     expressions with no continuation (e.g. `(a=1 or b=2)`). Collapsed
+//     to the sub-tree, with any pending negation pushed onto it.
+//
+// The recursive default below only structurally recurses into children;
+// it is a byte-for-byte no-op on any canonical precedence-correct tree.
 export function normalizeAstForComparison(nodeDict) {
     if (nodeDict === null) {
         return null
     }
 
+    // Case 1: trivial single-leaf wrapper
     if (
         nodeDict.expression === null &&
         nodeDict.left !== null &&
@@ -100,21 +114,8 @@ export function normalizeAstForComparison(nodeDict) {
         }
     }
 
+    // Case 2: root-only grouped-prefix wrapper
     if (nodeDict.expression === null && nodeDict.left === null && nodeDict.right !== null) {
-        const normalized = normalizeAstForComparison(nodeDict.right)
-        if (nodeDict.negated && normalized) {
-            normalized.negated = true
-        }
-        return normalized
-    }
-
-    if (
-        nodeDict.expression === null &&
-        nodeDict.left === null &&
-        nodeDict.right !== null &&
-        nodeDict.right.left === null &&
-        nodeDict.right.right !== null
-    ) {
         const normalized = normalizeAstForComparison(nodeDict.right)
         if (nodeDict.negated && normalized) {
             normalized.negated = true

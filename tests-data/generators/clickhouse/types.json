@@ -55,7 +55,7 @@
       "name": "bigint_equals",
       "input": "count=9999999999999999999",
       "expected_result": "success",
-      "expected_sql": "count = '9999999999999999999'"
+      "expected_sql": "count = 9999999999999999999"
     }
   ]
 }

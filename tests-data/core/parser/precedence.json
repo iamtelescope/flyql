@@ -1,0 +1,910 @@
+{
+  "version": "1.0",
+  "description": "Standard operator precedence (NOT > AND > OR) regression tests. Hand-authored canonical post-fix ASTs covering AC-1..AC-13 plus algorithmic edge cases from the proof sketch in the precedence tech-spec.",
+  "test_suite": "precedence",
+  "tests": [
+    {
+      "name": "ac1_and_over_or_user_repro_1",
+      "input": "status = 1 or status = 2 and status = 3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {
+            "key": "status",
+            "operator": "=",
+            "value": 1,
+            "value_type": "integer"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "status",
+              "operator": "=",
+              "value": 2,
+              "value_type": "integer"
+            },
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {
+              "key": "status",
+              "operator": "=",
+              "value": 3,
+              "value_type": "integer"
+            },
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "ac2_and_or_and_canonical",
+      "input": "a=1 and b=2 or c=3 and d=4",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "ac3_and_left_associative",
+      "input": "a=1 and b=2 and c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ac4_or_left_associative",
+      "input": "a=1 or b=2 or c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ac5_mixed_precedence_with_and_run",
+      "input": "a=1 or b=2 and c=3 and d=4 or e=5",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "and",
+              "negated": false,
+              "expression": null,
+              "left": {
+                "bool_operator": "",
+                "negated": false,
+                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+                "left": null,
+                "right": null
+              },
+              "right": {
+                "bool_operator": "",
+                "negated": false,
+                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+                "left": null,
+                "right": null
+              }
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ac6_explicit_parens_override_precedence_canonical",
+      "input": "(a=1 or b=2) and c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ac7_two_explicit_groups",
+      "input": "(a=1 or b=2) and (c=3 or d=4)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "ac8_not_scope_user_repro_2",
+      "input": "status = 1 or status = 2 and status = 3 and not (status = 2 or status = 3)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "status", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "integer"},
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "or",
+            "negated": true,
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "integer"},
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "ac9_not_over_and",
+      "input": "a=1 and not b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "ac10_not_inside_or_and_mix",
+      "input": "a=1 or not b=2 and c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": true,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "ac11_truthy_with_not",
+      "input": "active and not disabled",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "active", "operator": "truthy", "value": "", "value_type": "string"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {"key": "disabled", "operator": "truthy", "value": "", "value_type": "string"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "edge_grouped_prefix_or_then_and_descent",
+      "input": "(a=1 or b=2) or c=3 and d=4",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "edge_or_group_and_mid_and_tail",
+      "input": "a=1 or (b=2 and c=3) and d=4",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "edge_two_groups_empty_wrapper_edge_case",
+      "input": "(a=1 or b=2) or (c=3 and d=4)",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "edge_or_branch_descent_deep",
+      "input": "a=1 or b=2 and c=3 and d=4",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "edge_two_groups_empty_wrapper_then_and_tail",
+      "input": "(a=1 or b=2) or (c=3 and d=4) and e=5",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "or",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "left": null,
+              "right": null
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "edge_single_leaf_group_and_leaf",
+      "input": "(a=1) and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "edge_not_single_leaf_group_and_leaf",
+      "input": "not (a=1) and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "edge_grouped_not_leaf_and_leaf",
+      "input": "(not a=1) and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": true,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "edge_not_nested_group_with_tail",
+      "input": "not ((a=1) and b=2) or c=3",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "and",
+          "negated": true,
+          "expression": null,
+          "left": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "left": null,
+            "right": null
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    },
+    {
+      "name": "edge_or_branch_descent_four_deep",
+      "input": "a=1 or b=2 and c=3 and d=4 and e=5",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "or",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "and",
+          "negated": false,
+          "expression": null,
+          "left": {
+            "bool_operator": "and",
+            "negated": false,
+            "expression": null,
+            "left": {
+              "bool_operator": "and",
+              "negated": false,
+              "expression": null,
+              "left": {
+                "bool_operator": "",
+                "negated": false,
+                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+                "left": null,
+                "right": null
+              },
+              "right": {
+                "bool_operator": "",
+                "negated": false,
+                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+                "left": null,
+                "right": null
+              }
+            },
+            "right": {
+              "bool_operator": "",
+              "negated": false,
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "left": null,
+              "right": null
+            }
+          },
+          "right": {
+            "bool_operator": "",
+            "negated": false,
+            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+            "left": null,
+            "right": null
+          }
+        }
+      }
+    },
+    {
+      "name": "ac12_double_negation_composed",
+      "input": "not not active and b=2",
+      "expected_result": "success",
+      "expected_ast": {
+        "bool_operator": "and",
+        "negated": false,
+        "expression": null,
+        "left": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "active", "operator": "truthy", "value": "", "value_type": "string"},
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "negated": false,
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "left": null,
+          "right": null
+        }
+      }
+    }
+  ]
+}

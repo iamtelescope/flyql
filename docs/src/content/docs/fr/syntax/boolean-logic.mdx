@@ -1,6 +1,6 @@
 ---
 title: Logique booleenne
-description: Operateurs booleens, precedence et regroupement par parentheses dans FlyQL
+description: Operateurs booleens, precedence standard (NOT > AND > OR) et regroupement par parentheses dans FlyQL
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
@@ -14,7 +14,7 @@ FlyQL utilise trois operateurs booleens pour combiner les conditions :
 |-----------|---------------|---------|
 | <FlyqlToken type="operator">and</FlyqlToken> | Les deux conditions doivent etre vraies | <FlyqlCode code={`status = 200 and active`} inline /> |
 | <FlyqlToken type="operator">or</FlyqlToken> | L'une ou l'autre condition peut etre vraie | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
-| <FlyqlToken type="operator">not</FlyqlToken> | Inverse une expression | <FlyqlCode code={`not archived`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Inverse l'expression ou le groupe immediatement suivant | <FlyqlCode code={`not archived`} inline /> |
 
 ### Negation combinee
 
@@ -25,7 +25,15 @@ FlyQL utilise trois operateurs booleens pour combiner les conditions :
 
 ## Precedence des operateurs
 
-<FlyqlToken type="operator">and</FlyqlToken> a une priorite plus elevee que <FlyqlToken type="operator">or</FlyqlToken>. Cela signifie que :
+FlyQL suit la **precedence standard des operateurs** — les memes regles que SQL, Python, JavaScript, Go et tous les langages de requete courants :
+
+| Precedence | Operateur | Liaison |
+|-----------:|-----------|---------|
+| 1 (plus forte) | <FlyqlToken type="operator">not</FlyqlToken> | A son operande immediat — l'expression ou le groupe entre parentheses qui suit |
+| 2 | <FlyqlToken type="operator">and</FlyqlToken> | Plus forte que <FlyqlToken type="operator">or</FlyqlToken> |
+| 3 (plus faible) | <FlyqlToken type="operator">or</FlyqlToken> | La plus faible — combine des chaines entieres de AND |
+
+Concretement :
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
@@ -33,21 +41,25 @@ est interprete comme :
 
 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
-Pour modifier la precedence, utilisez explicitement des parentheses.
+parce que <FlyqlToken type="operator">and</FlyqlToken> se lie plus etroitement que <FlyqlToken type="operator">or</FlyqlToken>. Les chaines d'operateurs de meme precedence sont associatives a gauche, donc <FlyqlCode code={`a = 1 and b = 2 and c = 3`} inline /> est interprete comme <FlyqlCode code={`(a = 1 and b = 2) and c = 3`} inline />.
+
+<FlyqlToken type="operator">not</FlyqlToken> se lie le plus etroitement et ne s'applique qu'a l'expression ou au groupe qui le suit — jamais a l'expression qui le precede.
 
 ## Regroupement par parentheses
 
-Utilisez des parentheses pour controler l'ordre d'evaluation :
+Utilisez des parentheses pour surcharger la precedence par defaut lorsque vous voulez que <FlyqlToken type="operator">or</FlyqlToken> soit evalue avant <FlyqlToken type="operator">and</FlyqlToken> :
 
 <FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
-Sans parentheses, <FlyqlToken type="operator">and</FlyqlToken> aurait une priorite plus elevee :
+Sans les parentheses, le meme texte source
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-est equivalent a :
+est interprete comme
 
 <FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+
+ce qui constitue une requete differente. Lorsque vous voulez que <FlyqlToken type="operator">or</FlyqlToken> domine, utilisez explicitement des parentheses.
 
 ### Regroupement imbrique
 

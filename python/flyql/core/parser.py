@@ -36,6 +36,14 @@ from flyql.core.constants import ILIKE_KEYWORD
 from flyql.core.constants import Operator
 from flyql.core.key import parse_key, Key
 
+_BOOL_OP_PRECEDENCE = {"and": 2, "or": 1}
+
+
+def _precedence(op: str) -> int:
+    """Precedence of a boolean operator. Unknown/empty -> 0 so wrappers
+    with unset `bool_operator` fall into the same-or-lower wrap path."""
+    return _BOOL_OP_PRECEDENCE.get(op, 0)
+
 
 class ParserError(FlyqlError):
     def __init__(
@@ -456,6 +464,35 @@ class Parser:
             return Range(s, e)
         return None
 
+    def _fold_with_precedence(self, current: Node, op: str, atom: Node) -> Node:
+        """Fold `atom` into `current` with operator `op`, respecting
+        AND > OR precedence. When `op` has strictly higher precedence than
+        `current.bool_operator`, descend one level and wrap `current.right`;
+        otherwise wrap the whole tree left-heavy. One-level descent is
+        sufficient because flyql has exactly two binary precedence levels."""
+        if _precedence(op) <= _precedence(current.bool_operator):
+            bool_op_r = self._pop_bool_op_range()
+            return self.new_node(
+                bool_operator=op,
+                expression=None,
+                left=current,
+                right=atom,
+                range=Range(current.range.start, atom.range.end),
+                bool_operator_range=bool_op_r,
+            )
+        assert current.right is not None
+        bool_op_r = self._pop_bool_op_range()
+        current.right = self.new_node(
+            bool_operator=op,
+            expression=None,
+            left=current.right,
+            right=atom,
+            range=Range(current.right.range.start, atom.range.end),
+            bool_operator_range=bool_op_r,
+        )
+        current.range = Range(current.range.start, atom.range.end)
+        return current
+
     def extend_tree(self, expression: Union[Expression, None] = None) -> None:
         """Extend the AST with an expression. If expression is None, creates one from current state."""
         if expression is None:
@@ -463,21 +500,45 @@ class Parser:
         negated = self.consume_pending_negation()
 
         if self.current_node and self.current_node.left is None:
-            node = self.new_node(
-                bool_operator="",
-                expression=expression,
-                left=None,
-                right=None,
-                range=expression.range,
-                negated=negated,
-            )
-            self.current_node.set_left(node)
-            self.current_node.set_bool_operator(self.bool_operator)
-            # Expand the parent wrapper range to cover the new leaf.
-            self.current_node.range = Range(
-                min(self.current_node.range.start, expression.range.start),
-                max(self.current_node.range.end, expression.range.end),
-            )
+            if self.current_node.right is not None:
+                # Grouped-prefix wrapper: `right` holds a merged group
+                # sub-tree from extend_tree_from_stack's if-branch. Preserve
+                # source order by promoting the group to left and placing
+                # the new leaf in right.
+                new_leaf = self.new_node(
+                    bool_operator="",
+                    expression=expression,
+                    left=None,
+                    right=None,
+                    range=expression.range,
+                    negated=negated,
+                )
+                self.current_node.set_left(self.current_node.right)
+                self.current_node.set_right(new_leaf)
+                self.current_node.set_bool_operator(self.bool_operator)
+                bool_op_r = self._pop_bool_op_range()
+                if bool_op_r is not None:
+                    self.current_node.bool_operator_range = bool_op_r
+                self.current_node.range = Range(
+                    self.current_node.range.start,
+                    max(self.current_node.range.end, expression.range.end),
+                )
+            else:
+                node = self.new_node(
+                    bool_operator="",
+                    expression=expression,
+                    left=None,
+                    right=None,
+                    range=expression.range,
+                    negated=negated,
+                )
+                self.current_node.set_left(node)
+                self.current_node.set_bool_operator(self.bool_operator)
+                # Expand the parent wrapper range to cover the new leaf.
+                self.current_node.range = Range(
+                    min(self.current_node.range.start, expression.range.start),
+                    max(self.current_node.range.end, expression.range.end),
+                )
         elif self.current_node and self.current_node.right is None:
             node = self.new_node(
                 bool_operator="",
@@ -505,17 +566,10 @@ class Parser:
                 range=expression.range,
                 negated=negated,
             )
-            bool_op_r = self._pop_bool_op_range()
             assert self.current_node is not None
-            node = self.new_node(
-                bool_operator=self.bool_operator,
-                expression=None,
-                left=self.current_node,
-                right=right,
-                range=Range(self.current_node.range.start, expression.range.end),
-                bool_operator_range=bool_op_r,
+            self.set_current_node(
+                self._fold_with_precedence(self.current_node, self.bool_operator, right)
             )
-            self.set_current_node(node)
 
     def extend_tree_from_stack(self, bool_operator: str) -> None:
         node = self.nodes_stack.pop()
@@ -525,6 +579,7 @@ class Parser:
         if node.right is None:
             if self.current_node:
                 self._apply_negation_to_tree(self.current_node, negated)
+                self.current_node = self._unwrap_trivial_leaf_wrapper(self.current_node)
             node.right = self.current_node
             if bool_operator:
                 node.set_bool_operator(bool_operator)
@@ -543,22 +598,37 @@ class Parser:
         else:
             if self.current_node:
                 self._apply_negation_to_tree(self.current_node, negated)
-            bool_op_r = self._pop_bool_op_range() if bool_operator else None
+                self.current_node = self._unwrap_trivial_leaf_wrapper(self.current_node)
             assert self.current_node is not None
-            left_start = node.range.start
-            right_end = self.current_node.range.end
-            if group_start is not None and self.char is not None:
-                left_start = group_start
-                right_end = self.char.pos + 1
-            new_node = self.new_node(
-                bool_operator=bool_operator,
-                expression=None,
-                left=node,
-                right=self.current_node,
-                range=Range(left_start, right_end),
-                bool_operator_range=bool_op_r,
-            )
-            self.set_current_node(new_node)
+            # Edge case: `node` is a grouped-prefix wrapper from a prior
+            # if-branch merge — shape `{left=None, right=<sub-tree>}`. Its
+            # `bool_operator` may be the default ("and") or anything the
+            # prior merge set; the diagnostic shape is `left is None`.
+            # Discard the wrapper entirely and build the new root directly,
+            # preserving the OUTER group's `(` position from
+            # `node.range.start` rather than popping `group_start` (which
+            # tracks only the INNER group being closed now).
+            if node.left is None and node.right is not None:
+                bool_op_r = self._pop_bool_op_range() if bool_operator else None
+                right_end = self.current_node.range.end
+                if self.char is not None:
+                    right_end = self.char.pos + 1
+                new_root = self.new_node(
+                    bool_operator=bool_operator,
+                    expression=None,
+                    left=node.right,
+                    right=self.current_node,
+                    range=Range(node.range.start, right_end),
+                    bool_operator_range=bool_op_r,
+                )
+                self.set_current_node(new_root)
+            else:
+                new_root = self._fold_with_precedence(
+                    node, bool_operator, self.current_node
+                )
+                if self.char is not None:
+                    new_root.range = Range(new_root.range.start, self.char.pos + 1)
+                self.set_current_node(new_root)
 
     def _apply_negation_to_tree(self, node: Node, negated: bool) -> None:
         if not negated:
@@ -573,6 +643,27 @@ class Parser:
             node.left.negated = negated
         else:
             node.negated = negated
+
+    def _unwrap_trivial_leaf_wrapper(self, node: Optional[Node]) -> Optional[Node]:
+        """If `node` is a trivial single-leaf wrapper — a non-negated
+        binary-op node carrying a leaf in `left` and nothing in `right` —
+        return the leaf directly. Otherwise return `node` unchanged.
+
+        Used at group-merge sites so a sub-tree produced by a
+        single-leaf group like `(a=1)` lands as a leaf in its parent,
+        not as a malformed `AND{left=leaf, right=None}` child node."""
+        if (
+            node is not None
+            and not node.negated
+            and node.expression is None
+            and node.left is not None
+            and node.left.expression is not None
+            and node.left.left is None
+            and node.left.right is None
+            and node.right is None
+        ):
+            return node.left
+        return node
 
     def in_state_initial(self) -> None:
         if not self.char:

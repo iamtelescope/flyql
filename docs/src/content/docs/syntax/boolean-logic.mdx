@@ -1,6 +1,6 @@
 ---
 title: Boolean Logic
-description: Boolean operators, precedence, and parenthesized grouping in FlyQL
+description: Boolean operators, standard precedence (NOT > AND > OR), and parenthesized grouping in FlyQL
 ---
 
 import FlyqlCode from '../../../components/FlyqlCode.astro'
@@ -14,7 +14,7 @@ FlyQL uses three boolean operators to combine conditions:
 |----------|---------|---------|
 | <FlyqlToken type="operator">and</FlyqlToken> | Both conditions must be true | <FlyqlCode code={`status = 200 and active`} inline /> |
 | <FlyqlToken type="operator">or</FlyqlToken> | Either condition can be true | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
-| <FlyqlToken type="operator">not</FlyqlToken> | Negates an expression | <FlyqlCode code={`not archived`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Negates the immediately following expression or group | <FlyqlCode code={`not archived`} inline /> |
 
 ### Combined Negation
 
@@ -25,7 +25,15 @@ FlyQL uses three boolean operators to combine conditions:
 
 ## Operator Precedence
 
-<FlyqlToken type="operator">and</FlyqlToken> binds tighter than <FlyqlToken type="operator">or</FlyqlToken>. This means:
+FlyQL follows **standard operator precedence** — the same rules as SQL, Python, JavaScript, Go, and every mainstream query language:
+
+| Precedence | Operator | Binds |
+|-----------:|----------|-------|
+| 1 (tightest) | <FlyqlToken type="operator">not</FlyqlToken> | To its immediate operand — the following expression or parenthesized group |
+| 2 | <FlyqlToken type="operator">and</FlyqlToken> | Tighter than <FlyqlToken type="operator">or</FlyqlToken> |
+| 3 (loosest) | <FlyqlToken type="operator">or</FlyqlToken> | Loosest — combines whole AND-chains |
+
+Concretely:
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
@@ -33,21 +41,25 @@ is parsed as:
 
 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
-To override precedence, use parentheses explicitly.
+because <FlyqlToken type="operator">and</FlyqlToken> binds tighter than <FlyqlToken type="operator">or</FlyqlToken>. Same-precedence chains are left-associative, so <FlyqlCode code={`a = 1 and b = 2 and c = 3`} inline /> parses as <FlyqlCode code={`(a = 1 and b = 2) and c = 3`} inline />.
+
+<FlyqlToken type="operator">not</FlyqlToken> binds tightest and applies only to the expression or group that follows it — never the entire preceding expression.
 
 ## Parenthesized Grouping
 
-Use parentheses to control evaluation order:
+Use parentheses to override the default precedence when you want <FlyqlToken type="operator">or</FlyqlToken> evaluated before <FlyqlToken type="operator">and</FlyqlToken>:
 
 <FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
-Without parentheses, <FlyqlToken type="operator">and</FlyqlToken> would bind tighter:
+Without the parentheses, the same source
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-is equivalent to:
+parses as
 
 <FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+
+which is a different query. When you want <FlyqlToken type="operator">or</FlyqlToken> to dominate, reach for parentheses explicitly.
 
 ### Nested Grouping
 

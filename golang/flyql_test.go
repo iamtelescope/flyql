@@ -126,11 +126,26 @@ func nodeToExpectedAST(node *Node) *expectedAST {
 	return result
 }
 
+// normalizeAST collapses the two wrapper shapes the parser still emits
+// after the standard-precedence rewrite:
+//
+//   - Case 1 — trivial single-leaf wrapper: `{BoolOp=any, Expr=nil,
+//     Left=<leaf>, Right=nil}`. Emitted for queries with a single
+//     key=value expression (e.g. `a=1`). Collapsed to the leaf.
+//   - Case 2 — root-only grouped-prefix wrapper: `{BoolOp=any, Expr=nil,
+//     Left=nil, Right=<sub-tree>}`. Emitted for root-only grouped
+//     expressions with no continuation (e.g. `(a=1 or b=2)`). Collapsed
+//     to the sub-tree.
+//
+// The recursive default below is a structural copy only — no operator
+// flattening, no child reordering — so it is a no-op on canonical
+// precedence-correct trees.
 func normalizeAST(node *expectedAST) *expectedAST {
 	if node == nil {
 		return nil
 	}
 
+	// Case 1: trivial single-leaf wrapper
 	if node.Expression == nil &&
 		node.Left != nil &&
 		node.Left.Expression != nil &&
@@ -146,6 +161,7 @@ func normalizeAST(node *expectedAST) *expectedAST {
 		}
 	}
 
+	// Case 2: root-only grouped-prefix wrapper
 	if node.Expression == nil &&
 		node.Left == nil &&
 		node.Right != nil {
@@ -357,6 +373,7 @@ func TestParser(t *testing.T) {
 		"parser/like.json",
 		"parser/functions.json",
 		"parser/parameters.json",
+		"parser/precedence.json",
 	}
 
 	for _, file := range files {
@@ -410,6 +427,40 @@ func TestParser(t *testing.T) {
 						compareExpectedASTs(t, gotAST, tc.ExpectedAST, "Root")
 					}
 				})
+			}
+		})
+	}
+}
+
+// TestNormalizeIdempotentOnCanonicalTrees asserts normalizeAST is a
+// no-op on the canonical raw output of the fixed parser for every case
+// in precedence.json. A failure here means either the parser produces
+// non-canonical trees or the normalize helper does more than collapse
+// the two documented wrapper shapes.
+func TestNormalizeIdempotentOnCanonicalTrees(t *testing.T) {
+	fpath := filepath.Join(getTestDataDir(), "parser", "precedence.json")
+	data, err := os.ReadFile(fpath)
+	if err != nil {
+		t.Fatalf("read precedence.json: %v", err)
+	}
+	var file parserTestFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		t.Fatalf("parse precedence.json: %v", err)
+	}
+	for _, tc := range file.Tests {
+		tc := tc
+		t.Run(tc.Name, func(t *testing.T) {
+			result, err := Parse(tc.Input)
+			if err != nil {
+				t.Fatalf("parse err: %v", err)
+			}
+			raw := nodeToExpectedAST(result.Root)
+			normalized := normalizeAST(raw)
+			rawJSON, _ := json.Marshal(raw)
+			normJSON, _ := json.Marshal(normalized)
+			if string(rawJSON) != string(normJSON) {
+				t.Errorf("normalizeAST not idempotent on %s\nraw:        %s\nnormalized: %s",
+					tc.Name, string(rawJSON), string(normJSON))
 			}
 		})
 	}

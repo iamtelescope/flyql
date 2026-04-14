@@ -78,11 +78,11 @@ O ClickHouse utiliza funções `equals()`/`notEquals()` para acesso a Map. O Pos
 
 | Dialeto | SQL Gerado | Indexação |
 |---------|--------------|----------|
-| ClickHouse | `equals(tags[0], 'first')` | Baseada em 0 |
+| ClickHouse | `equals(tags[1], 'first')` | Baseada em 1 (convertida) |
 | PostgreSQL | `"tags"[1] = 'first'` | Baseada em 1 (convertida) |
-| StarRocks | `` `tags`[0] = 'first' `` | Baseada em 0 |
+| StarRocks | `` `tags`[1] = 'first' `` | Baseada em 1 (convertida) |
 
-Os arrays do PostgreSQL são baseados em 1, pelo que o FlyQL adiciona automaticamente 1 ao índice.
+Os índices de array do FlyQL são uniformemente baseados em 0. Os três dialetos usam arrays baseados em 1 na camada SQL, pelo que os geradores adicionam 1 ao índice flyql antes da emissão. A mesma expressão FlyQL produz strings SQL diferentes por dialeto (devido às aspas de identificadores e à sintaxe de funções), mas avalia para o mesmo resultado sobre os mesmos dados subjacentes.
 
 ## Formato de Saída
 

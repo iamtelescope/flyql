@@ -55,19 +55,19 @@
       "name": "array_first_element",
       "input": "tags.0",
       "expected_result": "success",
-      "expected_sql": "`tags`[0] AS `tags.0`"
+      "expected_sql": "`tags`[1] AS `tags.0`"
     },
     {
       "name": "array_second_element",
       "input": "tags.1",
       "expected_result": "success",
-      "expected_sql": "`tags`[1] AS `tags.1`"
+      "expected_sql": "`tags`[2] AS `tags.1`"
     },
     {
       "name": "array_element_with_alias",
       "input": "tags.0 as first_tag",
       "expected_result": "success",
-      "expected_sql": "`tags`[0] AS `first_tag`"
+      "expected_sql": "`tags`[1] AS `first_tag`"
     },
     {
       "name": "struct_single_field",

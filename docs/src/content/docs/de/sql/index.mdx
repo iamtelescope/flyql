@@ -78,11 +78,11 @@ ClickHouse verwendet `equals()` / `notEquals()` für Map-Zugriffe. PostgreSQL ve
 
 | Dialekt | Generiertes SQL | Indizierung |
 |---------|------------------|-------------|
-| ClickHouse | `equals(tags[0], 'first')` | 0-basiert |
+| ClickHouse | `equals(tags[1], 'first')` | 1-basiert (wird umgerechnet) |
 | PostgreSQL | `"tags"[1] = 'first'` | 1-basiert (wird umgerechnet) |
-| StarRocks | `` `tags`[0] = 'first' `` | 0-basiert |
+| StarRocks | `` `tags`[1] = 'first' `` | 1-basiert (wird umgerechnet) |
 
-PostgreSQL-Arrays sind 1-basiert, daher addiert FlyQL automatisch 1 zum Index.
+FlyQL-Array-Indizes sind in allen Dialekten einheitlich 0-basiert. Alle drei Dialekte verwenden auf der SQL-Ebene 1-basierte Arrays, sodass die Generatoren vor dem Erzeugen 1 zum flyql-Index addieren. Derselbe FlyQL-Ausdruck erzeugt pro Dialekt unterschiedliche SQL-Strings (aufgrund von Bezeichner-Quotierung und Funktionssyntax), wird aber gegen dieselben zugrunde liegenden Daten zum gleichen Ergebnis ausgewertet.
 
 ## Ausgabeformat
 

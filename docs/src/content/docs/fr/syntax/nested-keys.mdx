@@ -57,6 +57,15 @@ Les cles imbriquees fonctionnent avec tous les operateurs :
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Accès aux éléments du tableau
+
+Pour les colonnes typées en tant que tableaux, utilisez des segments de chemin numériques indexés à partir de zéro pour accéder aux éléments :
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+L'indexation des tableaux dans FlyQL est **basée sur 0 dans tous les dialectes SQL et dans le matcher en mémoire**. Les générateurs convertissent l'index flyql vers la convention SQL native de chaque cible — les tableaux dans ClickHouse, StarRocks et PostgreSQL sont indexés à partir de 1 au niveau SQL, donc flyql `tags.0` produit `tags[1]` dans chaque dialecte (avec la mise entre guillemets des identifiants et la forme de fonction propres au dialecte). Cela signifie que la même expression flyql génère des chaînes SQL différentes selon le dialecte mais **renvoie le même résultat** pour les mêmes données sous-jacentes.
+
 ## Exemples
 
 <FlyqlCode code={`request.method = 'GET'`} />

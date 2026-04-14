@@ -171,6 +171,80 @@ def _normalize_result(r: dict) -> dict:
     }
 
 
+def _assert_dialect_parity(raw_results: list) -> list:
+    """Cross-database parity check for dialect_parity entries.
+
+    Groups by (name, language); each group must contain one entry per database.
+    Asserts that every dialect returned the expected row IDs and that the three
+    SQL strings differ (informational warning only — does not fail the run).
+    Emits one synthesized summary row per (name) and returns the list.
+    """
+    fixture_path = SCRIPT_DIR.parent / "tests-data" / "e2e" / "dialect_parity_tests.json"
+    expected_by_name: dict = {}
+    if fixture_path.exists():
+        data = json.loads(fixture_path.read_text())
+        for tc in data.get("tests", []):
+            expected_by_name[tc["name"]] = sorted(tc.get("expected_row_ids", []))
+
+    parity_entries = [r for r in raw_results if r.get("kind") == "dialect_parity"]
+    if not parity_entries:
+        return []
+
+    groups: dict = {}
+    for r in parity_entries:
+        key = (r.get("name", ""), r.get("language", ""))
+        groups.setdefault(key, []).append(r)
+
+    summary_by_name: dict = {}
+    for (name, language), entries in groups.items():
+        by_db = {e.get("database", ""): e for e in entries}
+        per_db_status = []
+        sqls = []
+        for db in ("clickhouse", "starrocks", "postgresql"):
+            entry = by_db.get(db)
+            if entry is None:
+                per_db_status.append((db, False, f"missing {db} result"))
+                continue
+            actual = sorted(entry.get("actual") or entry.get("returned_ids") or [])
+            expected = sorted(expected_by_name.get(name, []))
+            sqls.append(entry.get("sql", ""))
+            ok = bool(entry.get("passed")) and actual == expected
+            per_db_status.append((db, ok, "" if ok else f"{db} actual={actual} expected={expected}"))
+
+        all_ok = all(ok for _, ok, _ in per_db_status)
+        sql_distinct = len({s for s in sqls if s}) == len([s for s in sqls if s])
+
+        prev = summary_by_name.get(name)
+        agg_passed = all_ok if prev is None else (prev["passed"] and all_ok)
+        agg_errors = [] if prev is None else list(prev.get("_errors", []))
+        for _, ok, msg in per_db_status:
+            if not ok and msg:
+                agg_errors.append(f"{language}: {msg}")
+        summary_by_name[name] = {
+            "kind": "dialect_parity",
+            "language": "all",
+            "database": "parity",
+            "name": name,
+            "flyql": entries[0].get("flyql", ""),
+            "sql": "; ".join(s for s in sqls if s),
+            "expected": expected_by_name.get(name, []),
+            "actual": [],
+            "passed": agg_passed,
+            "error": "" if not agg_errors else " | ".join(agg_errors),
+            "_errors": agg_errors,
+            "_sql_distinct": sql_distinct if prev is None else (prev.get("_sql_distinct", True) and sql_distinct),
+        }
+
+    summary_rows = []
+    for name, row in summary_by_name.items():
+        if not row["_sql_distinct"]:
+            print(f"PARITY WARNING: '{name}' produced byte-identical SQL across dialects (expected differences from identifier quoting)", file=sys.stderr)
+        row.pop("_errors", None)
+        row.pop("_sql_distinct", None)
+        summary_rows.append(row)
+    return summary_rows
+
+
 def _build_collapsed_results(sql_groups: dict) -> list:
     rows = []
     for (_name, _database, _kind), group in sql_groups.items():
@@ -440,7 +514,7 @@ def main():
                 "details": sql_mismatches,
                 "not_implemented": sql_not_implemented,
             },
-            "results": _build_collapsed_results(sql_groups),
+            "results": _build_collapsed_results(sql_groups) + _assert_dialect_parity(all_results),
         }
         json_path = Path(args.json)
         json_path.parent.mkdir(parents=True, exist_ok=True)

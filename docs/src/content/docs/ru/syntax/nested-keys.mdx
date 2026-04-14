@@ -57,6 +57,15 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Доступ к элементам массива
+
+Для колонок типа массив используйте числовые сегменты пути с **нуля** для доступа к элементам:
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+Индексация массивов в FlyQL **является 0-индексной во всех диалектах SQL и во встроенном matcher**. Генераторы переводят индекс flyql в нативное SQL-представление каждого целевого диалекта: массивы в ClickHouse, StarRocks и PostgreSQL на уровне SQL индексируются с единицы, поэтому flyql-выражение `tags.0` во всех диалектах транслируется в `tags[1]` (с диалект-специфичным экранированием идентификаторов и формой функций). То есть одно и то же flyql-выражение порождает разные SQL-строки в разных диалектах, но **возвращает одинаковый результат** для одних и тех же исходных данных.
+
 ## Примеры
 
 <FlyqlCode code={`request.method = 'GET'`} />

@@ -27,7 +27,7 @@ Speculative additions are explicitly avoided. If you encounter a real need for a
 | **`Bool`** | Boolean values | Equality and truthy only; rejects ordering | Boolean SQL | bool, boolean |
 | **`Date`** | Point-in-time temporal values | Accepts temporal function calls (`ago()`, `now()`); accepts string literals coerced to dates | Temporal-comparison SQL with optional timezone | date, date32, datetime, datetime64, timestamp, year |
 | **`Duration`** | Interval/duration values | Accepts duration literals (`30m1s`, `1h`, `7d`); rejects string-only ops | *(no special dispatch yet — see note below)* | ClickHouse `Interval*`, PostgreSQL `interval` |
-| **`Array`** | Ordered collection of values | Accepts `has` operator; segmented key access uses numeric indices | `col[idx]` element access | array, ClickHouse `Array(...)`, PG arrays |
+| **`Array`** | Ordered collection of values | Accepts `has` operator; segmented key access uses **0-based** numeric indices | `col[idx]` element access | array, ClickHouse `Array(...)`, PG arrays |
 | **`Map`** | Key→value collection with dynamic keys | Segmented key access uses string keys | `col['key']` lookup | ClickHouse `Map(...)`, PostgreSQL `hstore` |
 | **`Struct`** | Fixed-shape record with named (or positional) fields | Segmented key access uses field names | Dialect-specific field access (`tupleElement(col,'name')` on ClickHouse, `` `col`.`field` `` on StarRocks) | ClickHouse `Tuple`, StarRocks `STRUCT` |
 | **`JSON`** | Semi-structured JSON document | Segmented key access uses JSON paths | JSON-path SQL (`JSON_VALUE`, `JSONExtractString`) | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |

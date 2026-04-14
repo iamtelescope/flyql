@@ -90,12 +90,12 @@ Les colonnes Map utilisent la notation entre crochets avec comparaison directe :
 
 ## Colonnes Array
 
-Les colonnes Array utilisent un index entre crochets base 0 :
+Les indices de tableau FlyQL sont en base 0 ; le generateur StarRocks ajoute 1 lors de l'emission du SQL parce que les tableaux StarRocks sont indexes a partir de 1 au niveau SQL :
 
 | FlyQL | SQL genere |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### Configuration des colonnes
 

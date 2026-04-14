@@ -57,6 +57,15 @@ Las claves anidadas funcionan con todos los operadores:
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Acceso a elementos de matriz
+
+Para columnas de tipo matriz, utiliza segmentos de ruta numéricos basados en cero para acceder a los elementos:
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+La indexación de matrices en FlyQL es **basada en 0 en todos los dialectos SQL y en el matcher en memoria**. Los generadores traducen el índice de flyql a la convención SQL nativa de cada destino: las matrices en ClickHouse, StarRocks y PostgreSQL están indexadas a partir de 1 a nivel de SQL, por lo que `tags.0` en flyql se emite como `tags[1]` en cada dialecto (con el entrecomillado de identificadores y la forma de función específicos del dialecto). Esto significa que la misma expresión flyql produce distintas cadenas SQL por dialecto pero **se evalúa al mismo resultado** sobre los mismos datos subyacentes.
+
 ## Ejemplos
 
 <FlyqlCode code={`request.method = 'GET'`} />

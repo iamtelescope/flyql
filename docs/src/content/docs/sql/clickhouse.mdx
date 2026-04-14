@@ -99,13 +99,13 @@ Map columns use bracket notation with `equals()`/`notEquals()` functions:
 
 ## Array Columns
 
-Array columns use 0-based bracket indexing with `equals()`:
+FlyQL array indices are 0-based; the ClickHouse generator adds 1 when emitting SQL because ClickHouse arrays are 1-indexed at the SQL layer:
 
 | FlyQL | Generated SQL |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
 
 ### Column Setup
 

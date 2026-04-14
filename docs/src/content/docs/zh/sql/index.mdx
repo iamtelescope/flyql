@@ -78,11 +78,11 @@ multiIf(JSONType(data, 'user', 'name') = 'String',
 
 | 方言 | 生成 SQL | 下标方式 |
 |------|----------|----------|
-| ClickHouse | `equals(tags[0], 'first')` | 0-based |
-| PostgreSQL | `"tags"[1] = 'first'` | 1-based |
-| StarRocks | `` `tags`[0] = 'first' `` | 0-based |
+| ClickHouse | `equals(tags[1], 'first')` | 1-based（自动转换） |
+| PostgreSQL | `"tags"[1] = 'first'` | 1-based（自动转换） |
+| StarRocks | `` `tags`[1] = 'first' `` | 1-based（自动转换） |
 
-PostgreSQL 的数组是 1-based，因此 FlyQL 会自动把索引加 1。
+FlyQL 的数组索引在所有方言中均统一为 0 起始。三种方言在 SQL 层都使用 1 起始的数组，因此生成器在输出前会将 flyql 索引加 1。同一个 FlyQL 表达式在不同方言下生成不同的 SQL 字符串（由于标识符引用和函数语法的差异），但对相同底层数据评估为相同的结果。
 
 ## 输出格式
 

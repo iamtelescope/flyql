@@ -325,9 +325,10 @@ function expressionToSQLSegmented(expr, columns) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
         if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
+        const sqlIndex = arrayIndex + 1
         const rhsRef = expr.valueType === LiteralKind.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
         const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
-        let columnExp = `${colId}[${arrayIndex}]`
+        let columnExp = `${colId}[${sqlIndex}]`
         if (hasTransformers) {
             columnExp = applyTransformerSQL(columnExp, expr.key.transformers, 'starrocks')
         }
@@ -411,7 +412,8 @@ function inExpressionToSQL(expr, columns) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
@@ -475,11 +477,12 @@ function truthyExpressionToSQL(expr, columns) {
             const arrayIndex = parseInt(expr.key.segments.slice(1).join('.'), 10)
             if (isNaN(arrayIndex))
                 throw new Error(`invalid array index, expected number: ${expr.key.segments.slice(1).join('.')}`)
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `(array_length(${colId}) >= ${arrayIndex} AND ${leafExpr} != '')`
+            return `(array_length(${colId}) >= ${sqlIndex} AND ${leafExpr} != '')`
         } else if (column.flyqlType() === Type.Struct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
             let leafExpr = `${colId}.\`${structColumn}\``
@@ -555,11 +558,12 @@ function falsyExpressionToSQL(expr, columns) {
         } else if (column.flyqlType() === Type.Array) {
             const arrayIndex = parseInt(expr.key.segments.slice(1).join('.'), 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index`)
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `(array_length(${colId}) < ${arrayIndex} OR ${leafExpr} = '')`
+            return `(array_length(${colId}) < ${sqlIndex} OR ${leafExpr} = '')`
         } else if (column.flyqlType() === Type.Struct) {
             const structColumn = expr.key.segments.slice(1).join('`.`')
             let leafExpr = `${colId}.\`${structColumn}\``
@@ -645,7 +649,8 @@ function hasExpressionToSQL(expr, columns) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
             if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
@@ -866,7 +871,8 @@ function buildSelectExpr(column, path) {
     if (column.flyqlType() === Type.Array) {
         const index = parseInt(path.join('.'), 10)
         if (isNaN(index)) throw new Error(`invalid array index, expected number: ${path.join('.')}`)
-        return `${colId}[${index}]`
+        const sqlIndex = index + 1
+        return `${colId}[${sqlIndex}]`
     }
     if (column.flyqlType() === Type.Struct) {
         return `${colId}.\`${path.join('`.`')}\``

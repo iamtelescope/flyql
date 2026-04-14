@@ -666,55 +666,6 @@
     },
     {
       "name": "array_index_equals",
-      "flyql": "tags.1='web'",
-      "expected_ids": [
-        1,
-        3,
-        5
-      ],
-      "databases": [
-        "clickhouse",
-        "starrocks"
-      ]
-    },
-    {
-      "name": "array_index_not_equals",
-      "flyql": "tags.1!='web'",
-      "expected_ids": [
-        2,
-        4,
-        6
-      ],
-      "databases": [
-        "clickhouse",
-        "starrocks"
-      ]
-    },
-    {
-      "name": "array_index_second_element",
-      "flyql": "tags.2='api'",
-      "expected_ids": [
-        1,
-        2
-      ],
-      "databases": [
-        "clickhouse",
-        "starrocks"
-      ]
-    },
-    {
-      "name": "map_and_array_combined",
-      "flyql": "metadata.tier='premium' and tags.1='web'",
-      "expected_ids": [
-        1
-      ],
-      "databases": [
-        "clickhouse",
-        "starrocks"
-      ]
-    },
-    {
-      "name": "pg_array_index_equals",
       "flyql": "tags.0='web'",
       "expected_ids": [
         1,
@@ -722,11 +673,13 @@
         5
       ],
       "databases": [
+        "clickhouse",
+        "starrocks",
         "postgresql"
       ]
     },
     {
-      "name": "pg_array_index_not_equals",
+      "name": "array_index_not_equals",
       "flyql": "tags.0!='web'",
       "expected_ids": [
         2,
@@ -734,27 +687,33 @@
         6
       ],
       "databases": [
+        "clickhouse",
+        "starrocks",
         "postgresql"
       ]
     },
     {
-      "name": "pg_array_index_second_element",
+      "name": "array_index_second_element",
       "flyql": "tags.1='api'",
       "expected_ids": [
         1,
         2
       ],
       "databases": [
+        "clickhouse",
+        "starrocks",
         "postgresql"
       ]
     },
     {
-      "name": "pg_map_and_array_combined",
+      "name": "map_and_array_combined",
       "flyql": "metadata.tier='premium' and tags.0='web'",
       "expected_ids": [
         1
       ],
       "databases": [
+        "clickhouse",
+        "starrocks",
         "postgresql"
       ]
     },
@@ -1420,7 +1379,7 @@
       ]
     },
     {
-      "name": "transformer_nested_array_upper_equals_pg",
+      "name": "transformer_nested_array_upper_equals",
       "flyql": "tags.0|upper='WEB'",
       "expected_ids": [
         1,
@@ -1428,20 +1387,9 @@
         5
       ],
       "databases": [
-        "postgresql"
-      ]
-    },
-    {
-      "name": "transformer_nested_array_upper_equals_ch_sr",
-      "flyql": "tags.1|upper='WEB'",
-      "expected_ids": [
-        1,
-        3,
-        5
-      ],
-      "databases": [
         "clickhouse",
-        "starrocks"
+        "starrocks",
+        "postgresql"
       ]
     },
     {

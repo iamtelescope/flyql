@@ -87,13 +87,13 @@ Map-Spalten verwenden Klammernotation mit den Funktionen `equals()` / `notEquals
 
 ## Array-Spalten
 
-Array-Spalten verwenden 0-basierte Klammerindizes mit `equals()`:
+FlyQL-Array-Indizes sind 0-basiert; der ClickHouse-Generator addiert beim Erzeugen des SQL 1, weil Arrays in ClickHouse auf der SQL-Ebene 1-basiert sind:
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
 
 ### Spaltenkonfiguration
 

@@ -189,12 +189,13 @@ def truthy_expression_to_sql_where(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            leaf_expr = f"{col_id}[{array_index}]"
+            sql_index = array_index + 1
+            leaf_expr = f"{col_id}[{sql_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"(length({col_id}) >= {array_index} AND " f"{leaf_expr} != '')"
+            return f"(length({col_id}) >= {sql_index} AND " f"{leaf_expr} != '')"
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
@@ -281,12 +282,13 @@ def falsy_expression_to_sql_where(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            leaf_expr = f"{col_id}[{array_index}]"
+            sql_index = array_index + 1
+            leaf_expr = f"{col_id}[{sql_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"(length({col_id}) < {array_index} OR " f"{leaf_expr} = '')"
+            return f"(length({col_id}) < {sql_index} OR " f"{leaf_expr} = '')"
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
@@ -387,7 +389,8 @@ def in_expression_to_sql_where(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            leaf_expr = f"{col_id}[{array_index}]"
+            sql_index = array_index + 1
+            leaf_expr = f"{col_id}[{sql_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
@@ -464,7 +467,8 @@ def has_expression_to_sql_where(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
-            leaf_expr = f"{col_id}[{array_index}]"
+            sql_index = array_index + 1
+            leaf_expr = f"{col_id}[{sql_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
@@ -726,11 +730,12 @@ def expression_to_sql_where(
                 raise FlyqlError(
                     f"invalid array index, expected number: {array_index_str}"
                 ) from err
+            sql_index = array_index + 1
             rhs_ref = None
             if expression.value_type == LiteralKind.COLUMN:
                 rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
             value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
-            leaf_expr = f"{col_id}[{array_index}]"
+            leaf_expr = f"{col_id}[{sql_index}]"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
@@ -1016,7 +1021,8 @@ def _build_select_expr(column: Column, path: List[str]) -> str:
             raise FlyqlError(
                 f"invalid array index, expected number: {index_str}"
             ) from err
-        return f"{col_id}[{index}]"
+        sql_index = index + 1
+        return f"{col_id}[{sql_index}]"
 
     raise FlyqlError(f"path access on non-composite column type: {column.name}")
 

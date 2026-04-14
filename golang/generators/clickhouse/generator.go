@@ -437,7 +437,8 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			sqlIndex := arrayIndex + 1
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -565,7 +566,8 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			sqlIndex := arrayIndex + 1
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -714,7 +716,8 @@ func truthyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Colu
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			sqlIndex := arrayIndex + 1
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -723,7 +726,7 @@ func truthyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Colu
 				}
 			}
 			return fmt.Sprintf("(length(%s) >= %d AND %s != '')",
-				getIdentifier(column), arrayIndex, leafExpr), nil
+				getIdentifier(column), sqlIndex, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -841,7 +844,8 @@ func falsyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Colum
 			if err != nil {
 				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 			}
-			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+			sqlIndex := arrayIndex + 1
+			leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -850,7 +854,7 @@ func falsyExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Colum
 				}
 			}
 			return fmt.Sprintf("(length(%s) < %d OR %s = '')",
-				getIdentifier(column), arrayIndex, leafExpr), nil
+				getIdentifier(column), sqlIndex, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -1085,6 +1089,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
 		}
+		sqlIndex := arrayIndex + 1
 		var value string
 		if expr.ValueType == literal.Column {
 			if colRef, ok := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); ok {
@@ -1096,7 +1101,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				return "", err
 			}
 		}
-		leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), arrayIndex)
+		leafExpr := fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex)
 		if len(expr.Key.Transformers) > 0 {
 			registry := transformers.DefaultRegistry()
 			leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)

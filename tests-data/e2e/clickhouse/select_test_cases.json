@@ -468,7 +468,7 @@
     },
     {
       "name": "array_first_element",
-      "select_columns": "id, tags.1",
+      "select_columns": "id, tags.0",
       "expected_rows": [
         [
           "1",
@@ -498,7 +498,7 @@
     },
     {
       "name": "array_second_element",
-      "select_columns": "id, tags.2",
+      "select_columns": "id, tags.1",
       "expected_rows": [
         [
           "1",
@@ -528,7 +528,7 @@
     },
     {
       "name": "array_element_with_alias",
-      "select_columns": "id, tags.1 as first_tag",
+      "select_columns": "id, tags.0 as first_tag",
       "expected_column_names": [
         "id",
         "first_tag"
@@ -562,7 +562,7 @@
     },
     {
       "name": "mixed_all_types",
-      "select_columns": "id, message, metadata.tier as tier, tags.1 as tag1, meta_str.region as region",
+      "select_columns": "id, message, metadata.tier as tier, tags.0 as tag1, meta_str.region as region",
       "expected_column_names": [
         "id",
         "message",

@@ -90,12 +90,12 @@ StarRocks जनरेटर सेगमेंटेड पाथ को एक
 
 ## ऐरे कॉलम
 
-ऐरे कॉलम 0-आधारित ब्रैकेट इंडेक्सिंग का उपयोग करते हैं:
+FlyQL ऐरे इंडेक्स 0-आधारित हैं; StarRocks जनरेटर SQL उत्सर्जित करते समय 1 जोड़ता है क्योंकि StarRocks ऐरे SQL परत पर 1-आधारित होते हैं:
 
 | FlyQL | उत्पन्न SQL |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### कॉलम सेटअप
 

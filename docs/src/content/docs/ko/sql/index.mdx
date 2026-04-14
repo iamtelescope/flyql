@@ -78,11 +78,11 @@ ClickHouse는 Map 접근에 `equals()`/`notEquals()` 함수를 사용합니다. 
 
 | Dialect | 생성된 SQL | 인덱싱 |
 |---------|--------------|----------|
-| ClickHouse | `equals(tags[0], 'first')` | 0-based |
+| ClickHouse | `equals(tags[1], 'first')` | 1-based (자동 변환) |
 | PostgreSQL | `"tags"[1] = 'first'` | 1-based (자동 변환) |
-| StarRocks | `` `tags`[0] = 'first' `` | 0-based |
+| StarRocks | `` `tags`[1] = 'first' `` | 1-based (자동 변환) |
 
-PostgreSQL array는 1-based이므로 FlyQL은 index에 자동으로 1을 더합니다.
+FlyQL의 배열 인덱스는 모든 방언에서 일관되게 0 기반입니다. 세 방언 모두 SQL 계층에서 1 기반 배열을 사용하므로, 생성기는 출력하기 전에 flyql 인덱스에 1을 더합니다. 동일한 FlyQL 표현식은 방언마다 서로 다른 SQL 문자열을 생성하지만(식별자 인용 및 함수 구문의 차이), 동일한 기반 데이터에 대해 동일한 결과로 평가됩니다.
 
 ## 출력 형식
 

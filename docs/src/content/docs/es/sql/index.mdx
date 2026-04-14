@@ -78,11 +78,11 @@ ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. Postg
 
 | Dialecto | SQL generado | Indexación |
 |----------|--------------|------------|
-| ClickHouse | `equals(tags[0], 'first')` | Base 0 |
-| PostgreSQL | `"tags"[1] = 'first'` | Base 1, se convierte automáticamente |
-| StarRocks | `` `tags`[0] = 'first' `` | Base 0 |
+| ClickHouse | `equals(tags[1], 'first')` | Base 1 (se convierte automáticamente) |
+| PostgreSQL | `"tags"[1] = 'first'` | Base 1 (se convierte automáticamente) |
+| StarRocks | `` `tags`[1] = 'first' `` | Base 1 (se convierte automáticamente) |
 
-Los arrays de PostgreSQL son de base 1, así que FlyQL suma 1 al índice automáticamente.
+Los índices de matriz de FlyQL son uniformemente base 0. Los tres dialectos usan matrices base 1 a nivel de SQL, por lo que los generadores suman 1 al índice de flyql antes de emitir. La misma expresión FlyQL produce distintas cadenas SQL por dialecto (debido al entrecomillado de identificadores y a la sintaxis de las funciones), pero se evalúa al mismo resultado sobre los mismos datos subyacentes.
 
 ## Formato de salida
 

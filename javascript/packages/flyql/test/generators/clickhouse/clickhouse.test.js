@@ -221,7 +221,7 @@ describe('generateSelect', () => {
 
     it('selects array index', () => {
         const result = generateSelect('tags.0', columns)
-        expect(result.sql).toContain('tags[0]')
+        expect(result.sql).toContain('tags[1]')
     })
 
     it('selects JSONString path', () => {

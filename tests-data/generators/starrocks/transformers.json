@@ -133,19 +133,19 @@
       "name": "array_upper_equals",
       "input": "tags.0|upper = 'FOO'",
       "expected_result": "success",
-      "expected_sql": "UPPER(`tags`[0]) = 'FOO'"
+      "expected_sql": "UPPER(`tags`[1]) = 'FOO'"
     },
     {
       "name": "array_upper_in",
       "input": "tags.0|upper in ['A', 'B']",
       "expected_result": "success",
-      "expected_sql": "UPPER(`tags`[0]) IN ('A', 'B')"
+      "expected_sql": "UPPER(`tags`[1]) IN ('A', 'B')"
     },
     {
       "name": "array_has_upper",
       "input": "tags.0|upper has 'F'",
       "expected_result": "success",
-      "expected_sql": "INSTR(UPPER(`tags`[0]), 'F') > 0"
+      "expected_sql": "INSTR(UPPER(`tags`[1]), 'F') > 0"
     },
     {
       "name": "struct_field_lower_equals",

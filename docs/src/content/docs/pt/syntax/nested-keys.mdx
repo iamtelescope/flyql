@@ -57,6 +57,15 @@ As chaves aninhadas funcionam com todos os operadores:
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Acesso a Elementos de Array
+
+Para colunas tipadas como arrays, utilize segmentos de caminho numericos baseados em zero para aceder aos elementos:
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+A indexacao de arrays no FlyQL e **baseada em 0 em todos os dialectos SQL e no matcher em memoria**. Os geradores traduzem o indice flyql para a convencao SQL nativa de cada destino: os arrays no ClickHouse, StarRocks e PostgreSQL sao indexados a partir de 1 ao nivel de SQL, pelo que `tags.0` em flyql e emitido como `tags[1]` em cada dialecto (com aspas de identificadores e forma de funcao especificas do dialecto). Isto significa que a mesma expressao flyql produz strings SQL diferentes por dialecto mas **avalia para o mesmo resultado** sobre os mesmos dados subjacentes.
+
 ## Exemplos
 
 <FlyqlCode code={`request.method = 'GET'`} />

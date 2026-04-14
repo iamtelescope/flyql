@@ -78,11 +78,11 @@ ClickHouse は Map アクセスに `equals()` / `notEquals()` を使います。
 
 | 方言 | 生成される SQL | 添字 |
 |------|-----------------|------|
-| ClickHouse | `equals(tags[0], 'first')` | 0 始まり |
+| ClickHouse | `equals(tags[1], 'first')` | 1 始まり（変換される） |
 | PostgreSQL | `"tags"[1] = 'first'` | 1 始まり（変換される） |
-| StarRocks | `` `tags`[0] = 'first' `` | 0 始まり |
+| StarRocks | `` `tags`[1] = 'first' `` | 1 始まり（変換される） |
 
-PostgreSQL の array は 1 始まりのため、FlyQL は自動的にインデックスへ 1 を加えます。
+FlyQL の配列インデックスはすべての方言で統一的に 0 始まりです。3 つのすべての方言は SQL レイヤーで 1 始まりの配列を使うため、ジェネレーターは flyql のインデックスに 1 を加えてから出力します。同じ FlyQL 式は方言ごとに異なる SQL 文字列を生成しますが（識別子のクォートや関数構文の違いによる）、同じ基底データに対しては同じ結果に評価されます。
 
 ## 出力形式
 

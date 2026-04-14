@@ -40,6 +40,13 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     except ImportError:
         pass
 
+    try:
+        from test_dialect_parity import _results as parity_results
+
+        all_results.extend(parity_results)
+    except ImportError:
+        pass
+
     if all_results:
         report = {"language": "python", "results": all_results}
         try:

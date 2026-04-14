@@ -57,6 +57,15 @@ Nested keys work with all operators:
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Array Element Access
+
+For columns typed as arrays, use zero-indexed numeric path segments to access elements:
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+FlyQL array indexing is **0-based across all SQL dialects and the in-memory matcher**. The generators translate the flyql index into each target's native SQL convention — ClickHouse, StarRocks, and PostgreSQL arrays are all 1-indexed at the SQL layer, so flyql `tags.0` emits `tags[1]` (with dialect-specific identifier quoting and function shape) in every dialect. This means the same flyql expression produces different SQL strings per dialect but **evaluates to the same result** against the same underlying data.
+
 ## Examples
 
 <FlyqlCode code={`request.method = 'GET'`} />

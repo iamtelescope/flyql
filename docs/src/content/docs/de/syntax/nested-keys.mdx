@@ -57,6 +57,15 @@ Verschachtelte Schlüssel funktionieren mit allen Operatoren:
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## Zugriff auf Array-Elemente
+
+Für Spalten vom Typ Array verwenden Sie nullbasierte numerische Pfadsegmente, um auf Elemente zuzugreifen:
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+FlyQL-Array-Indizes sind **0-basiert in allen SQL-Dialekten und im In-Memory-Matcher**. Die Generatoren übersetzen den flyql-Index in die native SQL-Konvention jedes Ziels — Arrays in ClickHouse, StarRocks und PostgreSQL sind auf der SQL-Ebene 1-basiert, sodass flyql `tags.0` in jedem Dialekt als `tags[1]` ausgegeben wird (mit dialektspezifischer Bezeichner-Quotierung und Funktionsform). Das bedeutet, dass derselbe flyql-Ausdruck pro Dialekt unterschiedliche SQL-Strings erzeugt, jedoch gegen dieselben zugrunde liegenden Daten zum **gleichen Ergebnis** ausgewertet wird.
+
 ## Beispiele
 
 <FlyqlCode code={`request.method = 'GET'`} />

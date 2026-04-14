@@ -410,12 +410,13 @@ function expressionToSQLSegmented(expr, columns) {
         if (isNaN(arrayIndex)) {
             throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
         }
+        const sqlIndex = arrayIndex + 1
         let rhsRef = null
         if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
         const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
-        let leafExpr = `${colId}[${arrayIndex}]`
+        let leafExpr = `${colId}[${sqlIndex}]`
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
@@ -495,7 +496,8 @@ function inExpressionToSQL(expr, columns) {
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
@@ -561,11 +563,12 @@ function truthyExpressionToSQL(expr, columns) {
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `(length(${colId}) >= ${arrayIndex} AND ${leafExpr} != '')`
+            return `(length(${colId}) >= ${sqlIndex} AND ${leafExpr} != '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
@@ -643,11 +646,12 @@ function falsyExpressionToSQL(expr, columns) {
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `(length(${colId}) < ${arrayIndex} OR ${leafExpr} = '')`
+            return `(length(${colId}) < ${sqlIndex} OR ${leafExpr} = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }
@@ -738,7 +742,8 @@ function hasExpressionToSQL(expr, columns) {
             if (isNaN(arrayIndex)) {
                 throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
             }
-            let leafExpr = `${colId}[${arrayIndex}]`
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
@@ -981,7 +986,8 @@ function buildSelectExpr(column, path) {
         if (isNaN(index)) {
             throw new Error(`invalid array index, expected number: ${indexStr}`)
         }
-        return `${colId}[${index}]`
+        const sqlIndex = index + 1
+        return `${colId}[${sqlIndex}]`
     }
 
     throw new Error(`path access on non-composite column type: ${column.name}`)

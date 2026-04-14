@@ -108,7 +108,8 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", indexStr)
 		}
-		return fmt.Sprintf("%s[%d]", getIdentifier(column), index), nil
+		sqlIndex := index + 1
+		return fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex), nil
 	}
 
 	if column.FlyQLType() == flyqltype.Struct {

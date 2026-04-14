@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "description": "Cross-dialect parity: same flyql produces different SQL per target but identical row IDs.",
+  "tests": [
+    {
+      "name": "array_first_element",
+      "flyql": "tags.0='web'",
+      "expected_row_ids": [1, 3, 5]
+    },
+    {
+      "name": "array_first_element_negation",
+      "flyql": "tags.0!='web'",
+      "expected_row_ids": [2, 4, 6]
+    },
+    {
+      "name": "array_second_element",
+      "flyql": "tags.1='api'",
+      "expected_row_ids": [1, 2]
+    },
+    {
+      "name": "array_first_element_with_transformer",
+      "flyql": "tags.0|upper='WEB'",
+      "expected_row_ids": [1, 3, 5]
+    },
+    {
+      "name": "array_compound_with_map",
+      "flyql": "metadata.tier='premium' and tags.0='web'",
+      "expected_row_ids": [1]
+    }
+  ]
+}

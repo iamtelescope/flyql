@@ -87,13 +87,13 @@ Les colonnes Map utilisent la notation entre crochets avec les fonctions `equals
 
 ## Colonnes Array
 
-Les colonnes Array utilisent un index entre crochets base 0 avec `equals()` :
+Les indices de tableau FlyQL sont en base 0 ; le generateur ClickHouse ajoute 1 lors de l'emission du SQL parce que les tableaux ClickHouse sont indexes a partir de 1 au niveau SQL :
 
 | FlyQL | SQL genere |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
 
 ### Configuration des colonnes
 

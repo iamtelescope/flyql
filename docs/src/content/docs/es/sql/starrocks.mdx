@@ -90,12 +90,12 @@ Las columnas Map usan notación con corchetes y comparación directa:
 
 ## Columnas Array
 
-Las columnas Array usan indexación base 0 con corchetes:
+Los índices de matriz de FlyQL están basados en 0; el generador de StarRocks suma 1 al emitir el SQL porque las matrices de StarRocks están indexadas a partir de 1 en la capa SQL:
 
 | FlyQL | SQL generado |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### Configuración de columnas
 

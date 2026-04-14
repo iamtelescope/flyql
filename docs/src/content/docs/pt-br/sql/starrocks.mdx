@@ -90,12 +90,12 @@ Colunas Map usam notação de colchetes com comparação direta:
 
 ## Colunas Array
 
-Colunas Array usam indexação de colchetes baseada em 0:
+Os índices de array do FlyQL são 0-baseados; o gerador StarRocks adiciona 1 ao emitir SQL porque os arrays do StarRocks são indexados a partir de 1 na camada SQL:
 
 | FlyQL | SQL Gerado |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### Configuração de Colunas
 

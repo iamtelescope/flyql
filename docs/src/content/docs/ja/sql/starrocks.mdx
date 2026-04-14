@@ -90,12 +90,12 @@ Map カラムでは、角括弧記法と直接比較を使います。
 
 ## Array カラム
 
-Array カラムでは 0 始まりの角括弧インデックスを使います。
+FlyQL の配列インデックスは 0 始まりです。StarRocks 配列は SQL レイヤーで 1 始まりであるため、StarRocks ジェネレーターは SQL を生成する際にインデックスに 1 を加算します。
 
 | FlyQL | 生成される SQL |
 |-------|-----------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### カラム設定
 

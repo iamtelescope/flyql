@@ -37,25 +37,25 @@
       "name": "array_index_0",
       "input": "tags.0='first'",
       "expected_result": "success",
-      "expected_sql": "equals(tags[0], 'first')"
+      "expected_sql": "equals(tags[1], 'first')"
     },
     {
       "name": "array_index_1",
       "input": "tags.1='second'",
       "expected_result": "success",
-      "expected_sql": "equals(tags[1], 'second')"
+      "expected_sql": "equals(tags[2], 'second')"
     },
     {
       "name": "array_not_equals",
       "input": "tags.0!='excluded'",
       "expected_result": "success",
-      "expected_sql": "notEquals(tags[0], 'excluded')"
+      "expected_sql": "notEquals(tags[1], 'excluded')"
     },
     {
       "name": "array_regex_match",
       "input": "tags.0~'tag.*'",
       "expected_result": "success",
-      "expected_sql": "match(tags[0], 'tag.*')"
+      "expected_sql": "match(tags[1], 'tag.*')"
     },
     {
       "name": "map_key_with_single_quote",

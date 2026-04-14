@@ -58,6 +58,15 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 <FlyqlCode code={`request.headers.content_type != "text/html"`} />
 <FlyqlCode code={`not request.authenticated`} />
 
+## 数组元素访问
+
+对于数组类型的列，使用从零开始的数字路径片段访问元素：
+
+<FlyqlCode code={`tags.0 = 'important'`} />
+<FlyqlCode code={`tags.1 = 'second'`} />
+
+FlyQL 数组索引在**所有 SQL 方言以及内存匹配器中均为 0 起始**。生成器会将 flyql 索引转换为各目标方言的原生 SQL 约定 —— ClickHouse、StarRocks 与 PostgreSQL 的数组在 SQL 层都是 1 起始，因此 flyql 的 `tags.0` 在每种方言中都会输出为 `tags[1]`（带有方言特定的标识符引用和函数形式）。这意味着同一个 flyql 表达式在不同方言下生成不同的 SQL 字符串，但针对相同的底层数据 **会得到相同的结果**。
+
 ## 示例
 
 <FlyqlCode code={`request.method = 'GET'`} />

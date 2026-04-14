@@ -87,13 +87,13 @@ Colunas Map usam notação de colchetes com funções `equals()`/`notEquals()`:
 
 ## Colunas Array
 
-Colunas Array usam indexação de colchetes baseada em 0 com `equals()`:
+Os índices de array do FlyQL são 0-baseados; o gerador ClickHouse adiciona 1 ao emitir SQL porque os arrays do ClickHouse são indexados a partir de 1 na camada SQL:
 
 | FlyQL | SQL Gerado |
 |-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
 
 ### Configuração de Colunas
 

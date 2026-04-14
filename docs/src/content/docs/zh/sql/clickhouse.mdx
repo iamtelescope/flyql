@@ -81,11 +81,13 @@ ClickHouse 支持两种 JSON 形式。
 
 ## 数组列
 
+FlyQL 数组索引为 0 起始；ClickHouse 生成器在生成 SQL 时会加 1，因为 ClickHouse 数组在 SQL 层为 1 起始：
+
 | FlyQL | 生成 SQL |
 |-------|----------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[0], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[1], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[0], 'tag.*')` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
+| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
 
 ## 列定义示例
 

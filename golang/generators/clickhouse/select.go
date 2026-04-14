@@ -112,7 +112,8 @@ func buildSelectExpr(column *Column, path []string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid array index, expected number: %s", indexStr)
 		}
-		return fmt.Sprintf("%s[%d]", getIdentifier(column), index), nil
+		sqlIndex := index + 1
+		return fmt.Sprintf("%s[%d]", getIdentifier(column), sqlIndex), nil
 	}
 
 	return "", fmt.Errorf("path access on non-composite column type: %s", column.Name)

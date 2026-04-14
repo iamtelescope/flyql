@@ -90,12 +90,12 @@ Map-Spalten verwenden Klammernotation mit direktem Vergleich:
 
 ## Array-Spalten
 
-Array-Spalten verwenden 0-basierte Klammerindizierung:
+FlyQL-Array-Indizes sind 0-basiert; der StarRocks-Generator addiert beim Erzeugen des SQL 1, weil Arrays in StarRocks auf der SQL-Ebene 1-basiert sind:
 
 | FlyQL | Generiertes SQL |
 |-------|-----------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[0] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[1] = 'second' `` |
+| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
+| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
 
 ### Spaltenkonfiguration
 

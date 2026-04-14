@@ -33,13 +33,13 @@ FlyQL queries consist of one or more conditions joined by <FlyqlToken type="oper
 - **Standalone keys** — A key without an operator is treated as a truthy check: <FlyqlCode code={`active`} inline />
 - **Comparisons** — A key with an operator must have a corresponding value: <FlyqlCode code={`status = 200`} inline />
 - **Whitespace** — Spaces around operators are optional: <FlyqlCode code={`status=200`} inline /> and <FlyqlCode code={`status = 200`} inline /> are equivalent
-- **Left-to-right evaluation** — there is no precedence between <FlyqlToken type="operator">and</FlyqlToken> and <FlyqlToken type="operator">or</FlyqlToken>: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> is parsed as <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />, **not** as `a = 1 or (b = 2 and c = 3)`
-- **Parentheses** — Use <FlyqlToken type="operator">( )</FlyqlToken> whenever the grouping matters: <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
+- **Standard operator precedence** — <FlyqlToken type="operator">not</FlyqlToken> binds tightest, then <FlyqlToken type="operator">and</FlyqlToken>, then <FlyqlToken type="operator">or</FlyqlToken> (same as SQL, Python, JavaScript, Go): <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> is parsed as <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
+- **Parentheses** — Use <FlyqlToken type="operator">( )</FlyqlToken> to override the default precedence: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
 
 ## Syntax Sections
 
 - [Operators](/syntax/operators/) — Comparison operators (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
-- [Boolean Logic](/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, left-to-right evaluation, parenthesized grouping
+- [Boolean Logic](/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, standard precedence, parenthesized grouping
 - [Pattern Matching](/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) and <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> with SQL wildcards (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Lists](/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> and <FlyqlToken type="operator">not in</FlyqlToken> with list values
 - [Containment](/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> and <FlyqlToken type="operator">not has</FlyqlToken> for substring, key existence, and item membership

@@ -1,6 +1,6 @@
 ---
 title: Logica Booleana
-description: Operadores booleanos, avaliacao da esquerda para a direita e agrupamento com parenteses no FlyQL
+description: Operadores booleanos, precedencia padrao (NOT > AND > OR) e agrupamento com parenteses no FlyQL
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
@@ -23,37 +23,43 @@ O FlyQL utiliza tres operadores booleanos para combinar condicoes:
 <FlyqlCode code={`active and not archived`} />
 <FlyqlCode code={`level = 'error' or not healthy`} />
 
-## Ordem de avaliacao
+## Precedencia de Operadores
 
-:::caution
-O FlyQL **nao tem precedencia** entre <FlyqlToken type="operator">and</FlyqlToken> e <FlyqlToken type="operator">or</FlyqlToken> — esta e uma divergencia deliberada do SQL. As condicoes sao combinadas estritamente **da esquerda para a direita**, na ordem em que aparecem. Use parenteses sempre que o agrupamento for relevante.
-:::
+O FlyQL segue a **precedencia padrao de operadores** — as mesmas regras do SQL, Python, JavaScript, Go e de qualquer linguagem de consulta mainstream:
+
+| Precedencia | Operador | Ligacao |
+|------------:|----------|---------|
+| 1 (mais forte) | <FlyqlToken type="operator">not</FlyqlToken> | Ao seu operando imediato — a expressao ou grupo entre parenteses seguinte |
+| 2 | <FlyqlToken type="operator">and</FlyqlToken> | Mais forte do que <FlyqlToken type="operator">or</FlyqlToken> |
+| 3 (mais fraca) | <FlyqlToken type="operator">or</FlyqlToken> | A mais fraca — combina cadeias AND inteiras |
+
+Concretamente:
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 e interpretado como:
 
-<FlyqlCode code={`(a = 1 or b = 2) and c = 3`} />
+<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
 
-e nao como `a = 1 or (b = 2 and c = 3)`. Se quiser o comportamento "and tem precedencia sobre or" do SQL, escreva-o explicitamente com parenteses.
+porque <FlyqlToken type="operator">and</FlyqlToken> liga-se mais fortemente do que <FlyqlToken type="operator">or</FlyqlToken>. Cadeias de operadores com a mesma precedencia sao associativas a esquerda, portanto <FlyqlCode code={`a = 1 and b = 2 and c = 3`} inline /> e interpretado como <FlyqlCode code={`(a = 1 and b = 2) and c = 3`} inline />.
 
-<FlyqlToken type="operator">not</FlyqlToken>, por outro lado, e um prefixo **unario** e liga-se fortemente a expressao ou grupo entre parenteses imediatamente seguinte.
+<FlyqlToken type="operator">not</FlyqlToken> tem a ligacao mais forte e aplica-se apenas a expressao ou grupo que o segue — nunca a toda a expressao anterior.
 
 ## Agrupamento com Parenteses
 
-Como nao ha precedencia entre operadores, parenteses sao a unica forma de controlar o agrupamento:
+Use parenteses para sobrepor a precedencia padrao quando quiser que <FlyqlToken type="operator">or</FlyqlToken> seja avaliado antes de <FlyqlToken type="operator">and</FlyqlToken>:
 
-<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
 
 Sem os parenteses, o mesmo texto fonte
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-e interpretado da esquerda para a direita como
+e interpretado como
 
-<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
+<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
 
-o que e uma consulta diferente.
+o que e uma consulta diferente. Quando quiser que <FlyqlToken type="operator">or</FlyqlToken> domine, recorra explicitamente aos parenteses.
 
 ### Agrupamento Aninhado
 

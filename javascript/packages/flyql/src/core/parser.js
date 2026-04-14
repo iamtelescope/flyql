@@ -31,6 +31,12 @@ import {
     ERR_PARAMETER_IN_LIST,
 } from './constants.js'
 
+const _BOOL_OP_PRECEDENCE_TABLE = Object.freeze({ and: 2, or: 1 })
+
+function BOOL_OP_PRECEDENCE(op) {
+    return _BOOL_OP_PRECEDENCE_TABLE[op] ?? 0
+}
+
 export class Parser {
     constructor() {
         this.pos = 0
@@ -436,18 +442,62 @@ export class Parser {
         return null
     }
 
+    // Fold `atom` into `current` under operator `op` respecting
+    // AND > OR precedence. One-level descent is sufficient because
+    // flyql has exactly two binary precedence levels.
+    _foldWithPrecedence(current, op, atom) {
+        if (BOOL_OP_PRECEDENCE(op) <= BOOL_OP_PRECEDENCE(current.boolOperator)) {
+            const bopR = this._popBoolOpRange()
+            const range = current.range && atom.range ? new Range(current.range.start, atom.range.end) : null
+            return this.newNode(op, null, current, atom, false, range, bopR)
+        }
+        // Incoming strictly higher precedence — descend one level
+        const bopR = this._popBoolOpRange()
+        const descRange =
+            current.right && current.right.range && atom.range
+                ? new Range(current.right.range.start, atom.range.end)
+                : null
+        const descended = this.newNode(op, null, current.right, atom, false, descRange, bopR)
+        current.right = descended
+        if (current.range && atom.range) {
+            current.range = new Range(current.range.start, atom.range.end)
+        }
+        return current
+    }
+
     _attachExpr(expression) {
         const negated = this.consumePendingNegation()
         const exprRange = expression ? expression.range : null
         if (this.currentNode && this.currentNode.left === null) {
-            const node = this.newNode('', expression, null, null, negated, exprRange)
-            this.currentNode.setLeft(node)
-            this.currentNode.setBoolOperator(this.boolOperator)
-            if (exprRange && this.currentNode.range) {
-                this.currentNode.range = new Range(
-                    Math.min(this.currentNode.range.start, exprRange.start),
-                    Math.max(this.currentNode.range.end, exprRange.end),
-                )
+            if (this.currentNode.right !== null) {
+                // Grouped-prefix wrapper: right holds a merged group
+                // sub-tree from extendTreeFromStack's if-branch. Preserve
+                // source order by promoting the group to left and placing
+                // the new leaf in right.
+                const newLeaf = this.newNode('', expression, null, null, negated, exprRange)
+                this.currentNode.setLeft(this.currentNode.right)
+                this.currentNode.setRight(newLeaf)
+                this.currentNode.setBoolOperator(this.boolOperator)
+                const bopR = this._popBoolOpRange()
+                if (bopR !== null) {
+                    this.currentNode.boolOperatorRange = bopR
+                }
+                if (exprRange && this.currentNode.range) {
+                    this.currentNode.range = new Range(
+                        this.currentNode.range.start,
+                        Math.max(this.currentNode.range.end, exprRange.end),
+                    )
+                }
+            } else {
+                const node = this.newNode('', expression, null, null, negated, exprRange)
+                this.currentNode.setLeft(node)
+                this.currentNode.setBoolOperator(this.boolOperator)
+                if (exprRange && this.currentNode.range) {
+                    this.currentNode.range = new Range(
+                        Math.min(this.currentNode.range.start, exprRange.start),
+                        Math.max(this.currentNode.range.end, exprRange.end),
+                    )
+                }
             }
         } else if (this.currentNode && this.currentNode.right === null) {
             const node = this.newNode('', expression, null, null, negated, exprRange)
@@ -465,13 +515,7 @@ export class Parser {
             }
         } else {
             const right = this.newNode('', expression, null, null, negated, exprRange)
-            const bopR = this._popBoolOpRange()
-            const parentRange =
-                this.currentNode && this.currentNode.range && exprRange
-                    ? new Range(this.currentNode.range.start, exprRange.end)
-                    : null
-            const node = this.newNode(this.boolOperator, null, this.currentNode, right, false, parentRange, bopR)
-            this.setCurrentNode(node)
+            this.setCurrentNode(this._foldWithPrecedence(this.currentNode, this.boolOperator, right))
         }
     }
 
@@ -479,13 +523,38 @@ export class Parser {
         this._attachExpr(expression)
     }
 
-    applyNegationToTree() {
-        if (this.negationStack.length > 0) {
-            const negated = this.negationStack.pop()
-            if (negated && this.currentNode) {
-                this.currentNode.setNegated(true)
-            }
+    // Apply `negated` to `node` mirroring the Python/Go pattern: if the
+    // node is a trivial single-leaf wrapper, push the flag down onto the
+    // leaf; otherwise apply it directly to the node. Guarded on null to
+    // match the Python/Go signatures.
+    applyNegationToTree(node, negated) {
+        if (!negated || !node) return
+        if (node.expression === null && node.left !== null && node.left.expression !== null && node.right === null) {
+            node.left.setNegated(true)
+        } else {
+            node.setNegated(true)
         }
+    }
+
+    // Return the inner leaf if `node` is a trivial single-leaf wrapper (a
+    // non-negated binary-op node with a leaf in `left` and nothing in
+    // `right`). Used at group-merge sites so a sub-tree produced by a
+    // single-leaf group like `(a=1)` lands as a leaf in its parent, not
+    // as a malformed `AND{left=leaf, right=null}` child node.
+    _unwrapTrivialLeafWrapper(node) {
+        if (
+            node !== null &&
+            !node.negated &&
+            node.expression === null &&
+            node.left !== null &&
+            node.left.expression !== null &&
+            node.left.left === null &&
+            node.left.right === null &&
+            node.right === null
+        ) {
+            return node.left
+        }
+        return node
     }
 
     extendTree() {
@@ -493,8 +562,19 @@ export class Parser {
     }
 
     extendTreeFromStack(boolOperator) {
+        if (!this.nodesStack.length) return
         const node = this.nodesStack.pop()
         const groupStart = this._groupStartStack.length > 0 ? this._groupStartStack.pop() : null
+        // Pop the sub-tree's negation BEFORE the merge and apply it
+        // directly to the sub-tree (currentNode at entry). This mirrors
+        // the Python/Go `_apply_negation_to_tree` call path and fixes
+        // the JS NOT-scope bug where negation was formerly applied to
+        // the merged parent tree via external post-call.
+        const negated = this.negationStack.length > 0 ? this.negationStack.pop() : false
+        this.applyNegationToTree(this.currentNode, negated)
+        // Unwrap a trivial single-leaf wrapper so the merged sub-tree
+        // lands as a leaf, not a malformed binary-op node.
+        this.currentNode = this._unwrapTrivialLeafWrapper(this.currentNode)
         if (node.right === null) {
             node.right = this.currentNode
             if (boolOperator) {
@@ -512,23 +592,33 @@ export class Parser {
             }
             this.setCurrentNode(node)
         } else {
-            const bopR = boolOperator ? this._popBoolOpRange() : null
-            let leftStart = node.range ? node.range.start : 0
-            let rightEnd = this.currentNode && this.currentNode.range ? this.currentNode.range.end : 0
-            if (groupStart !== null && this.char) {
-                leftStart = groupStart
-                rightEnd = this.char.pos + 1
+            // Edge case: `node` is a grouped-prefix wrapper from a prior
+            // if-branch merge — shape `{left=null, right=<sub-tree>}`.
+            // Discard the wrapper entirely and build the new root
+            // directly, preserving the OUTER group's `(` position from
+            // `node.range.start` rather than using `groupStart` (which
+            // tracks only the INNER group being closed now).
+            if (node.left === null && node.right !== null) {
+                const bopR = boolOperator ? this._popBoolOpRange() : null
+                const rightEnd = this.char ? this.char.pos + 1 : this.currentNode.range.end
+                const leftStart = node.range ? node.range.start : 0
+                const newNode = this.newNode(
+                    boolOperator,
+                    null,
+                    node.right,
+                    this.currentNode,
+                    false,
+                    new Range(leftStart, rightEnd),
+                    bopR,
+                )
+                this.setCurrentNode(newNode)
+            } else {
+                const newNode = this._foldWithPrecedence(node, boolOperator, this.currentNode)
+                if (this.char && newNode.range) {
+                    newNode.range = new Range(newNode.range.start, this.char.pos + 1)
+                }
+                this.setCurrentNode(newNode)
             }
-            const newNode = this.newNode(
-                boolOperator,
-                null,
-                node,
-                this.currentNode,
-                false,
-                new Range(leftStart, rightEnd),
-                bopR,
-            )
-            this.setCurrentNode(newNode)
         }
     }
 
@@ -544,6 +634,7 @@ export class Parser {
         if (this.char.isGroupOpen()) {
             this.extendNodesStack()
             this.extendBoolOpStack()
+            this.negationStack.push(false)
             this._groupStartStack.push(startPos)
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
@@ -643,7 +734,6 @@ export class Parser {
                 this.boolOperator = this.boolOpStack.pop()
             }
             this.extendTreeFromStack(this.boolOperator)
-            this.applyNegationToTree()
             this.resetBoolOperator()
             this.setState(State.EXPECT_BOOL_OP)
             this.storeTypedChar(CharType.OPERATOR)
@@ -692,7 +782,6 @@ export class Parser {
                 this.boolOperator = this.boolOpStack.pop()
             }
             this.extendTreeFromStack(this.boolOperator)
-            this.applyNegationToTree()
             this.resetBoolOperator()
             this.setState(State.EXPECT_BOOL_OP)
             this.storeTypedChar(CharType.OPERATOR)
@@ -1069,7 +1158,6 @@ export class Parser {
                     this.boolOperator = this.boolOpStack.pop()
                 }
                 this.extendTreeFromStack(this.boolOperator)
-                this.applyNegationToTree()
                 this.resetBoolOperator()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
@@ -1532,7 +1620,6 @@ export class Parser {
                 if (this.boolOpStack.length) {
                     this.extendTreeFromStack(this.boolOpStack.pop())
                 }
-                this.applyNegationToTree()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
             }
@@ -1559,7 +1646,6 @@ export class Parser {
                 if (this.boolOpStack.length) {
                     this.extendTreeFromStack(this.boolOpStack.pop())
                 }
-                this.applyNegationToTree()
                 this.setState(State.EXPECT_BOOL_OP)
                 this.storeTypedChar(CharType.OPERATOR)
             }

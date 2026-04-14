@@ -33,13 +33,13 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 - **Отдельный ключ** — ключ без оператора трактуется как проверка на истинность: <FlyqlCode code={`active`} inline />
 - **Сравнения** — при использовании оператора обязательно должно быть указано значение: <FlyqlCode code={`status = 200`} inline />
 - **Пробелы** — пробелы вокруг операторов необязательны: <FlyqlCode code={`status=200`} inline /> и <FlyqlCode code={`status = 200`} inline /> эквивалентны
-- **Вычисление слева направо** — между <FlyqlToken type="operator">and</FlyqlToken> и <FlyqlToken type="operator">or</FlyqlToken> нет приоритета: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> парсится как <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />, а **не** как `a = 1 or (b = 2 and c = 3)`
-- **Скобки** — используйте <FlyqlToken type="operator">( )</FlyqlToken> всякий раз, когда важна группировка: <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
+- **Стандартный приоритет операторов** — <FlyqlToken type="operator">not</FlyqlToken> связывается сильнее всего, затем <FlyqlToken type="operator">and</FlyqlToken>, затем <FlyqlToken type="operator">or</FlyqlToken> (как в SQL, Python, JavaScript, Go): <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> разбирается как <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
+- **Скобки** — используйте <FlyqlToken type="operator">( )</FlyqlToken>, чтобы переопределить стандартный приоритет: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
 
 ## Разделы синтаксиса
 
 - [Операторы](/ru/syntax/operators/) — операторы сравнения (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
-- [Булева логика](/ru/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, вычисление слева направо, группировка скобками
+- [Булева логика](/ru/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, стандартный приоритет, группировка скобками
 - [Сопоставление по шаблону](/ru/syntax/pattern-matching/) — regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) и <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> с SQL-подстановками (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Списки](/ru/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken> со значениями списка
 - [Проверка на вхождение](/ru/syntax/operators/#проверка-на-вхождение) — <FlyqlToken type="operator">has</FlyqlToken> и <FlyqlToken type="operator">not has</FlyqlToken> для подстрок, проверки ключей и принадлежности элементов

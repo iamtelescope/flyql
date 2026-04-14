@@ -207,6 +207,63 @@ describe('Parser Parameters Tests', () => {
     })
 })
 
+describe('Parser Precedence Tests', () => {
+    const testData = loadTestData('precedence.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
+describe('normalizeAstForComparison idempotent on canonical trees', () => {
+    const testData = loadTestData('precedence.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            const result = parse(testCase.input)
+            const raw = astToDict(result.root)
+            const normalized = normalizeAstForComparison(raw)
+            if (JSON.stringify(normalized) !== JSON.stringify(raw)) {
+                throw new Error(
+                    `normalizeAstForComparison is not idempotent on ${testCase.name}\n` +
+                        `raw:        ${JSON.stringify(raw)}\n` +
+                        `normalized: ${JSON.stringify(normalized)}`,
+                )
+            }
+        })
+    })
+})
+
+describe('Parser Precedence Raw AST Shape', () => {
+    const testData = loadTestData('precedence.json')
+
+    testData.tests.forEach((testCase) => {
+        it(`${testCase.name} (raw)`, () => {
+            const result = parse(testCase.input)
+            const actualRaw = astToDict(result.root)
+            // Drop JS-only value_bigint flag for cross-language comparison
+            const strip = (n) => {
+                if (!n) return n
+                if (n.expression && 'value_bigint' in n.expression) {
+                    const { value_bigint: _, ...rest } = n.expression
+                    n = { ...n, expression: rest }
+                }
+                if (n.left) n.left = strip(n.left)
+                if (n.right) n.right = strip(n.right)
+                return n
+            }
+            const stripped = strip(actualRaw)
+            if (JSON.stringify(stripped) !== JSON.stringify(testCase.expected_ast)) {
+                throw new Error(
+                    formatAstMismatchMessage(testCase.name, testCase.input, testCase.expected_ast, stripped),
+                )
+            }
+        })
+    })
+})
+
 describe('Parser Hyphen Keys Tests', () => {
     it('should parse unquoted keys with hyphens correctly', () => {
         // Test simple hyphenated key

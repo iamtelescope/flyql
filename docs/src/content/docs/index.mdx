@@ -36,7 +36,7 @@ This query works identically whether your backend is ClickHouse, PostgreSQL, Sta
     status: 'status is 400 or greater',
     level: 'level field equals "error"',
     message: 'message matches regex pattern',
-    boolean: 'boolean logic, left-to-right evaluation',
+    boolean: 'boolean logic, standard precedence (not > and > or)',
     grouping: 'explicit grouping',
   }}
 />

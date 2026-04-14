@@ -598,17 +598,6 @@
         "left": {
           "bool_operator": "",
           "expression": {
-            "key": "level",
-            "operator": "=",
-            "value": "error",
-            "value_type": "string"
-          },
-          "left": null,
-          "right": null
-        },
-        "right": {
-          "bool_operator": "",
-          "expression": {
             "key": "timestamp",
             "operator": ">",
             "value": {
@@ -618,6 +607,17 @@
               "timezone": ""
             },
             "value_type": "function"
+          },
+          "left": null,
+          "right": null
+        },
+        "right": {
+          "bool_operator": "",
+          "expression": {
+            "key": "level",
+            "operator": "=",
+            "value": "error",
+            "value_type": "string"
           },
           "left": null,
           "right": null

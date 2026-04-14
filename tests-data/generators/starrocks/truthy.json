@@ -49,13 +49,13 @@
       "name": "truthy_and_comparison",
       "input": "active and status=200",
       "expected_result": "success",
-      "expected_sql": "(`active` AND `status` = '200')"
+      "expected_sql": "(`active` AND `status` = 200)"
     },
     {
       "name": "comparison_and_truthy",
       "input": "status=200 and active",
       "expected_result": "success",
-      "expected_sql": "(`status` = '200' AND `active`)"
+      "expected_sql": "(`status` = 200 AND `active`)"
     },
     {
       "name": "truthy_grouped",

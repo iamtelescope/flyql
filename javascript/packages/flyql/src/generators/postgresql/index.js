@@ -372,7 +372,7 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
                 const boolLiteral = expr.value ? 'TRUE' : 'FALSE'
                 return `${identifier} ${expr.operator} ${boolLiteral}`
             }
-            const escapedValue = escapeParam(String(expr.value))
+            const escapedValue = escapeParam(expr.value)
             return `${identifier} ${expr.operator} ${escapedValue}`
         }
         default: {

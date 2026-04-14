@@ -32,7 +32,14 @@ FlyQL 支持以下比较操作符：
 <FlyqlCode code={`status >= 400 and duration < 5000`} />
 <FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
-数值比较通常用于数字值。如果用于字符串，则会执行字典序比较。
+数值比较操作符是为数字值设计的。
+
+## 字符串比较
+
+相同的操作符（<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>）同样可用于字符串值，此时执行字典序（按字母顺序）比较：
+
+<FlyqlCode code={`name > 'm'`} />
+<FlyqlCode code={`path <= '/api/z'`} />
 
 ## 正则匹配
 

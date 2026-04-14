@@ -32,7 +32,14 @@ Ambos os lados do operador são obrigatórios — uma <FlyqlToken type="key">cha
 <FlyqlCode code={`status >= 400 and duration < 5000`} />
 <FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
-Os operadores de comparação numérica funcionam com valores numéricos. Quando usados com valores de string, a comparação lexicográfica é aplicada.
+Os operadores de comparação numérica são projetados para valores numéricos.
+
+## Comparação de Strings
+
+Os mesmos operadores (<FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>) também funcionam com valores de string, onde realizam uma comparação lexicográfica (alfabética):
+
+<FlyqlCode code={`name > 'm'`} />
+<FlyqlCode code={`path <= '/api/z'`} />
 
 ## Correspondência Regex
 

@@ -30,7 +30,7 @@ FlyQL 查询由一个或多个条件组成，条件之间通过 <FlyqlToken type
 
 ## 通用规则
 
-- **独立键名** — 没有操作符的字段会被当作真值检查: <FlyqlCode code={`active`} inline />
+- **独立键名** — 没有操作符的字段会被当作[真值检查](/zh/syntax/values/#真值假值表达式): <FlyqlCode code={`active`} inline />
 - **比较表达式** — 带操作符的字段必须提供对应的值: <FlyqlCode code={`status = 200`} inline />
 - **空白字符** — 操作符两侧的空格是可选的: <FlyqlCode code={`status=200`} inline /> 与 <FlyqlCode code={`status = 200`} inline /> 等价
 - **标准操作符优先级** — <FlyqlToken type="operator">not</FlyqlToken> 结合最紧，其次是 <FlyqlToken type="operator">and</FlyqlToken>，最后是 <FlyqlToken type="operator">or</FlyqlToken>（与 SQL、Python、JavaScript、Go 相同）: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> 会被解析为 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
@@ -38,11 +38,11 @@ FlyQL 查询由一个或多个条件组成，条件之间通过 <FlyqlToken type
 
 ## 语法章节
 
-- [操作符](/zh/syntax/operators/) — 比较操作符（<FlyqlToken type="operator">=</FlyqlToken>、<FlyqlToken type="operator">!=</FlyqlToken>、<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>）
+- [操作符](/zh/syntax/operators/) — 比较、正则、列表成员、模式匹配与包含检查
 - [布尔逻辑](/zh/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>、<FlyqlToken type="operator">or</FlyqlToken>、<FlyqlToken type="operator">not</FlyqlToken>、标准优先级、括号分组
 - [模式匹配](/zh/syntax/pattern-matching/) — 正则匹配（<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>）以及使用 SQL 通配符（<FlyqlToken type="operator">{'%'}</FlyqlToken>、<FlyqlToken type="operator">{'_'}</FlyqlToken>）的 <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken>
 - [列表](/zh/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> 与 <FlyqlToken type="operator">not in</FlyqlToken>
 - [包含检查](/zh/syntax/operators/#包含检查) — <FlyqlToken type="operator">has</FlyqlToken> 与 <FlyqlToken type="operator">not has</FlyqlToken>
-- [值与类型](/zh/syntax/values/) — 真值/假值、字符串、数字、布尔值、null
+- [值与类型](/zh/syntax/values/) — 真值/假值、字符串、数字、布尔值、null、列、数组、时间函数
 - [嵌套键](/zh/syntax/nested-keys/) — 点分路径与带引号的键片段
 - [参数](/zh/syntax/parameters/) — 通过 `bindParams()` 在运行时解析的 `$name` 和 `$1` 占位符

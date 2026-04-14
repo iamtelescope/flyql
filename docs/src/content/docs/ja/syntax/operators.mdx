@@ -32,7 +32,14 @@ FlyQL は次の比較演算子をサポートしています。
 <FlyqlCode code={`status >= 400 and duration < 5000`} />
 <FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
-数値比較演算子は数値に対して機能します。文字列に対して使う場合は辞書順比較になります。
+数値比較演算子は数値のために設計されています。
+
+## 文字列比較
+
+同じ演算子（<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>）は文字列値にも使用でき、その場合は辞書順（アルファベット順）比較を実行します:
+
+<FlyqlCode code={`name > 'm'`} />
+<FlyqlCode code={`path <= '/api/z'`} />
 
 ## Regex マッチ
 

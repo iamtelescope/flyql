@@ -30,7 +30,7 @@ FlyQL queries consist of one or more conditions joined by <FlyqlToken type="oper
 
 ## General Rules
 
-- **Standalone keys** — A key without an operator is treated as a truthy check: <FlyqlCode code={`active`} inline />
+- **Standalone keys** — A key without an operator is treated as a [truthy check](/syntax/values/#truthyfalsy-expressions): <FlyqlCode code={`active`} inline />
 - **Comparisons** — A key with an operator must have a corresponding value: <FlyqlCode code={`status = 200`} inline />
 - **Whitespace** — Spaces around operators are optional: <FlyqlCode code={`status=200`} inline /> and <FlyqlCode code={`status = 200`} inline /> are equivalent
 - **Standard operator precedence** — <FlyqlToken type="operator">not</FlyqlToken> binds tightest, then <FlyqlToken type="operator">and</FlyqlToken>, then <FlyqlToken type="operator">or</FlyqlToken> (same as SQL, Python, JavaScript, Go): <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> is parsed as <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
@@ -38,11 +38,11 @@ FlyQL queries consist of one or more conditions joined by <FlyqlToken type="oper
 
 ## Syntax Sections
 
-- [Operators](/syntax/operators/) — Comparison operators (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
+- [Operators](/syntax/operators/) — Comparison, regex, list membership, pattern matching, and containment
 - [Boolean Logic](/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, standard precedence, parenthesized grouping
 - [Pattern Matching](/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) and <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> with SQL wildcards (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Lists](/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> and <FlyqlToken type="operator">not in</FlyqlToken> with list values
 - [Containment](/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> and <FlyqlToken type="operator">not has</FlyqlToken> for substring, key existence, and item membership
-- [Values & Expressions](/syntax/values/) — Truthy/falsy, quoted strings, numbers
+- [Values & Expressions](/syntax/values/) — Truthy/falsy, strings, numbers, booleans, null, columns, arrays, temporal functions
 - [Nested Keys](/syntax/nested-keys/) — Dot-separated paths and quoted key segments
 - [Parameters](/syntax/parameters/) — `$name` and `$1` placeholders resolved at runtime via `bindParams()`

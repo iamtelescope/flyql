@@ -30,7 +30,7 @@ FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit <FlyqlToken
 
 ## Allgemeine Regeln
 
-- **Einzelne Schlüssel** — Ein Schlüssel ohne Operator wird als Truthy-Prüfung behandelt: <FlyqlCode code={`active`} inline />
+- **Einzelne Schlüssel** — Ein Schlüssel ohne Operator wird als [Truthy-Prüfung](/de/syntax/values/#truthyfalsy-ausdrücke) behandelt: <FlyqlCode code={`active`} inline />
 - **Vergleiche** — Ein Schlüssel mit Operator muss einen zugehörigen Wert haben: <FlyqlCode code={`status = 200`} inline />
 - **Leerzeichen** — Leerzeichen um Operatoren sind optional: <FlyqlCode code={`status=200`} inline /> und <FlyqlCode code={`status = 200`} inline /> sind äquivalent
 - **Standard-Operator-Priorität** — <FlyqlToken type="operator">not</FlyqlToken> bindet am stärksten, dann <FlyqlToken type="operator">and</FlyqlToken>, dann <FlyqlToken type="operator">or</FlyqlToken> (wie in SQL, Python, JavaScript, Go): <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> wird als <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline /> geparst
@@ -38,11 +38,11 @@ FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit <FlyqlToken
 
 ## Syntaxbereiche
 
-- [Operatoren](/de/syntax/operators/) — Vergleichsoperatoren (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
+- [Operatoren](/de/syntax/operators/) — Vergleich, Regex, Listenzugehörigkeit, Musterabgleich und Enthalten-Prüfung
 - [Boolesche Logik](/de/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, Standard-Priorität, Klammergruppierung
 - [Pattern Matching](/de/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) und <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> mit SQL-Wildcards (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listen](/de/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> mit Listenwerten
 - [Enthalten-Prüfung](/de/syntax/operators/#enthalten-prufung) — <FlyqlToken type="operator">has</FlyqlToken> und <FlyqlToken type="operator">not has</FlyqlToken> für Teilstrings, Schlüsselerkennung und Elementzugehörigkeit
-- [Werte und Ausdrücke](/de/syntax/values/) — Truthy/Falsy, Zeichenketten in Anführungszeichen, Zahlen
+- [Werte und Ausdrücke](/de/syntax/values/) — Truthy/Falsy, Zeichenketten, Zahlen, Boolesche Werte, null, Spalten, Arrays, temporale Funktionen
 - [Verschachtelte Schlüssel](/de/syntax/nested-keys/) — punktgetrennte Pfade und Schlüssel-Segmente in Anführungszeichen
 - [Parameter](/de/syntax/parameters/) — `$name`- und `$1`-Platzhalter, die zur Laufzeit über `bindParams()` aufgelöst werden

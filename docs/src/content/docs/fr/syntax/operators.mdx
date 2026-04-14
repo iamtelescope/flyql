@@ -32,7 +32,14 @@ Les deux cotes de l'operateur sont requis — une <FlyqlToken type="key">cle</Fl
 <FlyqlCode code={`status >= 400 and duration < 5000`} />
 <FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
-Les operateurs de comparaison numerique fonctionnent sur les valeurs numeriques. Lorsqu'ils sont utilises avec des valeurs de type chaine, la comparaison lexicographique s'applique.
+Les operateurs de comparaison numerique sont concus pour les valeurs numeriques.
+
+## Comparaison de chaines
+
+Les memes operateurs (<FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>) fonctionnent aussi sur les valeurs de type chaine, ou ils realisent une comparaison lexicographique (alphabetique) :
+
+<FlyqlCode code={`name > 'm'`} />
+<FlyqlCode code={`path <= '/api/z'`} />
 
 ## Correspondance par regex
 

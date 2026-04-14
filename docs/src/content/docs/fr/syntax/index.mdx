@@ -30,7 +30,7 @@ Les requetes FlyQL sont composees d'une ou plusieurs conditions reliees par <Fly
 
 ## Regles generales
 
-- **Cles autonomes** — Une cle sans operateur est traitee comme une verification de veracite : <FlyqlCode code={`active`} inline />
+- **Cles autonomes** — Une cle sans operateur est traitee comme une [verification de veracite](/fr/syntax/values/#expressions-truthyfalsy) : <FlyqlCode code={`active`} inline />
 - **Comparaisons** — Une cle avec un operateur doit avoir une valeur correspondante : <FlyqlCode code={`status = 200`} inline />
 - **Espaces** — Les espaces autour des operateurs sont facultatifs : <FlyqlCode code={`status=200`} inline /> et <FlyqlCode code={`status = 200`} inline /> sont equivalents
 - **Precedence standard des operateurs** — <FlyqlToken type="operator">not</FlyqlToken> se lie le plus etroitement, puis <FlyqlToken type="operator">and</FlyqlToken>, puis <FlyqlToken type="operator">or</FlyqlToken> (comme SQL, Python, JavaScript, Go) : <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> est interprete comme <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
@@ -38,11 +38,11 @@ Les requetes FlyQL sont composees d'une ou plusieurs conditions reliees par <Fly
 
 ## Sections de la syntaxe
 
-- [Operateurs](/fr/syntax/operators/) — Operateurs de comparaison (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
+- [Operateurs](/fr/syntax/operators/) — Comparaison, regex, appartenance a une liste, correspondance de motifs et inclusion
 - [Logique booleenne](/fr/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, precedence standard, regroupement par parentheses
 - [Correspondance de motifs](/fr/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) et <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> avec jokers SQL (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listes](/fr/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> et <FlyqlToken type="operator">not in</FlyqlToken> avec des valeurs de liste
 - [Inclusion](/fr/syntax/operators/#containment-check) — <FlyqlToken type="operator">has</FlyqlToken> et <FlyqlToken type="operator">not has</FlyqlToken> pour la sous-chaine, l'existence de cle et l'appartenance a un element
-- [Valeurs et expressions](/fr/syntax/values/) — Truthy/falsy, chaines entre guillemets, nombres
+- [Valeurs et expressions](/fr/syntax/values/) — Truthy/falsy, chaines, nombres, booleens, null, colonnes, tableaux, fonctions temporelles
 - [Cles imbriquees](/fr/syntax/nested-keys/) — Chemins separes par des points et segments de cle entre guillemets
 - [Parametres](/fr/syntax/parameters/) — Espaces reserves `$name` et `$1` resolus a l'execution via `bindParams()`

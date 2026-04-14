@@ -32,7 +32,14 @@ FlyQL은 다음 비교 연산자를 지원합니다.
 <FlyqlCode code={`status >= 400 and duration < 5000`} />
 <FlyqlCode code={`response_time > 100 and response_time <= 2000`} />
 
-숫자 비교 연산자는 숫자 값에 대해 동작합니다. 문자열 값과 함께 사용하면 사전식 비교가 적용됩니다.
+숫자 비교 연산자는 숫자 값을 위해 설계되었습니다.
+
+## 문자열 비교
+
+같은 연산자 (<FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)는 문자열 값에도 동작하며, 이 경우 사전식(알파벳 순) 비교를 수행합니다:
+
+<FlyqlCode code={`name > 'm'`} />
+<FlyqlCode code={`path <= '/api/z'`} />
 
 ## Regex 매칭
 

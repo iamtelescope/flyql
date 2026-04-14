@@ -36,7 +36,7 @@ Cette requete fonctionne de maniere identique que votre backend soit ClickHouse,
     status: 'le statut est 400 ou plus',
     level: 'le champ level est egal a "error"',
     message: 'message correspond au motif regex',
-    boolean: 'logique booleenne avec precedence',
+    boolean: 'logique booleenne, evaluation de gauche a droite',
     grouping: 'regroupement explicite',
   }}
 />
@@ -53,6 +53,6 @@ Cette requete fonctionne de maniere identique que votre backend soit ClickHouse,
 
 | Base de donnees | Go | Python | JavaScript |
 |-----------------|----|--------|------------|
-| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Oui | Oui | Oui |
+| <TechLabel icon="/icons/clickhouse_light.svg" iconDark="/icons/clickhouse_dark.svg" label="ClickHouse" variant="db" /> | Oui | Oui | Oui |
 | <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Oui | Oui | Oui |
 | <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Oui | Oui | Oui |

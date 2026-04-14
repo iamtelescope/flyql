@@ -51,10 +51,15 @@ AST：`value_type: "string"`
 
 使用反斜杠转义引号：
 
-```
-user = 'John
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+单引号和双引号可以互换使用，因此可以选择能避免转义的那一种。如果值中包含单引号，使用双引号；如果值中包含双引号，使用单引号：
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

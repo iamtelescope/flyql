@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 बैकस्लैश से उद्धरण चिह्न एस्केप करें:
 
-```
-user = 'John\'s'
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+सिंगल और डबल कोट्स विनिमेय हैं, इसलिए आप वह डेलिमिटर चुन सकते हैं जो एस्केपिंग से बचाए। यदि मान में अपोस्ट्रॉफी हो तो डबल कोट्स का उपयोग करें, और यदि उसमें डबल कोट्स हों तो सिंगल कोट्स का उपयोग करें:
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 クォートはバックスラッシュでエスケープできます。
 
-```
-user = 'John
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+シングルクォートとダブルクォートは互換なので、エスケープを避けたい方を選べます。値にアポストロフィが含まれる場合はダブルクォートを、ダブルクォートが含まれる場合はシングルクォートを使います。
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

@@ -1,6 +1,6 @@
 ---
 title: Lógica Booleana
-description: Operadores booleanos, precedência e agrupamento com parênteses no FlyQL
+description: Operadores booleanos, avaliação da esquerda para a direita e agrupamento com parênteses no FlyQL
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
@@ -14,7 +14,7 @@ O FlyQL usa três operadores booleanos para combinar condições:
 |----------|-------------|---------|
 | <FlyqlToken type="operator">and</FlyqlToken> | Ambas as condições devem ser verdadeiras | <FlyqlCode code={`status = 200 and active`} inline /> |
 | <FlyqlToken type="operator">or</FlyqlToken> | Qualquer uma das condições pode ser verdadeira | <FlyqlCode code={`level = 'error' or level = 'critical'`} inline /> |
-| <FlyqlToken type="operator">not</FlyqlToken> | Nega uma expressão | <FlyqlCode code={`not archived`} inline /> |
+| <FlyqlToken type="operator">not</FlyqlToken> | Nega a expressão ou grupo imediatamente seguinte | <FlyqlCode code={`not archived`} inline /> |
 
 ### Negação Combinada
 
@@ -23,31 +23,37 @@ O FlyQL usa três operadores booleanos para combinar condições:
 <FlyqlCode code={`active and not archived`} />
 <FlyqlCode code={`level = 'error' or not healthy`} />
 
-## Precedência de Operadores
+## Ordem de Avaliação
 
-<FlyqlToken type="operator">and</FlyqlToken> tem maior precedência que <FlyqlToken type="operator">or</FlyqlToken>. Isso significa que:
+:::caution
+O FlyQL **não tem precedência** entre <FlyqlToken type="operator">and</FlyqlToken> e <FlyqlToken type="operator">or</FlyqlToken> — essa é uma divergência intencional em relação ao SQL. As condições são combinadas estritamente **da esquerda para a direita**, na ordem em que aparecem. Use parênteses sempre que o agrupamento for relevante.
+:::
 
 <FlyqlCode code={`a = 1 or b = 2 and c = 3`} />
 
 é interpretado como:
 
-<FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} />
+<FlyqlCode code={`(a = 1 or b = 2) and c = 3`} />
 
-Para alterar a precedência, use parênteses explicitamente.
+e não como `a = 1 or (b = 2 and c = 3)`. Se você quiser o comportamento "and tem precedência sobre or" do SQL, escreva-o explicitamente com parênteses.
+
+<FlyqlToken type="operator">not</FlyqlToken>, por outro lado, é um prefixo **unário** e se liga fortemente à expressão ou grupo entre parênteses imediatamente seguinte.
 
 ## Agrupamento com Parênteses
 
-Use parênteses para controlar a ordem de avaliação:
+Como não há precedência entre operadores, parênteses são a única forma de controlar o agrupamento:
 
-<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
+<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
 
-Sem parênteses, <FlyqlToken type="operator">and</FlyqlToken> teria maior precedência:
+Sem os parênteses, o mesmo texto fonte
 
 <FlyqlCode code={`status >= 400 or level = 'error' and service = 'api'`} />
 
-é equivalente a:
+é interpretado da esquerda para a direita como
 
-<FlyqlCode code={`status >= 400 or (level = 'error' and service = 'api')`} />
+<FlyqlCode code={`(status >= 400 or level = 'error') and service = 'api'`} />
+
+o que é uma consulta diferente.
 
 ### Agrupamento Aninhado
 

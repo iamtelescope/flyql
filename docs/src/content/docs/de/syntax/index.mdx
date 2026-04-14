@@ -6,7 +6,7 @@ description: Grundstruktur von Abfragen und Syntaxregeln in FlyQL
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit booleschen Operatoren (<FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>) verbunden sind. Jede Bedingung ist entweder ein Vergleich oder eine Truthy-Prüfung.
+FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit <FlyqlToken type="operator">and</FlyqlToken> / <FlyqlToken type="operator">or</FlyqlToken> verbunden und optional mit <FlyqlToken type="operator">not</FlyqlToken> negiert werden. Jede Bedingung ist entweder ein Vergleich oder eine Truthy-Prüfung.
 
 ## Grundstruktur einer Abfrage
 
@@ -33,13 +33,13 @@ FlyQL-Abfragen bestehen aus einer oder mehreren Bedingungen, die mit booleschen 
 - **Einzelne Schlüssel** — Ein Schlüssel ohne Operator wird als Truthy-Prüfung behandelt: <FlyqlCode code={`active`} inline />
 - **Vergleiche** — Ein Schlüssel mit Operator muss einen zugehörigen Wert haben: <FlyqlCode code={`status = 200`} inline />
 - **Leerzeichen** — Leerzeichen um Operatoren sind optional: <FlyqlCode code={`status=200`} inline /> und <FlyqlCode code={`status = 200`} inline /> sind äquivalent
-- **Operator-Priorität** — <FlyqlToken type="operator">and</FlyqlToken> bindet stärker als <FlyqlToken type="operator">or</FlyqlToken>: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> wird als <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline /> geparst
-- **Klammern** — Verwende <FlyqlToken type="operator">( )</FlyqlToken>, um Prioritäten zu überschreiben: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
+- **Auswertung von links nach rechts** — zwischen <FlyqlToken type="operator">and</FlyqlToken> und <FlyqlToken type="operator">or</FlyqlToken> gibt es keine Priorität: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> wird als <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline /> geparst, **nicht** als `a = 1 or (b = 2 and c = 3)`
+- **Klammern** — Verwende <FlyqlToken type="operator">( )</FlyqlToken>, sobald die Gruppierung wichtig ist: <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
 
 ## Syntaxbereiche
 
 - [Operatoren](/de/syntax/operators/) — Vergleichsoperatoren (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
-- [Boolesche Logik](/de/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, Priorität, Gruppierung
+- [Boolesche Logik](/de/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, Auswertung von links nach rechts, Klammergruppierung
 - [Pattern Matching](/de/syntax/pattern-matching/) — Regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) und <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken> mit SQL-Wildcards (<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)
 - [Listen](/de/syntax/lists/) — <FlyqlToken type="operator">in</FlyqlToken> und <FlyqlToken type="operator">not in</FlyqlToken> mit Listenwerten
 - [Enthalten-Prüfung](/de/syntax/operators/#enthalten-prufung) — <FlyqlToken type="operator">has</FlyqlToken> und <FlyqlToken type="operator">not has</FlyqlToken> für Teilstrings, Schlüsselerkennung und Elementzugehörigkeit

@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 Anführungszeichen lassen sich mit Backslash escapen:
 
-```
-user = 'John\'s'
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+Einfache und doppelte Anführungszeichen sind austauschbar — wählen Sie das Trennzeichen, das das Escapen erspart. Verwenden Sie doppelte Anführungszeichen, wenn der Wert Apostrophe enthält, und einfache Anführungszeichen, wenn er doppelte Anführungszeichen enthält:
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

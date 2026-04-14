@@ -36,7 +36,7 @@ This query works identically whether your backend is ClickHouse, PostgreSQL, Sta
     status: 'status is 400 or greater',
     level: 'level field equals "error"',
     message: 'message matches regex pattern',
-    boolean: 'boolean logic with precedence',
+    boolean: 'boolean logic, left-to-right evaluation',
     grouping: 'explicit grouping',
   }}
 />
@@ -53,6 +53,6 @@ This query works identically whether your backend is ClickHouse, PostgreSQL, Sta
 
 | Database | Go | Python | JavaScript |
 |----------|----|--------|------------|
-| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
+| <TechLabel icon="/icons/clickhouse_light.svg" iconDark="/icons/clickhouse_dark.svg" label="ClickHouse" variant="db" /> | Yes | Yes | Yes |
 | <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Yes | Yes | Yes |
 | <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Yes | Yes | Yes |

@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 Escape quotes with backslash:
 
-```
-user = 'John\'s'
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+Single and double quotes are interchangeable, so you can pick whichever delimiter avoids escaping. Use double quotes when the value contains apostrophes, and single quotes when it contains double quotes:
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

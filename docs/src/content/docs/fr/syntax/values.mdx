@@ -51,10 +51,15 @@ AST : `value_type: "string"`
 
 Echappez les guillemets avec un antislash :
 
-```
-user = 'John
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+Les guillemets simples et doubles sont interchangeables : choisissez le delimiteur qui evite d'avoir a echapper. Utilisez les guillemets doubles quand la valeur contient des apostrophes, et les guillemets simples quand elle contient des guillemets doubles :
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

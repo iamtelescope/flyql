@@ -6,7 +6,7 @@ description: FlyQL의 기본 쿼리 구조와 구문 규칙
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL 쿼리는 불리언 연산자(<FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>)로 연결된 하나 이상의 조건으로 구성됩니다. 각 조건은 비교식이거나 truthy 검사입니다.
+FlyQL 쿼리는 <FlyqlToken type="operator">and</FlyqlToken> / <FlyqlToken type="operator">or</FlyqlToken> 로 연결된 하나 이상의 조건으로 구성되며, 필요에 따라 <FlyqlToken type="operator">not</FlyqlToken> 으로 부정할 수 있습니다. 각 조건은 비교식이거나 truthy 검사입니다.
 
 ## 기본 쿼리 구조
 
@@ -33,13 +33,13 @@ FlyQL 쿼리는 불리언 연산자(<FlyqlToken type="operator">and</FlyqlToken>
 - **단독 키** — 연산자 없는 키는 truthy 검사로 처리됩니다: <FlyqlCode code={`active`} inline />
 - **비교식** — 연산자가 있는 키에는 대응하는 값이 있어야 합니다: <FlyqlCode code={`status = 200`} inline />
 - **공백** — 연산자 주변 공백은 선택 사항입니다: <FlyqlCode code={`status=200`} inline /> 과 <FlyqlCode code={`status = 200`} inline /> 은 동일합니다
-- **연산자 우선순위** — <FlyqlToken type="operator">and</FlyqlToken>는 <FlyqlToken type="operator">or</FlyqlToken>보다 더 강하게 결합합니다: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> 은 <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline /> 으로 parse됩니다
-- **괄호** — <FlyqlToken type="operator">( )</FlyqlToken>로 우선순위를 덮어씁니다: <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline />
+- **왼쪽에서 오른쪽으로 평가** — <FlyqlToken type="operator">and</FlyqlToken> 와 <FlyqlToken type="operator">or</FlyqlToken> 사이에는 우선순위가 없습니다: <FlyqlCode code={`a = 1 or b = 2 and c = 3`} inline /> 은 <FlyqlCode code={`(a = 1 or b = 2) and c = 3`} inline /> 으로 parse되며, `a = 1 or (b = 2 and c = 3)` 가 **아닙니다**
+- **괄호** — 그룹화가 중요할 때는 항상 <FlyqlToken type="operator">( )</FlyqlToken>를 사용하세요: <FlyqlCode code={`a = 1 or (b = 2 and c = 3)`} inline />
 
 ## 구문 섹션
 
 - [연산자](/ko/syntax/operators/) — 비교 연산자 (<FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>)
-- [불리언 로직](/ko/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, 우선순위, 그룹화
+- [불리언 로직](/ko/syntax/boolean-logic/) — <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, 왼쪽에서 오른쪽으로 평가, 괄호 그룹화
 - [패턴 매칭](/ko/syntax/pattern-matching/) — regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>) 및 SQL 와일드카드(<FlyqlToken type="operator">{'%'}</FlyqlToken>, <FlyqlToken type="operator">{'_'}</FlyqlToken>)를 사용하는 <FlyqlToken type="operator">like</FlyqlToken>/<FlyqlToken type="operator">ilike</FlyqlToken>
 - [리스트](/ko/syntax/lists/) — 리스트 값에 대한 <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>
 - [포함 검사](/ko/syntax/operators/#포함-검사) — 부분 문자열, 키 존재, 항목 포함 여부를 위한 <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>

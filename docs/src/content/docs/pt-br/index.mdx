@@ -36,7 +36,7 @@ Esta consulta funciona de forma idêntica independentemente de seu backend ser C
     status: '`status` é 400 ou maior',
     level: 'o campo `level` é igual a `"error"`',
     message: '`message` corresponde ao padrão regex',
-    boolean: 'lógica booleana com precedência',
+    boolean: 'lógica booleana, avaliação da esquerda para a direita',
     grouping: 'agrupamento explícito',
   }}
 />
@@ -53,6 +53,6 @@ Esta consulta funciona de forma idêntica independentemente de seu backend ser C
 
 | Banco de Dados | Go | Python | JavaScript |
 |----------|----|--------|------------|
-| <TechLabel icon="/icons/clickhouse_light.svg" label="ClickHouse" variant="db" /> | Sim | Sim | Sim |
+| <TechLabel icon="/icons/clickhouse_light.svg" iconDark="/icons/clickhouse_dark.svg" label="ClickHouse" variant="db" /> | Sim | Sim | Sim |
 | <TechLabel icon="/icons/postgresql.svg" label="PostgreSQL" variant="db" /> | Sim | Sim | Sim |
 | <TechLabel icon="/icons/starrocks.svg" label="StarRocks" variant="db" /> | Sim | Sim | Sim |

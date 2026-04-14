@@ -51,10 +51,15 @@ AST: `value_type: "string"`
 
 Escapa las comillas con barra invertida:
 
-```
-user = 'John
-message="said \"hello\""
-```
+<FlyqlCode code={`user = 'John\\'s'`} />
+<FlyqlCode code={`message = "said \\"hello\\""`} />
+
+:::tip
+Las comillas simples y dobles son intercambiables, así que puedes elegir el delimitador que evite el escape. Usa comillas dobles cuando el valor contiene apóstrofes y comillas simples cuando contiene comillas dobles:
+
+<FlyqlCode code={`user = "John's"`} />
+<FlyqlCode code={`message = 'said "hello"'`} />
+:::
 
 ### Boolean
 

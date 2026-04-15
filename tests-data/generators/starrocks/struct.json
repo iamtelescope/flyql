@@ -38,6 +38,30 @@
       "input": "object.pattern!~'test.*'",
       "expected_result": "success",
       "expected_sql": "`object`.`pattern` NOT regexp 'test.*'"
+    },
+    {
+      "name": "struct_like",
+      "input": "object.b like 'alice%'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` LIKE 'alice%'"
+    },
+    {
+      "name": "struct_not_like",
+      "input": "object.b not like 'alice%'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` NOT LIKE 'alice%'"
+    },
+    {
+      "name": "struct_ilike",
+      "input": "object.b ilike 'Alice%'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` ILIKE 'Alice%'"
+    },
+    {
+      "name": "struct_not_ilike",
+      "input": "object.b not ilike 'Alice%'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` NOT ILIKE 'Alice%'"
     }
   ]
 }

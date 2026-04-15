@@ -76,6 +76,11 @@
       "name": "nullable_field",
       "type": "Nullable(String)",
       "values": null
+    },
+    "foo.bar": {
+      "name": "foo.bar",
+      "type": "JSON",
+      "values": null
     }
   },
   "transformer_columns": [

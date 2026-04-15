@@ -212,14 +212,6 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
                 return `regexp(${colRef}, ${rhsRef})`
             case Operator.NOT_REGEX:
                 return `NOT regexp(${colRef}, ${rhsRef})`
-            case Operator.LIKE:
-                return `${colRef} LIKE ${rhsRef}`
-            case Operator.NOT_LIKE:
-                return `${colRef} NOT LIKE ${rhsRef}`
-            case Operator.ILIKE:
-                return `${colRef} ILIKE ${rhsRef}`
-            case Operator.NOT_ILIKE:
-                return `${colRef} NOT ILIKE ${rhsRef}`
             default:
                 return `${colRef} ${expr.operator} ${rhsRef}`
         }
@@ -247,22 +239,6 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         case Operator.NOT_REGEX: {
             const value = escapeParam(String(expr.value))
             return `NOT regexp(${colRef}, ${value})`
-        }
-        case Operator.LIKE: {
-            const value = escapeLikeParam(expr.value)
-            return `${colRef} LIKE ${value}`
-        }
-        case Operator.NOT_LIKE: {
-            const value = escapeLikeParam(expr.value)
-            return `${colRef} NOT LIKE ${value}`
-        }
-        case Operator.ILIKE: {
-            const value = escapeLikeParam(expr.value)
-            return `${colRef} ILIKE ${value}`
-        }
-        case Operator.NOT_ILIKE: {
-            const value = escapeLikeParam(expr.value)
-            return `${colRef} NOT ILIKE ${value}`
         }
         case Operator.EQUALS:
         case Operator.NOT_EQUALS: {
@@ -729,6 +705,102 @@ function hasExpressionToSQL(expr, columns) {
     throw new Error(`has operator is not supported for column type: ${column.flyqlType()}`)
 }
 
+const likeOpToSQL = {
+    [Operator.LIKE]: 'LIKE',
+    [Operator.NOT_LIKE]: 'NOT LIKE',
+    [Operator.ILIKE]: 'ILIKE',
+    [Operator.NOT_ILIKE]: 'NOT ILIKE',
+}
+
+function likeExpressionToSQL(expr, columns, registry = null) {
+    const columnName = expr.key.segments[0]
+    const column = columns[columnName]
+    if (!column) throw new Error(`unknown column: ${columnName}`)
+
+    const sqlOp = likeOpToSQL[expr.operator]
+    const rhsRef = expr.valueType === LiteralKind.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
+    const value = rhsRef !== null ? rhsRef : escapeLikeParam(expr.value)
+    const colId = getIdentifier(column)
+    const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
+    if (expr.key.isSegmented) {
+        if (column.flyqlType() === Type.JSON) {
+            const jsonPath = expr.key.segments.slice(1)
+            for (const part of jsonPath) validateJSONPathPart(part)
+            const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
+            let leafExpr = `cast(${colId}->${jsonPathStr} as string)`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} ${value}`
+        }
+        if (column.flyqlType() === Type.JSONString) {
+            const jsonPath = expr.key.segments.slice(1)
+            for (const part of jsonPath) validateJSONPathPart(part)
+            const jsonPathStr = jsonPath.map((p) => quoteJsonPathPart(p)).join('->')
+            let leafExpr = `cast(parse_json(${colId})->${jsonPathStr} as string)`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} ${value}`
+        }
+        if (column.flyqlType() === Type.Map) {
+            const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
+            const mapKey = mapPath.join('][')
+            let leafExpr = `${colId}[${mapKey}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} ${value}`
+        }
+        if (column.flyqlType() === Type.Array) {
+            const arrayIndexStr = expr.key.segments.slice(1).join('.')
+            const arrayIndex = parseInt(arrayIndexStr, 10)
+            if (isNaN(arrayIndex)) throw new Error(`invalid array index, expected number: ${arrayIndexStr}`)
+            const sqlIndex = arrayIndex + 1
+            let leafExpr = `${colId}[${sqlIndex}]`
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} ${value}`
+        }
+        if (column.flyqlType() === Type.Struct) {
+            const structPath = expr.key.segments.slice(1)
+            const structColumn = structPath.join('`.`')
+            let leafExpr = `${colId}.\`${structColumn}\``
+            if (hasTransformers) {
+                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
+            }
+            return `${leafExpr} ${sqlOp} ${value}`
+        }
+        throw new Error('path search for unsupported column type')
+    }
+
+    if (rhsRef !== null) {
+        let colRef = colId
+        if (hasTransformers) {
+            validateTransformerChain(expr.key.transformers, registry)
+            colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
+        }
+        return `${colRef} ${sqlOp} ${rhsRef}`
+    }
+
+    if (column.values && column.values.length > 0) {
+        if (!column.values.includes(String(expr.value))) throw new Error(`unknown value: ${expr.value}`)
+    }
+
+    if (column.flyqlType() && !hasTransformers) {
+        validateOperation(expr.value, column.flyqlType(), expr.operator)
+    }
+
+    let colRef = colId
+    if (hasTransformers) {
+        validateTransformerChain(expr.key.transformers, registry)
+        colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
+    }
+    return `${colRef} ${sqlOp} ${value}`
+}
+
 function expressionToSQL(expr, columns, registry = null, options = {}) {
     if (expr.valueType === LiteralKind.PARAMETER) {
         if (expr.value instanceof Parameter) {
@@ -755,6 +827,14 @@ function expressionToSQL(expr, columns, registry = null, options = {}) {
     if (expr.operator === Operator.TRUTHY) return truthyExpressionToSQL(expr, columns)
     if (expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) return inExpressionToSQL(expr, columns)
     if (expr.operator === Operator.HAS || expr.operator === Operator.NOT_HAS) return hasExpressionToSQL(expr, columns)
+    if (
+        expr.operator === Operator.LIKE ||
+        expr.operator === Operator.NOT_LIKE ||
+        expr.operator === Operator.ILIKE ||
+        expr.operator === Operator.NOT_ILIKE
+    ) {
+        return likeExpressionToSQL(expr, columns, registry)
+    }
     if (!VALID_KEY_VALUE_OPERATORS.includes(expr.operator) && expr.operator !== Operator.TRUTHY) {
         throw new Error(`invalid operator: ${expr.operator}`)
     }

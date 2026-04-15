@@ -517,6 +517,127 @@ def has_expression_to_sql_where(
         )
 
 
+_LIKE_OP_TO_SQL = {
+    Operator.LIKE.value: "LIKE",
+    Operator.NOT_LIKE.value: "NOT LIKE",
+    Operator.ILIKE.value: "ILIKE",
+    Operator.NOT_ILIKE.value: "NOT ILIKE",
+}
+
+_LIKE_OP_TO_FUNC = {
+    Operator.LIKE.value: "like",
+    Operator.NOT_LIKE.value: "notLike",
+    Operator.ILIKE.value: "ilike",
+    Operator.NOT_ILIKE.value: "notILike",
+}
+
+
+def like_expression_to_sql_where(
+    expression: Expression,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
+    column_name = expression.key.segments[0]
+    if column_name not in columns:
+        raise FlyqlError(f"unknown column: {column_name}")
+
+    column = columns[column_name]
+    sql_op = _LIKE_OP_TO_SQL[expression.operator]
+    func_name = _LIKE_OP_TO_FUNC[expression.operator]
+
+    rhs_ref = None
+    if expression.value_type == LiteralKind.COLUMN:
+        rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
+    value = rhs_ref if rhs_ref is not None else _escape_like_param(expression.value)
+
+    col_id = get_identifier(column)
+
+    if expression.key.is_segmented:
+        if column.flyql_type == Type.JSONString:
+            json_path = expression.key.segments[1:]
+            json_path_str = ", ".join(escape_param(x) for x in json_path)
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    f"JSONExtractString({col_id}, {json_path_str})",
+                    expression.key.transformers,
+                    "clickhouse",
+                )
+                return f"{func_name}({leaf_expr}, {value})"
+            return (
+                f"multiIf("
+                f"JSONType({col_id}, {json_path_str}) = 'String', "
+                f"{func_name}(JSONExtractString({col_id}, {json_path_str}), {value}),"
+                f"0)"
+            )
+        elif column.flyql_type == Type.JSON:
+            json_path = expression.key.segments[1:]
+            for part in json_path:
+                validate_json_path_part(part)
+            json_path_str = ".".join(f"`{part}`" for part in json_path)
+            leaf_expr = f"{col_id}.{json_path_str}"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "clickhouse"
+                )
+            return f"{leaf_expr} {sql_op} {value}"
+        elif column.flyql_type == Type.Map:
+            map_key = ".".join(expression.key.segments[1:])
+            escaped_map_key = escape_param(map_key)
+            leaf_expr = f"{col_id}[{escaped_map_key}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "clickhouse"
+                )
+            return f"{func_name}({leaf_expr}, {value})"
+        elif column.flyql_type == Type.Array:
+            array_index_str = ".".join(expression.key.segments[1:])
+            try:
+                array_index = int(array_index_str)
+            except Exception as err:
+                raise FlyqlError(
+                    f"invalid array index, expected number: {array_index_str}"
+                ) from err
+            sql_index = array_index + 1
+            leaf_expr = f"{col_id}[{sql_index}]"
+            if expression.key.transformers:
+                leaf_expr = apply_transformer_sql(
+                    leaf_expr, expression.key.transformers, "clickhouse"
+                )
+            return f"{func_name}({leaf_expr}, {value})"
+        else:
+            raise FlyqlError("path search for unsupported column type")
+
+    if rhs_ref is not None:
+        col_ref = col_id
+        if expression.key.transformers:
+            validate_transformer_chain(expression.key.transformers, registry=registry)
+            col_ref = apply_transformer_sql(
+                col_ref,
+                expression.key.transformers,
+                "clickhouse",
+                registry=registry,
+            )
+        return f"{col_ref} {sql_op} {rhs_ref}"
+
+    if column.values and str(expression.value) not in column.values:
+        raise FlyqlError(f"unknown value: {expression.value}")
+
+    if column.flyql_type is not None and not expression.key.transformers:
+        validate_operation(expression.value, column.flyql_type, expression.operator)
+
+    col_ref = col_id
+    if expression.key.transformers:
+        validate_transformer_chain(expression.key.transformers, registry=registry)
+        col_ref = apply_transformer_sql(
+            col_ref,
+            expression.key.transformers,
+            "clickhouse",
+            registry=registry,
+        )
+
+    return f"{col_ref} {sql_op} {value}"
+
+
 _DURATION_UNIT_TO_CLICKHOUSE = {
     "s": "SECOND",
     "m": "MINUTE",
@@ -601,6 +722,14 @@ def expression_to_sql_where(
 
     if expression.operator in (Operator.HAS.value, Operator.NOT_HAS.value):
         return has_expression_to_sql_where(expression, columns)
+
+    if expression.operator in (
+        Operator.LIKE.value,
+        Operator.NOT_LIKE.value,
+        Operator.ILIKE.value,
+        Operator.NOT_ILIKE.value,
+    ):
+        return like_expression_to_sql_where(expression, columns, registry=registry)
 
     if expression.value_type == LiteralKind.FUNCTION:
         if expression.key.is_segmented:
@@ -771,19 +900,6 @@ def expression_to_sql_where(
                 text = f"match({col_ref}, {rhs_ref})"
             elif expression.operator == Operator.NOT_REGEX.value:
                 text = f"NOT match({col_ref}, {rhs_ref})"
-            elif expression.operator in (
-                Operator.LIKE.value,
-                Operator.NOT_LIKE.value,
-                Operator.ILIKE.value,
-                Operator.NOT_ILIKE.value,
-            ):
-                like_op = {
-                    Operator.LIKE.value: "LIKE",
-                    Operator.NOT_LIKE.value: "NOT LIKE",
-                    Operator.ILIKE.value: "ILIKE",
-                    Operator.NOT_ILIKE.value: "NOT ILIKE",
-                }[expression.operator]
-                text = f"{col_ref} {like_op} {rhs_ref}"
             else:
                 text = f"{col_ref} {expression.operator} {rhs_ref}"
         else:
@@ -813,18 +929,6 @@ def expression_to_sql_where(
             elif expression.operator == Operator.NOT_REGEX.value:
                 value = escape_param(str(expression.value))
                 text = f"NOT match({col_ref}, {value})"
-            elif expression.operator == Operator.LIKE.value:
-                value = _escape_like_param(expression.value)
-                text = f"{col_ref} LIKE {value}"
-            elif expression.operator == Operator.NOT_LIKE.value:
-                value = _escape_like_param(expression.value)
-                text = f"{col_ref} NOT LIKE {value}"
-            elif expression.operator == Operator.ILIKE.value:
-                value = _escape_like_param(expression.value)
-                text = f"{col_ref} ILIKE {value}"
-            elif expression.operator == Operator.NOT_ILIKE.value:
-                value = _escape_like_param(expression.value)
-                text = f"{col_ref} NOT ILIKE {value}"
             elif expression.operator in [
                 Operator.EQUALS.value,
                 Operator.NOT_EQUALS.value,

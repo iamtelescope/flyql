@@ -98,6 +98,72 @@
       "input": "json_column.message!~'error.*'",
       "expected_result": "success",
       "expected_sql": "cast(parse_json(`json_column`)->'\"message\"' as string) NOT regexp 'error.*'"
+    },
+    {
+      "name": "native_json_like",
+      "input": "new_json.name like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) LIKE 'john%'"
+    },
+    {
+      "name": "native_json_not_like",
+      "input": "new_json.name not like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) NOT LIKE 'john%'"
+    },
+    {
+      "name": "native_json_ilike",
+      "input": "new_json.name ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) ILIKE 'John%'"
+    },
+    {
+      "name": "native_json_not_ilike",
+      "input": "new_json.name not ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) NOT ILIKE 'John%'"
+    },
+    {
+      "name": "native_json_nested_path_like",
+      "input": "new_json.user.name like 'j%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"user\"'->'\"name\"' as string) LIKE 'j%'"
+    },
+    {
+      "name": "native_json_dot_in_column_like",
+      "input": "new_json.'column.subcolumn' like 'v%'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"column.subcolumn\"' as string) LIKE 'v%'"
+    },
+    {
+      "name": "native_json_like_escaped_percent",
+      "input": "new_json.name like 'test\\%value'",
+      "expected_result": "success",
+      "expected_sql": "cast(`new_json`->'\"name\"' as string) LIKE 'test\\\\%value'"
+    },
+    {
+      "name": "jsonstring_like",
+      "input": "json_column.name like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) LIKE 'john%'"
+    },
+    {
+      "name": "jsonstring_not_like",
+      "input": "json_column.name not like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) NOT LIKE 'john%'"
+    },
+    {
+      "name": "jsonstring_ilike",
+      "input": "json_column.name ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) ILIKE 'John%'"
+    },
+    {
+      "name": "jsonstring_not_ilike",
+      "input": "json_column.name not ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) NOT ILIKE 'John%'"
     }
   ]
 }

@@ -90,6 +90,54 @@
       "input": "json_column.message!~'error.*'",
       "expected_result": "success",
       "expected_sql": "NOT multiIf(JSONType(json_column, 'message') = 'String', match(JSONExtractString(json_column, 'message'), 'error.*'),0)"
+    },
+    {
+      "name": "native_json_like",
+      "input": "new_json.name like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "new_json.`name` LIKE 'john%'"
+    },
+    {
+      "name": "native_json_not_like",
+      "input": "new_json.name not like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "new_json.`name` NOT LIKE 'john%'"
+    },
+    {
+      "name": "native_json_ilike",
+      "input": "new_json.name ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "new_json.`name` ILIKE 'John%'"
+    },
+    {
+      "name": "native_json_not_ilike",
+      "input": "new_json.name not ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "new_json.`name` NOT ILIKE 'John%'"
+    },
+    {
+      "name": "jsonstring_like",
+      "input": "json_column.name like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'name') = 'String', like(JSONExtractString(json_column, 'name'), 'john%'),0)"
+    },
+    {
+      "name": "jsonstring_not_like",
+      "input": "json_column.name not like 'john%'",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'name') = 'String', notLike(JSONExtractString(json_column, 'name'), 'john%'),0)"
+    },
+    {
+      "name": "jsonstring_ilike",
+      "input": "json_column.name ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'name') = 'String', ilike(JSONExtractString(json_column, 'name'), 'John%'),0)"
+    },
+    {
+      "name": "jsonstring_not_ilike",
+      "input": "json_column.name not ilike 'John%'",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'name') = 'String', notILike(JSONExtractString(json_column, 'name'), 'John%'),0)"
     }
   ]
 }

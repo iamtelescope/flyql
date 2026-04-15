@@ -391,14 +391,6 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 				return fmt.Sprintf("regexp(%s, %s)", colRef, rhsRef), nil
 			case flyql.OpNotRegex:
 				return fmt.Sprintf("NOT regexp(%s, %s)", colRef, rhsRef), nil
-			case flyql.OpLike:
-				return fmt.Sprintf("%s LIKE %s", colRef, rhsRef), nil
-			case flyql.OpNotLike:
-				return fmt.Sprintf("%s NOT LIKE %s", colRef, rhsRef), nil
-			case flyql.OpILike:
-				return fmt.Sprintf("%s ILIKE %s", colRef, rhsRef), nil
-			case flyql.OpNotILike:
-				return fmt.Sprintf("%s NOT ILIKE %s", colRef, rhsRef), nil
 			default:
 				return fmt.Sprintf("%s %s %s", colRef, expr.Operator, rhsRef), nil
 			}
@@ -451,18 +443,6 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 			return "", err
 		}
 		return fmt.Sprintf("NOT regexp(%s, %s)", colRef, value), nil
-
-	case flyql.OpLike:
-		return fmt.Sprintf("%s LIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
-
-	case flyql.OpNotLike:
-		return fmt.Sprintf("%s NOT LIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
-
-	case flyql.OpILike:
-		return fmt.Sprintf("%s ILIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
-
-	case flyql.OpNotILike:
-		return fmt.Sprintf("%s NOT ILIKE %s", colRef, escapeLikeParam(fmt.Sprintf("%v", expr.Value))), nil
 
 	case flyql.OpEquals, flyql.OpNotEquals:
 		if expr.ValueType == literal.Null {
@@ -1032,6 +1012,188 @@ func hasExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (str
 	}
 }
 
+var likeOpToSQL = map[string]string{
+	flyql.OpLike:     "LIKE",
+	flyql.OpNotLike:  "NOT LIKE",
+	flyql.OpILike:    "ILIKE",
+	flyql.OpNotILike: "NOT ILIKE",
+}
+
+func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry *transformers.TransformerRegistry) (string, error) {
+	columnName := expr.Key.Segments[0]
+	column, ok := columns[columnName]
+	if !ok {
+		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	sqlOp, ok := likeOpToSQL[expr.Operator]
+	if !ok {
+		return "", fmt.Errorf("unsupported like operator: %s", expr.Operator)
+	}
+
+	var rhsRef string
+	rhsResolved := false
+	if expr.ValueType == literal.Column {
+		if ref, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", expr.Value), columns); resolved {
+			rhsRef = ref
+			rhsResolved = true
+		}
+	}
+	var value string
+	if rhsResolved {
+		value = rhsRef
+	} else {
+		value = escapeLikeParam(fmt.Sprintf("%v", expr.Value))
+	}
+
+	colID := getIdentifier(column)
+	hasTransformers := len(expr.Key.Transformers) > 0
+
+	if expr.Key.IsSegmented() {
+		switch column.FlyQLType() {
+		case flyqltype.JSON:
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = QuoteJSONPathPart(part)
+			}
+			jsonPathStr := strings.Join(pathParts, "->")
+			leafExpr := fmt.Sprintf("cast(%s->%s as string)", colID, jsonPathStr)
+			if hasTransformers {
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+		case flyqltype.JSONString:
+			jsonPath := expr.Key.Segments[1:]
+			for _, part := range jsonPath {
+				if err := validateJSONPathPart(part); err != nil {
+					return "", err
+				}
+			}
+			pathParts := make([]string, len(jsonPath))
+			for i, part := range jsonPath {
+				pathParts[i] = QuoteJSONPathPart(part)
+			}
+			jsonPathStr := strings.Join(pathParts, "->")
+			leafExpr := fmt.Sprintf("cast(parse_json(%s)->%s as string)", colID, jsonPathStr)
+			if hasTransformers {
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+		case flyqltype.Map:
+			mapPath := expr.Key.Segments[1:]
+			escapedParts := make([]string, len(mapPath))
+			for i, part := range mapPath {
+				escaped, err := EscapeParam(part)
+				if err != nil {
+					return "", err
+				}
+				escapedParts[i] = escaped
+			}
+			mapKey := strings.Join(escapedParts, "][")
+			leafExpr := fmt.Sprintf("%s[%s]", colID, mapKey)
+			if hasTransformers {
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+		case flyqltype.Array:
+			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
+			arrayIndex, err := strconv.Atoi(arrayIndexStr)
+			if err != nil {
+				return "", fmt.Errorf("invalid array index, expected number: %s", arrayIndexStr)
+			}
+			sqlIndex := arrayIndex + 1
+			leafExpr := fmt.Sprintf("%s[%d]", colID, sqlIndex)
+			if hasTransformers {
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+		case flyqltype.Struct:
+			structPath := expr.Key.Segments[1:]
+			structColumn := strings.Join(structPath, "`.`")
+			leafExpr := fmt.Sprintf("%s.`%s`", colID, structColumn)
+			if hasTransformers {
+				var err error
+				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "starrocks", registry)
+				if err != nil {
+					return "", err
+				}
+			}
+			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+		default:
+			return "", fmt.Errorf("path search for unsupported column type")
+		}
+	}
+
+	if rhsResolved {
+		colRef := colID
+		if hasTransformers {
+			if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+				return "", err
+			}
+			var err error
+			colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
+			if err != nil {
+				return "", err
+			}
+		}
+		return fmt.Sprintf("%s %s %s", colRef, sqlOp, rhsRef), nil
+	}
+
+	if len(column.Values) > 0 {
+		valueStr := fmt.Sprintf("%v", expr.Value)
+		found := false
+		for _, v := range column.Values {
+			if v == valueStr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return "", fmt.Errorf("unknown value: %v", expr.Value)
+		}
+	}
+
+	if column.FlyQLType() != "" && !hasTransformers {
+		if err := ValidateOperation(expr.Value, column.FlyQLType(), expr.Operator); err != nil {
+			return "", err
+		}
+	}
+
+	colRef := colID
+	if hasTransformers {
+		if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+			return "", err
+		}
+		var err error
+		colRef, err = applyTransformerSQL(colRef, expr.Key.Transformers, "starrocks", registry)
+		if err != nil {
+			return "", err
+		}
+	}
+	return fmt.Sprintf("%s %s %s", colRef, sqlOp, value), nil
+}
+
 func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	columnName := expr.Key.Segments[0]
 	column, ok := columns[columnName]
@@ -1334,6 +1496,9 @@ func ExpressionToSQLWithOptions(expr *flyql.Expression, columns map[string]*Colu
 	}
 	if expr.Operator == flyql.OpHas || expr.Operator == flyql.OpNotHas {
 		return hasExpressionToSQL(expr, columns)
+	}
+	if expr.Operator == flyql.OpLike || expr.Operator == flyql.OpNotLike || expr.Operator == flyql.OpILike || expr.Operator == flyql.OpNotILike {
+		return likeExpressionToSQL(expr, columns, reg)
 	}
 	if err := validateOperator(expr.Operator); err != nil {
 		return "", err

@@ -68,6 +68,54 @@
       "input": "metadata.\"key\\\\slash\"='value'",
       "expected_result": "success",
       "expected_sql": "equals(metadata['key\\\\slash'], 'value')"
+    },
+    {
+      "name": "map_like",
+      "input": "metadata.region like 'us-%'",
+      "expected_result": "success",
+      "expected_sql": "like(metadata['region'], 'us-%')"
+    },
+    {
+      "name": "map_not_like",
+      "input": "metadata.region not like 'us-%'",
+      "expected_result": "success",
+      "expected_sql": "notLike(metadata['region'], 'us-%')"
+    },
+    {
+      "name": "map_ilike",
+      "input": "metadata.region ilike 'US-%'",
+      "expected_result": "success",
+      "expected_sql": "ilike(metadata['region'], 'US-%')"
+    },
+    {
+      "name": "map_not_ilike",
+      "input": "metadata.region not ilike 'US-%'",
+      "expected_result": "success",
+      "expected_sql": "notILike(metadata['region'], 'US-%')"
+    },
+    {
+      "name": "array_like",
+      "input": "tags.0 like 'w%'",
+      "expected_result": "success",
+      "expected_sql": "like(tags[1], 'w%')"
+    },
+    {
+      "name": "array_not_like",
+      "input": "tags.0 not like 'w%'",
+      "expected_result": "success",
+      "expected_sql": "notLike(tags[1], 'w%')"
+    },
+    {
+      "name": "array_ilike",
+      "input": "tags.0 ilike 'W%'",
+      "expected_result": "success",
+      "expected_sql": "ilike(tags[1], 'W%')"
+    },
+    {
+      "name": "array_not_ilike",
+      "input": "tags.0 not ilike 'W%'",
+      "expected_result": "success",
+      "expected_sql": "notILike(tags[1], 'W%')"
     }
   ]
 }

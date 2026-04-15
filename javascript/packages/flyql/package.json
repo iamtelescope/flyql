@@ -1,6 +1,6 @@
 {
     "name": "flyql",
-    "version": "0.0.43",
+    "version": "0.0.44",
     "description": "A lightweight, injection-proof query language for multi-dialect SQL generation",
     "type": "module",
     "main": "./src/index.js",

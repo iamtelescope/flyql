@@ -122,6 +122,126 @@
       "input": "tags.0 not ilike 'W%'",
       "expected_result": "success",
       "expected_sql": "`tags`[1] NOT ILIKE 'W%'"
+    },
+    {
+      "name": "map_has",
+      "input": "metadata.region has 'us'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`metadata`['region'], 'us') > 0"
+    },
+    {
+      "name": "map_not_has",
+      "input": "metadata.region not has 'us'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`metadata`['region'], 'us') = 0"
+    },
+    {
+      "name": "map_truthy",
+      "input": "metadata.region",
+      "expected_result": "success",
+      "expected_sql": "(element_at(`metadata`, 'region') IS NOT NULL AND `metadata`['region'] != '')"
+    },
+    {
+      "name": "map_falsy",
+      "input": "not metadata.region",
+      "expected_result": "success",
+      "expected_sql": "(element_at(`metadata`, 'region') IS NULL OR `metadata`['region'] = '')"
+    },
+    {
+      "name": "map_in",
+      "input": "metadata.region in ['us', 'eu']",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] IN ('us', 'eu')"
+    },
+    {
+      "name": "map_not_in",
+      "input": "metadata.region not in ['us', 'eu']",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] NOT IN ('us', 'eu')"
+    },
+    {
+      "name": "map_gt",
+      "input": "metadata.region > 'a'",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] > 'a'"
+    },
+    {
+      "name": "map_lt",
+      "input": "metadata.region < 'z'",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] < 'z'"
+    },
+    {
+      "name": "map_ge",
+      "input": "metadata.region >= 'a'",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] >= 'a'"
+    },
+    {
+      "name": "map_le",
+      "input": "metadata.region <= 'z'",
+      "expected_result": "success",
+      "expected_sql": "`metadata`['region'] <= 'z'"
+    },
+    {
+      "name": "array_has",
+      "input": "tags.0 has 'web'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`tags`[1], 'web') > 0"
+    },
+    {
+      "name": "array_not_has",
+      "input": "tags.0 not has 'web'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`tags`[1], 'web') = 0"
+    },
+    {
+      "name": "array_truthy",
+      "input": "tags.0",
+      "expected_result": "success",
+      "expected_sql": "(array_length(`tags`) >= 1 AND `tags`[1] != '')"
+    },
+    {
+      "name": "array_falsy",
+      "input": "not tags.0",
+      "expected_result": "success",
+      "expected_sql": "(array_length(`tags`) < 1 OR `tags`[1] = '')"
+    },
+    {
+      "name": "array_in",
+      "input": "tags.0 in ['web', 'api']",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] IN ('web', 'api')"
+    },
+    {
+      "name": "array_not_in",
+      "input": "tags.0 not in ['web', 'api']",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] NOT IN ('web', 'api')"
+    },
+    {
+      "name": "array_gt",
+      "input": "tags.0 > 'a'",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] > 'a'"
+    },
+    {
+      "name": "array_lt",
+      "input": "tags.0 < 'z'",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] < 'z'"
+    },
+    {
+      "name": "array_ge",
+      "input": "tags.0 >= 'a'",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] >= 'a'"
+    },
+    {
+      "name": "array_le",
+      "input": "tags.0 <= 'z'",
+      "expected_result": "success",
+      "expected_sql": "`tags`[1] <= 'z'"
     }
   ]
 }

@@ -62,6 +62,66 @@
       "input": "object.b not ilike 'Alice%'",
       "expected_result": "success",
       "expected_sql": "`object`.`b` NOT ILIKE 'Alice%'"
+    },
+    {
+      "name": "struct_has",
+      "input": "object.b has 'ali'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`object`.`b`, 'ali') > 0"
+    },
+    {
+      "name": "struct_not_has",
+      "input": "object.b not has 'ali'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(`object`.`b`, 'ali') = 0"
+    },
+    {
+      "name": "struct_truthy",
+      "input": "object.b",
+      "expected_result": "success",
+      "expected_sql": "(`object`.`b` IS NOT NULL AND `object`.`b` != '')"
+    },
+    {
+      "name": "struct_falsy",
+      "input": "not object.b",
+      "expected_result": "success",
+      "expected_sql": "(`object`.`b` IS NULL OR `object`.`b` = '')"
+    },
+    {
+      "name": "struct_in",
+      "input": "object.b in ['alice', 'bob']",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` IN ('alice', 'bob')"
+    },
+    {
+      "name": "struct_not_in",
+      "input": "object.b not in ['alice', 'bob']",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` NOT IN ('alice', 'bob')"
+    },
+    {
+      "name": "struct_gt",
+      "input": "object.b > 'a'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` > 'a'"
+    },
+    {
+      "name": "struct_lt",
+      "input": "object.b < 'z'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` < 'z'"
+    },
+    {
+      "name": "struct_ge",
+      "input": "object.b >= 'a'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` >= 'a'"
+    },
+    {
+      "name": "struct_le",
+      "input": "object.b <= 'z'",
+      "expected_result": "success",
+      "expected_sql": "`object`.`b` <= 'z'"
     }
   ]
 }

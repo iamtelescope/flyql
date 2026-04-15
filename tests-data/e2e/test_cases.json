@@ -1010,6 +1010,318 @@
       ]
     },
     {
+      "name": "has_meta_str_tier",
+      "flyql": "meta_str.tier has 'prem'",
+      "expected_ids": [
+        1,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "has_meta_json_region",
+      "flyql": "meta_json.region has 'us'",
+      "expected_ids": [
+        1,
+        3,
+        5
+      ],
+      "databases": [
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "has_metadata_tier",
+      "flyql": "metadata.tier has 'prem'",
+      "expected_ids": [
+        1,
+        4,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "has_meta_str_location_city",
+      "flyql": "meta_str.location.city has 'NYC'",
+      "expected_ids": [
+        1,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "has_struct_object_b",
+      "flyql": "object.b has 'ali'",
+      "expected_ids": [
+        1,
+        4
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "truthy_meta_str_region",
+      "flyql": "meta_str.region",
+      "expected_ids": [
+        1,
+        2,
+        3,
+        5,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "truthy_metadata_dc",
+      "flyql": "metadata.dc",
+      "expected_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "not_truthy_meta_str_region",
+      "flyql": "not meta_str.region",
+      "expected_ids": [
+        4
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql"
+      ]
+    },
+    {
+      "name": "truthy_tags_0",
+      "flyql": "tags.0",
+      "expected_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "truthy_struct_object_b",
+      "flyql": "object.b",
+      "expected_ids": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "metadata_dc_ge_us",
+      "flyql": "metadata.dc >= 'us-1'",
+      "expected_ids": [
+        1,
+        3,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "metadata_dc_lt_us",
+      "flyql": "metadata.dc < 'us-1'",
+      "expected_ids": [
+        2,
+        4,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "metadata_tier_le_free",
+      "flyql": "metadata.tier <= 'free'",
+      "expected_ids": [
+        2,
+        3,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "tags_0_ge_m",
+      "flyql": "tags.0 >= 'm'",
+      "expected_ids": [
+        1,
+        2,
+        3,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_ge_b",
+      "flyql": "object.b >= 'b'",
+      "expected_ids": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_lt_c",
+      "flyql": "object.b < 'c'",
+      "expected_ids": [
+        1,
+        2,
+        4,
+        5
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_a_gt_2",
+      "flyql": "object.a > 2",
+      "expected_ids": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "meta_str_tier_in_list",
+      "flyql": "meta_str.tier in ['premium', 'gold']",
+      "expected_ids": [
+        1,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "meta_str_region_in_us_east",
+      "flyql": "meta_str.region in ['us-east']",
+      "expected_ids": [
+        1,
+        3,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_in_list",
+      "flyql": "object.b in ['alice', 'charlie']",
+      "expected_ids": [
+        1,
+        3,
+        4
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_not_in_list",
+      "flyql": "object.b not in ['alice']",
+      "expected_ids": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_like",
+      "flyql": "object.b like 'a%'",
+      "expected_ids": [
+        1,
+        4
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
+      "name": "object_b_not_like",
+      "flyql": "object.b not like 'a%'",
+      "expected_ids": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "databases": [
+        "starrocks"
+      ]
+    },
+    {
       "name": "transformer_upper_equals",
       "flyql": "message|upper = 'HELLO'",
       "expected_ids": [

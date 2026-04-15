@@ -138,6 +138,120 @@
       "input": "json_column.name not ilike 'John%'",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_column, 'name') = 'String', notILike(JSONExtractString(json_column, 'name'), 'John%'),0)"
+    },
+    {
+      "name": "native_json_has",
+      "input": "new_json.name has 'john'",
+      "expected_result": "success",
+      "expected_sql": "position(JSON_VALUE(new_json, '$.name'), 'john') > 0"
+    },
+    {
+      "name": "native_json_not_has",
+      "input": "new_json.name not has 'john'",
+      "expected_result": "success",
+      "expected_sql": "position(JSON_VALUE(new_json, '$.name'), 'john') = 0"
+    },
+    {
+      "name": "native_json_truthy",
+      "input": "new_json.name",
+      "expected_result": "success",
+      "expected_sql": "(new_json.`name` IS NOT NULL)"
+    },
+    {
+      "name": "native_json_falsy",
+      "input": "not new_json.name",
+      "expected_result": "success",
+      "expected_sql": "(new_json.`name` IS NULL)"
+    },
+    {
+      "name": "native_json_in_strings",
+      "input": "new_json.name in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "JSON_VALUE(new_json, '$.name') IN ('a', 'b')"
+    },
+    {
+      "name": "native_json_not_in_strings",
+      "input": "new_json.name not in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "JSON_VALUE(new_json, '$.name') NOT IN ('a', 'b')"
+    },
+    {
+      "name": "native_json_lt",
+      "input": "new_json.count < 100",
+      "expected_result": "success",
+      "expected_sql": "new_json.`count` < 100"
+    },
+    {
+      "name": "native_json_ge",
+      "input": "new_json.count >= 100",
+      "expected_result": "success",
+      "expected_sql": "new_json.`count` >= 100"
+    },
+    {
+      "name": "native_json_le",
+      "input": "new_json.count <= 100",
+      "expected_result": "success",
+      "expected_sql": "new_json.`count` <= 100"
+    },
+    {
+      "name": "jsonstring_has",
+      "input": "json_column.name has 'john'",
+      "expected_result": "success",
+      "expected_sql": "position(JSONExtractString(json_column, 'name'), 'john') > 0"
+    },
+    {
+      "name": "jsonstring_not_has",
+      "input": "json_column.name not has 'john'",
+      "expected_result": "success",
+      "expected_sql": "position(JSONExtractString(json_column, 'name'), 'john') = 0"
+    },
+    {
+      "name": "jsonstring_truthy",
+      "input": "json_column.name",
+      "expected_result": "success",
+      "expected_sql": "(JSONHas(json_column, 'name') AND JSONExtractString(json_column, 'name') != '')"
+    },
+    {
+      "name": "jsonstring_falsy",
+      "input": "not json_column.name",
+      "expected_result": "success",
+      "expected_sql": "(NOT JSONHas(json_column, 'name') OR JSONExtractString(json_column, 'name') = '')"
+    },
+    {
+      "name": "jsonstring_in_strings",
+      "input": "json_column.name in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'name') IN ('a', 'b')"
+    },
+    {
+      "name": "jsonstring_not_in_strings",
+      "input": "json_column.name not in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'name') NOT IN ('a', 'b')"
+    },
+    {
+      "name": "jsonstring_in_numeric",
+      "input": "json_column.count in [1, 2, 3]",
+      "expected_result": "success",
+      "expected_sql": "JSONExtractString(json_column, 'count') IN (1, 2, 3)"
+    },
+    {
+      "name": "jsonstring_lt",
+      "input": "json_column.count < 100",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'count') = 'String', less(JSONExtractString(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Int64', less(JSONExtractInt(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Double', less(JSONExtractFloat(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Bool', less(JSONExtractBool(json_column, 'count'), 100),0)"
+    },
+    {
+      "name": "jsonstring_ge",
+      "input": "json_column.count >= 100",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'count') = 'String', greaterOrEquals(JSONExtractString(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Int64', greaterOrEquals(JSONExtractInt(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Double', greaterOrEquals(JSONExtractFloat(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Bool', greaterOrEquals(JSONExtractBool(json_column, 'count'), 100),0)"
+    },
+    {
+      "name": "jsonstring_le",
+      "input": "json_column.count <= 100",
+      "expected_result": "success",
+      "expected_sql": "multiIf(JSONType(json_column, 'count') = 'String', lessOrEquals(JSONExtractString(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Int64', lessOrEquals(JSONExtractInt(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Double', lessOrEquals(JSONExtractFloat(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Bool', lessOrEquals(JSONExtractBool(json_column, 'count'), 100),0)"
     }
   ]
 }

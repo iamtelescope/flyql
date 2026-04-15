@@ -272,6 +272,78 @@
       "input": "json_meta.tags not has 'foo'",
       "expected_result": "success",
       "expected_sql": "position('foo' in (\"json_meta\"::jsonb)->>'tags') = 0"
+    },
+    {
+      "name": "jsonb_like",
+      "input": "jsonb_column.name like 'a%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' like 'a%')"
+    },
+    {
+      "name": "jsonb_not_like",
+      "input": "jsonb_column.name not like 'a%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' not like 'a%')"
+    },
+    {
+      "name": "jsonb_ilike",
+      "input": "jsonb_column.name ilike 'A%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' ilike 'A%')"
+    },
+    {
+      "name": "jsonb_not_ilike",
+      "input": "jsonb_column.name not ilike 'A%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' not ilike 'A%')"
+    },
+    {
+      "name": "jsonb_nested_like",
+      "input": "jsonb_column.user.name like 'j%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'user'->'name') = 'string' AND \"jsonb_column\"->'user'->>'name' like 'j%')"
+    },
+    {
+      "name": "jsonb_numeric_leaf_like",
+      "input": "jsonb_column.count like '1%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'count') = 'string' AND \"jsonb_column\"->>'count' like '1%')"
+    },
+    {
+      "name": "jsonstring_like",
+      "input": "json_meta.name like 'a%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'name') = 'string' AND (\"json_meta\"::jsonb)->>'name' like 'a%')"
+    },
+    {
+      "name": "jsonstring_not_like",
+      "input": "json_meta.name not like 'a%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'name') = 'string' AND (\"json_meta\"::jsonb)->>'name' not like 'a%')"
+    },
+    {
+      "name": "jsonstring_ilike",
+      "input": "json_meta.name ilike 'A%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'name') = 'string' AND (\"json_meta\"::jsonb)->>'name' ilike 'A%')"
+    },
+    {
+      "name": "jsonstring_not_ilike",
+      "input": "json_meta.name not ilike 'A%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'name') = 'string' AND (\"json_meta\"::jsonb)->>'name' not ilike 'A%')"
+    },
+    {
+      "name": "jsonstring_nested_like",
+      "input": "json_meta.user.name like 'j%'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof((\"json_meta\"::jsonb)->'user'->'name') = 'string' AND (\"json_meta\"::jsonb)->'user'->>'name' like 'j%')"
+    },
+    {
+      "name": "jsonb_like_escaped_percent",
+      "input": "jsonb_column.name like 'test\\%value'",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' like 'test\\\\%value')"
     }
   ]
 }

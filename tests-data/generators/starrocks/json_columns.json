@@ -164,6 +164,114 @@
       "input": "json_column.name not ilike 'John%'",
       "expected_result": "success",
       "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) NOT ILIKE 'John%'"
+    },
+    {
+      "name": "native_json_has",
+      "input": "new_json.name has 'john'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(cast(`new_json`->'\"name\"' as string), 'john') > 0"
+    },
+    {
+      "name": "native_json_not_has",
+      "input": "new_json.name not has 'john'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(cast(`new_json`->'\"name\"' as string), 'john') = 0"
+    },
+    {
+      "name": "native_json_truthy",
+      "input": "new_json.name",
+      "expected_result": "success",
+      "expected_sql": "(`new_json`->'\"name\"' IS NOT NULL)"
+    },
+    {
+      "name": "native_json_falsy",
+      "input": "not new_json.name",
+      "expected_result": "success",
+      "expected_sql": "(`new_json`->'\"name\"' IS NULL)"
+    },
+    {
+      "name": "native_json_in_strings",
+      "input": "new_json.name in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"name\"' IN ('a', 'b')"
+    },
+    {
+      "name": "native_json_not_in_strings",
+      "input": "new_json.name not in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"name\"' NOT IN ('a', 'b')"
+    },
+    {
+      "name": "native_json_lt",
+      "input": "new_json.count < 100",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"count\"' < 100"
+    },
+    {
+      "name": "native_json_ge",
+      "input": "new_json.count >= 100",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"count\"' >= 100"
+    },
+    {
+      "name": "native_json_le",
+      "input": "new_json.count <= 100",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"count\"' <= 100"
+    },
+    {
+      "name": "jsonstring_has",
+      "input": "json_column.name has 'john'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(cast(parse_json(`json_column`)->'\"name\"' as string), 'john') > 0"
+    },
+    {
+      "name": "jsonstring_not_has",
+      "input": "json_column.name not has 'john'",
+      "expected_result": "success",
+      "expected_sql": "INSTR(cast(parse_json(`json_column`)->'\"name\"' as string), 'john') = 0"
+    },
+    {
+      "name": "jsonstring_truthy",
+      "input": "json_column.name",
+      "expected_result": "success",
+      "expected_sql": "(json_exists(parse_json(`json_column`), '\"name\"') AND parse_json(`json_column`)->'\"name\"' != '')"
+    },
+    {
+      "name": "jsonstring_falsy",
+      "input": "not json_column.name",
+      "expected_result": "success",
+      "expected_sql": "(NOT json_exists(parse_json(`json_column`), '$.'\"name\"'') OR parse_json(`json_column`)->'\"name\"' = '')"
+    },
+    {
+      "name": "jsonstring_in_strings",
+      "input": "json_column.name in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"name\"' IN ('a', 'b')"
+    },
+    {
+      "name": "jsonstring_not_in_strings",
+      "input": "json_column.name not in ['a', 'b']",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"name\"' NOT IN ('a', 'b')"
+    },
+    {
+      "name": "jsonstring_lt",
+      "input": "json_column.count < 100",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"count\"' < 100"
+    },
+    {
+      "name": "jsonstring_ge",
+      "input": "json_column.count >= 100",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"count\"' >= 100"
+    },
+    {
+      "name": "jsonstring_le",
+      "input": "json_column.count <= 100",
+      "expected_result": "success",
+      "expected_sql": "parse_json(`json_column`)->'\"count\"' <= 100"
     }
   ]
 }

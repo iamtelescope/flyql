@@ -68,6 +68,54 @@
       "input": "metadata.\"key\\\\slash\"='value'",
       "expected_result": "success",
       "expected_sql": "\"metadata\"->'key\\\\slash' = 'value'"
+    },
+    {
+      "name": "hstore_like",
+      "input": "metadata.region like 'us%'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'region' like 'us%'"
+    },
+    {
+      "name": "hstore_not_like",
+      "input": "metadata.region not like 'us%'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'region' not like 'us%'"
+    },
+    {
+      "name": "hstore_ilike",
+      "input": "metadata.region ilike 'US%'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'region' ilike 'US%'"
+    },
+    {
+      "name": "hstore_not_ilike",
+      "input": "metadata.region not ilike 'US%'",
+      "expected_result": "success",
+      "expected_sql": "\"metadata\"->'region' not ilike 'US%'"
+    },
+    {
+      "name": "array_like",
+      "input": "tags.0 like 'w%'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] like 'w%'"
+    },
+    {
+      "name": "array_not_like",
+      "input": "tags.0 not like 'w%'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] not like 'w%'"
+    },
+    {
+      "name": "array_ilike",
+      "input": "tags.0 ilike 'W%'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] ilike 'W%'"
+    },
+    {
+      "name": "array_not_ilike",
+      "input": "tags.0 not ilike 'W%'",
+      "expected_result": "success",
+      "expected_sql": "\"tags\"[1] not ilike 'W%'"
     }
   ]
 }

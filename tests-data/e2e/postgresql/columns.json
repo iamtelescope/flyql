@@ -76,6 +76,11 @@
       "name": "nullable_field",
       "type": "text",
       "values": null
+    },
+    "foo.bar": {
+      "name": "foo.bar",
+      "type": "jsonb",
+      "values": null
     }
   },
   "transformer_columns": [

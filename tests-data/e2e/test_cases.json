@@ -1031,6 +1031,7 @@
         5
       ],
       "databases": [
+        "clickhouse",
         "postgresql",
         "starrocks"
       ]
@@ -1114,7 +1115,8 @@
       ],
       "databases": [
         "clickhouse",
-        "postgresql"
+        "postgresql",
+        "starrocks"
       ]
     },
     {
@@ -1261,6 +1263,20 @@
     {
       "name": "meta_str_region_in_us_east",
       "flyql": "meta_str.region in ['us-east']",
+      "expected_ids": [
+        1,
+        3,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "meta_str_region_not_in_list",
+      "flyql": "meta_str.region not in ['eu-west']",
       "expected_ids": [
         1,
         3,
@@ -1943,7 +1959,6 @@
         1,
         2,
         3,
-        4,
         5,
         6
       ],

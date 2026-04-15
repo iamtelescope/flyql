@@ -104,7 +104,7 @@ Der <FlyqlToken type="operator">has</FlyqlToken> Operator führt eine typabhäng
 - **Map** — Schlüsselerkennung: <FlyqlCode code={`metadata has 'region'`} inline /> ist true, wenn die Map einen Schlüssel <FlyqlToken type="string">"region"</FlyqlToken> hat
 - **Array/List** — Elementzugehörigkeit: <FlyqlCode code={`tags has 'web'`} inline /> ist true, wenn das Array <FlyqlToken type="string">"web"</FlyqlToken> enthält
 - **JSON** — Schlüsselerkennung: <FlyqlCode code={`data has 'name'`} inline /> ist true, wenn das JSON-Objekt einen Schlüssel <FlyqlToken type="string">"name"</FlyqlToken> hat
-- **Null/leer** — immer false für <FlyqlToken type="operator">has</FlyqlToken>, immer true für <FlyqlToken type="operator">not has</FlyqlToken>
+- **Null/leer** — immer false für <FlyqlToken type="operator">has</FlyqlToken> und <FlyqlToken type="operator">not has</FlyqlToken>
 
 <FlyqlToken type="operator">has</FlyqlToken> akzeptiert einen einzelnen Wert, keine Liste. Verwende <FlyqlToken type="operator">in</FlyqlToken>, um die Zugehörigkeit zu einer Wertemenge zu prüfen.
 

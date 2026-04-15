@@ -299,6 +299,8 @@ class Evaluator:
         elif expression.operator == Operator.NOT_EQUALS.value:
             if isinstance(expr_value, bool) or expr_value is None:
                 return value is not expr_value
+            if value is None:
+                return False
             if isinstance(value, bool) != isinstance(expr_value, bool):
                 return True
             return bool(value != expr_value)
@@ -307,6 +309,8 @@ class Evaluator:
                 return False
             return bool(regex.search(str(value)))
         elif expression.operator == Operator.NOT_REGEX.value:
+            if value is None:
+                return False
             if regex is None:
                 return True
             return not bool(regex.search(str(value)))
@@ -315,6 +319,8 @@ class Evaluator:
             regex = self._get_regex(like_regex)
             return bool(regex.search(str(value)))
         elif expression.operator == Operator.NOT_LIKE.value:
+            if value is None:
+                return False
             like_regex = _like_to_regex(str(expr_value))
             regex = self._get_regex(like_regex)
             return not bool(regex.search(str(value)))
@@ -323,6 +329,8 @@ class Evaluator:
             regex = self._get_regex(like_regex)
             return bool(regex.search(str(value)))
         elif expression.operator == Operator.NOT_ILIKE.value:
+            if value is None:
+                return False
             like_regex = "(?i)" + _like_to_regex(str(expr_value))
             regex = self._get_regex(like_regex)
             return not bool(regex.search(str(value)))
@@ -354,13 +362,15 @@ class Evaluator:
         elif expression.operator == Operator.NOT_IN.value:
             if not expression.values:
                 return True
+            if value is None:
+                return False
             resolved_values = self._resolve_in_values(expression, record)
             return not self._value_in_list(value, resolved_values)
         elif expression.operator == Operator.HAS.value:
             return self._eval_has(value, expr_value)
         elif expression.operator == Operator.NOT_HAS.value:
             if value is None:
-                return True
+                return False
             return not self._eval_has(value, expr_value)
         else:
             raise FlyqlError(f"Unknown expression operator: {expression.operator}")

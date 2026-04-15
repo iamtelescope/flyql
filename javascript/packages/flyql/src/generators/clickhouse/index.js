@@ -315,41 +315,47 @@ function expressionToSQLSegmented(expr, columns) {
         if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
+        let text
         if (rhsRef !== null) {
             let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${reverseOperator}${funcName}(${leafExpr}, ${rhsRef})`
-        }
+            text = `${reverseOperator}${funcName}(${leafExpr}, ${rhsRef})`
+        } else {
+            const strValue = escapeParam(expr.value)
+            if (hasTransformers) {
+                const leafExpr = applyTransformerSQL(
+                    `JSONExtractString(${colId}, ${jsonPathStr})`,
+                    expr.key.transformers,
+                    'clickhouse',
+                )
+                text = `${reverseOperator}${funcName}(${leafExpr}, ${strValue})`
+            } else {
+                const multiIf = [
+                    `JSONType(${colId}, ${jsonPathStr}) = 'String', ${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${strValue})`,
+                ]
 
-        const strValue = escapeParam(expr.value)
-        if (hasTransformers) {
-            const leafExpr = applyTransformerSQL(
-                `JSONExtractString(${colId}, ${jsonPathStr})`,
-                expr.key.transformers,
-                'clickhouse',
-            )
-            return `${reverseOperator}${funcName}(${leafExpr}, ${strValue})`
+                if (
+                    (typeof expr.value === 'number' || typeof expr.value === 'bigint') &&
+                    expr.operator !== Operator.REGEX &&
+                    expr.operator !== Operator.NOT_REGEX
+                ) {
+                    const numValue = String(expr.value)
+                    multiIf.push(
+                        `JSONType(${colId}, ${jsonPathStr}) = 'Int64', ${funcName}(JSONExtractInt(${colId}, ${jsonPathStr}), ${numValue})`,
+                        `JSONType(${colId}, ${jsonPathStr}) = 'Double', ${funcName}(JSONExtractFloat(${colId}, ${jsonPathStr}), ${numValue})`,
+                        `JSONType(${colId}, ${jsonPathStr}) = 'Bool', ${funcName}(JSONExtractBool(${colId}, ${jsonPathStr}), ${numValue})`,
+                    )
+                }
+                multiIf.push('0')
+                text = `${reverseOperator}multiIf(${multiIf.join(',')})`
+            }
         }
-        const multiIf = [
-            `JSONType(${colId}, ${jsonPathStr}) = 'String', ${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${strValue})`,
-        ]
-
-        if (
-            (typeof expr.value === 'number' || typeof expr.value === 'bigint') &&
-            expr.operator !== Operator.REGEX &&
-            expr.operator !== Operator.NOT_REGEX
-        ) {
-            const numValue = String(expr.value)
-            multiIf.push(
-                `JSONType(${colId}, ${jsonPathStr}) = 'Int64', ${funcName}(JSONExtractInt(${colId}, ${jsonPathStr}), ${numValue})`,
-                `JSONType(${colId}, ${jsonPathStr}) = 'Double', ${funcName}(JSONExtractFloat(${colId}, ${jsonPathStr}), ${numValue})`,
-                `JSONType(${colId}, ${jsonPathStr}) = 'Bool', ${funcName}(JSONExtractBool(${colId}, ${jsonPathStr}), ${numValue})`,
-            )
+        if (expr.operator === Operator.NOT_EQUALS || expr.operator === Operator.NOT_REGEX) {
+            text = `(JSONHas(${colId}, ${jsonPathStr}) AND ${text})`
         }
-        multiIf.push('0')
-        return `${reverseOperator}multiIf(${multiIf.join(',')})`
+        return text
     } else if (column.flyqlType() === Type.JSON) {
         const jsonPath = expr.key.segments.slice(1)
         for (const part of jsonPath) {
@@ -442,22 +448,55 @@ function inExpressionToSQL(expr, columns) {
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
             }
-            const pathParts = jsonPath.map((part) => `$.${part}`)
-            const jsonPathStr = pathParts.join('.')
-            let leafExpr = `JSON_VALUE(${colId}, '${jsonPathStr}')`
+            const pathParts = jsonPath.map((part) => `\`${part}\``).join('.')
+            const pathAccess = `${colId}.${pathParts}`
+            let leafExpr = `toString(${pathAccess})`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${leafExpr} ${sqlOp} (${valuesSQL})`
+            let text = `${leafExpr} ${sqlOp} (${valuesSQL})`
+            if (isNotIn) {
+                text = `(${pathAccess} IS NOT NULL AND ${text})`
+            }
+            return text
         } else if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathParts = jsonPath.map((p) => escapeParam(p))
             const jsonPathStr = jsonPathParts.join(', ')
-            let leafExpr = `JSONExtractString(${colId}, ${jsonPathStr})`
             if (hasTransformers) {
-                leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
+                const leafExpr = applyTransformerSQL(
+                    `JSONExtractString(${colId}, ${jsonPathStr})`,
+                    expr.key.transformers,
+                    'clickhouse',
+                )
+                let text = `${leafExpr} ${sqlOp} (${valuesSQL})`
+                if (isNotIn) {
+                    text = `(JSONHas(${colId}, ${jsonPathStr}) AND ${text})`
+                }
+                return text
             }
-            return `${leafExpr} ${sqlOp} (${valuesSQL})`
+            const multiIf = [
+                `JSONType(${colId}, ${jsonPathStr}) = 'String', JSONExtractString(${colId}, ${jsonPathStr}) IN (${valuesSQL})`,
+            ]
+            const valuesAreNumeric =
+                expr.valuesTypes &&
+                expr.valuesTypes.every(
+                    (vt) => vt === LiteralKind.INTEGER || vt === LiteralKind.BIGINT || vt === LiteralKind.FLOAT,
+                )
+            if (valuesAreNumeric) {
+                multiIf.push(
+                    `JSONType(${colId}, ${jsonPathStr}) = 'Int64', JSONExtractInt(${colId}, ${jsonPathStr}) IN (${valuesSQL})`,
+                    `JSONType(${colId}, ${jsonPathStr}) = 'Double', JSONExtractFloat(${colId}, ${jsonPathStr}) IN (${valuesSQL})`,
+                    `JSONType(${colId}, ${jsonPathStr}) = 'Bool', JSONExtractBool(${colId}, ${jsonPathStr}) IN (${valuesSQL})`,
+                )
+            }
+            multiIf.push('0')
+            const notPrefix = isNotIn ? 'NOT ' : ''
+            let text = `${notPrefix}multiIf(${multiIf.join(',')})`
+            if (isNotIn) {
+                text = `(JSONHas(${colId}, ${jsonPathStr}) AND ${text})`
+            }
+            return text
         } else if (column.flyqlType() === Type.Map) {
             const mapKey = expr.key.segments.slice(1).join('.')
             const escapedMapKey = escapeParam(mapKey)
@@ -684,7 +723,7 @@ function hasExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             if (isNotHas) {
-                return `position(${leafExpr}, ${value}) = 0`
+                return `(JSONHas(${colId}, ${jsonPathStr}) AND position(${leafExpr}, ${value}) = 0)`
             }
             return `position(${leafExpr}, ${value}) > 0`
         } else if (column.flyqlType() === Type.JSON) {
@@ -692,13 +731,14 @@ function hasExpressionToSQL(expr, columns) {
             for (const part of jsonPath) {
                 validateJSONPathPart(part)
             }
-            const jsonPathStr = jsonPath.map((p) => p).join('.')
-            let leafExpr = `JSON_VALUE(${colId}, '$.${jsonPathStr}')`
+            const pathParts = jsonPath.map((part) => `\`${part}\``).join('.')
+            const pathAccess = `${colId}.${pathParts}`
+            let leafExpr = `toString(${pathAccess})`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             if (isNotHas) {
-                return `position(${leafExpr}, ${value}) = 0`
+                return `(${pathAccess} IS NOT NULL AND position(${leafExpr}, ${value}) = 0)`
             }
             return `position(${leafExpr}, ${value}) > 0`
         } else if (column.flyqlType() === Type.Map) {
@@ -760,9 +800,9 @@ function hasExpressionToSQL(expr, columns) {
 
     if (column.flyqlType() === Type.JSON) {
         if (isNotHas) {
-            return `NOT JSON_EXISTS(${colRef}, concat('$.', ${value}))`
+            return `NOT JSONHas(toJSONString(${colRef}), ${value})`
         }
-        return `JSON_EXISTS(${colRef}, concat('$.', ${value}))`
+        return `JSONHas(toJSONString(${colRef}), ${value})`
     }
 
     if (column.flyqlType() === Type.JSONString) {
@@ -820,24 +860,30 @@ function likeExpressionToSQL(expr, columns, registry = null) {
     const colId = getIdentifier(column)
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
 
+    const isNegatedLike = expr.operator === Operator.NOT_LIKE || expr.operator === Operator.NOT_ILIKE
     if (expr.key.isSegmented) {
         if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
             const jsonPathStr = jsonPath.map((p) => escapeParam(p)).join(', ')
+            let text
             if (hasTransformers) {
                 const leafExpr = applyTransformerSQL(
                     `JSONExtractString(${colId}, ${jsonPathStr})`,
                     expr.key.transformers,
                     'clickhouse',
                 )
-                return `${funcName}(${leafExpr}, ${value})`
+                text = `${funcName}(${leafExpr}, ${value})`
+            } else {
+                text =
+                    `multiIf(` +
+                    `JSONType(${colId}, ${jsonPathStr}) = 'String', ` +
+                    `${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${value}),` +
+                    `0)`
             }
-            return (
-                `multiIf(` +
-                `JSONType(${colId}, ${jsonPathStr}) = 'String', ` +
-                `${funcName}(JSONExtractString(${colId}, ${jsonPathStr}), ${value}),` +
-                `0)`
-            )
+            if (isNegatedLike) {
+                text = `(JSONHas(${colId}, ${jsonPathStr}) AND ${text})`
+            }
+            return text
         }
         if (column.flyqlType() === Type.JSON) {
             const jsonPath = expr.key.segments.slice(1)

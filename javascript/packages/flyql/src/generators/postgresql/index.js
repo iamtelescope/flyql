@@ -382,6 +382,8 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
     }
 }
 
+const _LIKE_OPS_PG = new Set([Operator.LIKE, Operator.NOT_LIKE, Operator.ILIKE, Operator.NOT_ILIKE])
+
 function expressionToSQLSegmented(expr, columns) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
@@ -395,6 +397,8 @@ function expressionToSQLSegmented(expr, columns) {
 
     const identifier = getIdentifier(column)
     const hasTransformers = expr.key.transformers && expr.key.transformers.length
+
+    const escapeValue = (v) => (_LIKE_OPS_PG.has(expr.operator) ? escapeLikeParam(v) : escapeParam(v))
 
     if (column.flyqlType() === Type.JSON || column.flyqlType() === Type.JSONString) {
         const castIdentifier = column.flyqlType() === Type.JSONString ? `(${identifier}::jsonb)` : identifier
@@ -421,7 +425,7 @@ function expressionToSQLSegmented(expr, columns) {
             return `${pathExpr} ${expr.operator} ${rhsRef}`
         }
 
-        const value = escapeParam(expr.value)
+        const value = escapeValue(expr.value)
 
         switch (true) {
             case expr.operator === Operator.REGEX:
@@ -446,7 +450,7 @@ function expressionToSQLSegmented(expr, columns) {
         if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
-        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
+        const value = rhsRef !== null ? rhsRef : escapeValue(expr.value)
         let accessExpr = `${identifier}->${escapedMapKey}`
         if (hasTransformers) {
             accessExpr = applyTransformerSQL(accessExpr, expr.key.transformers, 'postgresql')
@@ -470,7 +474,7 @@ function expressionToSQLSegmented(expr, columns) {
         if (expr.valueType === LiteralKind.COLUMN) {
             rhsRef = resolveRhsColumnRef(String(expr.value), columns)
         }
-        const value = rhsRef !== null ? rhsRef : escapeParam(expr.value)
+        const value = rhsRef !== null ? rhsRef : escapeValue(expr.value)
         const pgIndex = arrayIndex + 1
         let accessExpr = `${identifier}[${pgIndex}]`
         if (hasTransformers) {

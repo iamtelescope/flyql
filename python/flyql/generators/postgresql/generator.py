@@ -322,6 +322,16 @@ def expression_to_sql_simple(
             return f"{identifier} {expression.operator} {value}"
 
 
+_LIKE_OPS = frozenset(
+    {
+        Operator.LIKE.value,
+        Operator.NOT_LIKE.value,
+        Operator.ILIKE.value,
+        Operator.NOT_ILIKE.value,
+    }
+)
+
+
 def expression_to_sql_segmented(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
@@ -339,6 +349,11 @@ def expression_to_sql_segmented(
         validate_operation(expression.value, column.flyql_type, expression.operator)
 
     identifier = get_identifier(column)
+
+    def _escape_value(v: Any) -> str:
+        if expression.operator in _LIKE_OPS:
+            return _escape_like_param(v)
+        return escape_param(v)
 
     if (column.flyql_type == Type.JSON) or column.flyql_type == Type.JSONString:
         cast_identifier = (
@@ -370,7 +385,7 @@ def expression_to_sql_segmented(
             else:
                 return f"{path_expr} {expression.operator} {rhs_ref}"
 
-        value = escape_param(expression.value)
+        value = _escape_value(expression.value)
 
         if expression.operator == Operator.REGEX.value:
             return f"{path_expr} ~ {value}"
@@ -403,7 +418,7 @@ def expression_to_sql_segmented(
         rhs_ref = None
         if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
-        value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
+        value = rhs_ref if rhs_ref is not None else _escape_value(expression.value)
         access_expr = f"{identifier}->{escaped_map_key}"
         if expression.key.transformers:
             access_expr = apply_transformer_sql(
@@ -428,7 +443,7 @@ def expression_to_sql_segmented(
         rhs_ref = None
         if expression.value_type == LiteralKind.COLUMN:
             rhs_ref = _resolve_rhs_column_ref(str(expression.value), columns)
-        value = rhs_ref if rhs_ref is not None else escape_param(expression.value)
+        value = rhs_ref if rhs_ref is not None else _escape_value(expression.value)
         pg_index = array_index + 1
         access_expr = f"{identifier}[{pg_index}]"
         if expression.key.transformers:

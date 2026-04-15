@@ -270,12 +270,15 @@ export class Evaluator {
             case Operator.EQUALS:
                 return compareEqual(value, exprValue)
             case Operator.NOT_EQUALS:
+                if (exprValue === null) return !compareEqual(value, exprValue)
+                if (value === null || value === undefined) return false
                 return !compareEqual(value, exprValue)
             case Operator.REGEX: {
                 const regex = this.getRegex(toString(exprValue))
                 return regex.test(toString(value))
             }
             case Operator.NOT_REGEX: {
+                if (value === null || value === undefined) return false
                 const regex = this.getRegex(toString(exprValue))
                 return !regex.test(toString(value))
             }
@@ -284,6 +287,7 @@ export class Evaluator {
                 return regex.test(toString(value))
             }
             case Operator.NOT_LIKE: {
+                if (value === null || value === undefined) return false
                 const regex = this.getRegex(likeToRegex(toString(exprValue)))
                 return !regex.test(toString(value))
             }
@@ -292,6 +296,7 @@ export class Evaluator {
                 return regex.test(toString(value))
             }
             case Operator.NOT_ILIKE: {
+                if (value === null || value === undefined) return false
                 const regex = this.getRegex('(?i)' + likeToRegex(toString(exprValue)))
                 return !regex.test(toString(value))
             }
@@ -308,11 +313,12 @@ export class Evaluator {
                 return valueInList(value, this._resolveInValues(expr, record))
             case Operator.NOT_IN:
                 if (!expr.values || expr.values.length === 0) return true
+                if (value === null || value === undefined) return false
                 return !valueInList(value, this._resolveInValues(expr, record))
             case Operator.HAS:
                 return evalHas(value, exprValue)
             case Operator.NOT_HAS:
-                if (value === null || value === undefined) return true
+                if (value === null || value === undefined) return false
                 return !evalHas(value, exprValue)
             default:
                 throw new FlyqlError(`Unknown expression operator: ${expr.operator}`)

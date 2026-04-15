@@ -329,11 +329,13 @@ def falsy_expression_to_sql_where(
                     "starrocks",
                 )
                 return (
-                    f"(NOT json_exists(parse_json({col_id}), '$.{json_path_str}') OR "
+                    f"({col_id} IS NULL OR "
+                    f"NOT json_exists(parse_json({col_id}), {json_path_str}) OR "
                     f"{leaf_expr} = '')"
                 )
             return (
-                f"(NOT json_exists(parse_json({col_id}), '$.{json_path_str}') OR "
+                f"({col_id} IS NULL OR "
+                f"NOT json_exists(parse_json({col_id}), {json_path_str}) OR "
                 f"{leaf_expr} = '')"
             )
         else:

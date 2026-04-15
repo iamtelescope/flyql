@@ -889,6 +889,14 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 	}
 }
 
+func escapeSegmentedValue(expr *flyql.Expression) (string, error) {
+	switch expr.Operator {
+	case flyql.OpLike, flyql.OpNotLike, flyql.OpILike, flyql.OpNotILike:
+		return escapeLikeParam(fmt.Sprintf("%v", expr.Value)), nil
+	}
+	return EscapeParam(expr.Value)
+}
+
 func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	if expr.ValueType == literal.Function {
 		return "", fmt.Errorf("temporal functions are not supported with segmented keys")
@@ -955,7 +963,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			}
 		}
 
-		value, err := EscapeParam(expr.Value)
+		value, err := escapeSegmentedValue(expr)
 		if err != nil {
 			return "", err
 		}
@@ -1016,7 +1024,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			}
 		}
 
-		value, err := EscapeParam(expr.Value)
+		value, err := escapeSegmentedValue(expr)
 		if err != nil {
 			return "", err
 		}
@@ -1072,7 +1080,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			}
 		}
 
-		value, err := EscapeParam(expr.Value)
+		value, err := escapeSegmentedValue(expr)
 		if err != nil {
 			return "", err
 		}

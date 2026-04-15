@@ -385,10 +385,12 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 			}
 			pathParts := make([]string, len(jsonPath))
 			for i, part := range jsonPath {
-				pathParts[i] = fmt.Sprintf("$.%s", part)
+				pathParts[i] = fmt.Sprintf("`%s`", part)
 			}
-			jsonPathStr := strings.Join(pathParts, ".")
-			leafExpr := fmt.Sprintf("JSON_VALUE(%s, '%s')", getIdentifier(column), jsonPathStr)
+			pathExpr := strings.Join(pathParts, ".")
+			colIdent := getIdentifier(column)
+			pathAccess := fmt.Sprintf("%s.%s", colIdent, pathExpr)
+			leafExpr := fmt.Sprintf("toString(%s)", pathAccess)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				var err error
@@ -397,7 +399,11 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
+			text := fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL)
+			if isNotIn {
+				text = fmt.Sprintf("(%s IS NOT NULL AND %s)", pathAccess, text)
+			}
+			return text, nil
 		} else if column.FlyQLType() == flyqltype.JSONString {
 			jsonPath := expr.Key.Segments[1:]
 			jsonPathParts := make([]string, len(jsonPath))
@@ -409,16 +415,52 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 				jsonPathParts[i] = escaped
 			}
 			jsonPathStr := strings.Join(jsonPathParts, ", ")
-			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), jsonPathStr)
+			colIdent := getIdentifier(column)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
-				var err error
-				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
+				leafExpr, err := applyTransformerSQL(
+					fmt.Sprintf("JSONExtractString(%s, %s)", colIdent, jsonPathStr),
+					expr.Key.Transformers, "clickhouse", registry)
 				if err != nil {
 					return "", err
 				}
+				text := fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL)
+				if isNotIn {
+					text = fmt.Sprintf("(JSONHas(%s, %s) AND %s)", colIdent, jsonPathStr, text)
+				}
+				return text, nil
 			}
-			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
+			multiIf := []string{
+				fmt.Sprintf("JSONType(%s, %s) = 'String', JSONExtractString(%s, %s) IN (%s)",
+					colIdent, jsonPathStr, colIdent, jsonPathStr, valuesSQL),
+			}
+			valuesAreNumeric := len(expr.ValuesTypes) > 0
+			for _, vt := range expr.ValuesTypes {
+				if vt != literal.Integer && vt != literal.BigInt && vt != literal.Float {
+					valuesAreNumeric = false
+					break
+				}
+			}
+			if valuesAreNumeric {
+				multiIf = append(multiIf,
+					fmt.Sprintf("JSONType(%s, %s) = 'Int64', JSONExtractInt(%s, %s) IN (%s)",
+						colIdent, jsonPathStr, colIdent, jsonPathStr, valuesSQL),
+					fmt.Sprintf("JSONType(%s, %s) = 'Double', JSONExtractFloat(%s, %s) IN (%s)",
+						colIdent, jsonPathStr, colIdent, jsonPathStr, valuesSQL),
+					fmt.Sprintf("JSONType(%s, %s) = 'Bool', JSONExtractBool(%s, %s) IN (%s)",
+						colIdent, jsonPathStr, colIdent, jsonPathStr, valuesSQL),
+				)
+			}
+			multiIf = append(multiIf, "0")
+			notPrefix := ""
+			if isNotIn {
+				notPrefix = "NOT "
+			}
+			text := fmt.Sprintf("%smultiIf(%s)", notPrefix, strings.Join(multiIf, ","))
+			if isNotIn {
+				text = fmt.Sprintf("(JSONHas(%s, %s) AND %s)", colIdent, jsonPathStr, text)
+			}
+			return text, nil
 		} else if column.FlyQLType() == flyqltype.Map {
 			mapKey := strings.Join(expr.Key.Segments[1:], ".")
 			escapedMapKey, err := EscapeParam(mapKey)
@@ -507,10 +549,12 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 			}
 			pathParts := make([]string, len(jsonPath))
 			for i, part := range jsonPath {
-				pathParts[i] = fmt.Sprintf("$.%s", part)
+				pathParts[i] = fmt.Sprintf("`%s`", part)
 			}
-			jsonPathStr := strings.Join(pathParts, ".")
-			leafExpr := fmt.Sprintf("JSON_VALUE(%s, '%s')", getIdentifier(column), jsonPathStr)
+			pathExpr := strings.Join(pathParts, ".")
+			colIdent := getIdentifier(column)
+			pathAccess := fmt.Sprintf("%s.%s", colIdent, pathExpr)
+			leafExpr := fmt.Sprintf("toString(%s)", pathAccess)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -519,7 +563,7 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 				}
 			}
 			if isNotHas {
-				return fmt.Sprintf("position(%s, %s) = 0", leafExpr, value), nil
+				return fmt.Sprintf("(%s IS NOT NULL AND position(%s, %s) = 0)", pathAccess, leafExpr, value), nil
 			}
 			return fmt.Sprintf("position(%s, %s) > 0", leafExpr, value), nil
 		} else if column.FlyQLType() == flyqltype.JSONString {
@@ -533,7 +577,8 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 				jsonPathParts[i] = escaped
 			}
 			jsonPathStr := strings.Join(jsonPathParts, ", ")
-			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), jsonPathStr)
+			colIdent := getIdentifier(column)
+			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", colIdent, jsonPathStr)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
 				leafExpr, err = applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
@@ -542,7 +587,7 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 				}
 			}
 			if isNotHas {
-				return fmt.Sprintf("position(%s, %s) = 0", leafExpr, value), nil
+				return fmt.Sprintf("(JSONHas(%s, %s) AND position(%s, %s) = 0)", colIdent, jsonPathStr, leafExpr, value), nil
 			}
 			return fmt.Sprintf("position(%s, %s) > 0", leafExpr, value), nil
 		} else if column.FlyQLType() == flyqltype.Map {
@@ -620,9 +665,9 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 		return fmt.Sprintf("mapContains(%s, %s)", colRef, value), nil
 	} else if column.FlyQLType() == flyqltype.JSON {
 		if isNotHas {
-			return fmt.Sprintf("NOT JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
+			return fmt.Sprintf("NOT JSONHas(toJSONString(%s), %s)", colRef, value), nil
 		}
-		return fmt.Sprintf("JSON_EXISTS(%s, concat('$.', %s))", colRef, value), nil
+		return fmt.Sprintf("JSONHas(toJSONString(%s), %s)", colRef, value), nil
 	} else if column.FlyQLType() == flyqltype.JSONString {
 		if isNotHas {
 			return fmt.Sprintf("NOT JSONHas(%s, %s)", colRef, value), nil
@@ -982,6 +1027,7 @@ func likeExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column
 	colID := getIdentifier(column)
 	hasTransformers := len(expr.Key.Transformers) > 0
 
+	isNegatedLike := expr.Operator == flyql.OpNotLike || expr.Operator == flyql.OpNotILike
 	if expr.Key.IsSegmented() {
 		switch column.FlyQLType() {
 		case flyqltype.JSONString:
@@ -995,6 +1041,7 @@ func likeExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column
 				jsonPathParts[i] = escaped
 			}
 			jsonPathStr := strings.Join(jsonPathParts, ", ")
+			var text string
 			if hasTransformers {
 				leafExpr, err := applyTransformerSQL(
 					fmt.Sprintf("JSONExtractString(%s, %s)", colID, jsonPathStr),
@@ -1002,12 +1049,17 @@ func likeExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column
 				if err != nil {
 					return "", err
 				}
-				return fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value), nil
+				text = fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value)
+			} else {
+				text = fmt.Sprintf(
+					"multiIf(JSONType(%s, %s) = 'String', %s(JSONExtractString(%s, %s), %s),0)",
+					colID, jsonPathStr, funcName, colID, jsonPathStr, value,
+				)
 			}
-			return fmt.Sprintf(
-				"multiIf(JSONType(%s, %s) = 'String', %s(JSONExtractString(%s, %s), %s),0)",
-				colID, jsonPathStr, funcName, colID, jsonPathStr, value,
-			), nil
+			if isNegatedLike {
+				text = fmt.Sprintf("(JSONHas(%s, %s) AND %s)", colID, jsonPathStr, text)
+			}
+			return text, nil
 		case flyqltype.JSON:
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
@@ -1146,6 +1198,7 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 			jsonPathParts[i] = escaped
 		}
 		jsonPathStr := strings.Join(jsonPathParts, ", ")
+		colIdent := getIdentifier(column)
 
 		var rhsRef string
 		if expr.ValueType == literal.Column {
@@ -1153,51 +1206,57 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				rhsRef = ref
 			}
 		}
+		var text string
 		if rhsRef != "" {
-			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), jsonPathStr)
+			leafExpr := fmt.Sprintf("JSONExtractString(%s, %s)", colIdent, jsonPathStr)
 			if len(expr.Key.Transformers) > 0 {
 				registry := transformers.DefaultRegistry()
-				leafExpr, err := applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
+				transformed, err := applyTransformerSQL(leafExpr, expr.Key.Transformers, "clickhouse", registry)
 				if err != nil {
 					return "", err
 				}
-				return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, rhsRef), nil
+				leafExpr = transformed
 			}
-			return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, rhsRef), nil
-		}
-
-		strValue, err := EscapeParam(expr.Value)
-		if err != nil {
-			return "", err
-		}
-		if len(expr.Key.Transformers) > 0 {
-			registry := transformers.DefaultRegistry()
-			leafExpr, err := applyTransformerSQL(
-				fmt.Sprintf("JSONExtractString(%s, %s)", getIdentifier(column), jsonPathStr),
-				expr.Key.Transformers, "clickhouse", registry)
+			text = fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, rhsRef)
+		} else {
+			strValue, err := EscapeParam(expr.Value)
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, strValue), nil
-		}
-		multiIf := []string{
-			fmt.Sprintf("JSONType(%s, %s) = 'String', %s(JSONExtractString(%s, %s), %s)",
-				getIdentifier(column), jsonPathStr, funcName, getIdentifier(column), jsonPathStr, strValue),
-		}
+			if len(expr.Key.Transformers) > 0 {
+				registry := transformers.DefaultRegistry()
+				leafExpr, err := applyTransformerSQL(
+					fmt.Sprintf("JSONExtractString(%s, %s)", colIdent, jsonPathStr),
+					expr.Key.Transformers, "clickhouse", registry)
+				if err != nil {
+					return "", err
+				}
+				text = fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, strValue)
+			} else {
+				multiIf := []string{
+					fmt.Sprintf("JSONType(%s, %s) = 'String', %s(JSONExtractString(%s, %s), %s)",
+						colIdent, jsonPathStr, funcName, colIdent, jsonPathStr, strValue),
+				}
 
-		if (expr.ValueType == literal.Integer || expr.ValueType == literal.BigInt || expr.ValueType == literal.Float) && expr.Operator != flyql.OpRegex && expr.Operator != flyql.OpNotRegex {
-			numValue := fmt.Sprintf("%v", expr.Value)
-			multiIf = append(multiIf,
-				fmt.Sprintf("JSONType(%s, %s) = 'Int64', %s(JSONExtractInt(%s, %s), %s)",
-					getIdentifier(column), jsonPathStr, funcName, getIdentifier(column), jsonPathStr, numValue),
-				fmt.Sprintf("JSONType(%s, %s) = 'Double', %s(JSONExtractFloat(%s, %s), %s)",
-					getIdentifier(column), jsonPathStr, funcName, getIdentifier(column), jsonPathStr, numValue),
-				fmt.Sprintf("JSONType(%s, %s) = 'Bool', %s(JSONExtractBool(%s, %s), %s)",
-					getIdentifier(column), jsonPathStr, funcName, getIdentifier(column), jsonPathStr, numValue),
-			)
+				if (expr.ValueType == literal.Integer || expr.ValueType == literal.BigInt || expr.ValueType == literal.Float) && expr.Operator != flyql.OpRegex && expr.Operator != flyql.OpNotRegex {
+					numValue := fmt.Sprintf("%v", expr.Value)
+					multiIf = append(multiIf,
+						fmt.Sprintf("JSONType(%s, %s) = 'Int64', %s(JSONExtractInt(%s, %s), %s)",
+							colIdent, jsonPathStr, funcName, colIdent, jsonPathStr, numValue),
+						fmt.Sprintf("JSONType(%s, %s) = 'Double', %s(JSONExtractFloat(%s, %s), %s)",
+							colIdent, jsonPathStr, funcName, colIdent, jsonPathStr, numValue),
+						fmt.Sprintf("JSONType(%s, %s) = 'Bool', %s(JSONExtractBool(%s, %s), %s)",
+							colIdent, jsonPathStr, funcName, colIdent, jsonPathStr, numValue),
+					)
+				}
+				multiIf = append(multiIf, "0")
+				text = fmt.Sprintf("%smultiIf(%s)", reverseOperator, strings.Join(multiIf, ","))
+			}
 		}
-		multiIf = append(multiIf, "0")
-		return fmt.Sprintf("%smultiIf(%s)", reverseOperator, strings.Join(multiIf, ",")), nil
+		if expr.Operator == flyql.OpNotEquals || expr.Operator == flyql.OpNotRegex {
+			text = fmt.Sprintf("(JSONHas(%s, %s) AND %s)", colIdent, jsonPathStr, text)
+		}
+		return text, nil
 
 	} else if column.FlyQLType() == flyqltype.JSON {
 		jsonPath := expr.Key.Segments[1:]

@@ -104,7 +104,7 @@ L'operateur <FlyqlToken type="operator">has</FlyqlToken> effectue une verificati
 - **Map** — existence de cle : <FlyqlCode code={`metadata has 'region'`} inline /> est vrai si le map possede une cle <FlyqlToken type="string">"region"</FlyqlToken>
 - **Tableau/Liste** — appartenance d'element : <FlyqlCode code={`tags has 'web'`} inline /> est vrai si le tableau contient <FlyqlToken type="string">"web"</FlyqlToken>
 - **JSON** — existence de cle : <FlyqlCode code={`data has 'name'`} inline /> est vrai si l'objet JSON possede une cle <FlyqlToken type="string">"name"</FlyqlToken>
-- **Null/vide** — toujours faux pour <FlyqlToken type="operator">has</FlyqlToken>, toujours vrai pour <FlyqlToken type="operator">not has</FlyqlToken>
+- **Null/vide** — toujours faux pour <FlyqlToken type="operator">has</FlyqlToken> et <FlyqlToken type="operator">not has</FlyqlToken>
 
 <FlyqlToken type="operator">has</FlyqlToken> prend une seule valeur (pas une liste). Utilisez <FlyqlToken type="operator">in</FlyqlToken> pour verifier l'appartenance a un ensemble de valeurs.
 

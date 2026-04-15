@@ -104,7 +104,7 @@ SQL-शैली पैटर्न मैचिंग दो वाइल्ड
 - **मैप** — कुंजी अस्तित्व: <FlyqlCode code={`metadata has 'region'`} inline /> तब सत्य है जब मैप में <FlyqlToken type="string">"region"</FlyqlToken> कुंजी हो
 - **ऐरे/सूची** — आइटम सदस्यता: <FlyqlCode code={`tags has 'web'`} inline /> तब सत्य है जब ऐरे में <FlyqlToken type="string">"web"</FlyqlToken> शामिल हो
 - **JSON** — कुंजी अस्तित्व: <FlyqlCode code={`data has 'name'`} inline /> तब सत्य है जब JSON ऑब्जेक्ट में <FlyqlToken type="string">"name"</FlyqlToken> कुंजी हो
-- **Null/खाली** — <FlyqlToken type="operator">has</FlyqlToken> के लिए सदैव false, <FlyqlToken type="operator">not has</FlyqlToken> के लिए सदैव true
+- **Null/खाली** — <FlyqlToken type="operator">has</FlyqlToken> और <FlyqlToken type="operator">not has</FlyqlToken> दोनों के लिए सदैव false
 
 <FlyqlToken type="operator">has</FlyqlToken> एक अकेला मान लेता है (सूची नहीं)। मानों के समूह में सदस्यता जाँचने के लिए <FlyqlToken type="operator">in</FlyqlToken> का उपयोग करें।
 

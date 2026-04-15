@@ -200,6 +200,12 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 	case flyql.OpEquals:
 		return compareEqual(value, exprValue), nil
 	case flyql.OpNotEquals:
+		if exprValue == nil {
+			return !compareEqual(value, exprValue), nil
+		}
+		if value == nil {
+			return false, nil
+		}
 		return !compareEqual(value, exprValue), nil
 	case flyql.OpRegex:
 		regex, err := e.getRegex(toString(exprValue))
@@ -208,6 +214,9 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotRegex:
+		if value == nil {
+			return false, nil
+		}
 		regex, err := e.getRegex(toString(exprValue))
 		if err != nil {
 			return false, err
@@ -220,6 +229,9 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotLike:
+		if value == nil {
+			return false, nil
+		}
 		regex, err := e.getRegex(likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
@@ -232,6 +244,9 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 		}
 		return regex.MatchString(toString(value)), nil
 	case flyql.OpNotILike:
+		if value == nil {
+			return false, nil
+		}
 		regex, err := e.getRegex("(?i)" + likeToRegex(toString(exprValue)))
 		if err != nil {
 			return false, err
@@ -255,13 +270,16 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 		if len(expr.Values) == 0 {
 			return true, nil
 		}
+		if value == nil {
+			return false, nil
+		}
 		resolvedValues := e.resolveInValues(expr, record)
 		return !valueInList(value, resolvedValues), nil
 	case flyql.OpHas:
 		return evalHas(value, exprValue), nil
 	case flyql.OpNotHas:
 		if value == nil {
-			return true, nil
+			return false, nil
 		}
 		return !evalHas(value, exprValue), nil
 	default:

@@ -241,7 +241,13 @@
       "name": "jsonstring_falsy",
       "input": "not json_column.name",
       "expected_result": "success",
-      "expected_sql": "(NOT json_exists(parse_json(`json_column`), '$.'\"name\"'') OR parse_json(`json_column`)->'\"name\"' = '')"
+      "expected_sql": "(`json_column` IS NULL OR NOT json_exists(parse_json(`json_column`), '\"name\"') OR parse_json(`json_column`)->'\"name\"' = '')"
+    },
+    {
+      "name": "jsonstring_falsy_with_transformer",
+      "input": "not json_column.name|upper",
+      "expected_result": "success",
+      "expected_sql": "(`json_column` IS NULL OR NOT json_exists(parse_json(`json_column`), '\"name\"') OR UPPER(cast(parse_json(`json_column`)->'\"name\"' as string)) = '')"
     },
     {
       "name": "jsonstring_in_strings",

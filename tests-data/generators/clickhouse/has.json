@@ -43,13 +43,13 @@
       "name": "has_json_column",
       "input": "new_json has 'key'",
       "expected_result": "success",
-      "expected_sql": "JSON_EXISTS(new_json, concat('$.', 'key'))"
+      "expected_sql": "JSONHas(toJSONString(new_json), 'key')"
     },
     {
       "name": "not_has_json_column",
       "input": "new_json not has 'key'",
       "expected_result": "success",
-      "expected_sql": "NOT JSON_EXISTS(new_json, concat('$.', 'key'))"
+      "expected_sql": "NOT JSONHas(toJSONString(new_json), 'key')"
     },
     {
       "name": "has_jsonstring_column",

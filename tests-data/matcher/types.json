@@ -40,6 +40,18 @@
       "expected": false
     },
     {
+      "name": "not_equals_null_value_non_null_rhs",
+      "query": "field!='value'",
+      "data": {"field": null},
+      "expected": false
+    },
+    {
+      "name": "not_equals_missing_column_non_null_rhs",
+      "query": "field!='value'",
+      "data": {"other": "value"},
+      "expected": false
+    },
+    {
       "name": "boolean_true_equals_true",
       "query": "field=true",
       "data": {"field": true},

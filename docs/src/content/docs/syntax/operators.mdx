@@ -104,7 +104,7 @@ The <FlyqlToken type="operator">has</FlyqlToken> operator performs a type-depend
 - **Map** — key existence: <FlyqlCode code={`metadata has 'region'`} inline /> is true if the map has a key <FlyqlToken type="string">"region"</FlyqlToken>
 - **Array/List** — item membership: <FlyqlCode code={`tags has 'web'`} inline /> is true if the array contains <FlyqlToken type="string">"web"</FlyqlToken>
 - **JSON** — key existence: <FlyqlCode code={`data has 'name'`} inline /> is true if the JSON object has a key <FlyqlToken type="string">"name"</FlyqlToken>
-- **Null/empty** — always false for <FlyqlToken type="operator">has</FlyqlToken>, always true for <FlyqlToken type="operator">not has</FlyqlToken>
+- **Null/empty** — always false for both <FlyqlToken type="operator">has</FlyqlToken> and <FlyqlToken type="operator">not has</FlyqlToken>
 
 <FlyqlToken type="operator">has</FlyqlToken> takes a single value (not a list). Use <FlyqlToken type="operator">in</FlyqlToken> for checking membership in a set of values.
 

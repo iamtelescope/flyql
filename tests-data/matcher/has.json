@@ -121,7 +121,13 @@
       "name": "not_has_null",
       "query": "column not has 'x'",
       "data": {"column": null},
-      "expected": true
+      "expected": false
+    },
+    {
+      "name": "not_has_missing_column",
+      "query": "column not has 'x'",
+      "data": {"other": "value"},
+      "expected": false
     },
     {
       "name": "has_combined_with_and",

@@ -1423,11 +1423,11 @@ func falsyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (s
 				if err != nil {
 					return "", err
 				}
-				return fmt.Sprintf("(NOT json_exists(parse_json(%s), '$.%s') OR %s = '')",
-					getIdentifier(column), jsonPathStr, leafExpr), nil
+				return fmt.Sprintf("(%s IS NULL OR NOT json_exists(parse_json(%s), %s) OR %s = '')",
+					getIdentifier(column), getIdentifier(column), jsonPathStr, leafExpr), nil
 			}
-			return fmt.Sprintf("(NOT json_exists(parse_json(%s), '$.%s') OR %s = '')",
-				getIdentifier(column), jsonPathStr, leafExpr), nil
+			return fmt.Sprintf("(%s IS NULL OR NOT json_exists(parse_json(%s), %s) OR %s = '')",
+				getIdentifier(column), getIdentifier(column), jsonPathStr, leafExpr), nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}

@@ -356,22 +356,52 @@ def in_expression_to_sql_where(
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = ".".join(f"$.{part}" for part in json_path)
-            leaf_expr = f"JSON_VALUE({col_id}, '{json_path_str}')"
+            path_parts = ".".join(f"`{part}`" for part in json_path)
+            path_access = f"{col_id}.{path_parts}"
+            leaf_expr = f"toString({path_access})"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"{leaf_expr} {sql_op} ({values_sql})"
+            text = f"{leaf_expr} {sql_op} ({values_sql})"
+            if is_not_in:
+                text = f"({path_access} IS NOT NULL AND {text})"
+            return text
         elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             json_path_str = ", ".join([escape_param(x) for x in json_path])
-            leaf_expr = f"JSONExtractString({col_id}, {json_path_str})"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
-                    leaf_expr, expression.key.transformers, "clickhouse"
+                    f"JSONExtractString({col_id}, {json_path_str})",
+                    expression.key.transformers,
+                    "clickhouse",
                 )
-            return f"{leaf_expr} {sql_op} ({values_sql})"
+                text = f"{leaf_expr} {sql_op} ({values_sql})"
+                if is_not_in:
+                    text = f"(JSONHas({col_id}, {json_path_str}) AND {text})"
+                return text
+            multi_if = [
+                f"JSONType({col_id}, {json_path_str}) = 'String', JSONExtractString({col_id}, {json_path_str}) IN ({values_sql})"  # pylint: disable=line-too-long
+            ]
+            values_are_numeric = expression.values_types is not None and all(
+                vt in (LiteralKind.INTEGER, LiteralKind.BIGINT, LiteralKind.FLOAT)
+                for vt in expression.values_types
+            )
+            if values_are_numeric:
+                multi_if.extend(
+                    [
+                        f"JSONType({col_id}, {json_path_str}) = 'Int64', JSONExtractInt({col_id}, {json_path_str}) IN ({values_sql})",  # pylint: disable=line-too-long
+                        f"JSONType({col_id}, {json_path_str}) = 'Double', JSONExtractFloat({col_id}, {json_path_str}) IN ({values_sql})",  # pylint: disable=line-too-long
+                        f"JSONType({col_id}, {json_path_str}) = 'Bool', JSONExtractBool({col_id}, {json_path_str}) IN ({values_sql})",  # pylint: disable=line-too-long
+                    ]
+                )
+            multi_if.append("0")
+            multi_if_str = ",".join(multi_if)
+            not_prefix = "NOT " if is_not_in else ""
+            text = f"{not_prefix}multiIf({multi_if_str})"
+            if is_not_in:
+                text = f"(JSONHas({col_id}, {json_path_str}) AND {text})"
+            return text
         elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)
@@ -428,14 +458,18 @@ def has_expression_to_sql_where(
             json_path = expression.key.segments[1:]
             for part in json_path:
                 validate_json_path_part(part)
-            json_path_str = ".".join(f"$.{part}" for part in json_path)
-            leaf_expr = f"JSON_VALUE({col_id}, '{json_path_str}')"
+            path_parts = ".".join(f"`{part}`" for part in json_path)
+            path_access = f"{col_id}.{path_parts}"
+            leaf_expr = f"toString({path_access})"
             if expression.key.transformers:
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             if is_not_has:
-                return f"position({leaf_expr}, {value}) = 0"
+                return (
+                    f"({path_access} IS NOT NULL AND "
+                    f"position({leaf_expr}, {value}) = 0)"
+                )
             return f"position({leaf_expr}, {value}) > 0"
         elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
@@ -446,7 +480,10 @@ def has_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             if is_not_has:
-                return f"position({leaf_expr}, {value}) = 0"
+                return (
+                    f"(JSONHas({col_id}, {json_path_str}) AND "
+                    f"position({leaf_expr}, {value}) = 0)"
+                )
             return f"position({leaf_expr}, {value}) > 0"
         elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
@@ -501,8 +538,8 @@ def has_expression_to_sql_where(
         return f"mapContains({col_ref}, {value})"
     elif column.flyql_type == Type.JSON:
         if is_not_has:
-            return f"NOT JSON_EXISTS({col_ref}, concat('$.', {value}))"
-        return f"JSON_EXISTS({col_ref}, concat('$.', {value}))"
+            return f"NOT JSONHas(toJSONString({col_ref}), {value})"
+        return f"JSONHas(toJSONString({col_ref}), {value})"
     elif column.flyql_type == Type.JSONString:
         if is_not_has:
             return f"NOT JSONHas({col_ref}, {value})"
@@ -552,6 +589,10 @@ def like_expression_to_sql_where(
 
     col_id = get_identifier(column)
 
+    is_negated_like = expression.operator in (
+        Operator.NOT_LIKE.value,
+        Operator.NOT_ILIKE.value,
+    )
     if expression.key.is_segmented:
         if column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
@@ -562,13 +603,17 @@ def like_expression_to_sql_where(
                     expression.key.transformers,
                     "clickhouse",
                 )
-                return f"{func_name}({leaf_expr}, {value})"
-            return (
-                f"multiIf("
-                f"JSONType({col_id}, {json_path_str}) = 'String', "
-                f"{func_name}(JSONExtractString({col_id}, {json_path_str}), {value}),"
-                f"0)"
-            )
+                text = f"{func_name}({leaf_expr}, {value})"
+            else:
+                text = (
+                    f"multiIf("
+                    f"JSONType({col_id}, {json_path_str}) = 'String', "
+                    f"{func_name}(JSONExtractString({col_id}, {json_path_str}), {value}),"
+                    f"0)"
+                )
+            if is_negated_like:
+                text = f"(JSONHas({col_id}, {json_path_str}) AND {text})"
+            return text
         elif column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:
@@ -823,6 +868,11 @@ def expression_to_sql_where(
                     multi_if.append("0")
                     multi_if_str = ",".join(multi_if)
                     text = f"{reverse_operator}multiIf({multi_if_str})"
+            if expression.operator in (
+                Operator.NOT_EQUALS.value,
+                Operator.NOT_REGEX.value,
+            ):
+                text = f"(JSONHas({col_id}, {json_path_str}) AND {text})"
         elif column.flyql_type == Type.JSON:
             json_path = expression.key.segments[1:]
             for part in json_path:

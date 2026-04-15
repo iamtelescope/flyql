@@ -553,9 +553,9 @@ function falsyExpressionToSQL(expr, columns) {
             let leafExpr = `parse_json(${colId})->${jsonPathStr}`
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(`cast(${leafExpr} as string)`, expr.key.transformers, 'starrocks')
-                return `(NOT json_exists(parse_json(${colId}), '$.${jsonPathStr}') OR ${leafExpr} = '')`
+                return `(${colId} IS NULL OR NOT json_exists(parse_json(${colId}), ${jsonPathStr}) OR ${leafExpr} = '')`
             }
-            return `(NOT json_exists(parse_json(${colId}), '$.${jsonPathStr}') OR ${leafExpr} = '')`
+            return `(${colId} IS NULL OR NOT json_exists(parse_json(${colId}), ${jsonPathStr}) OR ${leafExpr} = '')`
         } else {
             throw new Error('path search for unsupported column type')
         }

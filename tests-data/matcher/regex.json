@@ -146,6 +146,18 @@
       "query": "msg~'(?i)hello'",
       "data": {"other": "value"},
       "expected": false
+    },
+    {
+      "name": "not_regex_null_value",
+      "query": "msg!~'hello'",
+      "data": {"msg": null},
+      "expected": false
+    },
+    {
+      "name": "not_regex_missing_column",
+      "query": "msg!~'hello'",
+      "data": {"other": "value"},
+      "expected": false
     }
   ]
 }

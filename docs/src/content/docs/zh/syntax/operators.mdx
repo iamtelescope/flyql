@@ -104,7 +104,7 @@ SQL 风格的模式匹配，支持两个通配符：
 - **Map** — 键是否存在：<FlyqlCode code={`metadata has 'region'`} inline /> 当 map 有 <FlyqlToken type="string">"region"</FlyqlToken> 键时为 true
 - **数组/列表** — 元素是否存在：<FlyqlCode code={`tags has 'web'`} inline /> 当数组包含 <FlyqlToken type="string">"web"</FlyqlToken> 时为 true
 - **JSON** — 对象是否包含某个键：<FlyqlCode code={`data has 'name'`} inline /> 当 JSON 对象有 <FlyqlToken type="string">"name"</FlyqlToken> 键时为 true
-- **空值/空内容** — 对 <FlyqlToken type="operator">has</FlyqlToken> 来说恒为假，对 <FlyqlToken type="operator">not has</FlyqlToken> 来说恒为真
+- **空值/空内容** — 对 <FlyqlToken type="operator">has</FlyqlToken> 和 <FlyqlToken type="operator">not has</FlyqlToken> 来说都恒为假
 
 <FlyqlToken type="operator">has</FlyqlToken> 接收的是单个值，而不是列表。若需要判断某值是否属于多个候选值，请使用 <FlyqlToken type="operator">in</FlyqlToken>。
 

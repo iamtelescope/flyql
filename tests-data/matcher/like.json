@@ -158,6 +158,30 @@
       "query": "msg not ilike 'HELLO%'",
       "data": {"msg": "hello world"},
       "expected": false
+    },
+    {
+      "name": "not_like_null_value",
+      "query": "msg not like 'hello%'",
+      "data": {"msg": null},
+      "expected": false
+    },
+    {
+      "name": "not_like_missing_column",
+      "query": "msg not like 'hello%'",
+      "data": {"other": "value"},
+      "expected": false
+    },
+    {
+      "name": "not_ilike_null_value",
+      "query": "msg not ilike 'HELLO%'",
+      "data": {"msg": null},
+      "expected": false
+    },
+    {
+      "name": "not_ilike_missing_column",
+      "query": "msg not ilike 'HELLO%'",
+      "data": {"other": "value"},
+      "expected": false
     }
   ]
 }

@@ -11,7 +11,9 @@
         "flyqlBoolean",
         "flyqlNull",
         "flyqlColumn",
-        "flyqlError"
+        "flyqlError",
+        "flyqlFunction",
+        "flyqlParameter"
     ],
     "tests": [
         {
@@ -185,6 +187,179 @@
             "input": "#bad",
             "expected_tokens": [
                 { "text": "#bad", "type": "flyqlError", "start": 0, "end": 4 }
+            ]
+        },
+        {
+            "name": "function_startof_week",
+            "input": "created_at > startOf('week')",
+            "expected_tokens": [
+                { "text": "created_at", "type": "flyqlKey", "start": 0, "end": 10 },
+                { "text": " ", "type": "space", "start": 10, "end": 11 },
+                { "text": ">", "type": "flyqlOperator", "start": 11, "end": 12 },
+                { "text": " ", "type": "space", "start": 12, "end": 13 },
+                { "text": "startOf", "type": "flyqlFunction", "start": 13, "end": 20 },
+                { "text": "(", "type": "flyqlOperator", "start": 20, "end": 21 },
+                { "text": "'week'", "type": "string", "start": 21, "end": 27 },
+                { "text": ")", "type": "flyqlOperator", "start": 27, "end": 28 }
+            ]
+        },
+        {
+            "name": "function_startof_two_args",
+            "input": "t = startOf('month', 'Asia/Tokyo')",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": "=", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "startOf", "type": "flyqlFunction", "start": 4, "end": 11 },
+                { "text": "(", "type": "flyqlOperator", "start": 11, "end": 12 },
+                { "text": "'month'", "type": "string", "start": 12, "end": 19 },
+                { "text": ",", "type": "flyqlOperator", "start": 19, "end": 20 },
+                { "text": " ", "type": "space", "start": 20, "end": 21 },
+                { "text": "'Asia/Tokyo'", "type": "string", "start": 21, "end": 33 },
+                { "text": ")", "type": "flyqlOperator", "start": 33, "end": 34 }
+            ]
+        },
+        {
+            "name": "function_ago_simple",
+            "input": "t > ago(1h)",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "ago", "type": "flyqlFunction", "start": 4, "end": 7 },
+                { "text": "(", "type": "flyqlOperator", "start": 7, "end": 8 },
+                { "text": "1h", "type": "number", "start": 8, "end": 10 },
+                { "text": ")", "type": "flyqlOperator", "start": 10, "end": 11 }
+            ]
+        },
+        {
+            "name": "function_ago_compound",
+            "input": "t > ago(1h30m)",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "ago", "type": "flyqlFunction", "start": 4, "end": 7 },
+                { "text": "(", "type": "flyqlOperator", "start": 7, "end": 8 },
+                { "text": "1h30m", "type": "number", "start": 8, "end": 13 },
+                { "text": ")", "type": "flyqlOperator", "start": 13, "end": 14 }
+            ]
+        },
+        {
+            "name": "function_now_empty",
+            "input": "t < now()",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": "<", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "now", "type": "flyqlFunction", "start": 4, "end": 7 },
+                { "text": "()", "type": "flyqlOperator", "start": 7, "end": 9 }
+            ]
+        },
+        {
+            "name": "function_today_no_args",
+            "input": "d = today()",
+            "expected_tokens": [
+                { "text": "d", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": "=", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "today", "type": "flyqlFunction", "start": 4, "end": 9 },
+                { "text": "()", "type": "flyqlOperator", "start": 9, "end": 11 }
+            ]
+        },
+        {
+            "name": "function_today_tz",
+            "input": "d = today('Europe/Berlin')",
+            "expected_tokens": [
+                { "text": "d", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": "=", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "today", "type": "flyqlFunction", "start": 4, "end": 9 },
+                { "text": "(", "type": "flyqlOperator", "start": 9, "end": 10 },
+                { "text": "'Europe/Berlin'", "type": "string", "start": 10, "end": 25 },
+                { "text": ")", "type": "flyqlOperator", "start": 25, "end": 26 }
+            ]
+        },
+        {
+            "name": "function_with_param",
+            "input": "t > ago($duration)",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "ago", "type": "flyqlFunction", "start": 4, "end": 7 },
+                { "text": "(", "type": "flyqlOperator", "start": 7, "end": 8 },
+                { "text": "$duration", "type": "flyqlParameter", "start": 8, "end": 17 },
+                { "text": ")", "type": "flyqlOperator", "start": 17, "end": 18 }
+            ]
+        },
+        {
+            "name": "function_negative_unknown_identifier",
+            "input": "t > startsWith",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "startsWith", "type": "flyqlColumn", "start": 4, "end": 14 }
+            ]
+        },
+        {
+            "name": "function_negative_known_name_without_paren",
+            "input": "t > ago",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "ago", "type": "flyqlColumn", "start": 4, "end": 7 }
+            ]
+        },
+        {
+            "name": "duration_shape_outside_function_is_column",
+            "input": "status=1h",
+            "expected_tokens": [
+                { "text": "status", "type": "flyqlKey", "start": 0, "end": 6 },
+                { "text": "=", "type": "flyqlOperator", "start": 6, "end": 7 },
+                { "text": "1h", "type": "flyqlColumn", "start": 7, "end": 9 }
+            ]
+        },
+        {
+            "name": "duration_shape_outside_function_compound",
+            "input": "host=1h30m",
+            "expected_tokens": [
+                { "text": "host", "type": "flyqlKey", "start": 0, "end": 4 },
+                { "text": "=", "type": "flyqlOperator", "start": 4, "end": 5 },
+                { "text": "1h30m", "type": "flyqlColumn", "start": 5, "end": 10 }
+            ]
+        },
+        {
+            "name": "function_followed_by_bool_op",
+            "input": "t > ago(1h) and status = 200",
+            "expected_tokens": [
+                { "text": "t", "type": "flyqlKey", "start": 0, "end": 1 },
+                { "text": " ", "type": "space", "start": 1, "end": 2 },
+                { "text": ">", "type": "flyqlOperator", "start": 2, "end": 3 },
+                { "text": " ", "type": "space", "start": 3, "end": 4 },
+                { "text": "ago", "type": "flyqlFunction", "start": 4, "end": 7 },
+                { "text": "(", "type": "flyqlOperator", "start": 7, "end": 8 },
+                { "text": "1h", "type": "number", "start": 8, "end": 10 },
+                { "text": ")", "type": "flyqlOperator", "start": 10, "end": 11 },
+                { "text": " ", "type": "space", "start": 11, "end": 12 },
+                { "text": "and", "type": "flyqlOperator", "start": 12, "end": 15 },
+                { "text": " ", "type": "space", "start": 15, "end": 16 },
+                { "text": "status", "type": "flyqlKey", "start": 16, "end": 22 },
+                { "text": " ", "type": "space", "start": 22, "end": 23 },
+                { "text": "=", "type": "flyqlOperator", "start": 23, "end": 24 },
+                { "text": " ", "type": "space", "start": 24, "end": 25 },
+                { "text": "200", "type": "number", "start": 25, "end": 28 }
             ]
         }
     ]

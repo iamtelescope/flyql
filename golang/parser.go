@@ -1054,10 +1054,17 @@ func (p *Parser) inStateValue() {
 		p.storeTypedChar(CharTypeSpace)
 	} else if p.char.isGroupOpen() {
 		if knownFunctions[p.value] {
+			nameLen := len(p.value)
+			startIdx := max(0, len(p.TypedChars)-nameLen)
+			for i := startIdx; i < len(p.TypedChars); i++ {
+				if p.TypedChars[i].Type == CharTypeValue {
+					p.TypedChars[i].Type = CharTypeFunction
+				}
+			}
 			p.functionName = p.value
 			p.value = ""
 			p.state = stateFunctionArgs
-			p.storeTypedChar(CharTypeValue)
+			p.storeTypedChar(CharTypeOperator)
 		} else {
 			p.setErrorState(fmt.Sprintf("unknown function '%s'", p.value), errUnknownFunction)
 		}
@@ -1091,34 +1098,50 @@ func (p *Parser) resetFunctionData() {
 	p.functionParamBuf = ""
 }
 
+// maxDurationMagnitudeSentinel is larger than any value in
+// durationUnitMagnitude; it initializes the "previous unit" tracker so the
+// first unit in a buffer is always accepted.
+const maxDurationMagnitudeSentinel = 1 << 8
+
 func (p *Parser) parseDurationBuf() bool {
 	buf := p.functionDurationBuf
 	if buf == "" {
 		return false
 	}
 	numBuf := ""
-	for i := 0; i < len(buf); i++ {
-		c := buf[i]
+	prevMagnitude := maxDurationMagnitudeSentinel
+	for _, c := range buf {
 		if c >= '0' && c <= '9' {
 			numBuf += string(c)
-		} else {
-			unit := string(c)
-			if unit != "s" && unit != "m" && unit != "h" && unit != "d" && unit != "w" {
-				p.setErrorState(fmt.Sprintf("invalid duration unit '%s' — expected s, m, h, d, or w", unit), errInvalidDuration)
-				return false
-			}
-			if numBuf == "" {
-				p.setErrorState("invalid duration format", errInvalidDuration)
-				return false
-			}
-			val, err := strconv.ParseInt(numBuf, 10, 64)
-			if err != nil {
-				p.setErrorState(fmt.Sprintf("invalid duration value '%s'", numBuf), errInvalidDuration)
-				return false
-			}
-			p.functionDurations = append(p.functionDurations, Duration{Value: val, Unit: unit})
-			numBuf = ""
+			continue
 		}
+		magnitude, ok := durationUnitMagnitude[c]
+		if !ok {
+			p.setErrorState(fmt.Sprintf("invalid duration unit '%s' — expected s, m, h, d, or w", string(c)), errInvalidDuration)
+			return false
+		}
+		if numBuf == "" {
+			p.setErrorState("invalid duration format", errInvalidDuration)
+			return false
+		}
+		if magnitude >= prevMagnitude {
+			p.setErrorState(
+				fmt.Sprintf(
+					"invalid duration '%s' — units must appear in strictly descending order and only once (e.g. '1w2d3h4m5s')",
+					buf,
+				),
+				errInvalidDuration,
+			)
+			return false
+		}
+		prevMagnitude = magnitude
+		val, err := strconv.ParseInt(numBuf, 10, 64)
+		if err != nil {
+			p.setErrorState(fmt.Sprintf("invalid duration value '%s'", numBuf), errInvalidDuration)
+			return false
+		}
+		p.functionDurations = append(p.functionDurations, Duration{Value: val, Unit: string(c)})
+		numBuf = ""
 	}
 	if numBuf != "" {
 		p.setErrorState("invalid duration format — missing unit", errInvalidDuration)
@@ -1138,7 +1161,14 @@ func (p *Parser) completeFunctionCall() {
 	var fc *FunctionCall
 
 	if len(p.functionParameterArgs) > 0 {
-		p.parseDurationBuf()
+		// Currently unreachable: the state machine can't produce both
+		// parameter args and a non-empty duration buf in the same call
+		// (FUNCTION_DURATION has no `,` transition). Kept defensive: if
+		// parseDurationBuf ever sets the error state, honor it rather
+		// than silently overwriting with stateExpectBoolOp below.
+		if p.functionDurationBuf != "" && !p.parseDurationBuf() {
+			return
+		}
 		fc = &FunctionCall{
 			Name:          name,
 			DurationArgs:  append([]Duration{}, p.functionDurations...),
@@ -1266,7 +1296,7 @@ func (p *Parser) inStateFunctionArgs() {
 	}
 
 	if p.char.isGroupClose() {
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 		p.completeFunctionCall()
 	} else if p.char.isParameterStart() {
 		p.functionParamBuf = ""
@@ -1275,7 +1305,7 @@ func (p *Parser) inStateFunctionArgs() {
 	} else if p.char.value >= '0' && p.char.value <= '9' {
 		p.functionDurationBuf += string(p.char.value)
 		p.state = stateFunctionDuration
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeNumber)
 	} else if p.char.isSingleQuote() {
 		p.functionCurrentArg = ""
 		p.state = stateFunctionQuotedArg
@@ -1294,12 +1324,12 @@ func (p *Parser) inStateFunctionDuration() {
 
 	if p.char.value >= '0' && p.char.value <= '9' {
 		p.functionDurationBuf += string(p.char.value)
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeNumber)
 	} else if p.char.value == 's' || p.char.value == 'm' || p.char.value == 'h' || p.char.value == 'd' || p.char.value == 'w' {
 		p.functionDurationBuf += string(p.char.value)
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeNumber)
 	} else if p.char.isGroupClose() {
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 		p.completeFunctionCall()
 	} else {
 		p.setErrorState(fmt.Sprintf("invalid duration unit '%s' — expected s, m, h, d, or w", string(p.char.value)), errInvalidDuration)
@@ -1333,11 +1363,11 @@ func (p *Parser) inStateFunctionExpectCommaOrClose() {
 	}
 
 	if p.char.isGroupClose() {
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 		p.completeFunctionCall()
 	} else if p.char.value == ',' {
 		p.state = stateFunctionExpectArg
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isDelimiter() {
 		p.storeTypedChar(CharTypeSpace)
 	} else {
@@ -1403,14 +1433,14 @@ func (p *Parser) inStateFunctionParameter() {
 		if !p.finalizeFunctionParameter() {
 			return
 		}
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 		p.completeFunctionCall()
 	} else if c == ',' {
 		if !p.finalizeFunctionParameter() {
 			return
 		}
 		p.state = stateFunctionExpectArg
-		p.storeTypedChar(CharTypeValue)
+		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isDelimiter() {
 		if !p.finalizeFunctionParameter() {
 			return

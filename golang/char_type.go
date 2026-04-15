@@ -22,6 +22,7 @@ const (
 	CharTypeSpace          = "space"
 	CharTypePipe           = "flyqlPipe"
 	CharTypeTransformer    = "flyqlTransformer"
+	CharTypeFunction       = "flyqlFunction"
 	CharTypeArgument       = "flyqlArgument"
 	CharTypeArgumentString = "flyqlArgumentString"
 	CharTypeArgumentNumber = "flyqlArgumentNumber"

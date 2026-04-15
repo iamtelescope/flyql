@@ -30,6 +30,7 @@ export const CharType = Object.freeze({
     SPACE: 'space',
     PIPE: 'flyqlPipe',
     TRANSFORMER: 'flyqlTransformer',
+    FUNCTION: 'flyqlFunction',
     ARGUMENT: 'flyqlArgument',
     ARGUMENT_STRING: 'flyqlArgumentString',
     ARGUMENT_NUMBER: 'flyqlArgumentNumber',
@@ -125,6 +126,17 @@ export const VALID_KEY_VALUE_OPERATORS = [
 ]
 
 export const KNOWN_FUNCTIONS = new Set(['ago', 'now', 'today', 'startOf'])
+
+// Magnitudes used to enforce strictly descending, unique-unit duration
+// literals (Prometheus-style): w > d > h > m > s. `1h30m` valid; `30m1h`,
+// `1h1h`, `3h1w` all rejected.
+export const DURATION_UNIT_MAGNITUDE = Object.freeze({
+    s: 1,
+    m: 2,
+    h: 3,
+    d: 4,
+    w: 5,
+})
 
 export const ERR_UNKNOWN_FUNCTION = 70
 export const ERR_INVALID_FUNCTION_ARGS = 71

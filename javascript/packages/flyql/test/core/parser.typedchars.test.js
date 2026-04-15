@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { parse, CharType } from '../../src/index.js'
+import { parse, Parser, CharType } from '../../src/index.js'
+import { ParserError } from '../../src/core/exceptions.js'
+import { ERR_INVALID_DURATION, KNOWN_FUNCTIONS } from '../../src/core/constants.js'
 import { loadTestData } from '../helpers.js'
 
 describe('Parser typedChars functionality', () => {
@@ -188,12 +190,107 @@ describe('Parser typedChars functionality', () => {
         expect(types[14]).toBe(CharType.OPERATOR)
     })
 
+    it('retroactively retypes known function names to FUNCTION', () => {
+        const parser = parse("created_at > startOf('week')")
+        const fnChars = parser.typedChars
+            .filter(([_, type]) => type === CharType.FUNCTION)
+            .map(([ch, _]) => ch.value)
+            .join('')
+        expect(fnChars).toBe('startOf')
+    })
+
+    it('emits OPERATOR for function-call structural chars', () => {
+        const parser = parse("t = startOf('month', 'Asia/Tokyo')")
+        const opRun = parser.typedChars
+            .filter(([_, type]) => type === CharType.OPERATOR)
+            .map(([ch, _]) => ch.value)
+            .join('')
+        expect(opRun).toContain('(')
+        expect(opRun).toContain(',')
+        expect(opRun).toContain(')')
+    })
+
+    it('does not retype unknown identifiers to FUNCTION', () => {
+        const parser = parse('t > startsWith')
+        const hasFn = parser.typedChars.some(([_, type]) => type === CharType.FUNCTION)
+        expect(hasFn).toBe(false)
+    })
+
+    it('captures function name correctly after retroactive retype', () => {
+        // parser.value is cleared after retype; verify the function-call AST
+        // still carries the correct name through completeFunctionCall.
+        const parser = parse('t > ago(1h)')
+        const root = parser.root
+        const expr = root.expression || root.left?.expression
+        expect(expr).toBeDefined()
+        expect(expr.value.name).toBe('ago')
+    })
+
+    it('emits correct typed chars for mid-typing function call', () => {
+        // Partial input from a live editor — must not throw, must keep
+        // retyped function name even though the call never closes.
+        const parser = new Parser()
+        parser.parse('t > ago(', false, false)
+        const fnChars = parser.typedChars
+            .filter(([_, type]) => type === CharType.FUNCTION)
+            .map(([ch, _]) => ch.value)
+            .join('')
+        expect(fnChars).toBe('ago')
+    })
+
     it('should not use PIPE/TRANSFORMER types for keys without pipe', () => {
         const parser = parse('status=info')
 
         const types = new Set(parser.typedChars.map(([_, type]) => type))
         expect(types.has(CharType.PIPE)).toBe(false)
         expect(types.has(CharType.TRANSFORMER)).toBe(false)
+    })
+
+    it('KNOWN_FUNCTIONS must be ASCII-only (retype loop length-coupling invariant)', () => {
+        // The retroactive FUNCTION retype walks back `this.value.length`
+        // typedChars entries. That count is accurate iff each input char
+        // of the name consumed exactly one typedChars slot, which is true
+        // while names are ASCII. Any future multi-byte / surrogate-pair
+        // name would silently mis-align the window. Fail loudly instead.
+        for (const name of KNOWN_FUNCTIONS) {
+            expect(/^[\x00-\x7F]+$/.test(name), `${name} must be ASCII-only`).toBe(true)
+        }
+    })
+
+    describe('duration ordering (Prometheus-style strict descending)', () => {
+        const valid = [
+            't > ago(1s)',
+            't > ago(1m)',
+            't > ago(1h)',
+            't > ago(1d)',
+            't > ago(1w)',
+            't > ago(1h30m)',
+            't > ago(2w3d4h5m6s)',
+            't > ago(1w30s)',
+        ]
+        for (const input of valid) {
+            it(`accepts ${input}`, () => {
+                expect(() => parse(input)).not.toThrow()
+            })
+        }
+
+        const invalid = [
+            ['t > ago(1m2h)', 'ascending order (m before h)'],
+            ['t > ago(30m1h)', 'ascending order (m before h)'],
+            ['t > ago(1h2h)', 'repeated unit (h twice)'],
+            ['t > ago(30m30m)', 'repeated unit (m twice)'],
+            ['t > ago(3h1w)', 'ascending order (h before w)'],
+            ['t > ago(1s1m)', 'ascending order (s before m)'],
+            ['t > ago(1d1w)', 'ascending order (d before w)'],
+        ]
+        for (const [input, why] of invalid) {
+            it(`rejects ${input} — ${why}`, () => {
+                expect(() => parse(input)).toThrow(ParserError)
+                const parser = new Parser()
+                parser.parse(input, false, false)
+                expect(parser.errno).toBe(ERR_INVALID_DURATION)
+            })
+        }
     })
 
     describe('shared fixtures', () => {

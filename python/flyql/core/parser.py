@@ -17,6 +17,7 @@ from flyql.core.constants import (
     VALID_BOOL_OPERATORS,
     VALID_KEY_VALUE_OPERATORS,
     KNOWN_FUNCTIONS,
+    DURATION_UNIT_MAGNITUDE,
     ERR_UNKNOWN_FUNCTION,
     ERR_INVALID_FUNCTION_ARGS,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
@@ -1025,10 +1026,18 @@ class Parser:
             self.store_typed_char(CharType.SPACE)
         elif self.char.is_group_open():
             if self.value in KNOWN_FUNCTIONS:
+                name_len = len(self.value)
+                start_idx = max(0, len(self.typed_chars) - name_len)
+                for i in range(start_idx, len(self.typed_chars)):
+                    if self.typed_chars[i][1] == CharType.VALUE:
+                        self.typed_chars[i] = (
+                            self.typed_chars[i][0],
+                            CharType.FUNCTION,
+                        )
                 self._function_name = self.value
                 self.value = ""
                 self.set_state(State.FUNCTION_ARGS)
-                self.store_typed_char(CharType.VALUE)
+                self.store_typed_char(CharType.OPERATOR)
             else:
                 self.set_error_state(
                     f"unknown function '{self.value}'", ERR_UNKNOWN_FUNCTION
@@ -1770,11 +1779,17 @@ class Parser:
         if not buf:
             return False
         num_buf = ""
+        # Enforce strictly descending, unique-unit duration literals
+        # (Prometheus-style). prev_magnitude starts above the highest unit
+        # so the first unit is always accepted; each subsequent unit must
+        # have strictly lower magnitude.
+        prev_magnitude = float("inf")
         for c in buf:
             if c.isdigit():
                 num_buf += c
             else:
-                if c not in ("s", "m", "h", "d", "w"):
+                magnitude = DURATION_UNIT_MAGNITUDE.get(c)
+                if magnitude is None:
                     self.set_error_state(
                         f"invalid duration unit '{c}' — expected s, m, h, d, or w",
                         ERR_INVALID_DURATION,
@@ -1785,6 +1800,13 @@ class Parser:
                         "invalid duration format", ERR_INVALID_DURATION
                     )
                     return False
+                if magnitude >= prev_magnitude:
+                    self.set_error_state(
+                        f"invalid duration '{buf}' — units must appear in strictly descending order and only once (e.g. '1w2d3h4m5s')",
+                        ERR_INVALID_DURATION,
+                    )
+                    return False
+                prev_magnitude = magnitude
                 self._function_durations.append(Duration(value=int(num_buf), unit=c))
                 num_buf = ""
         if num_buf:
@@ -1807,7 +1829,13 @@ class Parser:
         fc: Optional[FunctionCall] = None
 
         if self._function_parameter_args:
-            self._parse_duration_buf()
+            # Currently unreachable: the state machine can't produce both
+            # parameter args and a non-empty duration buf in the same call
+            # (FUNCTION_DURATION has no `,` transition). Kept defensive: if
+            # _parse_duration_buf ever sets the error state, honor it rather
+            # than silently overwriting with state_expect_bool_op below.
+            if self._function_duration_buf and not self._parse_duration_buf():
+                return
             fc = FunctionCall(
                 name=name,
                 duration_args=list(self._function_durations),
@@ -1922,7 +1950,7 @@ class Parser:
             return
 
         if self.char.is_group_close():
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
             self._complete_function_call()
         elif self.char.is_parameter_start():
             self._function_param_buf = ""
@@ -1931,7 +1959,7 @@ class Parser:
         elif self.char.value.isdigit():
             self._function_duration_buf += self.char.value
             self.set_state(State.FUNCTION_DURATION)
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.NUMBER)
         elif self.char.is_single_quote():
             self._function_current_arg = ""
             self.set_state(State.FUNCTION_QUOTED_ARG)
@@ -1947,12 +1975,12 @@ class Parser:
 
         if self.char.value.isdigit():
             self._function_duration_buf += self.char.value
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.NUMBER)
         elif self.char.value in ("s", "m", "h", "d", "w"):
             self._function_duration_buf += self.char.value
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.NUMBER)
         elif self.char.is_group_close():
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
             self._complete_function_call()
         else:
             self.set_error_state(
@@ -1982,11 +2010,11 @@ class Parser:
             return
 
         if self.char.is_group_close():
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
             self._complete_function_call()
         elif self.char.value == ",":
             self.set_state(State.FUNCTION_EXPECT_ARG)
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_delimiter():
             self.store_typed_char(CharType.SPACE)
         else:
@@ -2046,13 +2074,13 @@ class Parser:
         elif self.char.is_group_close():
             if not self._finalize_function_parameter():
                 return
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
             self._complete_function_call()
         elif c == ",":
             if not self._finalize_function_parameter():
                 return
             self.set_state(State.FUNCTION_EXPECT_ARG)
-            self.store_typed_char(CharType.VALUE)
+            self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_delimiter():
             if not self._finalize_function_parameter():
                 return

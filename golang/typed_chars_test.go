@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,6 +53,134 @@ func TestTypedCharsSharedFixtures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestTypedCharsFunctionRetroactiveRetype(t *testing.T) {
+	result, err := Parse("created_at > startOf('week')")
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	var fn strings.Builder
+	for _, tc := range result.TypedChars {
+		if tc.Type == CharTypeFunction {
+			fn.WriteRune(tc.Value)
+		}
+	}
+	if fn.String() != "startOf" {
+		t.Errorf("expected FUNCTION chars to spell 'startOf', got %q", fn.String())
+	}
+}
+
+func TestTypedCharsFunctionStructuralChars(t *testing.T) {
+	input := "t = startOf('month', 'Asia/Tokyo')"
+	result, err := Parse(input)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	// Expected OPERATOR positions (0-indexed): 2 (=), 11 ((), 19 (,), 33 ())
+	wantOpPositions := map[int]rune{2: '=', 11: '(', 19: ',', 33: ')'}
+	gotOps := make(map[int]rune)
+	for _, tc := range result.TypedChars {
+		if tc.Type == CharTypeOperator {
+			gotOps[tc.Pos] = tc.Value
+		}
+	}
+	for pos, want := range wantOpPositions {
+		got, ok := gotOps[pos]
+		if !ok {
+			t.Errorf("input %q: expected OPERATOR at pos %d (%q), got none", input, pos, want)
+		} else if got != want {
+			t.Errorf("input %q: OPERATOR at pos %d = %q, want %q", input, pos, got, want)
+		}
+	}
+}
+
+func TestTypedCharsUnknownIdentifierNotFunction(t *testing.T) {
+	result, err := Parse("t > startsWith")
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	for _, tc := range result.TypedChars {
+		if tc.Type == CharTypeFunction {
+			t.Errorf("unexpected FUNCTION type for unknown identifier")
+		}
+	}
+}
+
+func TestTypedCharsMidTypingFunctionCall(t *testing.T) {
+	// Partial input — parser errors on unclosed call but typed chars must
+	// retain the retyped function name regardless.
+	p := NewParser()
+	_ = p.Parse("t > ago(")
+	var fn strings.Builder
+	for _, tc := range p.TypedChars {
+		if tc.Type == CharTypeFunction {
+			fn.WriteRune(tc.Value)
+		}
+	}
+	if fn.String() != "ago" {
+		t.Errorf("expected 'ago' in FUNCTION-typed chars, got %q", fn.String())
+	}
+}
+
+func TestKnownFunctionsAreAscii(t *testing.T) {
+	// The retroactive FUNCTION retype walks back len(p.value) typed-char
+	// entries, where len() on a Go string is BYTE length. That equals the
+	// typed-char count only while every rune in the name is single-byte
+	// ASCII. A future multi-byte name would silently mis-align the window.
+	// Fail loudly instead.
+	for name := range knownFunctions {
+		for _, r := range name {
+			if r > 0x7F {
+				t.Errorf("knownFunctions entry %q contains non-ASCII rune %q", name, r)
+			}
+		}
+	}
+}
+
+func TestDurationOrderingValid(t *testing.T) {
+	valid := []string{
+		"t > ago(1s)",
+		"t > ago(1m)",
+		"t > ago(1h)",
+		"t > ago(1d)",
+		"t > ago(1w)",
+		"t > ago(1h30m)",
+		"t > ago(2w3d4h5m6s)",
+		"t > ago(1w30s)",
+	}
+	for _, input := range valid {
+		if _, err := Parse(input); err != nil {
+			t.Errorf("expected %q to parse, got error: %v", input, err)
+		}
+	}
+}
+
+func TestDurationOrderingInvalid(t *testing.T) {
+	cases := map[string]string{
+		"t > ago(1m2h)":   "ascending m before h",
+		"t > ago(30m1h)":  "ascending m before h",
+		"t > ago(1h2h)":   "repeated unit h",
+		"t > ago(30m30m)": "repeated unit m",
+		"t > ago(3h1w)":   "ascending h before w",
+		"t > ago(1s1m)":   "ascending s before m",
+		"t > ago(1d1w)":   "ascending d before w",
+	}
+	for input, why := range cases {
+		_, err := Parse(input)
+		if err == nil {
+			t.Errorf("expected %q to fail (%s), but parsed successfully", input, why)
+			continue
+		}
+		pe, ok := err.(*ParseError)
+		if !ok {
+			t.Errorf("%q: expected *ParseError, got %T", input, err)
+			continue
+		}
+		if pe.Code != errInvalidDuration {
+			t.Errorf("%q: code=%d, want errInvalidDuration=%d", input, pe.Code, errInvalidDuration)
+		}
 	}
 }
 

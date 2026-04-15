@@ -20,6 +20,7 @@ import {
     LIKE_KEYWORD,
     ILIKE_KEYWORD,
     KNOWN_FUNCTIONS,
+    DURATION_UNIT_MAGNITUDE,
     ERR_UNKNOWN_FUNCTION,
     ERR_INVALID_FUNCTION_ARGS,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
@@ -1140,10 +1141,17 @@ export class Parser {
             this.storeTypedChar(CharType.SPACE)
         } else if (this.char.isGroupOpen()) {
             if (KNOWN_FUNCTIONS.has(this.value)) {
+                const nameLen = this.value.length
+                const start = Math.max(0, this.typedChars.length - nameLen)
+                for (let i = start; i < this.typedChars.length; i++) {
+                    if (this.typedChars[i][1] === CharType.VALUE) {
+                        this.typedChars[i] = [this.typedChars[i][0], CharType.FUNCTION]
+                    }
+                }
                 this._functionName = this.value
                 this.value = ''
                 this.setState(State.FUNCTION_ARGS)
-                this.storeTypedChar(CharType.VALUE)
+                this.storeTypedChar(CharType.OPERATOR)
             } else {
                 this.setErrorState(`unknown function '${this.value}'`, ERR_UNKNOWN_FUNCTION)
             }
@@ -1181,12 +1189,18 @@ export class Parser {
         const buf = this._functionDurationBuf
         if (!buf) return false
         let numBuf = ''
+        // Enforce strictly descending, unique-unit duration literals
+        // (Prometheus-style). prevMagnitude starts at +Infinity so the
+        // first unit is always accepted; each subsequent unit must have
+        // strictly lower magnitude.
+        let prevMagnitude = Infinity
         for (let i = 0; i < buf.length; i++) {
             const c = buf[i]
             if (c >= '0' && c <= '9') {
                 numBuf += c
             } else {
-                if (!['s', 'm', 'h', 'd', 'w'].includes(c)) {
+                const magnitude = DURATION_UNIT_MAGNITUDE[c]
+                if (magnitude === undefined) {
                     this.setErrorState(`invalid duration unit '${c}' — expected s, m, h, d, or w`, ERR_INVALID_DURATION)
                     return false
                 }
@@ -1194,6 +1208,14 @@ export class Parser {
                     this.setErrorState('invalid duration format', ERR_INVALID_DURATION)
                     return false
                 }
+                if (magnitude >= prevMagnitude) {
+                    this.setErrorState(
+                        `invalid duration '${buf}' — units must appear in strictly descending order and only once (e.g. '1w2d3h4m5s')`,
+                        ERR_INVALID_DURATION,
+                    )
+                    return false
+                }
+                prevMagnitude = magnitude
                 this._functionDurations.push(new Duration(parseInt(numBuf, 10), c))
                 numBuf = ''
             }
@@ -1219,7 +1241,12 @@ export class Parser {
         let fc = null
 
         if (this._functionParameterArgs.length > 0) {
-            this.parseDurationBuf()
+            // Currently unreachable: the state machine can't produce both
+            // parameter args and a non-empty duration buf in the same call
+            // (FUNCTION_DURATION has no `,` transition). Kept defensive: if
+            // parseDurationBuf ever sets the error state, honor it rather
+            // than silently overwriting with stateExpectBoolOp below.
+            if (this._functionDurationBuf && !this.parseDurationBuf()) return
             fc = new FunctionCall(name, [...this._functionDurations])
             fc.parameterArgs = [...this._functionParameterArgs]
             if (this._functionArgs.length > 0) {
@@ -1321,7 +1348,7 @@ export class Parser {
         if (!this.char) return
 
         if (this.char.isGroupClose()) {
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
             this.completeFunctionCall()
         } else if (this.char.value === DOLLAR) {
             this._functionParamBuf = ''
@@ -1330,7 +1357,7 @@ export class Parser {
         } else if (this.char.value >= '0' && this.char.value <= '9') {
             this._functionDurationBuf += this.char.value
             this.setState(State.FUNCTION_DURATION)
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.NUMBER)
         } else if (this.char.isSingleQuote()) {
             this._functionCurrentArg = ''
             this.setState(State.FUNCTION_QUOTED_ARG)
@@ -1347,12 +1374,12 @@ export class Parser {
 
         if (this.char.value >= '0' && this.char.value <= '9') {
             this._functionDurationBuf += this.char.value
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.NUMBER)
         } else if (['s', 'm', 'h', 'd', 'w'].includes(this.char.value)) {
             this._functionDurationBuf += this.char.value
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.NUMBER)
         } else if (this.char.isGroupClose()) {
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
             this.completeFunctionCall()
         } else {
             this.setErrorState(
@@ -1385,11 +1412,11 @@ export class Parser {
         if (!this.char) return
 
         if (this.char.isGroupClose()) {
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
             this.completeFunctionCall()
         } else if (this.char.value === ',') {
             this.setState(State.FUNCTION_EXPECT_ARG)
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isDelimiter()) {
             this.storeTypedChar(CharType.SPACE)
         } else {
@@ -1448,14 +1475,14 @@ export class Parser {
             if (!this._finalizeFunctionParameter()) {
                 return
             }
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
             this.completeFunctionCall()
         } else if (c === ',') {
             if (!this._finalizeFunctionParameter()) {
                 return
             }
             this.setState(State.FUNCTION_EXPECT_ARG)
-            this.storeTypedChar(CharType.VALUE)
+            this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isDelimiter()) {
             if (!this._finalizeFunctionParameter()) {
                 return

@@ -29,6 +29,7 @@ const QUERY_CLASS = {
     [QueryCharType.SPACE]: 'flyql-space',
     [QueryCharType.PIPE]: 'flyql-pipe',
     [QueryCharType.TRANSFORMER]: 'flyql-transformer',
+    [QueryCharType.FUNCTION]: 'flyql-function',
     [QueryCharType.ARGUMENT]: 'flyql-argument',
     [QueryCharType.WILDCARD]: 'flyql-wildcard',
     [QueryCharType.COLUMN]: 'flyql-column',

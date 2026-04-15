@@ -490,6 +490,15 @@
     color: var(--flyql-transformer-color);
 }
 
+/*
+ * Function-call name highlight. Theme authors can override
+ * --flyql-function-color to give functions a distinct color; by default
+ * they inherit the transformer color so single-token themes keep working.
+ */
+.flyql-function {
+    color: var(--flyql-function-color, var(--flyql-transformer-color));
+}
+
 .flyql-pipe {
     color: var(--flyql-transformer-color);
 }

@@ -18,7 +18,7 @@ import {
     CODE_UNKNOWN_TRANSFORMER,
     Range,
 } from 'flyql/core'
-import { Type } from 'flyql'
+import { Type, tokenize } from 'flyql'
 import { defaultRegistry } from 'flyql/transformers'
 import { EditorState } from './state.js'
 import {
@@ -76,12 +76,14 @@ const CHAR_TYPE_CLASS = {
     [CharType.SPACE]: 'flyql-space',
     [CharType.PIPE]: 'flyql-transformer',
     [CharType.TRANSFORMER]: 'flyql-transformer',
+    [CharType.FUNCTION]: 'flyql-function',
     [CharType.ARGUMENT]: 'flyql-argument',
     [CharType.ARGUMENT_STRING]: 'flyql-argument-string',
     [CharType.ARGUMENT_NUMBER]: 'flyql-argument-number',
     [CharType.WILDCARD]: 'flyql-wildcard',
     [CharType.COLUMN]: 'flyql-column',
     [CharType.PARAMETER]: 'flyql-parameter',
+    [CharType.ERROR]: 'flyql-error',
 }
 
 function escapeHtml(str) {
@@ -649,27 +651,56 @@ export class EditorEngine {
 
     /**
      * Generate highlight tokens as HTML string.
-     * Accepts an optional query parameter to avoid mutating engine state.
-     * When diagnostics are provided, wraps affected characters with diagnostic spans.
+     *
+     * Backed by the canonical `tokenize()` primitive from the core flyql
+     * package (query mode). Tokens are wrapped in `<span class="flyql-*">`
+     * via `CHAR_TYPE_CLASS`. The parser's trailing-error-tail is emitted as
+     * a `flyqlError` token by `tokenize()` itself and rendered as a
+     * `flyql-error` span through the class map.
+     *
+     * When diagnostics are provided, each token is subdivided at per-character
+     * granularity: any position where `diagMap[i]` or `highlightSet.has(i)`
+     * changes produces a span boundary, so diagnostic underlines and hover
+     * highlights align exactly with the affected characters and never expand
+     * to the whole token. Newlines (`\n`/`\r`) also force a span boundary so
+     * multi-line rendering stays visually coherent when the raw string flows
+     * through the DOM.
+     *
+     * Accepts an optional `query` argument to avoid mutating engine state.
+     *
+     * @param {string} [query] - expression to highlight (defaults to `state.query`)
+     * @param {Array<Diagnostic>} [diagnostics=null]
+     * @param {number} [highlightDiagIndex=-1] - index of a diagnostic to mark
+     *   with `flyql-diagnostic--highlight` (typically the hovered one)
+     * @returns {string} HTML string
      */
     getHighlightTokens(query, diagnostics = null, highlightDiagIndex = -1) {
         const value = query !== undefined ? query : this.state.query
         if (!value) return ''
 
         const normalized = normalizeForParser(value)
-        const parser = new Parser()
+        let tokens
         try {
-            parser.parse(normalized, false, true)
-        } catch {
+            tokens = tokenize(normalized)
+        } catch (err) {
+            // tokenize() is designed not to throw — the parser runs with
+            // raiseError=false and a trailing ERROR token is appended for
+            // unconsumed input. If we ever land here it means a future
+            // tokenize regression, so surface it rather than silently
+            // falling back to plain text.
+            // eslint-disable-next-line no-console
+            console.warn('flyql: tokenize() threw inside getHighlightTokens', err)
+            return escapeHtml(value)
+        }
+        if (!tokens || tokens.length === 0) {
             return escapeHtml(value)
         }
 
-        const typedChars = parser.typedChars
-        if (!typedChars || typedChars.length === 0) {
-            return escapeHtml(value)
-        }
-
-        // Build per-character diagnostic map
+        // Build per-character diagnostic map: diagMap[i] is the first
+        // diagnostic covering position i (earlier diagnostics win on overlap).
+        // Stored as { diag, index } so the inner loop can compare by index
+        // instead of object identity — each diagMap slot is a distinct object
+        // even when the underlying diagnostic is the same.
         let diagMap = null
         let highlightSet = null
         if (diagnostics && diagnostics.length > 0) {
@@ -682,7 +713,8 @@ export class EditorEngine {
                     }
                 }
             }
-            // Build separate highlight set for hovered diagnostic
+            // Separate highlight set for the hover-highlighted diagnostic so
+            // it can layer independently of the persistent diagnostic state.
             if (highlightDiagIndex >= 0 && highlightDiagIndex < diagnostics.length) {
                 highlightSet = new Set()
                 const hd = diagnostics[highlightDiagIndex]
@@ -692,67 +724,74 @@ export class EditorEngine {
             }
         }
 
-        let html = ''
-        let currentType = null
-        let currentText = ''
-        let currentDiag = null
-        let currentHighlight = false
+        const diagIndexAt = (i) => {
+            if (!diagMap || i < 0 || i >= value.length) return -1
+            const entry = diagMap[i]
+            return entry ? entry.index : -1
+        }
 
-        const flushSpan = () => {
-            if (!currentText) return
-            let spanType = currentType
-            if (spanType === CharType.VALUE) {
-                if (currentText === 'true' || currentText === 'false') {
-                    spanType = CharType.BOOLEAN
-                } else if (currentText === 'null') {
-                    spanType = CharType.NULL
-                } else if (isNumeric(currentText)) {
-                    spanType = CharType.NUMBER
-                } else if (currentText.length > 0 && currentText[0] !== "'" && currentText[0] !== '"') {
-                    spanType = CharType.COLUMN
-                }
-            }
-            const inner = wrapSpan(spanType, currentText)
-            if (currentDiag || currentHighlight) {
+        const emitSegment = (tokenType, segText, segDiag, segHighlight) => {
+            const inner = wrapSpan(tokenType, segText)
+            if (segDiag || segHighlight) {
                 const classes = ['flyql-diagnostic']
-                if (currentDiag) {
-                    classes.push('flyql-diagnostic--' + (currentDiag.diag.severity === 'warning' ? 'warning' : 'error'))
+                if (segDiag) {
+                    classes.push('flyql-diagnostic--' + (segDiag.diag.severity === 'warning' ? 'warning' : 'error'))
                 }
-                if (currentHighlight) {
+                if (segHighlight) {
                     classes.push('flyql-diagnostic--highlight')
                 }
-                const title = currentDiag ? ` title="${escapeHtml(currentDiag.diag.message)}"` : ''
-                html += `<span class="${classes.join(' ')}"${title}>${inner}</span>`
-            } else {
-                html += inner
+                const title = segDiag ? ` title="${escapeHtml(segDiag.diag.message)}"` : ''
+                return `<span class="${classes.join(' ')}"${title}>${inner}</span>`
             }
+            return inner
         }
 
-        for (let i = 0; i < typedChars.length; i++) {
-            const charType = typedChars[i][1]
-            const ch = value[i] !== undefined ? value[i] : typedChars[i][0].value
-            const newDiag = diagMap ? diagMap[i] : null
-            const newHighlight = highlightSet ? highlightSet.has(i) : false
-            if (
-                charType === currentType &&
-                newDiag === currentDiag &&
-                newHighlight === currentHighlight &&
-                ch !== '\n'
-            ) {
-                currentText += ch
-            } else {
-                flushSpan()
-                currentType = charType
-                currentDiag = newDiag
-                currentHighlight = newHighlight
-                currentText = ch
+        let html = ''
+        let lastEnd = 0
+        // Defensive: tokens from tokenize() should be contiguous and sorted,
+        // but don't drop characters if a future regression breaks that.
+        // Clamp overlapping tokens forward and emit any leading/interior gap
+        // as a best-effort raw-text span so the rendered length always equals
+        // the input length.
+        for (const token of tokens) {
+            let start = token.start
+            const end = token.end
+            if (end <= start) continue
+            if (start > lastEnd) {
+                // Gap: emit the missing characters as unstyled text so they
+                // stay visible even if tokenize misbehaves.
+                html += escapeHtml(value.substring(lastEnd, start))
+            } else if (start < lastEnd) {
+                // Overlap: clamp start forward to preserve the invariant.
+                start = lastEnd
+                if (start >= end) continue
             }
-        }
-        flushSpan()
+            lastEnd = end
 
-        if (parser.state === State.ERROR && typedChars.length < value.length) {
-            const remaining = value.substring(typedChars.length)
-            html += `<span class="flyql-error">${escapeHtml(remaining)}</span>`
+            let segStart = start
+            let segDiag = diagMap ? diagMap[start] : null
+            let segDiagIdx = diagIndexAt(start)
+            let segHighlight = highlightSet ? highlightSet.has(start) : false
+
+            for (let i = start + 1; i <= end; i++) {
+                const atEnd = i === end
+                const curDiagIdx = atEnd ? -1 : diagIndexAt(i)
+                const curHighlight = !atEnd && highlightSet ? highlightSet.has(i) : false
+                const prevIsNewline = value[i - 1] === '\n' || value[i - 1] === '\r'
+                const curIsNewline = !atEnd && (value[i] === '\n' || value[i] === '\r')
+                const diagChanged = curDiagIdx !== segDiagIdx
+                const highlightChanged = curHighlight !== segHighlight
+
+                if (atEnd || diagChanged || highlightChanged || prevIsNewline || curIsNewline) {
+                    const segText = value.substring(segStart, i)
+                    html += emitSegment(token.type, segText, segDiag, segHighlight)
+                    if (atEnd) break
+                    segStart = i
+                    segDiag = curDiagIdx >= 0 ? diagMap[i] : null
+                    segDiagIdx = curDiagIdx
+                    segHighlight = curHighlight
+                }
+            }
         }
 
         return html

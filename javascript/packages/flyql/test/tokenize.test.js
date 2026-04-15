@@ -74,6 +74,79 @@ describe('tokenize (query mode)', () => {
         }
     })
 
+    it("pins reproduction case: created_at > startOf('week')", () => {
+        const tokens = tokenize("created_at > startOf('week')")
+        const weekTok = tokens.find((t) => t.text === "'week'")
+        expect(weekTok).toBeDefined()
+        expect(weekTok.type).toBe('string')
+        const closeTok = tokens[tokens.length - 1]
+        expect(closeTok.text).toBe(')')
+        expect(closeTok.type).toBe('flyqlOperator')
+        const fnTok = tokens.find((t) => t.text === 'startOf')
+        expect(fnTok).toBeDefined()
+        expect(fnTok.type).toBe('flyqlFunction')
+    })
+
+    it('upgrades duration literals to NUMBER', () => {
+        const cases = {
+            't > ago(1h)': '1h',
+            't > ago(1h30m)': '1h30m',
+            't > ago(2w3d)': '2w3d',
+        }
+        for (const [input, expectedText] of Object.entries(cases)) {
+            const tokens = tokenize(input)
+            const numTok = tokens.find((t) => t.text === expectedText)
+            expect(numTok, `input=${input}`).toBeDefined()
+            expect(numTok.type).toBe('number')
+        }
+    })
+
+    it('tokenizes mid-typing function calls with trailing ERROR', () => {
+        // Author types `t > ago(`, cursor pending inside the call.
+        const tokens = tokenize('t > ago(')
+        const joined = tokens.map((t) => t.text).join('')
+        expect(joined).toBe('t > ago(')
+        // The function-name retype and `(`→OPERATOR must still fire even on
+        // a partial parse.
+        const fnTok = tokens.find((t) => t.text === 'ago')
+        expect(fnTok?.type).toBe('flyqlFunction')
+        const openTok = tokens.find((t) => t.text === '(')
+        expect(openTok?.type).toBe('flyqlOperator')
+    })
+
+    it('tokenizes mid-typing with partial duration', () => {
+        const tokens = tokenize('t > ago(1h')
+        const joined = tokens.map((t) => t.text).join('')
+        expect(joined).toBe('t > ago(1h')
+        const fnTok = tokens.find((t) => t.text === 'ago')
+        expect(fnTok?.type).toBe('flyqlFunction')
+        const durTok = tokens.find((t) => t.text === '1h')
+        expect(durTok?.type).toBe('number')
+    })
+
+    it('tokenizes a valid function call followed by a bool operator', () => {
+        const tokens = tokenize('t > ago(1h) and status = 200')
+        const joined = tokens.map((t) => t.text).join('')
+        expect(joined).toBe('t > ago(1h) and status = 200')
+        expect(tokens.find((t) => t.text === 'ago')?.type).toBe('flyqlFunction')
+        expect(tokens.find((t) => t.text === '1h')?.type).toBe('number')
+        expect(tokens.find((t) => t.text === 'and')?.type).toBe('flyqlOperator')
+    })
+
+    it('handles whitespace-only input by emitting a single SPACE token', () => {
+        const tokens = tokenize('   ')
+        expect(tokens).toHaveLength(1)
+        expect(tokens[0]).toEqual({ text: '   ', type: 'space', start: 0, end: 3 })
+    })
+
+    it('does not upgrade plain identifiers as duration', () => {
+        for (const input of ['x=whom', 'x=salt', 'x=dim']) {
+            const tokens = tokenize(input)
+            const last = tokens[tokens.length - 1]
+            expect(last.type).toBe('flyqlColumn')
+        }
+    })
+
     it('rejects Infinity, NaN, and 0x1F as NUMBER', () => {
         for (const input of ['val=Infinity', 'val=NaN', 'val=0x1F']) {
             const tokens = tokenize(input)

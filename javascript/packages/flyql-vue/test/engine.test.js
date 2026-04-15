@@ -1337,6 +1337,38 @@ describe('EditorEngine', () => {
             const matches = html.match(/flyql-diagnostic--error/g)
             expect(matches.length).toBeGreaterThanOrEqual(2)
         })
+
+        it('subdivides a token when diagnostic covers only some of its characters', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const diag = new Diagnostic(new Range(2, 5), 'partial', 'error', 'e1')
+            const html = engine.getHighlightTokens('abcdefgh=1', [diag])
+            const diagMatches = html.match(/flyql-diagnostic--error/g)
+            expect(diagMatches.length).toBe(1)
+            expect(html).toContain('<span class="flyql-key">ab</span>')
+            expect(html).toContain(
+                '<span class="flyql-diagnostic flyql-diagnostic--error" title="partial"><span class="flyql-key">cde</span></span>',
+            )
+            expect(html).toContain('<span class="flyql-key">fgh</span>')
+        })
+    })
+
+    describe('getHighlightTokens with FUNCTION types', () => {
+        it("renders 'week' as string and ) as operator inside startOf", () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("created_at > startOf('week')")
+            expect(html).toContain('flyql-function')
+            expect(html).toMatch(/<span class="flyql-string">&#x27;week&#x27;<\/span>/)
+            expect(html).toMatch(/<span class="flyql-operator">\)<\/span>/)
+        })
+
+        it('renders ago(1h30m) with number class for duration', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('created_at > ago(1h30m)')
+            expect(html).toMatch(/<span class="flyql-function">ago<\/span>/)
+            expect(html).toMatch(/<span class="flyql-operator">\(<\/span>/)
+            expect(html).toMatch(/<span class="flyql-number">1h30m<\/span>/)
+            expect(html).toMatch(/<span class="flyql-operator">\)<\/span>/)
+        })
     })
 
     describe('tab cycling', () => {

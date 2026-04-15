@@ -184,6 +184,146 @@ func TestTokenizeCharTypeCoverage(t *testing.T) {
 	}
 }
 
+func TestTokenizePinsReproductionStartofWeek(t *testing.T) {
+	tokens, err := Tokenize("created_at > startOf('week')", "query")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var weekTok, fnTok *Token
+	for i := range tokens {
+		if tokens[i].Text == "'week'" {
+			weekTok = &tokens[i]
+		}
+		if tokens[i].Text == "startOf" {
+			fnTok = &tokens[i]
+		}
+	}
+	if weekTok == nil || weekTok.Type != CharTypeString {
+		t.Errorf("expected 'week' token with type %q, got %+v", CharTypeString, weekTok)
+	}
+	if fnTok == nil || fnTok.Type != CharTypeFunction {
+		t.Errorf("expected startOf token with type %q, got %+v", CharTypeFunction, fnTok)
+	}
+	last := tokens[len(tokens)-1]
+	if last.Text != ")" || last.Type != CharTypeOperator {
+		t.Errorf("expected last token ) with type %q, got {%q %q}", CharTypeOperator, last.Text, last.Type)
+	}
+}
+
+func TestTokenizeDurationLiteralsUpgradeToNumber(t *testing.T) {
+	cases := map[string]string{
+		"t > ago(1h)":    "1h",
+		"t > ago(1h30m)": "1h30m",
+		"t > ago(2w3d)":  "2w3d",
+	}
+	for input, expectedText := range cases {
+		tokens, err := Tokenize(input, "query")
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", input, err)
+		}
+		var match *Token
+		for i := range tokens {
+			if tokens[i].Text == expectedText {
+				match = &tokens[i]
+				break
+			}
+		}
+		if match == nil {
+			t.Errorf("%q: expected token with text %q, got %#v", input, expectedText, tokens)
+			continue
+		}
+		if match.Type != CharTypeNumber {
+			t.Errorf("%q: token %q type=%q, want %q", input, expectedText, match.Type, CharTypeNumber)
+		}
+	}
+}
+
+func TestTokenizePlainIdentifierNotDuration(t *testing.T) {
+	for _, input := range []string{"x=whom", "x=salt", "x=dim"} {
+		tokens, err := Tokenize(input, "query")
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", input, err)
+		}
+		last := tokens[len(tokens)-1]
+		if last.Type != CharTypeColumn {
+			t.Errorf("%q: last token type=%q, want %q", input, last.Type, CharTypeColumn)
+		}
+	}
+}
+
+func TestTokenizeMidTypingFunctionCall(t *testing.T) {
+	cases := []string{"t > ago(", "t > ago(1h"}
+	for _, input := range cases {
+		tokens, err := Tokenize(input, "query")
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", input, err)
+		}
+		var joined strings.Builder
+		for _, tok := range tokens {
+			joined.WriteString(tok.Text)
+		}
+		if joined.String() != input {
+			t.Errorf("round-trip mismatch for %q: got %q", input, joined.String())
+		}
+		found := false
+		for _, tok := range tokens {
+			if tok.Text == "ago" && tok.Type == CharTypeFunction {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%q: expected flyqlFunction token for 'ago', got %#v", input, tokens)
+		}
+	}
+}
+
+func TestTokenizeFunctionCallFollowedByBoolOp(t *testing.T) {
+	input := "t > ago(1h) and status = 200"
+	tokens, err := Tokenize(input, "query")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var joined strings.Builder
+	for _, tok := range tokens {
+		joined.WriteString(tok.Text)
+	}
+	if joined.String() != input {
+		t.Errorf("round-trip mismatch: got %q, want %q", joined.String(), input)
+	}
+	type want struct{ text, typ string }
+	for _, w := range []want{
+		{"ago", CharTypeFunction},
+		{"1h", CharTypeNumber},
+		{"and", CharTypeOperator},
+	} {
+		found := false
+		for _, tok := range tokens {
+			if tok.Text == w.text && tok.Type == w.typ {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("missing token {%q %q} in %#v", w.text, w.typ, tokens)
+		}
+	}
+}
+
+func TestTokenizeWhitespaceOnlyInput(t *testing.T) {
+	tokens, err := Tokenize("   ", "query")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(tokens) != 1 {
+		t.Fatalf("expected 1 token, got %#v", tokens)
+	}
+	tok := tokens[0]
+	if tok.Text != "   " || tok.Type != CharTypeSpace || tok.Start != 0 || tok.End != 3 {
+		t.Errorf("got %#v, want {'   ', space, 0, 3}", tok)
+	}
+}
+
 func TestTokenizeRejectsNonCanonicalNumerics(t *testing.T) {
 	for _, input := range []string{"val=Infinity", "val=NaN", "val=0x1F"} {
 		tokens, err := Tokenize(input, "query")

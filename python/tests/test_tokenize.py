@@ -107,6 +107,73 @@ def test_rejects_non_canonical_numerics(inp: str) -> None:
     assert value_token.type.value == "flyqlColumn"
 
 
+def test_pins_reproduction_case_startof_week() -> None:
+    tokens = tokenize("created_at > startOf('week')")
+    texts = [t.text for t in tokens]
+    types = [t.type.value for t in tokens]
+    assert "'week'" in texts
+    week_idx = texts.index("'week'")
+    assert types[week_idx] == "string"
+    assert tokens[-1].text == ")"
+    assert tokens[-1].type.value == "flyqlOperator"
+    assert "startOf" in texts
+    fn_idx = texts.index("startOf")
+    assert types[fn_idx] == "flyqlFunction"
+
+
+@pytest.mark.parametrize(
+    "inp,expected_text",
+    [
+        ("t > ago(1h)", "1h"),
+        ("t > ago(1h30m)", "1h30m"),
+        ("t > ago(2w3d)", "2w3d"),
+    ],
+)
+def test_duration_literals_upgrade_to_number(inp: str, expected_text: str) -> None:
+    tokens = tokenize(inp)
+    matches = [t for t in tokens if t.text == expected_text]
+    assert len(matches) == 1, f"expected exactly one token with text={expected_text!r}"
+    assert matches[0].type.value == "number"
+
+
+@pytest.mark.parametrize("inp", ["x=whom", "x=salt", "x=dim"])
+def test_plain_identifiers_not_upgraded_as_duration(inp: str) -> None:
+    tokens = tokenize(inp)
+    assert tokens[-1].type.value == "flyqlColumn"
+
+
+def test_mid_typing_function_call_keeps_function_type() -> None:
+    tokens = tokenize("t > ago(")
+    assert "".join(t.text for t in tokens) == "t > ago("
+    matches = [t for t in tokens if t.text == "ago"]
+    assert len(matches) == 1
+    assert matches[0].type.value == "flyqlFunction"
+
+
+def test_mid_typing_partial_duration() -> None:
+    tokens = tokenize("t > ago(1h")
+    assert "".join(t.text for t in tokens) == "t > ago(1h"
+    matches = [t for t in tokens if t.text == "ago"]
+    assert matches and matches[0].type.value == "flyqlFunction"
+
+
+def test_function_call_followed_by_bool_op() -> None:
+    tokens = tokenize("t > ago(1h) and status = 200")
+    assert "".join(t.text for t in tokens) == "t > ago(1h) and status = 200"
+    assert any(t.text == "ago" and t.type.value == "flyqlFunction" for t in tokens)
+    assert any(t.text == "1h" and t.type.value == "number" for t in tokens)
+    assert any(t.text == "and" and t.type.value == "flyqlOperator" for t in tokens)
+
+
+def test_whitespace_only_input_emits_space_token() -> None:
+    tokens = tokenize("   ")
+    assert len(tokens) == 1
+    assert tokens[0].text == "   "
+    assert tokens[0].type.value == "space"
+    assert tokens[0].start == 0
+    assert tokens[0].end == 3
+
+
 def test_token_is_frozen() -> None:
     token = Token(text="x", type=CharType.KEY, start=0, end=1)
     with pytest.raises(dataclasses.FrozenInstanceError):

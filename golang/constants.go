@@ -38,6 +38,17 @@ var knownFunctions = map[string]bool{
 	"startOf": true,
 }
 
+// durationUnitMagnitude enforces strictly descending, unique-unit duration
+// literals (Prometheus-style): w > d > h > m > s. `1h30m` valid; `30m1h`,
+// `1h1h`, `3h1w` all rejected.
+var durationUnitMagnitude = map[rune]int{
+	's': 1,
+	'm': 2,
+	'h': 3,
+	'd': 4,
+	'w': 5,
+}
+
 const (
 	errUnknownFunction                = 70
 	errInvalidFunctionArgs            = 71

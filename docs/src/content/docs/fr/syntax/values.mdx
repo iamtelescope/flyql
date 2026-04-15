@@ -194,7 +194,27 @@ Renvoie un horodatage relatif a l'heure actuelle. Prend en charge les durees com
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**Unites de duree :** `s` (secondes), `m` (minutes), `h` (heures), `d` (jours), `w` (semaines)
+**Unites (minuscules) :** `s` (secondes), `m` (minutes), `h` (heures), `d` (jours), `w` (semaines).
+
+**Grammaire.** Une duree est une ou plusieurs paires `<entier><unite>`. Les unites doivent apparaitre dans un **ordre strictement decroissant** et **au plus une fois chacune** : `w > d > h > m > s`. Cela suit la convention Prometheus / Grafana / Loki.
+
+Valide :
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+Rejete lors de l'analyse :
+
+- `ago(30m1h)` — unites dans le mauvais ordre
+- `ago(1h1h)` — unite repetee
+- `ago(3h1w)` — unite plus grande apres plus petite
+- `ago(1H)` — les lettres d'unite doivent etre en minuscules
+
+:::note[Pourquoi pas de mois / annee ?]
+Les unites de mois et d'annee ne sont **pas** prises en charge intentionnellement : leur longueur varie (28 a 31 jours, 365/366 jours), de sorte que le meme litteral signifierait un nombre different de secondes selon le contexte. Les fenetres temporelles relatives au calendrier sont exprimees via [`startOf('month')`](#startofunit).
+:::
 
 ### `now()`
 

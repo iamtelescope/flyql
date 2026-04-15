@@ -178,7 +178,27 @@ Retorna um timestamp relativo ao momento atual. Suporta durações compostas.
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**Unidades de duração:** `s` (segundos), `m` (minutos), `h` (horas), `d` (dias), `w` (semanas)
+**Unidades (minúsculas):** `s` (segundos), `m` (minutos), `h` (horas), `d` (dias), `w` (semanas).
+
+**Gramática.** Uma duração é um ou mais pares `<inteiro><unidade>`. As unidades devem aparecer em **ordem estritamente decrescente** e **no máximo uma vez cada**: `w > d > h > m > s`. Segue a convenção de Prometheus / Grafana / Loki.
+
+Válido:
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+Rejeitado durante a análise:
+
+- `ago(30m1h)` — unidades fora de ordem
+- `ago(1h1h)` — unidade repetida
+- `ago(3h1w)` — unidade maior depois de uma menor
+- `ago(1H)` — as letras das unidades devem estar em minúsculas
+
+:::note[Por que não há mês/ano?]
+Unidades de mês e ano **não** são suportadas intencionalmente: seu comprimento varia (28–31 dias, 365/366 dias), então o mesmo literal significaria diferentes números de segundos dependendo do contexto. Janelas de tempo relativas ao calendário são expressas via [`startOf('month')`](#startofunit).
+:::
 
 ### `now()`
 

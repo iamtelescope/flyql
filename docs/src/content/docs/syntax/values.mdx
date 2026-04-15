@@ -194,7 +194,27 @@ Returns a timestamp relative to the current time. Supports compound durations.
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**Duration units:** `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks)
+**Units (lowercase):** `s` (seconds), `m` (minutes), `h` (hours), `d` (days), `w` (weeks).
+
+**Grammar.** A duration is one or more `<integer><unit>` pairs. Units must appear in **strictly descending order** and **at most once each**: `w > d > h > m > s`. This matches the Prometheus / Grafana / Loki convention.
+
+Valid:
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+Rejected at parse time:
+
+- `ago(30m1h)` — units out of order
+- `ago(1h1h)` — repeated unit
+- `ago(3h1w)` — larger unit after smaller
+- `ago(1H)` — unit letters must be lowercase
+
+:::note[Why no month/year?]
+Month and year units are intentionally **not** supported: their length varies (28–31 days, 365/366 days), so the same literal would mean different numbers of seconds depending on context. Calendar-relative time windows are expressed via [`startOf('month')`](#startofunit) instead.
+:::
 
 ### `now()`
 

@@ -178,7 +178,27 @@ AST：`value_type: "function"`，`value` 是 `FunctionCall` 对象。
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**时间段单位：** `s`（秒）、`m`（分钟）、`h`（小时）、`d`（天）、`w`（周）
+**单位（小写）:** `s`（秒）、`m`（分钟）、`h`（小时）、`d`（天）、`w`（周）。
+
+**语法。** 时间段由一个或多个 `<整数><单位>` 对组成。单位必须以 **严格递减顺序** 出现，且 **每个单位最多一次**：`w > d > h > m > s`。这遵循 Prometheus / Grafana / Loki 的约定。
+
+有效:
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+解析时被拒绝:
+
+- `ago(30m1h)` — 单位顺序错误
+- `ago(1h1h)` — 单位重复
+- `ago(3h1w)` — 较大单位出现在较小单位之后
+- `ago(1H)` — 单位字母必须为小写
+
+:::note[为什么没有月/年？]
+月和年单位故意 **不** 支持：其长度是可变的（28–31 天，365/366 天），因此相同的字面量在不同上下文中会表示不同的秒数。与日历相关的时间窗口通过 [`startOf('month')`](#startofunit) 表达。
+:::
 
 ### `now()`
 

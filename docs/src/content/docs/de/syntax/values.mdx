@@ -194,7 +194,27 @@ Gibt einen Zeitstempel relativ zur aktuellen Zeit zurück. Unterstützt zusammen
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**Dauereinheiten:** `s` (Sekunden), `m` (Minuten), `h` (Stunden), `d` (Tage), `w` (Wochen)
+**Einheiten (Kleinbuchstaben):** `s` (Sekunden), `m` (Minuten), `h` (Stunden), `d` (Tage), `w` (Wochen).
+
+**Grammatik.** Eine Dauer besteht aus einem oder mehreren `<ganzzahl><einheit>`-Paaren. Die Einheiten müssen in **streng absteigender Reihenfolge** und **jeweils höchstens einmal** erscheinen: `w > d > h > m > s`. Dies entspricht der Prometheus / Grafana / Loki-Konvention.
+
+Gültig:
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+Beim Parsen abgelehnt:
+
+- `ago(30m1h)` — Einheiten nicht in absteigender Reihenfolge
+- `ago(1h1h)` — Einheit wiederholt
+- `ago(3h1w)` — größere Einheit nach kleinerer
+- `ago(1H)` — Einheitsbuchstaben müssen kleingeschrieben sein
+
+:::note[Warum kein Monat/Jahr?]
+Monats- und Jahres-Einheiten werden absichtlich **nicht** unterstützt: ihre Länge ist variabel (28–31 Tage, 365/366 Tage), sodass dasselbe Literal je nach Kontext eine unterschiedliche Anzahl von Sekunden bedeuten würde. Kalenderbezogene Zeitfenster werden stattdessen über [`startOf('month')`](#startofunit) ausgedrückt.
+:::
 
 ### `now()`
 

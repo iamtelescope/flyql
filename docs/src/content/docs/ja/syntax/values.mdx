@@ -178,7 +178,27 @@ AST: `value_type: "function"`、`value` は `FunctionCall` オブジェクトで
 <FlyqlCode code={`created_at >= ago(7d)`} />
 <FlyqlCode code={`updated_at > ago(1h30m)`} />
 
-**期間の単位:** `s`（秒）、`m`（分）、`h`（時間）、`d`（日）、`w`（週）
+**単位（小文字）:** `s`（秒）、`m`（分）、`h`（時間）、`d`（日）、`w`（週）。
+
+**文法。** 期間は 1 つ以上の `<整数><単位>` のペアで構成されます。単位は **厳密な降順** で **各単位は最大 1 回まで** 出現できます：`w > d > h > m > s`。これは Prometheus / Grafana / Loki の慣例に従っています。
+
+有効:
+
+<FlyqlCode code={`ago(30s)`} />
+<FlyqlCode code={`ago(2h15m)`} />
+<FlyqlCode code={`ago(1w2d3h4m5s)`} />
+<FlyqlCode code={`ago(1w30s)`} />
+
+解析時に拒否:
+
+- `ago(30m1h)` — 単位の順序が逆
+- `ago(1h1h)` — 単位の重複
+- `ago(3h1w)` — 小さい単位の後に大きい単位
+- `ago(1H)` — 単位は小文字でなければなりません
+
+:::note[なぜ月/年がないのか？]
+月および年の単位は意図的に **サポートされていません**：これらの長さは可変（28〜31 日、365／366 日）であり、同じリテラルがコンテキストによって異なる秒数を意味することになります。カレンダー相対の時間ウィンドウは代わりに [`startOf('month')`](#startofunit) で表現します。
+:::
 
 ### `now()`
 

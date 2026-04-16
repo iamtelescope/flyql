@@ -187,6 +187,8 @@ function _walk(node, params, consumed, maxPositional) {
  * @param {Object} params - Mapping of parameter names (without `$` prefix) to
  *     concrete values. Positional parameters use string keys of digits
  *     (e.g. `{"1": 42}`).
+ * Mutates the tree in place. Do not reuse a bound AST with different
+ * parameter sets — parse a fresh tree instead.
  * @returns {Node} The same node, mutated in place.
  * @throws {FlyqlError} on missing/unused parameters or unsupported types.
  */

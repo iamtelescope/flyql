@@ -210,6 +210,9 @@ def _walk(
 def bind_params(node: Node, params: Dict[str, Any]) -> Node:
     """Substitute parameter placeholders in a parsed AST with concrete values.
 
+    It mutates the tree in place. Do not reuse a bound AST with different
+    parameter sets — parse a fresh tree instead.
+
     Args:
         node: The root Node of a parsed FlyQL query.
         params: A dict mapping parameter names (without the `$` prefix) to

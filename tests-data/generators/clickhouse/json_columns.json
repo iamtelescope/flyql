@@ -252,6 +252,18 @@
       "input": "json_column.count <= 100",
       "expected_result": "success",
       "expected_sql": "multiIf(JSONType(json_column, 'count') = 'String', lessOrEquals(JSONExtractString(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Int64', lessOrEquals(JSONExtractInt(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Double', lessOrEquals(JSONExtractFloat(json_column, 'count'), 100),JSONType(json_column, 'count') = 'Bool', lessOrEquals(JSONExtractBool(json_column, 'count'), 100),0)"
+    },
+    {
+      "name": "native_json_regex_match",
+      "input": "new_json.region~'eu.*'",
+      "expected_result": "success",
+      "expected_sql": "match(toString(new_json.`region`), 'eu.*')"
+    },
+    {
+      "name": "native_json_not_regex_match",
+      "input": "new_json.region!~'eu.*'",
+      "expected_result": "success",
+      "expected_sql": "(new_json.`region` IS NOT NULL AND NOT match(toString(new_json.`region`), 'eu.*'))"
     }
   ]
 }

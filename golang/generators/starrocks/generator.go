@@ -1019,16 +1019,18 @@ var likeOpToSQL = map[string]string{
 	flyql.OpNotILike: "NOT ILIKE",
 }
 
+func formatLikeSQL(leafExpr, operator, value string) string {
+	if operator == flyql.OpNotILike {
+		return fmt.Sprintf("lower(%s) NOT LIKE lower(%s)", leafExpr, value)
+	}
+	return fmt.Sprintf("%s %s %s", leafExpr, likeOpToSQL[operator], value)
+}
+
 func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, registry *transformers.TransformerRegistry) (string, error) {
 	columnName := expr.Key.Segments[0]
 	column, ok := columns[columnName]
 	if !ok {
 		return "", fmt.Errorf("unknown column: %s", columnName)
-	}
-
-	sqlOp, ok := likeOpToSQL[expr.Operator]
-	if !ok {
-		return "", fmt.Errorf("unsupported like operator: %s", expr.Operator)
 	}
 
 	var rhsRef string
@@ -1071,7 +1073,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+			return formatLikeSQL(leafExpr, expr.Operator, value), nil
 		case flyqltype.JSONString:
 			jsonPath := expr.Key.Segments[1:]
 			for _, part := range jsonPath {
@@ -1092,7 +1094,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+			return formatLikeSQL(leafExpr, expr.Operator, value), nil
 		case flyqltype.Map:
 			mapPath := expr.Key.Segments[1:]
 			escapedParts := make([]string, len(mapPath))
@@ -1112,7 +1114,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+			return formatLikeSQL(leafExpr, expr.Operator, value), nil
 		case flyqltype.Array:
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -1127,7 +1129,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+			return formatLikeSQL(leafExpr, expr.Operator, value), nil
 		case flyqltype.Struct:
 			structPath := expr.Key.Segments[1:]
 			structColumn := strings.Join(structPath, "`.`")
@@ -1139,7 +1141,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s %s", leafExpr, sqlOp, value), nil
+			return formatLikeSQL(leafExpr, expr.Operator, value), nil
 		default:
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -1157,7 +1159,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 				return "", err
 			}
 		}
-		return fmt.Sprintf("%s %s %s", colRef, sqlOp, rhsRef), nil
+		return formatLikeSQL(colRef, expr.Operator, rhsRef), nil
 	}
 
 	if len(column.Values) > 0 {
@@ -1191,7 +1193,7 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 			return "", err
 		}
 	}
-	return fmt.Sprintf("%s %s %s", colRef, sqlOp, value), nil
+	return formatLikeSQL(colRef, expr.Operator, value), nil
 }
 
 func truthyExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {

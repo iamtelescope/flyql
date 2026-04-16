@@ -372,6 +372,12 @@ function expressionToSQLSegmented(expr, columns) {
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
+        if (expr.operator === Operator.REGEX) {
+            return `match(toString(${leafExpr}), ${value})`
+        }
+        if (expr.operator === Operator.NOT_REGEX) {
+            return `(${leafExpr} IS NOT NULL AND NOT match(toString(${leafExpr}), ${value}))`
+        }
         return `${leafExpr} ${expr.operator} ${value}`
     } else if (column.flyqlType() === Type.Map) {
         const mapKey = expr.key.segments.slice(1).join('.')

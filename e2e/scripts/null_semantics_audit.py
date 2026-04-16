@@ -83,22 +83,7 @@ SEGMENTED_PROBES = [
 # so future devs can see any drift. They get reported as deferred.
 OUT_OF_SCOPE_PROBES: list[dict[str, Any]] = []
 
-# Known pre-existing SQL syntax bugs surfaced by this audit but out of this
-# spec's null-semantics scope. Each entry is (path, op_name, reason). Reported
-# as DEFERRED in the audit output and not counted as in-scope failures.
-PREEXISTING_DEFERRED: set[tuple[str, str]] = {
-    # StarRocks parser rejects `NOT ILIKE` as a binary operator (verified live
-    # via container). Affects both segmented and non-segmented paths; unrelated
-    # to null semantics. Fix requires routing NOT_ILIKE through regexp_like or
-    # lower()+NOT LIKE; deferred to a follow-up SR syntax-fix spec.
-    ("meta_str.region", "not ilike"),
-    ("meta_json.region", "not ilike"),
-    # ClickHouse rejects `!~` operator in segmented path access for native
-    # JSON columns ("exclamation mark can only occur in != operator"). Fix
-    # requires emitting `NOT match(toString(col.path), pat)` instead; deferred
-    # to a follow-up CH syntax-fix spec.
-    ("meta_json.region", "!~"),
-}
+PREEXISTING_DEFERRED: set[tuple[str, str]] = set()
 
 
 def load_columns(dialect: str):

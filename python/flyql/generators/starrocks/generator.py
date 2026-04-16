@@ -596,6 +596,12 @@ _LIKE_OP_TO_SQL = {
 }
 
 
+def _format_like_sql(leaf_expr: str, operator: str, value: str) -> str:
+    if operator == Operator.NOT_ILIKE.value:
+        return f"lower({leaf_expr}) NOT LIKE lower({value})"
+    return f"{leaf_expr} {_LIKE_OP_TO_SQL[operator]} {value}"
+
+
 def like_expression_to_sql_where(
     expression: Expression,
     columns: Mapping[str, Column],
@@ -606,7 +612,6 @@ def like_expression_to_sql_where(
         raise FlyqlError(f"unknown column: {column_name}")
 
     column = columns[column_name]
-    sql_op = _LIKE_OP_TO_SQL[expression.operator]
 
     rhs_ref = None
     if expression.value_type == LiteralKind.COLUMN:
@@ -626,7 +631,7 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
-            return f"{leaf_expr} {sql_op} {value}"
+            return _format_like_sql(leaf_expr, expression.operator, value)
         elif column.flyql_type == Type.JSONString:
             json_path = expression.key.segments[1:]
             for part in json_path:
@@ -637,7 +642,7 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
-            return f"{leaf_expr} {sql_op} {value}"
+            return _format_like_sql(leaf_expr, expression.operator, value)
         elif column.flyql_type == Type.Map:
             map_path = [escape_param(part) for part in expression.key.segments[1:]]
             map_key = "][".join(map_path)
@@ -646,7 +651,7 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
-            return f"{leaf_expr} {sql_op} {value}"
+            return _format_like_sql(leaf_expr, expression.operator, value)
         elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -661,7 +666,7 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
-            return f"{leaf_expr} {sql_op} {value}"
+            return _format_like_sql(leaf_expr, expression.operator, value)
         elif column.flyql_type == Type.Struct:
             struct_path = expression.key.segments[1:]
             struct_column = "`.`".join(struct_path)
@@ -670,7 +675,7 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "starrocks"
                 )
-            return f"{leaf_expr} {sql_op} {value}"
+            return _format_like_sql(leaf_expr, expression.operator, value)
         else:
             raise FlyqlError("path search for unsupported column type")
 
@@ -681,7 +686,7 @@ def like_expression_to_sql_where(
             col_ref = apply_transformer_sql(
                 col_ref, expression.key.transformers, "starrocks", registry=registry
             )
-        return f"{col_ref} {sql_op} {rhs_ref}"
+        return _format_like_sql(col_ref, expression.operator, rhs_ref)
 
     if column.values and str(expression.value) not in column.values:
         raise FlyqlError(f"unknown value: {expression.value}")
@@ -696,7 +701,7 @@ def like_expression_to_sql_where(
             col_ref, expression.key.transformers, "starrocks", registry=registry
         )
 
-    return f"{col_ref} {sql_op} {value}"
+    return _format_like_sql(col_ref, expression.operator, value)
 
 
 _DURATION_UNIT_TO_STARROCKS = {

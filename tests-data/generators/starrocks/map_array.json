@@ -97,7 +97,7 @@
       "name": "map_not_ilike",
       "input": "metadata.region not ilike 'US-%'",
       "expected_result": "success",
-      "expected_sql": "`metadata`['region'] NOT ILIKE 'US-%'"
+      "expected_sql": "lower(`metadata`['region']) NOT LIKE lower('US-%')"
     },
     {
       "name": "array_like",
@@ -121,7 +121,7 @@
       "name": "array_not_ilike",
       "input": "tags.0 not ilike 'W%'",
       "expected_result": "success",
-      "expected_sql": "`tags`[1] NOT ILIKE 'W%'"
+      "expected_sql": "lower(`tags`[1]) NOT LIKE lower('W%')"
     },
     {
       "name": "map_has",

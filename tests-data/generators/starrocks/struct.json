@@ -61,7 +61,7 @@
       "name": "struct_not_ilike",
       "input": "object.b not ilike 'Alice%'",
       "expected_result": "success",
-      "expected_sql": "`object`.`b` NOT ILIKE 'Alice%'"
+      "expected_sql": "lower(`object`.`b`) NOT LIKE lower('Alice%')"
     },
     {
       "name": "struct_has",

@@ -887,7 +887,12 @@ def expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            text = f"{leaf_expr} {expression.operator} {value}"
+            if expression.operator == Operator.REGEX.value:
+                text = f"match(toString({leaf_expr}), {value})"
+            elif expression.operator == Operator.NOT_REGEX.value:
+                text = f"({leaf_expr} IS NOT NULL AND NOT match(toString({leaf_expr}), {value}))"
+            else:
+                text = f"{leaf_expr} {expression.operator} {value}"
         elif column.flyql_type == Type.Map:
             map_key = ".".join(expression.key.segments[1:])
             escaped_map_key = escape_param(map_key)

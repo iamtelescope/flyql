@@ -1291,6 +1291,12 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				return "", err
 			}
 		}
+		if expr.Operator == flyql.OpRegex {
+			return fmt.Sprintf("match(toString(%s), %s)", leafExpr, value), nil
+		}
+		if expr.Operator == flyql.OpNotRegex {
+			return fmt.Sprintf("(%s IS NOT NULL AND NOT match(toString(%s), %s))", leafExpr, leafExpr, value), nil
+		}
 		return fmt.Sprintf("%s %s %s", leafExpr, expr.Operator, value), nil
 
 	} else if column.FlyQLType() == flyqltype.Map {

@@ -712,12 +712,18 @@ const likeOpToSQL = {
     [Operator.NOT_ILIKE]: 'NOT ILIKE',
 }
 
+function formatLikeSQL(leafExpr, operator, value) {
+    if (operator === Operator.NOT_ILIKE) {
+        return `lower(${leafExpr}) NOT LIKE lower(${value})`
+    }
+    return `${leafExpr} ${likeOpToSQL[operator]} ${value}`
+}
+
 function likeExpressionToSQL(expr, columns, registry = null) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
     if (!column) throw new Error(`unknown column: ${columnName}`)
 
-    const sqlOp = likeOpToSQL[expr.operator]
     const rhsRef = expr.valueType === LiteralKind.COLUMN ? resolveRhsColumnRef(String(expr.value), columns) : null
     const value = rhsRef !== null ? rhsRef : escapeLikeParam(expr.value)
     const colId = getIdentifier(column)
@@ -732,7 +738,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `${leafExpr} ${sqlOp} ${value}`
+            return formatLikeSQL(leafExpr, expr.operator, value)
         }
         if (column.flyqlType() === Type.JSONString) {
             const jsonPath = expr.key.segments.slice(1)
@@ -742,7 +748,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `${leafExpr} ${sqlOp} ${value}`
+            return formatLikeSQL(leafExpr, expr.operator, value)
         }
         if (column.flyqlType() === Type.Map) {
             const mapPath = expr.key.segments.slice(1).map((p) => escapeParam(p))
@@ -751,7 +757,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `${leafExpr} ${sqlOp} ${value}`
+            return formatLikeSQL(leafExpr, expr.operator, value)
         }
         if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
@@ -762,7 +768,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `${leafExpr} ${sqlOp} ${value}`
+            return formatLikeSQL(leafExpr, expr.operator, value)
         }
         if (column.flyqlType() === Type.Struct) {
             const structPath = expr.key.segments.slice(1)
@@ -771,7 +777,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'starrocks')
             }
-            return `${leafExpr} ${sqlOp} ${value}`
+            return formatLikeSQL(leafExpr, expr.operator, value)
         }
         throw new Error('path search for unsupported column type')
     }
@@ -782,7 +788,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             validateTransformerChain(expr.key.transformers, registry)
             colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
         }
-        return `${colRef} ${sqlOp} ${rhsRef}`
+        return formatLikeSQL(colRef, expr.operator, rhsRef)
     }
 
     if (column.values && column.values.length > 0) {
@@ -798,7 +804,7 @@ function likeExpressionToSQL(expr, columns, registry = null) {
         validateTransformerChain(expr.key.transformers, registry)
         colRef = applyTransformerSQL(colRef, expr.key.transformers, 'starrocks', registry)
     }
-    return `${colRef} ${sqlOp} ${value}`
+    return formatLikeSQL(colRef, expr.operator, value)
 }
 
 function expressionToSQL(expr, columns, registry = null, options = {}) {

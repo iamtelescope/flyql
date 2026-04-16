@@ -121,7 +121,7 @@
       "name": "native_json_not_ilike",
       "input": "new_json.name not ilike 'John%'",
       "expected_result": "success",
-      "expected_sql": "cast(`new_json`->'\"name\"' as string) NOT ILIKE 'John%'"
+      "expected_sql": "lower(cast(`new_json`->'\"name\"' as string)) NOT LIKE lower('John%')"
     },
     {
       "name": "native_json_nested_path_like",
@@ -163,7 +163,7 @@
       "name": "jsonstring_not_ilike",
       "input": "json_column.name not ilike 'John%'",
       "expected_result": "success",
-      "expected_sql": "cast(parse_json(`json_column`)->'\"name\"' as string) NOT ILIKE 'John%'"
+      "expected_sql": "lower(cast(parse_json(`json_column`)->'\"name\"' as string)) NOT LIKE lower('John%')"
     },
     {
       "name": "native_json_has",

@@ -43,7 +43,7 @@
       "name": "not_ilike",
       "input": "message not ilike 'Hello%'",
       "expected_result": "success",
-      "expected_sql": "`message` NOT ILIKE 'Hello%'"
+      "expected_sql": "lower(`message`) NOT LIKE lower('Hello%')"
     },
     {
       "name": "like_escaped_percent",
@@ -85,7 +85,7 @@
       "name": "not_ilike_with_lower_transformer",
       "input": "message|lower not ilike 'hello%'",
       "expected_result": "success",
-      "expected_sql": "LOWER(`message`) NOT ILIKE 'hello%'"
+      "expected_sql": "lower(LOWER(`message`)) NOT LIKE lower('hello%')"
     }
   ]
 }

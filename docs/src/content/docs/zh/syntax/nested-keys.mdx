@@ -40,6 +40,8 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+带引号的标识符还允许你将[保留字](/zh/syntax/reserved-words/)用作列名 —— 例如 <FlyqlCode code={`"not" = 1`} inline />。
+
 ## 路径深度
 
 嵌套层级没有限制：

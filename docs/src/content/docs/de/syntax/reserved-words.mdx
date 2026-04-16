@@ -1,0 +1,58 @@
+---
+title: Reservierte Wörter
+description: Wie FlyQL mit Spalten umgeht, die wie Schlüsselwörter benannt sind, und wann Anführungszeichen nötig sind
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL verwendet mehrere Schlüsselwörter als Operatoren: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. Die Werte <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken> und <FlyqlToken type="value">null</FlyqlToken> sind ebenfalls reserviert.
+
+Wenn Ihr Schema Spalten mit diesen Namen enthält, können Sie diese trotzdem abfragen. Der Parser unterscheidet anhand des Kontexts — ein Schlüsselwort wird nur dann als Operator behandelt, wenn es an einer Operatorposition steht.
+
+## Schlüsselwörter als Spaltennamen
+
+Die meisten Schlüsselwörter funktionieren ohne besondere Syntax als Spaltennamen:
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+Diese funktionieren auch in zusammengesetzten Ausdrücken:
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## Die `not`-Ausnahme
+
+<FlyqlToken type="operator">not</FlyqlToken> ist das einzige Schlüsselwort, das mit Spaltennamen kollidiert, wenn ein Leerzeichen folgt:
+
+<FlyqlCode code={`not = 1`} />
+
+Dies schlägt fehl, weil der Parser <FlyqlToken type="operator">not</FlyqlToken> als Negationspräfix liest und dann einen Schlüssel oder `(` erwartet — nicht `=`.
+
+Ohne Leerzeichen funktioniert es:
+
+<FlyqlCode code={`not=1`} />
+
+Sich auf Leerzeichen für Korrektheit zu verlassen ist jedoch fragil. Verwenden Sie stattdessen Bezeichner in Anführungszeichen:
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+Dies funktioniert auch in zusammengesetzten Ausdrücken:
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## Empfehlung
+
+Wenn Ihre Spalten nach FlyQL-Schlüsselwörtern benannt sind, **setzen Sie sie in Anführungszeichen** — selbst wenn der Parser ohne Anführungszeichen disambiguieren kann:
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+Das macht die Absicht für jeden, der die Abfrage liest, offensichtlich und vermeidet Überraschungen bei Leerzeichen-Änderungen.

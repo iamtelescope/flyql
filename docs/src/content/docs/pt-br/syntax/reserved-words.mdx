@@ -1,0 +1,58 @@
+---
+title: Palavras Reservadas
+description: Como o FlyQL lida com colunas nomeadas como palavras-chave e quando as aspas são necessárias
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+O FlyQL utiliza várias palavras-chave como operadores: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. Os valores <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken> e <FlyqlToken type="value">null</FlyqlToken> também são reservados.
+
+Se o seu esquema possui colunas com esses nomes, você ainda pode consultá-las. O parser desambigua pelo contexto — uma palavra-chave só é tratada como operador quando aparece na posição de operador.
+
+## Palavras-chave como nomes de colunas
+
+A maioria das palavras-chave funciona como nomes de colunas sem nenhuma sintaxe especial:
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+Também funcionam em expressões compostas:
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## A exceção do `not`
+
+<FlyqlToken type="operator">not</FlyqlToken> é a única palavra-chave que entra em conflito com nomes de colunas quando seguida de um espaço:
+
+<FlyqlCode code={`not = 1`} />
+
+Isso falha porque o parser lê <FlyqlToken type="operator">not</FlyqlToken> como prefixo de negação e então espera uma chave ou `(` — não `=`.
+
+Sem espaço, funciona normalmente:
+
+<FlyqlCode code={`not=1`} />
+
+Porém, depender de espaçamento para a correção é frágil. Use identificadores entre aspas:
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+Isso também funciona em expressões compostas:
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## Recomendação
+
+Se suas colunas possuem nomes de palavras-chave do FlyQL, **coloque-as entre aspas** para clareza e segurança — mesmo quando o parser consiga desambiguar sem aspas:
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+Isso torna a intenção óbvia para qualquer pessoa que leia a consulta e evita surpresas caso os espaços mudem.

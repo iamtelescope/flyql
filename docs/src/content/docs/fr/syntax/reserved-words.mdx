@@ -1,0 +1,58 @@
+---
+title: Mots reserves
+description: Comment FlyQL gere les colonnes nommees comme des mots-cles et quand les guillemets sont necessaires
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL utilise plusieurs mots-cles comme operateurs : <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. Les valeurs <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken> et <FlyqlToken type="value">null</FlyqlToken> sont egalement reservees.
+
+Si votre schema comporte des colonnes portant ces noms, vous pouvez toujours les interroger. Le parseur desambiguise par le contexte — un mot-cle n'est traite comme operateur que lorsqu'il apparait en position d'operateur.
+
+## Mots-cles comme noms de colonnes
+
+La plupart des mots-cles fonctionnent comme noms de colonnes sans syntaxe particuliere :
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+Ils fonctionnent egalement dans les expressions composees :
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## L'exception `not`
+
+<FlyqlToken type="operator">not</FlyqlToken> est le seul mot-cle qui entre en conflit avec les noms de colonnes lorsqu'il est suivi d'un espace :
+
+<FlyqlCode code={`not = 1`} />
+
+Cela echoue car le parseur lit <FlyqlToken type="operator">not</FlyqlToken> comme prefixe de negation, puis attend une cle ou `(` — pas `=`.
+
+Sans espace, cela fonctionne :
+
+<FlyqlCode code={`not=1`} />
+
+Mais se fier aux espaces pour la correction est fragile. Utilisez plutot des identifiants entre guillemets :
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+Cela fonctionne aussi dans les expressions composees :
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## Recommandation
+
+Si vos colonnes portent des noms de mots-cles FlyQL, **mettez-les entre guillemets** pour plus de clarte et de securite — meme lorsque le parseur peut desambiguiser sans guillemets :
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+Cela rend l'intention evidente pour quiconque lit la requete et evite les surprises en cas de changement d'espacement.

@@ -1,0 +1,58 @@
+---
+title: आरक्षित शब्द
+description: FlyQL कीवर्ड-नामित कॉलम को कैसे संभालता है और कोटिंग कब आवश्यक है
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL कई कीवर्ड को ऑपरेटर के रूप में उपयोग करता है: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>। मान <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken> और <FlyqlToken type="value">null</FlyqlToken> भी आरक्षित हैं।
+
+यदि आपके स्कीमा में इन नामों वाले कॉलम हैं, तो भी आप उन्हें क्वेरी कर सकते हैं। पार्सर संदर्भ से अंतर करता है — कीवर्ड को केवल तभी ऑपरेटर माना जाता है जब वह ऑपरेटर स्थिति में हो।
+
+## कीवर्ड कॉलम नामों के रूप में
+
+अधिकांश कीवर्ड बिना किसी विशेष सिंटैक्स के कॉलम नामों के रूप में काम करते हैं:
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+ये संयुक्त अभिव्यक्तियों में भी काम करते हैं:
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## `not` अपवाद
+
+<FlyqlToken type="operator">not</FlyqlToken> एकमात्र कीवर्ड है जो स्पेस के बाद कॉलम नामों से टकराता है:
+
+<FlyqlCode code={`not = 1`} />
+
+यह विफल होता है क्योंकि पार्सर <FlyqlToken type="operator">not</FlyqlToken> को नकारात्मक उपसर्ग के रूप में पढ़ता है और फिर एक कुंजी या `(` की अपेक्षा करता है — `=` की नहीं।
+
+स्पेस के बिना यह ठीक काम करता है:
+
+<FlyqlCode code={`not=1`} />
+
+लेकिन शुद्धता के लिए व्हाइटस्पेस पर निर्भर रहना नाजुक है। इसके बजाय उद्धृत आइडेंटिफ़ायर का उपयोग करें:
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+यह संयुक्त अभिव्यक्तियों में भी काम करता है:
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## अनुशंसा
+
+यदि आपके कॉलम FlyQL कीवर्ड के नाम पर हैं, तो स्पष्टता और सुरक्षा के लिए उन्हें **उद्धरण चिह्नों में रखें** — भले ही पार्सर बिना उद्धरण के अंतर कर सके:
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+यह क्वेरी पढ़ने वाले किसी भी व्यक्ति के लिए आशय स्पष्ट करता है और व्हाइटस्पेस बदलने पर आश्चर्य से बचाता है।

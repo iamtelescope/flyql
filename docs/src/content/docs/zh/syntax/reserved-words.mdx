@@ -1,0 +1,58 @@
+---
+title: 保留字
+description: FlyQL 如何处理与关键字同名的列，以及何时需要使用引号
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL 将多个关键字用作操作符：<FlyqlToken type="operator">and</FlyqlToken>、<FlyqlToken type="operator">or</FlyqlToken>、<FlyqlToken type="operator">not</FlyqlToken>、<FlyqlToken type="operator">in</FlyqlToken>、<FlyqlToken type="operator">has</FlyqlToken>、<FlyqlToken type="operator">like</FlyqlToken>、<FlyqlToken type="operator">ilike</FlyqlToken>。值 <FlyqlToken type="value">true</FlyqlToken>、<FlyqlToken type="value">false</FlyqlToken> 和 <FlyqlToken type="value">null</FlyqlToken> 也是保留的。
+
+如果你的表结构中有以这些名称命名的列，你仍然可以查询它们。解析器通过上下文来消歧义 —— 关键字仅在出现于操作符位置时才被视为操作符。
+
+## 关键字作为列名
+
+大多数关键字无需任何特殊语法即可作为列名使用：
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+在复合表达式中同样有效：
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## `not` 例外
+
+<FlyqlToken type="operator">not</FlyqlToken> 是唯一在后跟空格时会与列名冲突的关键字：
+
+<FlyqlCode code={`not = 1`} />
+
+这会失败，因为解析器将 <FlyqlToken type="operator">not</FlyqlToken> 读取为否定前缀，然后期望一个键名或 `(` —— 而不是 `=`。
+
+没有空格时可以正常工作：
+
+<FlyqlCode code={`not=1`} />
+
+但依赖空格来保证正确性是脆弱的。请改用带引号的标识符：
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+在复合表达式中同样有效：
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## 建议
+
+如果你的列以 FlyQL 关键字命名，即使解析器无需引号也能消歧义，也建议**使用引号包裹**以提高可读性和安全性：
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+这使查询的意图对每位读者一目了然，也能避免空格变化带来的意外。

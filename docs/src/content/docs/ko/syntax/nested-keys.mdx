@@ -39,6 +39,8 @@ JSON, Map, 또는 구조화된 데이터의 중첩 필드에 접근하려면 점
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+따옴표로 감싼 식별자를 사용하면 [예약어](/ko/syntax/reserved-words/)를 컬럼 이름으로 사용할 수도 있습니다 — 예: <FlyqlCode code={`"not" = 1`} inline />.
+
 ## 경로 깊이
 
 중첩 깊이에 제한은 없습니다.

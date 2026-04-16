@@ -39,6 +39,8 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+Идентификаторы в кавычках также позволяют использовать [зарезервированные слова](/ru/syntax/reserved-words/) в качестве имён столбцов — например, <FlyqlCode code={`"not" = 1`} inline />.
+
 ## Глубина пути
 
 Ограничений на глубину вложенности нет:

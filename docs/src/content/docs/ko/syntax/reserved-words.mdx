@@ -1,0 +1,58 @@
+---
+title: 예약어
+description: FlyQL이 키워드와 같은 이름의 컬럼을 처리하는 방법과 따옴표가 필요한 경우
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL은 여러 키워드를 연산자로 사용합니다: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. 값 <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken>, <FlyqlToken type="value">null</FlyqlToken> 도 예약되어 있습니다.
+
+스키마에 이러한 이름의 컬럼이 있어도 쿼리할 수 있습니다. 파서는 문맥으로 구분합니다 — 키워드는 연산자 위치에 나타날 때만 연산자로 처리됩니다.
+
+## 키워드를 컬럼 이름으로 사용
+
+대부분의 키워드는 특별한 구문 없이 컬럼 이름으로 작동합니다.
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+복합 표현식에서도 작동합니다.
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## `not` 예외
+
+<FlyqlToken type="operator">not</FlyqlToken> 은 공백이 뒤따를 때 컬럼 이름과 충돌하는 유일한 키워드입니다.
+
+<FlyqlCode code={`not = 1`} />
+
+파서가 <FlyqlToken type="operator">not</FlyqlToken> 을 부정 접두사로 읽고 키 또는 `(` 을 기대하기 때문에 실패합니다 — `=` 이 아닙니다.
+
+공백 없이는 정상 작동합니다.
+
+<FlyqlCode code={`not=1`} />
+
+그러나 정확성을 공백에 의존하는 것은 불안정합니다. 대신 따옴표로 감싼 식별자를 사용하세요.
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+복합 표현식에서도 작동합니다.
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## 권장 사항
+
+컬럼이 FlyQL 키워드와 같은 이름이라면, 파서가 따옴표 없이 구분할 수 있더라도 명확성과 안전을 위해 **따옴표로 감싸세요**.
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+이렇게 하면 쿼리를 읽는 누구에게나 의도가 명확해지고, 공백 변경으로 인한 예기치 않은 동작을 방지할 수 있습니다.

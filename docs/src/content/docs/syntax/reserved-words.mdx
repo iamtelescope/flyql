@@ -1,0 +1,58 @@
+---
+title: Reserved Words
+description: How FlyQL handles keyword-named columns and when quoting is needed
+---
+
+import FlyqlCode from '../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../components/FlyqlToken.astro'
+
+FlyQL uses several keywords as operators: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. The values <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken>, and <FlyqlToken type="value">null</FlyqlToken> are also reserved.
+
+If your schema has columns with these names, you can still query them. The parser disambiguates by context — a keyword is only treated as an operator when it appears in operator position.
+
+## Keywords as Column Names
+
+Most keywords work as column names without any special syntax:
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+These also work in compound expressions:
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## The `not` Exception
+
+<FlyqlToken type="operator">not</FlyqlToken> is the one keyword that conflicts with column names when followed by a space:
+
+<FlyqlCode code={`not = 1`} />
+
+This fails because the parser reads <FlyqlToken type="operator">not</FlyqlToken> as the negation prefix and then expects a key or `(` — not `=`.
+
+Without a space, it works fine:
+
+<FlyqlCode code={`not=1`} />
+
+But relying on whitespace for correctness is fragile. Use quoted identifiers instead:
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+This works in compound expressions too:
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## Recommendation
+
+If your columns are named after FlyQL keywords, **quote them** for clarity and safety — even when the parser can disambiguate without quotes:
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+This makes the intent obvious to anyone reading the query and avoids surprises if whitespace changes.

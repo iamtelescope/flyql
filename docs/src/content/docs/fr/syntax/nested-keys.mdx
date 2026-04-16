@@ -39,6 +39,8 @@ Seuls les segments contenant des points doivent etre entre guillemets :
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+Les identifiants entre guillemets permettent egalement d'utiliser des [mots reserves](/fr/syntax/reserved-words/) comme noms de colonnes — par exemple, <FlyqlCode code={`"not" = 1`} inline />.
+
 ## Profondeur du chemin
 
 Il n'y a pas de limite sur la profondeur d'imbrication :

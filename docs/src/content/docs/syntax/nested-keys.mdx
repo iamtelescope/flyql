@@ -39,6 +39,8 @@ Only the segments containing dots need to be quoted:
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+Quoted identifiers also let you use [reserved words](/syntax/reserved-words/) as column names — for example, <FlyqlCode code={`"not" = 1`} inline />.
+
 ## Path Depth
 
 There is no limit on nesting depth:

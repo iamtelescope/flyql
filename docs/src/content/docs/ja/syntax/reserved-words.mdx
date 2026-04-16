@@ -1,0 +1,58 @@
+---
+title: 予約語
+description: FlyQL がキーワードと同名のカラムを処理する方法と、クォートが必要なケース
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL はいくつかのキーワードを演算子として使用します: <FlyqlToken type="operator">and</FlyqlToken>、<FlyqlToken type="operator">or</FlyqlToken>、<FlyqlToken type="operator">not</FlyqlToken>、<FlyqlToken type="operator">in</FlyqlToken>、<FlyqlToken type="operator">has</FlyqlToken>、<FlyqlToken type="operator">like</FlyqlToken>、<FlyqlToken type="operator">ilike</FlyqlToken>。値 <FlyqlToken type="value">true</FlyqlToken>、<FlyqlToken type="value">false</FlyqlToken>、<FlyqlToken type="value">null</FlyqlToken> も予約されています。
+
+スキーマにこれらの名前のカラムがある場合でも、クエリは可能です。パーサーは文脈で判断します — キーワードが演算子として扱われるのは、演算子の位置に現れた場合のみです。
+
+## キーワードをカラム名として使う
+
+ほとんどのキーワードは、特別な構文なしでカラム名として機能します。
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+複合式でも動作します。
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## `not` の例外
+
+<FlyqlToken type="operator">not</FlyqlToken> は、スペースが続く場合にカラム名と衝突する唯一のキーワードです。
+
+<FlyqlCode code={`not = 1`} />
+
+これはパーサーが <FlyqlToken type="operator">not</FlyqlToken> を否定プレフィックスとして読み取り、その後にキーまたは `(` を期待するため失敗します — `=` ではありません。
+
+スペースがなければ正常に動作します。
+
+<FlyqlCode code={`not=1`} />
+
+しかし、正しさをスペースに依存するのは脆弱です。代わりにクォート付き識別子を使いましょう。
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+複合式でも動作します。
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## 推奨事項
+
+カラムが FlyQL のキーワードと同名の場合、パーサーがクォートなしで判別できる場合でも、明確さと安全のために**クォートで囲む**ことをお勧めします。
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+これによりクエリを読む誰にとっても意図が明確になり、スペースの変更による予期しない動作を防げます。

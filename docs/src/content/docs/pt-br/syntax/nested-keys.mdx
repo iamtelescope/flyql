@@ -39,6 +39,8 @@ Apenas os segmentos que contêm pontos precisam estar entre aspas:
 
 <FlyqlCode code={`metadata."dotted.key".value = 123`} />
 
+Os identificadores entre aspas também permitem usar [palavras reservadas](/pt-br/syntax/reserved-words/) como nomes de colunas — por exemplo, <FlyqlCode code={`"not" = 1`} inline />.
+
 ## Profundidade do Caminho
 
 Não há limite de profundidade de aninhamento:

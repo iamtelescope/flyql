@@ -1,0 +1,58 @@
+---
+title: Зарезервированные слова
+description: Как FlyQL обрабатывает столбцы с именами, совпадающими с ключевыми словами, и когда требуется заключать их в кавычки
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL использует несколько ключевых слов в качестве операторов: <FlyqlToken type="operator">and</FlyqlToken>, <FlyqlToken type="operator">or</FlyqlToken>, <FlyqlToken type="operator">not</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">like</FlyqlToken>, <FlyqlToken type="operator">ilike</FlyqlToken>. Значения <FlyqlToken type="value">true</FlyqlToken>, <FlyqlToken type="value">false</FlyqlToken> и <FlyqlToken type="value">null</FlyqlToken> также зарезервированы.
+
+Если в вашей схеме есть столбцы с такими именами, вы всё равно можете обращаться к ним. Парсер разрешает неоднозначность по контексту — ключевое слово трактуется как оператор только тогда, когда стоит на позиции оператора.
+
+## Ключевые слова как имена столбцов
+
+Большинство ключевых слов работают как имена столбцов без специального синтаксиса:
+
+<FlyqlCode code={`has = 1`} />
+<FlyqlCode code={`in = 'yes'`} />
+<FlyqlCode code={`like = true`} />
+<FlyqlCode code={`null = 1`} />
+<FlyqlCode code={`true = 1`} />
+<FlyqlCode code={`false = 1`} />
+<FlyqlCode code={`and = 1`} />
+<FlyqlCode code={`or = 1`} />
+
+Они также работают в составных выражениях:
+
+<FlyqlCode code={`status = 200 and has = 1`} />
+<FlyqlCode code={`status = 200 and null = 0`} />
+
+## Исключение для `not`
+
+<FlyqlToken type="operator">not</FlyqlToken> — единственное ключевое слово, которое конфликтует с именами столбцов, когда за ним следует пробел:
+
+<FlyqlCode code={`not = 1`} />
+
+Это не срабатывает, потому что парсер воспринимает <FlyqlToken type="operator">not</FlyqlToken> как префикс отрицания и ожидает ключ или `(` — а не `=`.
+
+Без пробела всё работает:
+
+<FlyqlCode code={`not=1`} />
+
+Однако полагаться на пробелы ненадёжно. Используйте идентификаторы в кавычках:
+
+<FlyqlCode code={`"not" = 1`} />
+<FlyqlCode code={`'not' = 1`} />
+
+Это работает и в составных выражениях:
+
+<FlyqlCode code={`status = 200 and "not" = 1`} />
+
+## Рекомендация
+
+Если ваши столбцы названы как ключевые слова FlyQL, **заключайте их в кавычки** для ясности и надёжности — даже когда парсер может разрешить неоднозначность без кавычек:
+
+<FlyqlCode code={`"has" = 1 and "in" = 'yes' and "not" = 0`} />
+
+Это делает намерение очевидным для каждого, кто читает запрос, и позволяет избежать сюрпризов при изменении пробелов.

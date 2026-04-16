@@ -1,0 +1,90 @@
+---
+title: Renderers
+description: 별칭이 지정된 SELECT 컬럼에 표시 메타데이터를 첨부합니다 (생성되는 SQL에는 영향을 주지 않습니다)
+---
+
+Renderers는 별칭이 지정된 SELECT 컬럼에 표시 메타데이터를 첨부합니다. flyql에 의해 파싱 및 검증되지만 **SQL이나 matcher 출력에는 전혀 영향을 주지 않습니다**. 데이터베이스가 반환하는 값을 변경하는 [transformers](/syntax/transformers/)와 달리, renderers는 애플리케이션이 값을 어떻게 렌더링해야 하는지를 기술하며, 해석은 전적으로 애플리케이션의 책임입니다.
+
+## 별칭 뒤 파이프 문법
+
+renderer 체인은 별칭 **뒤에** 파이프(`|`)로 구분하여 작성합니다.
+
+```
+url as link|href("http://{{value}}")
+```
+
+별칭은 필수입니다. 별칭이 없는 컬럼에는 renderer를 붙일 수 없습니다.
+
+## 체인된 renderers
+
+추가 파이프로 여러 renderer를 연결할 수 있습니다.
+
+```
+url as link|href("http://{{value}}")|badge("info")
+```
+
+Renderers는 왼쪽에서 오른쪽 순서로 파싱되어 순서가 있는 리스트로 저장됩니다. 체인의 의미론은 전적으로 애플리케이션에 달려 있으며, flyql은 renderers에 대해 입출력 타입 시스템을 강제하지 않습니다.
+
+## Renderers와 transformers 함께 사용하기
+
+Transformers는 별칭 전에 실행되고, renderers는 별칭 후에 실행됩니다.
+
+```
+url|upper as u|href("https://{{value}}")
+```
+
+transformer `upper`는 생성되는 SQL에 영향을 줍니다. renderer `href`는 영향을 주지 않습니다.
+
+## 인수 없는 renderers
+
+인수가 없는 renderers는 인수 없는 transformers와 동일한 문법으로 파싱됩니다.
+
+```
+url as link|plain
+```
+
+## Renderers 활성화
+
+Renderer 파싱은 parser capability 플래그를 통한 옵트인 방식입니다.
+
+**Python**
+```python
+from flyql.columns import parse
+cols = parse('url as link|href("/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+```
+
+**Go**
+```go
+import "github.com/iamtelescope/flyql/golang/columns"
+caps := columns.Capabilities{Transformers: true, Renderers: true}
+cols, _ := columns.Parse(`url as link|href("/{{value}}")`, caps)
+```
+
+**JavaScript**
+```javascript
+import { parse } from 'flyql/columns'
+const cols = parse('url as link|href("/{{value}}")',
+    { transformers: true, renderers: true })
+```
+
+`renderers`가 `false`(기본값)인 경우, 별칭 뒤의 `|`는 errno `11`, 메시지 `"renderers are not enabled"`인 `ParserError`를 발생시킵니다.
+
+## 비어 있는 기본 레지스트리
+
+4개의 내장 transformer(`upper`, `lower`, `len`, `split`)를 포함하는 [`TransformerRegistry.default_registry()`](/advanced/custom-transformers/)와 달리, `RendererRegistry.default_registry()`는 **의도적으로 비어 있습니다**. flyql 코어는 렌더링 기술(HTML, markdown, React, Vue 등)에 대해 어떠한 가정도 하지 않습니다. validator가 renderer를 인식하려면 [직접 renderers를 등록](/advanced/custom-renderers/)해야 합니다.
+
+즉, renderer를 validator나 editor에서 유용하게 사용하려면 레지스트리를 제공해야 하며, 그렇지 않으면 참조된 모든 renderer가 `unknown_renderer` 진단을 생성합니다.
+
+## Renderers와 transformers 비교
+
+| 관점                      | Transformers         | Renderers            |
+| ------------------------- | -------------------- | -------------------- |
+| 구문상 위치               | 별칭 전              | 별칭 **후**          |
+| 생성되는 SQL에 영향       | 예                   | **아니요**           |
+| matcher 출력에 영향       | 예                   | **아니요**           |
+| 기본 레지스트리           | 4개 내장             | 비어 있음            |
+| 입출력 타입 시스템        | 있음 (체인 타이핑)   | 없음                 |
+| 해석                      | flyql이 실행         | 앱이 실행            |
+
+[Custom Renderers](/advanced/custom-renderers/)에서 등록 방법과 검증 훅을 확인하세요.

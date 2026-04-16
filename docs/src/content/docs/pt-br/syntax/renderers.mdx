@@ -1,0 +1,105 @@
+---
+title: Renderizadores
+description: Anexe metadados de exibicao a colunas SELECT com alias sem afetar o SQL gerado
+---
+
+Os renderizadores anexam metadados de exibicao a colunas SELECT com alias. Eles sao
+analisados e validados pelo flyql, mas **nunca afetam o SQL ou a saida do matcher**. Diferente
+dos [transformadores](/syntax/transformers/), que alteram o que o banco de dados
+retorna, os renderizadores descrevem como sua aplicacao deve renderizar um valor --
+a interpretacao e inteiramente sua responsabilidade.
+
+## Sintaxe de pipe pos-alias
+
+Uma cadeia de renderizadores vem **apos** o alias, separada por um pipe (`|`):
+
+```
+url as link|href("http://{{value}}")
+```
+
+O alias e obrigatorio. Uma coluna sem alias nao pode carregar renderizadores.
+
+## Renderizadores encadeados
+
+Empilhe multiplos renderizadores com pipes adicionais:
+
+```
+url as link|href("http://{{value}}")|badge("info")
+```
+
+Os renderizadores sao analisados da esquerda para a direita em uma lista ordenada. A semantica
+do encadeamento e inteiramente definida pela sua aplicacao -- o flyql nao impoe um sistema de
+tipos de entrada/saida aos renderizadores.
+
+## Renderizadores e transformadores juntos
+
+Transformadores executam antes do alias; renderizadores executam depois:
+
+```
+url|upper as u|href("https://{{value}}")
+```
+
+O transformador `upper` afeta o SQL gerado. O renderizador `href` nao afeta.
+
+## Renderizadores sem argumentos
+
+Renderizadores sem argumentos sao analisados da mesma forma que transformadores sem argumentos:
+
+```
+url as link|plain
+```
+
+## Habilitando renderizadores
+
+A analise de renderizadores e opt-in via flag de capacidade do parser:
+
+**Python**
+```python
+from flyql.columns import parse
+cols = parse('url as link|href("/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+```
+
+**Go**
+```go
+import "github.com/iamtelescope/flyql/golang/columns"
+caps := columns.Capabilities{Transformers: true, Renderers: true}
+cols, _ := columns.Parse(`url as link|href("/{{value}}")`, caps)
+```
+
+**JavaScript**
+```javascript
+import { parse } from 'flyql/columns'
+const cols = parse('url as link|href("/{{value}}")',
+    { transformers: true, renderers: true })
+```
+
+Quando `renderers` e `false` (o padrao), `|` pos-alias gera um
+`ParserError` com errno `11` e a mensagem `"renderers are not enabled"`.
+
+## Registro padrao vazio
+
+Diferente de [`TransformerRegistry.default_registry()`](/advanced/custom-transformers/),
+que inclui quatro transformadores integrados (`upper`, `lower`, `len`, `split`),
+`RendererRegistry.default_registry()` e **vazio por design**. O core do flyql
+nao faz suposicoes sobre sua tecnologia de renderizacao (HTML, markdown,
+React, Vue, etc.). Voce deve [registrar seus proprios renderizadores](/advanced/custom-renderers/)
+antes que o validador os reconheca.
+
+Isso significa que para os renderizadores serem uteis em um validador ou editor, voce
+deve fornecer um registro; caso contrario, todo renderizador referenciado produzira
+um diagnostico `unknown_renderer`.
+
+## Renderizadores vs. transformadores
+
+| Aspecto                   | Transformadores      | Renderizadores       |
+| ------------------------- | -------------------- | -------------------- |
+| Posicao na sintaxe        | antes do alias       | **apos** o alias     |
+| Afeta o SQL gerado        | sim                  | **nao**              |
+| Afeta a saida do matcher  | sim                  | **nao**              |
+| Registro padrao           | 4 integrados         | vazio                |
+| Sistema de tipos E/S      | sim (tipagem em cadeia) | nao               |
+| Interpretacao             | flyql executa        | sua app executa      |
+
+Consulte [Renderizadores Customizados](/advanced/custom-renderers/) para registro e
+hooks de validacao.

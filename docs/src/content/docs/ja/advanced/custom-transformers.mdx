@@ -245,39 +245,37 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 カスタム transformer も、組み込み transformer と同じ型チェーン検証に参加します。たとえば `field|firstoctet|upper` とチェーンした場合、`firstoctet` が `int` を出力し、`upper` が `string` 入力を要求することが検出されます。
 
-利用可能な型は `STRING`、`INT`、`FLOAT`、`BOOL`、`ARRAY` です。
+利用可能な型については [`flyql.Type`](/advanced/column-types/) を参照してください。11 個の値を持つ正規 enum（`String`、`Int`、`Float`、`Bool`、`Date`、`Duration`、`Array`、`Map`、`Struct`、`JSON`、`Unknown`）です。
 
-## Validation with `diagnose()`
+## `diagnose()` によるバリデーション
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+`diagnose()` 関数は、パース済み AST をカラムスキーマと transformer レジストリに対して走査し、例外をスローせずに位置情報付きの `Diagnostic` レコードを返します。以下をチェックします。
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **未知のカラム** — ベースキーがカラムリストにない
+- **未知の transformer** — transformer 名がレジストリにない
+- **不正なアリティ** — `argSchema` に対して引数が少なすぎるか多すぎる
+- **不正な引数型** — 引数値の型が宣言された `ArgSpec` の型と一致しない（int から float への拡幅は許可）
+- **チェーン型の不一致** — ある transformer の出力型が次の transformer の入力型と一致しない、またはカラムの正規化された型が最初の transformer の入力型と一致しない
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+各 diagnostic は `range`（ソース位置）、`message`、`severity`（`"error"`）、`code`（`"unknown_column"`、`"unknown_transformer"`、`"arg_count"`、`"arg_type"`、`"chain_type"`）を持ちます。
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
-diags = diagnose(ast, columns)  # columns is a ColumnSchema
+diags = diagnose(ast, columns)  # columns は ColumnSchema です
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
-const diags = diagnose(ast, columns)  // columns is a ColumnSchema
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
+const diags = diagnose(ast, columns)  // columns は ColumnSchema です
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
 
@@ -287,12 +285,16 @@ import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
 schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
-diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
+diags := flyql.Diagnose(result.Root, schema, nil) // nil = デフォルトレジストリ
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+カスタム transformer を登録している場合は、第 3 引数にカスタムレジストリを渡してください。デフォルトレジストリを使用するには `nil`/`None`/`null` を渡します。
 
 ## セキュリティ
 
 カスタム transformer の `sql()` メソッドが受け取るのは、schema 由来のカラム参照だけであり、ユーザー入力値は渡されません。ユーザー値のエスケープやパラメータ化は generator が担当します。そのため、FlyQL のインジェクション耐性は維持されます。カスタム SQL がラップするのはカラム名であり、ユーザー入力ではありません。
+
+## 関連項目
+
+- [Custom Renderers](/advanced/custom-renderers/) — エイリアス後の表示メタデータ記述子を登録します。transformer とは異なり、renderers は生成される SQL に一切影響しません。アプリケーションが値をどのようにレンダリングするかを記述するだけです。

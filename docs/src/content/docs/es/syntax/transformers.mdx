@@ -88,3 +88,22 @@ Esto falla porque <FlyqlToken type="transformer">len</FlyqlToken> devuelve `int`
 <FlyqlCode code={`host|lower != "localhost"`} />
 <FlyqlCode code={`path|len > 0`} />
 <FlyqlCode code={`tags|split(",") has "urgent"`} />
+
+## Transformers vs. Renderers
+
+Los transformers se ejecutan **antes** del alias y cambian el valor que flyql
+emite en SQL o contra el que evalúa. Los [renderers](/syntax/renderers/) se
+ejecutan **después** del alias y adjuntan metadatos de visualización sin
+afectar nunca el SQL generado ni el resultado del matcher. Si quieres decir
+"devuelve este valor en mayúsculas", usa un transformer. Si quieres decir
+"renderiza esta columna como un enlace clicable en mi app", usa un renderer.
+
+| Aspecto                   | Transformer          | Renderer             |
+| ------------------------- | -------------------- | -------------------- |
+| Posición en la sintaxis   | antes del alias      | **después** del alias |
+| Afecta el SQL generado    | sí                   | **no**               |
+| Afecta la salida del matcher | sí                | **no**               |
+| Registro por defecto      | 4 integrados         | vacío                |
+
+Consulta [Renderers](/syntax/renderers/) para la sintaxis de pipe post-alias y
+[Renderers personalizados](/advanced/custom-renderers/) para la API de registro.

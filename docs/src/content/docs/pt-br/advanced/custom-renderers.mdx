@@ -1,0 +1,181 @@
+---
+title: Renderizadores Customizados
+description: Registre definicoes de renderizadores e hooks de validacao para sua aplicacao
+---
+
+:::note
+Os renderizadores nunca executam dentro do flyql -- sua aplicacao e responsavel por
+interpretar `parsed_column.renderers` e renderizar o valor.
+:::
+
+:::note
+`metadata` e de formato livre e definido pelo desenvolvedor. O core do flyql e o editor nunca
+leem nenhuma chave especifica dele. Se voce deseja campos padronizados, defina-os
+na sua propria aplicacao e documente-os junto com seus renderizadores registrados.
+:::
+
+Consulte a [pagina de sintaxe de Renderizadores](/syntax/renderers/) para gramatica e
+semantica. Esta pagina cobre a API de registro para adicionar seus proprios
+renderizadores ao validador e ao editor.
+
+## A interface Renderer
+
+Um `Renderer` declara:
+
+- **`name`** -- o identificador que os usuarios digitam apos o pipe do alias
+- **`arg_schema`** -- uma tupla de entradas `ArgSpec(type, required)` que
+  controlam a validacao de contagem e tipo de argumentos
+- **`metadata`** -- um dict/map/objeto opcional de formato livre para uso da
+  aplicacao; o flyql nunca inspeciona seu conteudo
+- **`diagnose(args, parsed_column)`** -- um hook opcional por renderizador
+  que retorna `Diagnostic[]` para validacao customizada
+
+## Exemplo em Python
+
+```python
+from flyql.flyql_type import Type
+from flyql.renderers import ArgSpec, Renderer, RendererRegistry
+from flyql.columns import parse, diagnose
+from flyql.core.validator import Diagnostic
+from flyql.core.range import Range
+
+
+class HrefRenderer(Renderer):
+    arg_schema = (ArgSpec(type=Type.String, required=True),)
+
+    @property
+    def name(self) -> str:
+        return "href"
+
+    @property
+    def metadata(self):
+        return {"html_safe": True}
+
+    def diagnose(self, arguments, parsed_column):
+        if arguments and "{{value}}" not in arguments[0]:
+            return [Diagnostic(
+                range=Range(0, 1),
+                message="href template should contain {{value}}",
+                severity="warning",
+                code="custom_href_no_placeholder",
+            )]
+        return []
+
+
+registry = RendererRegistry()
+registry.register(HrefRenderer())
+
+cols = parse('url as link|href("/users/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+
+# ...em seguida execute o validador com ambos os registros:
+diags = diagnose(cols, schema, renderer_registry=registry)
+```
+
+## Hook de cadeia no nivel do registro
+
+Para regras no nivel da cadeia (ex.: "proibir `href` apos `truncate`") use
+`set_diagnose`:
+
+```python
+def chain_rule(parsed_column, chain):
+    names = [r["name"] for r in chain]
+    if "truncate" in names and "href" in names:
+        if names.index("truncate") < names.index("href"):
+            return [Diagnostic(
+                range=Range(0, 1),
+                message="href cannot follow truncate",
+                severity="error",
+                code="chain_forbidden",
+            )]
+    return []
+
+registry.set_diagnose(chain_rule)
+```
+
+O hook de cadeia executa apos os hooks `diagnose` por renderizador e apos as
+verificacoes integradas de nome desconhecido / contagem de argumentos / tipo de argumento.
+
+## Exemplo em Go
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/columns"
+    "github.com/iamtelescope/flyql/golang/flyqltype"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type HrefRenderer struct{ columns.BaseRenderer }
+
+func (HrefRenderer) Name() string { return "href" }
+func (HrefRenderer) ArgSchema() []transformers.ArgSpec {
+    return []transformers.ArgSpec{{Type: flyqltype.String, Required: true}}
+}
+
+reg := columns.DefaultRendererRegistry()
+_ = reg.Register(HrefRenderer{})
+
+opts := columns.DiagnoseOptions{RendererRegistry: reg}
+diags := columns.DiagnoseWithOptions(parsedColumns, schema, opts)
+```
+
+## Exemplo em JavaScript
+
+```javascript
+import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
+import { Type } from 'flyql'
+import { parse, diagnose } from 'flyql/columns'
+
+class HrefRenderer extends Renderer {
+    get name() { return 'href' }
+    get argSchema() { return [new ArgSpec(Type.String, true)] }
+    diagnose(args, col) {
+        if (args && args[0] && !args[0].includes('{{value}}')) {
+            return [{
+                range: { start: 0, end: 1 },
+                message: 'href template should contain {{value}}',
+                severity: 'warning',
+                code: 'custom_href_no_placeholder',
+            }]
+        }
+        return []
+    }
+}
+
+const registry = new RendererRegistry()
+registry.register(new HrefRenderer())
+
+const cols = parse('url as link|href("/users/{{value}}")',
+    { transformers: true, renderers: true })
+
+const diags = diagnose(cols, schema, null, registry)
+```
+
+## Integracao com o editor flyql-vue
+
+O componente Vue `FlyqlColumns` aceita uma prop `rendererRegistry`. Quando
+fornecida, o editor habilita a analise de renderizadores pos-alias, emite sugestoes
+de renderizadores e exibe diagnosticos de renderizadores:
+
+```vue
+<template>
+  <FlyqlColumns
+    v-model="query"
+    :columns="schema"
+    :registry="transformerRegistry"
+    :renderer-registry="rendererRegistry"
+  />
+</template>
+```
+
+Quando `rendererRegistry` e omitido ou `null`, a analise de renderizadores e desabilitada
+completamente -- usuarios que digitam `|` pos-alias veem uma rejeicao no nivel do parser
+ao inves de diagnosticos `unknown_renderer` a cada tecla pressionada. Consulte
+[Componente Columns](/editor/columns-component/) para a referencia completa de props.
+
+## Veja tambem
+
+- [Sintaxe de Renderizadores](/syntax/renderers/) -- gramatica e semantica
+- [Transformadores Customizados](/advanced/custom-transformers/) -- API de registro
+  para o sistema irmao de transformadores

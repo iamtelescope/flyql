@@ -245,39 +245,37 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 自定义转换器参与与内置转换器相同的类型链校验。如果你链接 `field|firstoctet|upper`，系统会检测到 `firstoctet` 输出 `int` 而 `upper` 需要 `string`。
 
-可用类型：`STRING`、`INT`、`FLOAT`、`BOOL`、`ARRAY`。
+可用类型：参见 [`flyql.Type`](/advanced/column-types/) — 规范的 11 值枚举（`String`、`Int`、`Float`、`Bool`、`Date`、`Duration`、`Array`、`Map`、`Struct`、`JSON`、`Unknown`）。
 
-## Validation with `diagnose()`
+## 使用 `diagnose()` 进行校验
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+`diagnose()` 函数遍历已解析的 AST，根据列 schema 和转换器注册器进行校验，返回带位置信息的 `Diagnostic` 记录而不抛出异常。它检查：
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **未知列** — 基础键不在列列表中
+- **未知转换器** — 转换器名称不在注册器中
+- **参数数量错误** — 相对于 `argSchema`，参数过少或过多
+- **参数类型错误** — 参数值类型与声明的 `ArgSpec` 类型不匹配（允许 int 到 float 的隐式扩展）
+- **链式类型不匹配** — 前一个转换器的输出类型与下一个的输入类型不匹配，或列的规范化类型与第一个转换器的输入类型不匹配
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+每个诊断信息包含 `range`（源码位置）、`message`、`severity`（`"error"`）和 `code`（`"unknown_column"`、`"unknown_transformer"`、`"arg_count"`、`"arg_type"`、`"chain_type"`）。
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
-diags = diagnose(ast, columns)  # columns is a ColumnSchema
+diags = diagnose(ast, columns)  # columns 是一个 ColumnSchema
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
-const diags = diagnose(ast, columns)  // columns is a ColumnSchema
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
+const diags = diagnose(ast, columns)  // columns 是一个 ColumnSchema
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
 
@@ -287,12 +285,17 @@ import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
 schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
-diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
+diags := flyql.Diagnose(result.Root, schema, nil) // nil = 默认注册器
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+如果你注册了自定义转换器，将自定义注册器作为第三个参数传入。传 `nil`/`None`/`null` 使用默认注册器。
 
 ## 安全性
 
 自定义转换器的 `sql()` 方法只会接收到列引用（来自模式定义），不会接收到用户提供的值。用户值由生成器负责转义/参数化。这保持了 FlyQL 的防注入保证 —— 自定义 SQL 包裹的是列名，而非用户输入。
+
+## 另见
+
+- [自定义渲染器](/advanced/custom-renderers/) — 注册后置别名显示元数据描述符。
+  与转换器不同，渲染器不会影响生成的 SQL；它们仅描述你的应用应如何渲染值。

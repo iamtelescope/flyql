@@ -1,0 +1,90 @@
+---
+title: Renderers
+description: エイリアス付き SELECT カラムに表示メタデータを付与する（生成される SQL には影響しません）
+---
+
+Renderers はエイリアス付き SELECT カラムに表示メタデータを付与します。flyql によってパースおよびバリデーションされますが、**SQL や matcher の出力には一切影響しません**。値を変換する [transformers](/syntax/transformers/) とは異なり、renderers はアプリケーションが値をどのようにレンダリングするかを記述するものであり、解釈は完全にアプリケーション側の責任です。
+
+## エイリアス後のパイプ構文
+
+renderer チェーンはエイリアスの**後**にパイプ（`|`）で区切って記述します。
+
+```
+url as link|href("http://{{value}}")
+```
+
+エイリアスは必須です。エイリアスのないカラムには renderer を付けることができません。
+
+## チェーンされた renderers
+
+追加のパイプで複数の renderer を連結できます。
+
+```
+url as link|href("http://{{value}}")|badge("info")
+```
+
+Renderers は左から右へ順番にパースされ、順序付きリストとして格納されます。チェーンのセマンティクスは完全にアプリケーション側に委ねられており、flyql は renderers に対して入出力型システムを課しません。
+
+## Renderers と transformers の併用
+
+Transformers はエイリアスの前に実行され、renderers はエイリアスの後に実行されます。
+
+```
+url|upper as u|href("https://{{value}}")
+```
+
+transformer `upper` は生成される SQL に影響します。renderer `href` は影響しません。
+
+## 引数なしの renderers
+
+引数なしの renderers は、引数なしの transformers と同じ構文でパースされます。
+
+```
+url as link|plain
+```
+
+## Renderers の有効化
+
+Renderer のパースは parser のケーパビリティフラグによるオプトイン方式です。
+
+**Python**
+```python
+from flyql.columns import parse
+cols = parse('url as link|href("/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+```
+
+**Go**
+```go
+import "github.com/iamtelescope/flyql/golang/columns"
+caps := columns.Capabilities{Transformers: true, Renderers: true}
+cols, _ := columns.Parse(`url as link|href("/{{value}}")`, caps)
+```
+
+**JavaScript**
+```javascript
+import { parse } from 'flyql/columns'
+const cols = parse('url as link|href("/{{value}}")',
+    { transformers: true, renderers: true })
+```
+
+`renderers` が `false`（デフォルト）の場合、エイリアス後の `|` は errno `11`、メッセージ `"renderers are not enabled"` の `ParserError` を発生させます。
+
+## デフォルトの空レジストリ
+
+4 つの組み込み transformer（`upper`、`lower`、`len`、`split`）を含む [`TransformerRegistry.default_registry()`](/advanced/custom-transformers/) とは異なり、`RendererRegistry.default_registry()` は**設計上空**です。flyql コアはレンダリング技術（HTML、markdown、React、Vue など）について一切仮定しません。バリデーターが renderer を認識できるようにするには、[独自の renderers を登録](/advanced/custom-renderers/)する必要があります。
+
+つまり、renderer をバリデーターや editor で有効に使うにはレジストリを提供する必要があり、そうでなければ参照されたすべての renderer が `unknown_renderer` 診断を生成します。
+
+## Renderers と transformers の比較
+
+| 観点                      | Transformers         | Renderers            |
+| ------------------------- | -------------------- | -------------------- |
+| 構文上の位置              | エイリアスの前       | エイリアスの**後**   |
+| 生成される SQL に影響     | はい                 | **いいえ**           |
+| matcher の出力に影響      | はい                 | **いいえ**           |
+| デフォルトレジストリ      | 4 つの組み込み       | 空                   |
+| 入出力型システム          | あり（チェーン型付け）| なし                |
+| 解釈                      | flyql が実行         | アプリが実行         |
+
+[Custom Renderers](/advanced/custom-renderers/) で登録方法とバリデーションフックを確認してください。

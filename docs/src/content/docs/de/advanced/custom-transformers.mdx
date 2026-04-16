@@ -245,25 +245,23 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 Benutzerdefinierte Transformer nehmen an derselben Typketten-Validierung teil wie eingebaute. Wenn du `field|firstoctet|upper` verkettst, erkennt das System, dass `firstoctet` einen `int` ausgibt, `upper` aber einen `string` als Eingabe benötigt.
 
-Verfügbare Typen: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+Verfügbare Typen: siehe [`flyql.Type`](/advanced/column-types/) — das kanonische 11-Werte-Enum (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
 
-## Validation with `diagnose()`
+## Validierung mit `diagnose()`
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+Die Funktion `diagnose()` durchläuft einen geparsten AST gegen ein Spaltenschema und eine Transformer-Registry und gibt positionierte `Diagnostic`-Einträge zurück, ohne Exceptions auszulösen. Sie prüft:
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **Unbekannte Spalte** — Basisschlüssel nicht in der Spaltenliste
+- **Unbekannter Transformer** — Transformer-Name nicht in der Registry
+- **Falsche Arität** — zu wenige oder zu viele Argumente gegenüber `argSchema`
+- **Falscher Argumenttyp** — Werttyp des Arguments stimmt nicht mit dem deklarierten `ArgSpec`-Typ überein (int-zu-float-Erweiterung ist erlaubt)
+- **Kettentyp-Konflikt** — Ausgabetyp eines Transformers stimmt nicht mit dem Eingabetyp des nächsten überein, oder der Spaltentyp stimmt nicht mit dem Eingabetyp des ersten Transformers überein
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+Jede Diagnose enthält einen `range` (Quellposition), `message`, `severity` (`"error"`) und `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
@@ -273,10 +271,10 @@ diags = diagnose(ast, columns)  # columns is a ColumnSchema
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
 const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
@@ -291,8 +289,15 @@ diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+Übergib eine benutzerdefinierte Registry als drittes Argument, wenn du benutzerdefinierte Transformers registriert hast. Übergib `nil`/`None`/`null`, um die Standard-Registry zu verwenden.
 
 ## Sicherheit
 
 Die `sql()`-Methoden benutzerdefinierter Transformer erhalten nur Spaltenreferenzen aus dem Schema, niemals benutzerdefinierte Werte. Benutzerwerte werden vom Generator escaped bzw. parametrisiert. Damit bleibt die Injektionssicherheits-Garantie von FlyQL erhalten – benutzerdefiniertes SQL umschließt Spaltennamen, nicht Benutzereingaben.
+
+## Siehe auch
+
+- [Benutzerdefinierte Renderers](/advanced/custom-renderers/) — registriere
+  Post-Alias-Anzeige-Metadaten-Deskriptoren. Im Gegensatz zu Transformers
+  beeinflussen Renderers niemals das generierte SQL; sie beschreiben nur, wie
+  deine Anwendung einen Wert darstellen soll.

@@ -1,0 +1,233 @@
+---
+title: Типы колонок
+description: Enum flyql.Type -- каноничный, диалект-независимый словарь типов колонок и значений
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+`flyql.Type` -- это **единый каноничный словарь** типов колонок и значений в flyql. Каждый трансформер, валидатор и SQL-генератор диспатчит по этому перечислению. Каждый язык предоставляет одни и те же 12 значений с одинаковыми строковыми идентификаторами в нижнем регистре, поэтому JSON-фикстуры для тестов и сериализованные колонки не зависят от языка.
+
+## Критерий включения
+
+Значение включается в перечисление, если выполняется **хотя бы одно** из следующих условий:
+
+1. Валидатор ведёт себя по-другому для него.
+2. Диспатч генератора различается между диалектами для него.
+3. Это перспективный тип с явной подтверждённой пользователем потребностью (в настоящее время: `Duration`).
+
+Спекулятивные добавления явно исключаются. Если вы столкнулись с реальной потребностью в новом типе, оцените его по этому критерию перед тем, как предлагать.
+
+## 12 значений
+
+| Значение | Назначение | Поведение валидатора | Диспатч генератора | Поглощаемые сырые типы БД |
+|---|---|---|---|---|
+| **`String`** | Текстовые значения | Разрешает `like`, `ilike`, `regex`, `not regex`; строковая типизация IN-списков | SQL сравнения строк | varchar, char, text, FixedString, blob, UUID, IPv4/v6 |
+| **`Int`** | Целые числа | Числовые операции сортировки; отклоняет regex; числовая типизация IN-списков | SQL числового сравнения | int8/16/32/64/128/256, uint*, bigint, smallint, tinyint |
+| **`Float`** | Числа с плавающей точкой | Числовые операции сортировки; отклоняет regex | SQL числового сравнения | float, double, decimal, numeric, real |
+| **`Bool`** | Логические значения | Только равенство и truthy; отклоняет сортировку | Логический SQL | bool, boolean |
+| **`Date`** | Временные значения момента времени | Принимает вызовы временных функций (`ago()`, `now()`); принимает строковые литералы, приводимые к датам | SQL временного сравнения с необязательным timezone | date, date32, datetime, datetime64, timestamp, year |
+| **`Duration`** | Значения интервала/длительности | Принимает литералы длительности (`30m1s`, `1h`, `7d`); отклоняет строковые операции | *(пока нет специального диспатча -- см. примечание ниже)* | ClickHouse `Interval*`, PostgreSQL `interval` |
+| **`Array`** | Упорядоченная коллекция значений | Принимает оператор `has`; сегментированный доступ по ключу использует **0-based** числовые индексы | Доступ к элементам `col[idx]` | array, ClickHouse `Array(...)`, массивы PG |
+| **`Map`** | Коллекция ключ-значение с динамическими ключами | Сегментированный доступ по ключу использует строковые ключи | Поиск `col['key']` | ClickHouse `Map(...)`, PostgreSQL `hstore` |
+| **`Struct`** | Запись фиксированной структуры с именованными (или позиционными) полями | Сегментированный доступ по ключу использует имена полей | Диалект-специфичный доступ к полям (`tupleElement(col,'name')` в ClickHouse, `` `col`.`field` `` в StarRocks) | ClickHouse `Tuple`, StarRocks `STRUCT` |
+| **`JSON`** | Полуструктурированный JSON-документ | Сегментированный доступ по ключу использует JSON-пути | SQL JSON-путей (`JSON_VALUE`, `JSONExtractString`) | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | Текстовая колонка, содержимое которой -- валидный JSON | Аналогично `JSON` (операторы, сегментированный доступ по путям) | SQL парсинга JSON во время запроса (`(col::jsonb)` в PG, `JSONExtract*` в CH, `parse_json(col)->...` в SR) | Объявляется явно через синтетический токен сырого типа `"jsonstring"` |
+| **`Unknown`** | Документированный fallback для типов, о которых flyql не может рассуждать | Операторы проваливаются в значения по умолчанию; доступ по пути выдаёт ошибку "unsupported column type"; трансформеры не могут его принять | Нет специального диспатча; только прямая ссылка на колонку | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, всё нераспознанное |
+
+:::note[Duration -- перспективный тип]
+`Duration` существует сегодня, чтобы генераторы диалектов могли привязать сырые типы `Interval*` и `interval` немедленно, но ни один генератор в настоящее время не обрабатывает колонки с типом `Duration` иначе, чем колонки с типом `Unknown`. Временная валидация для колонок длительности запланирована в последующей спецификации.
+:::
+
+## Форма для каждого языка
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+// Используйте имена с префиксом из пакета верхнего уровня flyql:
+col := flyql.NewColumn("host", flyql.TypeString)
+
+// Все двенадцать значений:
+flyql.TypeString
+flyql.TypeInt
+flyql.TypeFloat
+flyql.TypeBool
+flyql.TypeDate
+flyql.TypeDuration
+flyql.TypeArray
+flyql.TypeMap
+flyql.TypeStruct
+flyql.TypeJSON
+flyql.TypeJSONString
+flyql.TypeUnknown
+```
+
+Константы находятся в подпакете-листе `golang/flyqltype/` для избежания циклической зависимости с `golang/transformers/`. Пакет верхнего уровня `flyql` реэкспортирует их с префиксом `Type` для удобства.
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import Column, Type
+
+col = Column(name="host", column_type=Type.String)
+
+# Все двенадцать значений:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+:::note[Имя параметра -- `column_type`, а не `type`]
+`Column.__init__` в Python принимает `column_type:`, потому что `type` -- встроенная функция Python, и её затенение вызовет предупреждения pylint и риск скрытых ошибок при вызове встроенной функции `type()` в том же скоупе. Это единственный язык с таким различием в именовании.
+:::
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Column, Type } from 'flyql'
+
+const col = new Column('host', Type.String)
+
+// Все двенадцать значений:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+</TabItem>
+</Tabs>
+
+## `Type.JSONString` -- текстовые колонки с JSON-документами
+
+`Type.JSONString` -- это каноничный тип колонки, а не ортогональный флаг возможности. Объявите колонку с `type: "jsonstring"` (схемы plain-object) или передайте `Type.JSONString` / `flyqltype.JSONString` в каноничные конструкторы `Column` / `NewColumn`. Колонка хранится как text/varchar в базе данных, но её содержимое -- валидный JSON, и генераторы оборачивают доступ диалект-специфичными функциями парсинга:
+
+- **ClickHouse**: сегментированный доступ по ключу использует `JSONExtract*` над текстовой колонкой.
+- **PostgreSQL**: сегментированный доступ по ключу использует каст `(col::jsonb)` перед применением операторов JSON-путей.
+- **StarRocks**: сегментированный доступ по ключу использует `parse_json(col)->'path'`.
+
+Сегментированный доступ по путям, `has`, truthy/falsy, равенство/неравенство -- всё работает. Валидатор не применяет ограничений операторов по типу -- всё, что пользователь может написать для колонки `String` сегодня, можно написать для колонки `JSONString` после этого рефакторинга; разница исключительно в SQL, генерируемом генератором.
+
+### Миграция с предыдущего булева `jsonstring`
+
+Ранее текстовая колонка с JSON объявлялась двумя полями: `type: "String"` **плюс** `jsonstring: true`. Булево поле было **удалено** из `flyql.Column`, каждого диалектного `Column`/`ColumnDef` и каждого загрузчика plain-object. Устаревшие схемы должны мигрировать:
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+Наличие ключа `jsonstring` в схеме plain-object -- включая остатки `"jsonstring": false` -- теперь вызывает целевую ошибку миграции из `FromPlainObject` / `from_plain_object` / `fromPlainObject`. Переносимые фрагменты миграции:
+
+- **jq (>=1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+Избегайте наивного `sed` -- он оставляет висячие запятые, когда `jsonstring` -- последний ключ в объекте, и не переносим между GNU sed и BSD sed.
+
+## Строгий режим парсинга
+
+Хелпер `parseFlyQLType` (`flyql.ParseType` в Go, `flyql.parse_flyql_type` в Python, `parseFlyQLType` в JS) работает в **строгом** режиме: он выбрасывает ошибку для любой строки, не являющейся одним из 11 допустимых токенов в нижнем регистре.
+
+Строгий режим обязателен, потому что мягкий парсинг молча повредил бы потребителей ниже по цепочке. Устаревший JSON-ключ `normalized_type` обнаруживается и выдаёт целевую ошибку миграции, указывающую на эту страницу.
+
+## Мост от диалектной колонки к `flyql.ColumnSchema`
+
+Каждый пакет диалекта предоставляет хелпер `ToFlyQLSchema` (Go), `to_flyql_schema` (Python) или `toFlyQLSchema` (JS). Это каноничный способ передать диалектные колонки в валидатор:
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    clickhouse "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+cols := []*clickhouse.Column{
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
+}
+schema := clickhouse.ToFlyQLSchema(cols)
+diags := flyql.Diagnose(ast, schema, nil)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import diagnose
+from flyql.generators import clickhouse
+
+cols = [
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
+]
+schema = clickhouse.to_flyql_schema(cols)
+diags = diagnose(ast, schema)
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { diagnose } from 'flyql'
+import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
+
+const cols = [
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
+]
+const schema = toFlyQLSchema(cols)
+const diags = diagnose(ast, schema)
+```
+
+</TabItem>
+</Tabs>
+
+## Миграция с предыдущего словаря
+
+До унификации flyql имел три параллельных словаря "типов":
+
+1. `transformers.TransformerType` -- `string | int | float | bool | array`
+2. Диалектные константы `NormalizedType*` -- `string | int | float | bool | date | array | map | tuple | json | geometry | interval | special` (различались по диалектам)
+3. `flyql.Column.NormalizedType` -- строка произвольной формы, которая должна была совпадать с (2)
+
+Все три теперь объединены в `flyql.Type`. Переименования при миграции:
+
+- `tuple` (ClickHouse) -> `struct`
+- `interval*` (CH/PG) -> `duration`
+- `geometry`, `special` -> `unknown`
+- `hstore` (PostgreSQL) -> `map`
+- `jsonb` (PostgreSQL) -> `json`
+
+Если вы ранее вызывали `flyql.FromPlainObject({"col": {"normalized_type": "string"}})`, новая форма -- `{"col": {"type": "string"}}`. Устаревший ключ выдаёт целевую ошибку миграции, указывающую сюда.
+
+## Матчер намеренно не использует схему
+
+Матчер в памяти **не** потребляет `flyql.Type` и не получает параметр схемы. Динамическое обнаружение JSON в матчере (эвристика `isProbablyJSONString`) -- намеренное решение: во время выполнения матчер инспектирует значения напрямую. Если вам нужна пре-валидация с учётом схемы перед сопоставлением, запустите `diagnose()` предварительно против `ColumnSchema`.

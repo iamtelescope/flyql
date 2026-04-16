@@ -245,25 +245,23 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 Los transformers personalizados participan en la misma validación de cadenas de tipos que los integrados. Si encadenas `field|firstoctet|upper`, el sistema detecta que `firstoctet` devuelve `int`, pero `upper` requiere `string`.
 
-Tipos disponibles: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+Tipos disponibles: consulta [`flyql.Type`](/advanced/column-types/) — el enum canónico de 11 valores (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
 
-## Validation with `diagnose()`
+## Validación con `diagnose()`
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+La función `diagnose()` recorre un AST parseado contra un schema de columnas y un registro de transformers, devolviendo registros `Diagnostic` posicionados sin lanzar excepciones. Verifica:
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **Columna desconocida** — clave base no está en la lista de columnas
+- **Transformer desconocido** — nombre del transformer no está en el registro
+- **Aridad incorrecta** — demasiados pocos o demasiados argumentos respecto a `argSchema`
+- **Tipo de argumento incorrecto** — el tipo de valor del argumento no coincide con el tipo `ArgSpec` declarado (la ampliación de int a float está permitida)
+- **Conflicto de tipo en cadena** — el tipo de salida de un transformer no coincide con el tipo de entrada del siguiente, o el tipo de la columna no coincide con el tipo de entrada del primer transformer
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+Cada diagnóstico contiene un `range` (posición en el código fuente), `message`, `severity` (`"error"`) y `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
@@ -273,10 +271,10 @@ diags = diagnose(ast, columns)  # columns is a ColumnSchema
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
 const diags = diagnose(ast, columns)  // columns is a ColumnSchema
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
@@ -291,8 +289,15 @@ diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+Pasa un registro personalizado como tercer argumento si tienes transformers personalizados registrados. Pasa `nil`/`None`/`null` para usar el registro por defecto.
 
 ## Seguridad
 
 Los métodos `sql()` de los transformers personalizados solo reciben referencias de columna procedentes del esquema, nunca valores proporcionados por el usuario. Los valores del usuario los escapa o parametriza el generador. Esto mantiene la garantía de resistencia a inyecciones de FlyQL: el SQL personalizado envuelve nombres de columnas, no entrada de usuario.
+
+## Ver también
+
+- [Renderers personalizados](/advanced/custom-renderers/) — registra
+  descriptores de metadatos de visualización post-alias. A diferencia de los
+  transformers, los renderers nunca afectan el SQL generado; solo describen
+  cómo tu aplicación debería renderizar un valor.

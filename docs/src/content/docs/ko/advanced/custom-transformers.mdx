@@ -245,39 +245,37 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 사용자 정의 transformer도 내장 transformer와 동일한 타입 체인 검증에 참여합니다. 예를 들어 `field|firstoctet|upper`를 체인으로 연결하면, 시스템은 `firstoctet`의 출력이 `int`인데 `upper`는 `string`을 요구한다는 점을 감지합니다.
 
-사용 가능한 타입: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`.
+사용 가능한 타입은 [`flyql.Type`](/advanced/column-types/)을 참조하세요. 11개 값을 가진 정규 enum(`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`)입니다.
 
-## Validation with `diagnose()`
+## `diagnose()`를 사용한 검증
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+`diagnose()` 함수는 파싱된 AST를 컬럼 스키마와 transformer 레지스트리에 대해 순회하며, 예외를 발생시키지 않고 위치 정보가 포함된 `Diagnostic` 레코드를 반환합니다. 다음을 검사합니다.
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **알 수 없는 컬럼** — 기본 키가 컬럼 목록에 없음
+- **알 수 없는 transformer** — transformer 이름이 레지스트리에 없음
+- **잘못된 인수 개수** — `argSchema` 대비 인수가 너무 적거나 많음
+- **잘못된 인수 타입** — 인수 값 타입이 선언된 `ArgSpec` 타입과 일치하지 않음 (int에서 float으로의 확장은 허용)
+- **체인 타입 불일치** — 한 transformer의 출력 타입이 다음 transformer의 입력 타입과 일치하지 않거나, 컬럼의 정규화된 타입이 첫 번째 transformer의 입력 타입과 일치하지 않음
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+각 diagnostic은 `range`(소스 위치), `message`, `severity`(`"error"`), `code`(`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`)를 포함합니다.
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
-diags = diagnose(ast, columns)  # columns is a ColumnSchema
+diags = diagnose(ast, columns)  # columns는 ColumnSchema입니다
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
-const diags = diagnose(ast, columns)  // columns is a ColumnSchema
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
+const diags = diagnose(ast, columns)  // columns는 ColumnSchema입니다
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
 
@@ -287,12 +285,16 @@ import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
 schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
-diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
+diags := flyql.Diagnose(result.Root, schema, nil) // nil = 기본 레지스트리
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+사용자 정의 transformer를 등록한 경우 세 번째 인수로 사용자 정의 레지스트리를 전달하세요. 기본 레지스트리를 사용하려면 `nil`/`None`/`null`을 전달합니다.
 
 ## 보안
 
 사용자 정의 transformer의 `sql()` 메서드는 user 제공 값이 아니라 schema에서 온 column 참조만 받습니다. user 값은 generator가 escape/parameterize 합니다. 이 구조 덕분에 FlyQL의 인젝션 방지 보장은 그대로 유지됩니다. 사용자 정의 SQL은 user 입력이 아니라 column 이름을 감쌉니다.
+
+## 관련 항목
+
+- [Custom Renderers](/advanced/custom-renderers/) — 별칭 뒤 표시 메타데이터 기술자를 등록합니다. transformer와 달리 renderers는 생성되는 SQL에 전혀 영향을 주지 않습니다. 애플리케이션이 값을 어떻게 렌더링해야 하는지만 기술합니다.

@@ -1,0 +1,233 @@
+---
+title: 列类型
+description: flyql.Type 枚举——列和值类型的规范化、方言无关词汇表
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+`flyql.Type` 是列和值类型的**唯一规范词汇表**。每个转换器、校验器和 SQL 生成器都基于此枚举进行分发。每种语言都以相同的小写字符串标识暴露相同的 12 个值，因此 JSON 测试用例和序列化列是语言无关的。
+
+## 纳入标准
+
+一个值在**以下至少一项**成立时应纳入枚举：
+
+1. 校验器对其有不同的行为。
+2. 生成器分发在不同方言间有差异。
+3. 它是一个具有明确用户确认需求的前瞻类型（目前：`Duration`）。
+
+明确避免推测性添加。如果你遇到对新类型的真实需求，请在提出之前根据此标准进行评估。
+
+## 12 个值
+
+| 值 | 用途 | 校验器行为 | 生成器分发 | 吸收的原始 DB 类型 |
+|---|---|---|---|---|
+| **`String`** | 文本值 | 允许 `like`、`ilike`、`regex`、`not regex`；IN 列表字符串类型 | 字符串比较 SQL | varchar, char, text, FixedString, blob, UUID, IPv4/v6 |
+| **`Int`** | 整数 | 数值排序操作；拒绝 regex；IN 列表数值类型 | 数值比较 SQL | int8/16/32/64/128/256, uint*, bigint, smallint, tinyint |
+| **`Float`** | 浮点数 | 数值排序操作；拒绝 regex | 数值比较 SQL | float, double, decimal, numeric, real |
+| **`Bool`** | 布尔值 | 仅等值和 truthy；拒绝排序 | 布尔 SQL | bool, boolean |
+| **`Date`** | 时间点类型 | 接受时间函数调用（`ago()`、`now()`）；接受强制转换为日期的字符串字面量 | 带可选时区的时间比较 SQL | date, date32, datetime, datetime64, timestamp, year |
+| **`Duration`** | 间隔/持续时间值 | 接受持续时间字面量（`30m1s`、`1h`、`7d`）；拒绝纯字符串操作 | *（暂无特殊分发——见下方注释）* | ClickHouse `Interval*`, PostgreSQL `interval` |
+| **`Array`** | 值的有序集合 | 接受 `has` 操作符；分段键访问使用**从 0 开始**的数值索引 | `col[idx]` 元素访问 | array, ClickHouse `Array(...)`, PG arrays |
+| **`Map`** | 带动态键的键→值集合 | 分段键访问使用字符串键 | `col['key']` 查找 | ClickHouse `Map(...)`, PostgreSQL `hstore` |
+| **`Struct`** | 具有命名（或位置）字段的固定形状记录 | 分段键访问使用字段名 | 方言特定的字段访问（ClickHouse 上 `tupleElement(col,'name')`，StarRocks 上 `` `col`.`field` ``） | ClickHouse `Tuple`, StarRocks `STRUCT` |
+| **`JSON`** | 半结构化 JSON 文档 | 分段键访问使用 JSON 路径 | JSON 路径 SQL（`JSON_VALUE`、`JSONExtractString`） | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | 内容为有效 JSON 的文本列 | 与 `JSON` 相同（操作符、分段路径访问） | 查询时解析的 JSON SQL（PG 上 `(col::jsonb)`，CH 上 `JSONExtract*`，SR 上 `parse_json(col)->…`） | 通过合成原始类型标记 `"jsonstring"` 显式声明 |
+| **`Unknown`** | flyql 无法推理的类型的文档化后备 | 操作符回退到默认值；路径访问报 "unsupported column type" 错误；转换器无法接受 | 无特殊分发；仅原始列引用 | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, 任何未识别的 |
+
+:::note[Duration 是前瞻性的]
+`Duration` 之所以存在，是为了让方言生成器能立即将原始 `Interval*` 和 `interval` 类型绑定到它，但目前没有生成器对 `Duration` 类型的列与 `Unknown` 类型的列做不同处理。针对 Duration 列的时间校验计划在后续规范中实现。
+:::
+
+## 各语言形式
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+// 使用顶层 flyql 包中带前缀的名称：
+col := flyql.NewColumn("host", flyql.TypeString)
+
+// 全部十二个值：
+flyql.TypeString
+flyql.TypeInt
+flyql.TypeFloat
+flyql.TypeBool
+flyql.TypeDate
+flyql.TypeDuration
+flyql.TypeArray
+flyql.TypeMap
+flyql.TypeStruct
+flyql.TypeJSON
+flyql.TypeJSONString
+flyql.TypeUnknown
+```
+
+常量位于叶子子包 `golang/flyqltype/` 中，以避免与 `golang/transformers/` 产生导入循环。顶层 `flyql` 包以 `Type` 前缀重新导出它们以方便使用。
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import Column, Type
+
+col = Column(name="host", column_type=Type.String)
+
+# 全部十二个值：
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+:::note[参数名是 `column_type` 而非 `type`]
+Python 的 `Column.__init__` 使用 `column_type:` 是因为 `type` 是 Python 内置函数，遮蔽它会产生 pylint 警告，并在同一作用域内调用内置 `type()` 函数时存在隐性 bug 风险。这是唯一有此命名差异的语言。
+:::
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Column, Type } from 'flyql'
+
+const col = new Column('host', Type.String)
+
+// 全部十二个值：
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+</TabItem>
+</Tabs>
+
+## `Type.JSONString` — 包含 JSON 文档的文本列
+
+`Type.JSONString` 是一个规范列类型，而非正交的能力标志。使用 `type: "jsonstring"`（纯对象 schema）声明列，或将 `Type.JSONString` / `flyqltype.JSONString` 传给规范的 `Column` / `NewColumn` 构造函数。该列在底层数据库中以 text/varchar 存储，但其内容是有效的 JSON，生成器会用方言特定的解析函数包裹访问：
+
+- **ClickHouse**：分段键访问对文本列使用 `JSONExtract*`。
+- **PostgreSQL**：分段键访问在应用 JSON 路径操作符前使用 `(col::jsonb)` 强制转换。
+- **StarRocks**：分段键访问使用 `parse_json(col)->'path'`。
+
+分段路径访问、`has`、truthy/falsy、等值/不等值均可使用。校验器不会施加按类型的操作符限制——用户现在能对 `String` 列写的任何内容，在此重构后也能对 `JSONString` 列使用；区别仅在于生成器输出的 SQL。
+
+### 从之前的 `jsonstring` 布尔值迁移
+
+此前，包含 JSON 的文本列通过两个字段声明：`type: "String"` **加上** `jsonstring: true`。该布尔字段已从 `flyql.Column`、各方言 `Column`/`ColumnDef` 和所有纯对象加载器中**移除**。遗留 schema 必须迁移：
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+纯对象 schema 中存在 `jsonstring` 键——包括残留的 `"jsonstring": false`——现在会从 `FromPlainObject` / `from_plain_object` / `fromPlainObject` 触发一个针对性的迁移错误。可移植的迁移代码片段：
+
+- **jq (≥1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+避免使用简单的 `sed`——当 `jsonstring` 是对象中的最后一个键时会留下孤立逗号，且在 GNU sed 和 BSD sed 之间不可移植。
+
+## 严格模式解析
+
+`parseFlyQLType` 辅助函数（Go 中为 `flyql.ParseType`，Python 中为 `flyql.parse_flyql_type`，JS 中为 `parseFlyQLType`）是**严格的**：对于不属于 11 个有效小写标记之一的任何字符串，都会报错。
+
+严格模式是强制的，因为宽松解析会悄悄损坏下游消费者。遗留的 `normalized_type` JSON 键会被检测到，并产生指向本页的针对性迁移错误。
+
+## 从方言列桥接到 `flyql.ColumnSchema`
+
+每个方言包提供一个 `ToFlyQLSchema`（Go）、`to_flyql_schema`（Python）或 `toFlyQLSchema`（JS）辅助函数。这是将方言列提供给校验器的规范方式：
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    clickhouse "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+cols := []*clickhouse.Column{
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
+}
+schema := clickhouse.ToFlyQLSchema(cols)
+diags := flyql.Diagnose(ast, schema, nil)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import diagnose
+from flyql.generators import clickhouse
+
+cols = [
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
+]
+schema = clickhouse.to_flyql_schema(cols)
+diags = diagnose(ast, schema)
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { diagnose } from 'flyql'
+import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
+
+const cols = [
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
+]
+const schema = toFlyQLSchema(cols)
+const diags = diagnose(ast, schema)
+```
+
+</TabItem>
+</Tabs>
+
+## 从之前的词汇表迁移
+
+统一之前，flyql 有三套并行的"类型"词汇表：
+
+1. `transformers.TransformerType` — `string | int | float | bool | array`
+2. 方言 `NormalizedType*` 常量 — `string | int | float | bool | date | array | map | tuple | json | geometry | interval | special`（因方言而异）
+3. `flyql.Column.NormalizedType` — 期望与 (2) 匹配的自由格式字符串
+
+三者现已统一为 `flyql.Type`。迁移期间的重命名：
+
+- `tuple` (ClickHouse) → `struct`
+- `interval*` (CH/PG) → `duration`
+- `geometry`, `special` → `unknown`
+- `hstore` (PostgreSQL) → `map`
+- `jsonb` (PostgreSQL) → `json`
+
+如果你之前调用了 `flyql.FromPlainObject({"col": {"normalized_type": "string"}})`，新的格式是 `{"col": {"type": "string"}}`。遗留键会产生指向此处的针对性迁移错误。
+
+## 匹配器有意无 schema
+
+内存匹配器**不**消费 `flyql.Type`，也不接收 schema 参数。匹配器中的动态 JSON 检测（`isProbablyJSONString` 启发式）是有意为之的——在运行时，匹配器直接检查值。如果你需要在匹配之前进行 schema 感知的预校验，请先对 `ColumnSchema` 运行 `diagnose()`。

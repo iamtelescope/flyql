@@ -1,0 +1,233 @@
+---
+title: カラム型
+description: flyql.Type enum — カラム型と値の型のための正規の方言非依存な語彙
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+`flyql.Type` は flyql におけるカラム型と値の型の**唯一の正規語彙**です。すべての transformer、バリデーター、SQL ジェネレーターはこの enum に基づいてディスパッチします。各言語は同じ 12 個の値を同じ小文字の文字列 ID で公開するため、JSON テストフィクスチャとシリアライズされたカラムは言語に依存しません。
+
+## 包含基準
+
+以下のうち**少なくとも 1 つ**が当てはまる場合、その値は enum に含まれます。
+
+1. バリデーターの動作が異なる場合。
+2. ジェネレーターのディスパッチが方言間で異なる場合。
+3. 明示的にユーザーが確認した必要性を持つ将来を見据えた型である場合（現在: `Duration`）。
+
+推測的な追加は明確に避けられています。新しい型の必要性が生じた場合は、提案する前にこの基準に照らして評価してください。
+
+## 12 個の値
+
+| 値 | 目的 | バリデーターの動作 | ジェネレーターのディスパッチ | 吸収される生の DB 型 |
+|---|---|---|---|---|
+| **`String`** | テキスト値 | `like`、`ilike`、`regex`、`not regex` を許可。IN リストの文字列型付け | 文字列比較 SQL | varchar, char, text, FixedString, blob, UUID, IPv4/v6 |
+| **`Int`** | 整数 | 数値順序演算子。regex を拒否。IN リストの数値型付け | 数値比較 SQL | int8/16/32/64/128/256, uint*, bigint, smallint, tinyint |
+| **`Float`** | 浮動小数点数 | 数値順序演算子。regex を拒否 | 数値比較 SQL | float, double, decimal, numeric, real |
+| **`Bool`** | 真偽値 | 等値と truthy のみ。順序演算を拒否 | ブーリアン SQL | bool, boolean |
+| **`Date`** | 時点を表す時間的値 | 時間関数呼び出し（`ago()`、`now()`）を受容。日付に変換される文字列リテラルを受容 | オプションのタイムゾーン付き時間比較 SQL | date, date32, datetime, datetime64, timestamp, year |
+| **`Duration`** | 間隔/期間値 | 期間リテラル（`30m1s`、`1h`、`7d`）を受容。文字列専用演算を拒否 | *（まだ特別なディスパッチなし — 下記注記参照）* | ClickHouse `Interval*`, PostgreSQL `interval` |
+| **`Array`** | 値の順序付きコレクション | `has` 演算子を受容。セグメント化されたキーアクセスは **0 ベース**の数値インデックスを使用 | `col[idx]` 要素アクセス | array, ClickHouse `Array(...)`, PG arrays |
+| **`Map`** | 動的キーを持つキー→値コレクション | セグメント化されたキーアクセスは文字列キーを使用 | `col['key']` ルックアップ | ClickHouse `Map(...)`, PostgreSQL `hstore` |
+| **`Struct`** | 名前付き（または位置指定）フィールドを持つ固定形状レコード | セグメント化されたキーアクセスはフィールド名を使用 | 方言固有のフィールドアクセス（ClickHouse では `tupleElement(col,'name')`、StarRocks では `` `col`.`field` ``） | ClickHouse `Tuple`, StarRocks `STRUCT` |
+| **`JSON`** | 半構造化 JSON ドキュメント | セグメント化されたキーアクセスは JSON パスを使用 | JSON パス SQL（`JSON_VALUE`、`JSONExtractString`） | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | 内容が有効な JSON であるテキストカラム | `JSON` と同じ（演算子、セグメント化されたパスアクセス） | クエリ時パース JSON SQL（PG では `(col::jsonb)`、CH では `JSONExtract*`、SR では `parse_json(col)->…`） | シンセティックな生型トークン `"jsonstring"` で明示的に宣言 |
+| **`Unknown`** | flyql が推論できない型の文書化されたフォールバック | 演算子はデフォルトにフォールスルー。パスアクセスは "unsupported column type" でエラー。transformer は受容不可 | 特別なディスパッチなし。生のカラム参照のみ | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, 認識されないもの全て |
+
+:::note[Duration は将来を見据えた型です]
+`Duration` は今日存在するため、方言ジェネレーターは生の `Interval*` および `interval` 型をすぐにバインドできます。ただし、現在 `Duration` 型のカラムと `Unknown` 型のカラムで異なる分岐をするジェネレーターはありません。duration カラムに対する時間的バリデーションはフォローアップ仕様で計画されています。
+:::
+
+## 言語ごとの形式
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+// トップレベルの flyql パッケージからプレフィックス付き名前を使用:
+col := flyql.NewColumn("host", flyql.TypeString)
+
+// 12 個の値すべて:
+flyql.TypeString
+flyql.TypeInt
+flyql.TypeFloat
+flyql.TypeBool
+flyql.TypeDate
+flyql.TypeDuration
+flyql.TypeArray
+flyql.TypeMap
+flyql.TypeStruct
+flyql.TypeJSON
+flyql.TypeJSONString
+flyql.TypeUnknown
+```
+
+定数はリーフサブパッケージ `golang/flyqltype/` に存在し、`golang/transformers/` とのインポートサイクルを回避しています。トップレベルの `flyql` パッケージは人間工学のために `Type` プレフィックスで再エクスポートしています。
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import Column, Type
+
+col = Column(name="host", column_type=Type.String)
+
+# 12 個の値すべて:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+:::note[パラメータ名は `column_type` であり `type` ではありません]
+Python の `Column.__init__` は `column_type:` を受け取ります。`type` は Python の組み込みであり、シャドーイングすると pylint の警告が発生し、同じスコープ内で組み込みの `type()` 関数を呼び出した場合にサイレントバグのリスクがあるためです。この命名の違いがあるのはこの言語だけです。
+:::
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Column, Type } from 'flyql'
+
+const col = new Column('host', Type.String)
+
+// 12 個の値すべて:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+</TabItem>
+</Tabs>
+
+## `Type.JSONString` — JSON ドキュメントを含むテキストカラム
+
+`Type.JSONString` は正規のカラム型であり、直交するケーパビリティフラグではありません。カラムを `type: "jsonstring"`（プレーンオブジェクトスキーマ）で宣言するか、正規の `Column` / `NewColumn` コンストラクタに `Type.JSONString` / `flyqltype.JSONString` を渡してください。カラムは基盤となる DB では text/varchar として保存されますが、内容は有効な JSON であり、ジェネレーターは方言固有のパース関数でアクセスをラップします。
+
+- **ClickHouse**: セグメント化されたキーアクセスはテキストカラムに対して `JSONExtract*` を使用します。
+- **PostgreSQL**: セグメント化されたキーアクセスは JSON パス演算子を適用する前に `(col::jsonb)` キャストを使用します。
+- **StarRocks**: セグメント化されたキーアクセスは `parse_json(col)->'path'` を使用します。
+
+セグメント化されたパスアクセス、`has`、truthy/falsy、等値/不等値はすべて動作します。バリデーターは型ごとの演算子制限を適用しません。現在 `String` カラムに対して書けることは、このリファクタリング後 `JSONString` カラムに対しても書けます。違いは純粋にジェネレーターの出力 SQL にあります。
+
+### 以前の `jsonstring` ブーリアンからの移行
+
+以前は、JSON を保持するテキストカラムは 2 つのフィールド `type: "String"` **かつ** `jsonstring: true` で宣言されていました。ブーリアンフィールドは `flyql.Column`、すべての方言 `Column`/`ColumnDef`、およびすべてのプレーンオブジェクトローダーから**削除**されました。レガシースキーマは移行が必要です。
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+プレーンオブジェクトスキーマに `jsonstring` キーが存在する場合（`"jsonstring": false` の残骸を含む）、`FromPlainObject` / `from_plain_object` / `fromPlainObject` から対象を絞った移行エラーが発生します。ポータブルな移行スニペット:
+
+- **jq (≥1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+素朴な `sed` は避けてください。`jsonstring` がオブジェクトの最後のキーである場合に孤立したカンマが残り、GNU sed と BSD sed の間でポータブルではありません。
+
+## 厳密モードパース
+
+`parseFlyQLType` ヘルパー（Go では `flyql.ParseType`、Python では `flyql.parse_flyql_type`、JS では `parseFlyQLType`）は**厳密**です。11 個の有効な小文字トークンのいずれでもない文字列に対してエラーを発生させます。
+
+厳密モードは必須です。寛容なパースは下流の消費者をサイレントに破損させるためです。レガシーの `normalized_type` JSON キーは検出され、このページを指す対象を絞った移行エラーが生成されます。
+
+## 方言カラムから `flyql.ColumnSchema` へのブリッジ
+
+各方言パッケージは `ToFlyQLSchema`（Go）、`to_flyql_schema`（Python）、`toFlyQLSchema`（JS）ヘルパーを提供します。これは方言カラムをバリデーターに渡すための正規の方法です。
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    clickhouse "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+cols := []*clickhouse.Column{
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
+}
+schema := clickhouse.ToFlyQLSchema(cols)
+diags := flyql.Diagnose(ast, schema, nil)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import diagnose
+from flyql.generators import clickhouse
+
+cols = [
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
+]
+schema = clickhouse.to_flyql_schema(cols)
+diags = diagnose(ast, schema)
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { diagnose } from 'flyql'
+import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
+
+const cols = [
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
+]
+const schema = toFlyQLSchema(cols)
+const diags = diagnose(ast, schema)
+```
+
+</TabItem>
+</Tabs>
+
+## 以前の語彙からの移行
+
+統一前、flyql には 3 つの並列の「型」語彙がありました。
+
+1. `transformers.TransformerType` — `string | int | float | bool | array`
+2. 方言 `NormalizedType*` 定数 — `string | int | float | bool | date | array | map | tuple | json | geometry | interval | special`（方言ごとに異なる）
+3. `flyql.Column.NormalizedType` — (2) と一致することが期待される自由形式の文字列
+
+3 つすべてが `flyql.Type` に統合されました。移行時の名前変更:
+
+- `tuple`（ClickHouse） → `struct`
+- `interval*`（CH/PG） → `duration`
+- `geometry`、`special` → `unknown`
+- `hstore`（PostgreSQL） → `map`
+- `jsonb`（PostgreSQL） → `json`
+
+以前 `flyql.FromPlainObject({"col": {"normalized_type": "string"}})` を呼んでいた場合、新しい形式は `{"col": {"type": "string"}}` です。レガシーキーはここを指す対象を絞った移行エラーを生成します。
+
+## Matcher は意図的にスキーマレスです
+
+インメモリ matcher は `flyql.Type` を消費**せず**、スキーマパラメータも受け取りません。matcher での動的 JSON 検出（`isProbablyJSONString` ヒューリスティック）は意図的です。実行時に matcher は値を直接検査します。マッチング前にスキーマ対応の事前バリデーションが必要な場合は、`ColumnSchema` に対して先に `diagnose()` を実行してください。

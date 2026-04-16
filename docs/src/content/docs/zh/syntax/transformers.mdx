@@ -88,3 +88,16 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 <FlyqlCode code={`host|lower != "localhost"`} />
 <FlyqlCode code={`path|len > 0`} />
 <FlyqlCode code={`tags|split(",") has "urgent"`} />
+
+## 转换器与渲染器的区别
+
+转换器在别名**之前**运行，会改变 flyql 在 SQL 中输出或匹配的值。[渲染器](/syntax/renderers/)在别名**之后**运行，附加显示元数据，但不会影响生成的 SQL 或匹配器结果。如果你想说"将此值转为大写返回"，请使用转换器。如果你想说"在我的应用中将此列渲染为可点击的链接"，请使用渲染器。
+
+| 关注点                    | 转换器               | 渲染器               |
+| ------------------------- | -------------------- | -------------------- |
+| 语法中的位置              | 别名之前             | 别名**之后**         |
+| 影响生成的 SQL            | 是                   | **否**               |
+| 影响匹配器输出            | 是                   | **否**               |
+| 默认注册器                | 4 个内置             | 空                   |
+
+后置别名管道语法请参见[渲染器](/syntax/renderers/)，注册 API 请参见[自定义渲染器](/advanced/custom-renderers/)。

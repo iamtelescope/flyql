@@ -1,0 +1,233 @@
+---
+title: कॉलम प्रकार
+description: flyql.Type enum — कॉलम और मान प्रकारों के लिए विहित, डायलेक्ट-अज्ञेयवादी शब्दावली
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+`flyql.Type` कॉलम और मान प्रकारों के लिए **एकमात्र विहित शब्दावली** है। प्रत्येक ट्रांसफ़ॉर्मर, वैलिडेटर, और SQL जनरेटर इस enum पर डिस्पैच करता है। प्रत्येक भाषा समान 12 मानों को समान लोअरकेस स्ट्रिंग पहचानों के साथ प्रदर्शित करती है, इसलिए JSON टेस्ट फ़िक्सचर और सीरियलाइज़्ड कॉलम भाषा-अज्ञेयवादी हैं।
+
+## समावेशन मानदंड
+
+एक मान enum में तब शामिल होता है जब **निम्नलिखित में से कम से कम एक** सत्य हो:
+
+1. वैलिडेटर इसके लिए भिन्न व्यवहार करता है।
+2. जनरेटर डिस्पैच डायलेक्ट के अनुसार भिन्न होता है।
+3. यह स्पष्ट उपयोगकर्ता-पुष्ट आवश्यकता वाला एक भविष्योन्मुखी प्रकार है (वर्तमान में: `Duration`)।
+
+अनुमानित जोड़ को स्पष्ट रूप से टाला जाता है। यदि आपको किसी नए प्रकार की वास्तविक आवश्यकता मिलती है, तो प्रस्तावित करने से पहले इस मानदंड के विरुद्ध मूल्यांकन करें।
+
+## 12 मान
+
+| मान | उद्देश्य | वैलिडेटर व्यवहार | जनरेटर डिस्पैच | अवशोषित कच्चे DB प्रकार |
+|---|---|---|---|---|
+| **`String`** | टेक्स्ट मान | `like`, `ilike`, `regex`, `not regex` की अनुमति; IN-सूची स्ट्रिंग टाइपिंग | स्ट्रिंग-तुलना SQL | varchar, char, text, FixedString, blob, UUID, IPv4/v6 |
+| **`Int`** | पूर्णांक संख्याएँ | संख्यात्मक क्रम ऑप्स; regex अस्वीकार; IN-सूची संख्यात्मक टाइपिंग | संख्यात्मक-तुलना SQL | int8/16/32/64/128/256, uint*, bigint, smallint, tinyint |
+| **`Float`** | फ़्लोटिंग-पॉइंट संख्याएँ | संख्यात्मक क्रम ऑप्स; regex अस्वीकार | संख्यात्मक-तुलना SQL | float, double, decimal, numeric, real |
+| **`Bool`** | बूलियन मान | समानता और truthy केवल; क्रम अस्वीकार | बूलियन SQL | bool, boolean |
+| **`Date`** | समय-बिंदु टेम्पोरल मान | टेम्पोरल फ़ंक्शन कॉल स्वीकार (`ago()`, `now()`); तिथियों में परिवर्तित स्ट्रिंग लिटरल स्वीकार | वैकल्पिक टाइमज़ोन के साथ टेम्पोरल-तुलना SQL | date, date32, datetime, datetime64, timestamp, year |
+| **`Duration`** | अंतराल/अवधि मान | अवधि लिटरल स्वीकार (`30m1s`, `1h`, `7d`); केवल-स्ट्रिंग ऑप्स अस्वीकार | *(अभी तक कोई विशेष डिस्पैच नहीं — नीचे नोट देखें)* | ClickHouse `Interval*`, PostgreSQL `interval` |
+| **`Array`** | मानों का क्रमबद्ध संग्रह | `has` ऑपरेटर स्वीकार; खंडित कुंजी पहुँच **0-आधारित** संख्यात्मक सूचकांक उपयोग करती है | `col[idx]` तत्व पहुँच | array, ClickHouse `Array(...)`, PG arrays |
+| **`Map`** | गतिशील कुंजियों वाला कुंजी→मान संग्रह | खंडित कुंजी पहुँच स्ट्रिंग कुंजियों का उपयोग करती है | `col['key']` लुकअप | ClickHouse `Map(...)`, PostgreSQL `hstore` |
+| **`Struct`** | नामित (या स्थितीय) फ़ील्ड वाला निश्चित-आकार रिकॉर्ड | खंडित कुंजी पहुँच फ़ील्ड नामों का उपयोग करती है | डायलेक्ट-विशिष्ट फ़ील्ड पहुँच (ClickHouse पर `tupleElement(col,'name')`, StarRocks पर `` `col`.`field` ``) | ClickHouse `Tuple`, StarRocks `STRUCT` |
+| **`JSON`** | अर्ध-संरचित JSON दस्तावेज़ | खंडित कुंजी पहुँच JSON पथ उपयोग करती है | JSON-पथ SQL (`JSON_VALUE`, `JSONExtractString`) | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | वह टेक्स्ट कॉलम जिसकी सामग्री वैध JSON है | `JSON` के समान (ऑपरेटर, खंडित पथ पहुँच) | क्वेरी-समय-पार्स JSON SQL (PG पर `(col::jsonb)`, CH पर `JSONExtract*`, SR पर `parse_json(col)->…`) | सिंथेटिक कच्चे-प्रकार टोकन `"jsonstring"` द्वारा स्पष्ट रूप से घोषित |
+| **`Unknown`** | उन प्रकारों के लिए प्रलेखित फ़ॉलबैक जिनके बारे में flyql तर्क नहीं कर सकता | ऑपरेटर डिफ़ॉल्ट पर आते हैं; पथ पहुँच "unsupported column type" त्रुटि देती है; ट्रांसफ़ॉर्मर इसे स्वीकार नहीं कर सकते | कोई विशेष डिस्पैच नहीं; केवल कच्चा कॉलम संदर्भ | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, कोई भी अपरिचित |
+
+:::note[Duration भविष्योन्मुखी है]
+`Duration` आज इसलिए मौजूद है ताकि डायलेक्ट जनरेटर कच्चे `Interval*` और `interval` प्रकारों को तुरंत इससे बाँध सकें, लेकिन वर्तमान में कोई जनरेटर `Duration`-टाइप कॉलम पर `Unknown`-टाइप कॉलम से भिन्न शाखा नहीं करता। Duration कॉलम के विरुद्ध टेम्पोरल मान्यकरण एक फ़ॉलो-अप स्पेक में योजनाबद्ध है।
+:::
+
+## प्रति-भाषा रूप
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+// शीर्ष-स्तरीय flyql पैकेज से उपसर्गित नामों का उपयोग करें:
+col := flyql.NewColumn("host", flyql.TypeString)
+
+// सभी बारह मान:
+flyql.TypeString
+flyql.TypeInt
+flyql.TypeFloat
+flyql.TypeBool
+flyql.TypeDate
+flyql.TypeDuration
+flyql.TypeArray
+flyql.TypeMap
+flyql.TypeStruct
+flyql.TypeJSON
+flyql.TypeJSONString
+flyql.TypeUnknown
+```
+
+स्थिरांक एक लीफ़ सबपैकेज `golang/flyqltype/` में रहते हैं ताकि `golang/transformers/` के साथ इम्पोर्ट साइकल से बचा जा सके। शीर्ष-स्तरीय `flyql` पैकेज सुविधा के लिए उन्हें `Type` उपसर्ग के साथ पुनः निर्यात करता है।
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import Column, Type
+
+col = Column(name="host", column_type=Type.String)
+
+# सभी बारह मान:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+:::note[पैरामीटर का नाम `column_type` है, `type` नहीं]
+Python का `Column.__init__` `column_type:` लेता है क्योंकि `type` एक Python बिल्टिन है और इसे शैडो करने से pylint चेतावनियाँ उत्पन्न होंगी और उसी स्कोप में बिल्टिन `type()` फ़ंक्शन कॉल होने पर मूक बग का जोखिम होगा। यह एकमात्र भाषा है जिसमें यह नामकरण अंतर है।
+:::
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Column, Type } from 'flyql'
+
+const col = new Column('host', Type.String)
+
+// सभी बारह मान:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+</TabItem>
+</Tabs>
+
+## `Type.JSONString` — JSON दस्तावेज़ वाले टेक्स्ट कॉलम
+
+`Type.JSONString` एक विहित कॉलम प्रकार है, कोई ऑर्थोगोनल क्षमता फ़्लैग नहीं। कॉलम को `type: "jsonstring"` (प्लेन-ऑब्जेक्ट स्कीमा) के साथ घोषित करें या विहित `Column` / `NewColumn` कंस्ट्रक्टर को `Type.JSONString` / `flyqltype.JSONString` पास करें। कॉलम अंतर्निहित DB में text/varchar के रूप में संग्रहीत होता है लेकिन इसकी सामग्री वैध JSON है, और जनरेटर डायलेक्ट-विशिष्ट पार्स फ़ंक्शन से पहुँच को लपेटते हैं:
+
+- **ClickHouse**: खंडित कुंजी पहुँच टेक्स्ट कॉलम पर `JSONExtract*` उपयोग करती है।
+- **PostgreSQL**: खंडित कुंजी पहुँच JSON पथ ऑपरेटर लागू करने से पहले `(col::jsonb)` कास्ट उपयोग करती है।
+- **StarRocks**: खंडित कुंजी पहुँच `parse_json(col)->'path'` उपयोग करती है।
+
+खंडित पथ पहुँच, `has`, truthy/falsy, समानता/असमानता सभी काम करते हैं। वैलिडेटर कोई प्रति-प्रकार ऑपरेटर प्रतिबंध लागू नहीं करता — आज उपयोगकर्ता `String` कॉलम के विरुद्ध जो भी लिख सकते हैं, वे इस रीफ़ैक्टर के बाद `JSONString` कॉलम के विरुद्ध भी लिख सकते हैं; अंतर केवल जनरेटर आउटपुट SQL में है।
+
+### पिछले `jsonstring` बूलियन से माइग्रेशन
+
+पहले, JSON रखने वाले टेक्स्ट कॉलम को दो फ़ील्ड के साथ घोषित किया जाता था: `type: "String"` **प्लस** `jsonstring: true`। बूलियन फ़ील्ड को `flyql.Column`, प्रत्येक डायलेक्ट `Column`/`ColumnDef`, और प्रत्येक प्लेन-ऑब्जेक्ट लोडर से **हटा दिया गया है**। लीगेसी स्कीमा को माइग्रेट करना होगा:
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+प्लेन-ऑब्जेक्ट स्कीमा में `jsonstring` कुंजी की उपस्थिति — जिसमें `"jsonstring": false` अवशेष भी शामिल हैं — अब `FromPlainObject` / `from_plain_object` / `fromPlainObject` से एक लक्षित माइग्रेशन त्रुटि उत्पन्न करती है। पोर्टेबल माइग्रेशन स्निपेट:
+
+- **jq (≥1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+भोले `sed` से बचें — यह अनाथ कॉमा छोड़ता है जब `jsonstring` ऑब्जेक्ट में अंतिम कुंजी हो और GNU sed और BSD sed के बीच पोर्टेबल नहीं है।
+
+## सख्त-मोड पार्सिंग
+
+`parseFlyQLType` हेल्पर (Go में `flyql.ParseType`, Python में `flyql.parse_flyql_type`, JS में `parseFlyQLType`) **सख्त** है: यह किसी भी ऐसी स्ट्रिंग के लिए त्रुटि उत्पन्न करता है जो 11 वैध लोअरकेस टोकन में से एक नहीं है।
+
+सख्त मोड अनिवार्य है क्योंकि उदार पार्सिंग चुपचाप डाउनस्ट्रीम उपभोक्ताओं को दूषित करेगी। लीगेसी `normalized_type` JSON कुंजी का पता लगाया जाता है और इस पेज की ओर इंगित करने वाली एक लक्षित माइग्रेशन त्रुटि उत्पन्न करती है।
+
+## डायलेक्ट कॉलम से `flyql.ColumnSchema` में ब्रिजिंग
+
+प्रत्येक डायलेक्ट पैकेज एक `ToFlyQLSchema` (Go), `to_flyql_schema` (Python), या `toFlyQLSchema` (JS) हेल्पर प्रदान करता है। वैलिडेटर में डायलेक्ट कॉलम फ़ीड करने का यह विहित तरीका है:
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    clickhouse "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+cols := []*clickhouse.Column{
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
+}
+schema := clickhouse.ToFlyQLSchema(cols)
+diags := flyql.Diagnose(ast, schema, nil)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import diagnose
+from flyql.generators import clickhouse
+
+cols = [
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
+]
+schema = clickhouse.to_flyql_schema(cols)
+diags = diagnose(ast, schema)
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { diagnose } from 'flyql'
+import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
+
+const cols = [
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
+]
+const schema = toFlyQLSchema(cols)
+const diags = diagnose(ast, schema)
+```
+
+</TabItem>
+</Tabs>
+
+## पिछली शब्दावली से माइग्रेशन
+
+एकीकरण से पहले, flyql में तीन समानांतर "प्रकार" शब्दावलियाँ थीं:
+
+1. `transformers.TransformerType` — `string | int | float | bool | array`
+2. डायलेक्ट `NormalizedType*` स्थिरांक — `string | int | float | bool | date | array | map | tuple | json | geometry | interval | special` (डायलेक्ट के अनुसार भिन्न)
+3. `flyql.Column.NormalizedType` — (2) से मेल खाने वाली मुक्त-रूप स्ट्रिंग
+
+तीनों अब `flyql.Type` में समाहित हो गई हैं। माइग्रेशन के दौरान नाम परिवर्तन:
+
+- `tuple` (ClickHouse) → `struct`
+- `interval*` (CH/PG) → `duration`
+- `geometry`, `special` → `unknown`
+- `hstore` (PostgreSQL) → `map`
+- `jsonb` (PostgreSQL) → `json`
+
+यदि आपने पहले `flyql.FromPlainObject({"col": {"normalized_type": "string"}})` कॉल किया था, तो नया रूप `{"col": {"type": "string"}}` है। लीगेसी कुंजी यहाँ इंगित करने वाली एक लक्षित माइग्रेशन त्रुटि उत्पन्न करती है।
+
+## मैचर जानबूझकर स्कीमालेस है
+
+इन-मेमोरी मैचर `flyql.Type` का उपभोग **नहीं** करता और इसे कोई स्कीमा पैरामीटर प्राप्त नहीं होता। मैचर में गतिशील JSON पहचान (`isProbablyJSONString` अनुमानी) जानबूझकर है — रनटाइम पर, मैचर सीधे मानों का निरीक्षण करता है। यदि आपको मैचिंग से पहले स्कीमा-जागरूक प्री-वैलिडेशन की आवश्यकता है, तो पहले `ColumnSchema` के विरुद्ध `diagnose()` चलाएँ।

@@ -1,0 +1,90 @@
+---
+title: 渲染器
+description: 为带别名的 SELECT 列附加显示元数据，而不影响生成的 SQL
+---
+
+渲染器为带别名的 SELECT 列附加显示元数据。它们由 flyql 解析和校验，但**不会影响 SQL 或匹配器输出**。与会改变数据库返回结果的[转换器](/syntax/transformers/)不同，渲染器描述的是你的应用应该如何展示某个值——具体的解释完全由你负责。
+
+## 后置别名管道语法
+
+渲染器链位于别名**之后**，通过管道符 (`|`) 分隔：
+
+```
+url as link|href("http://{{value}}")
+```
+
+别名是必需的。没有别名的列不能携带渲染器。
+
+## 链式渲染器
+
+通过额外的管道符叠加多个渲染器：
+
+```
+url as link|href("http://{{value}}")|badge("info")
+```
+
+渲染器从左到右解析为一个有序列表。链式语义完全由你的应用决定——flyql 不会对渲染器施加输入/输出类型系统。
+
+## 渲染器与转换器配合使用
+
+转换器在别名之前运行；渲染器在别名之后运行：
+
+```
+url|upper as u|href("https://{{value}}")
+```
+
+转换器 `upper` 影响生成的 SQL。渲染器 `href` 不会。
+
+## 无参数渲染器
+
+无参数渲染器的解析方式与无参数转换器相同：
+
+```
+url as link|plain
+```
+
+## 启用渲染器
+
+渲染器解析通过解析器能力标志选择性启用：
+
+**Python**
+```python
+from flyql.columns import parse
+cols = parse('url as link|href("/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+```
+
+**Go**
+```go
+import "github.com/iamtelescope/flyql/golang/columns"
+caps := columns.Capabilities{Transformers: true, Renderers: true}
+cols, _ := columns.Parse(`url as link|href("/{{value}}")`, caps)
+```
+
+**JavaScript**
+```javascript
+import { parse } from 'flyql/columns'
+const cols = parse('url as link|href("/{{value}}")',
+    { transformers: true, renderers: true })
+```
+
+当 `renderers` 为 `false`（默认值）时，后置别名 `|` 会抛出 errno `11`、消息为 `"renderers are not enabled"` 的 `ParserError`。
+
+## 默认注册器为空
+
+与附带四个内置转换器（`upper`、`lower`、`len`、`split`）的 [`TransformerRegistry.default_registry()`](/advanced/custom-transformers/) 不同，`RendererRegistry.default_registry()` **设计为空**。flyql 核心不对你的渲染技术（HTML、markdown、React、Vue 等）做任何假设。你必须先[注册自己的渲染器](/advanced/custom-renderers/)，校验器才能识别它们。
+
+这意味着要让渲染器在校验器或编辑器中发挥作用，你必须提供注册器；否则每个被引用的渲染器都会产生 `unknown_renderer` 诊断信息。
+
+## 渲染器与转换器对比
+
+| 关注点                    | 转换器               | 渲染器               |
+| ------------------------- | -------------------- | -------------------- |
+| 语法中的位置              | 别名之前             | 别名**之后**         |
+| 影响生成的 SQL            | 是                   | **否**               |
+| 影响匹配器输出            | 是                   | **否**               |
+| 默认注册器                | 4 个内置             | 空                   |
+| 输入/输出类型系统         | 是（链式类型）       | 否                   |
+| 解释方                    | flyql 执行           | 你的应用执行         |
+
+注册和校验钩子请参见[自定义渲染器](/advanced/custom-renderers/)。

@@ -1,0 +1,233 @@
+---
+title: Tipos de columna
+description: El enum flyql.Type — el vocabulario canónico e independiente de dialecto para tipos de columna y valor
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+`flyql.Type` es el **vocabulario canónico único** para tipos de columna y valor en flyql. Cada transformer, validador y generador SQL despacha sobre este enum. Cada lenguaje expone los mismos 12 valores con las mismas identidades de string en minúsculas, de modo que los fixtures de prueba JSON y las columnas serializadas son independientes del lenguaje.
+
+## Criterio de inclusión
+
+Un valor pertenece al enum si se cumple **al menos una** de las siguientes condiciones:
+
+1. El validador se comporta de manera diferente para él.
+2. El dispatch del generador difiere entre dialectos para él.
+3. Es un tipo con visión de futuro con necesidad explícita confirmada por el usuario (actualmente: `Duration`).
+
+Las adiciones especulativas se evitan explícitamente. Si encuentras una necesidad real de un nuevo tipo, evalúalo contra este criterio antes de proponerlo.
+
+## Los 12 valores
+
+| Valor | Propósito | Comportamiento del validador | Dispatch del generador | Tipos DB crudos absorbidos |
+|---|---|---|---|---|
+| **`String`** | Valores de texto | Permite `like`, `ilike`, `regex`, `not regex`; tipado de string en lista IN | SQL de comparación de strings | varchar, char, text, FixedString, blob, UUID, IPv4/v6 |
+| **`Int`** | Números enteros | Operadores de orden numérico; rechaza regex; tipado numérico en lista IN | SQL de comparación numérica | int8/16/32/64/128/256, uint*, bigint, smallint, tinyint |
+| **`Float`** | Números de coma flotante | Operadores de orden numérico; rechaza regex | SQL de comparación numérica | float, double, decimal, numeric, real |
+| **`Bool`** | Valores booleanos | Solo igualdad y truthy; rechaza ordenamiento | SQL booleano | bool, boolean |
+| **`Date`** | Valores temporales de punto en el tiempo | Acepta llamadas a funciones temporales (`ago()`, `now()`); acepta literales de string convertidos a fechas | SQL de comparación temporal con zona horaria opcional | date, date32, datetime, datetime64, timestamp, year |
+| **`Duration`** | Valores de intervalo/duración | Acepta literales de duración (`30m1s`, `1h`, `7d`); rechaza operadores solo de string | *(aún sin dispatch especial — ver nota abajo)* | ClickHouse `Interval*`, PostgreSQL `interval` |
+| **`Array`** | Colección ordenada de valores | Acepta operador `has`; el acceso segmentado por clave usa índices numéricos **basados en 0** | Acceso a elementos `col[idx]` | array, ClickHouse `Array(...)`, PG arrays |
+| **`Map`** | Colección clave-valor con claves dinámicas | El acceso segmentado por clave usa claves de string | Búsqueda `col['key']` | ClickHouse `Map(...)`, PostgreSQL `hstore` |
+| **`Struct`** | Registro de forma fija con campos nombrados (o posicionales) | El acceso segmentado por clave usa nombres de campo | Acceso a campos específico del dialecto (`tupleElement(col,'name')` en ClickHouse, `` `col`.`field` `` en StarRocks) | ClickHouse `Tuple`, StarRocks `STRUCT` |
+| **`JSON`** | Documento JSON semi-estructurado | El acceso segmentado por clave usa rutas JSON | SQL de ruta JSON (`JSON_VALUE`, `JSONExtractString`) | ClickHouse `JSON`, PostgreSQL `json`/`jsonb`, StarRocks `JSON` |
+| **`JSONString`** | Columna de texto cuyo contenido es JSON válido | Igual que `JSON` (operadores, acceso segmentado por ruta) | SQL JSON con parseo en tiempo de consulta (`(col::jsonb)` en PG, `JSONExtract*` en CH, `parse_json(col)->…` en SR) | Declarado explícitamente mediante el token de tipo crudo sintético `"jsonstring"` |
+| **`Unknown`** | Fallback documentado para tipos sobre los que flyql no puede razonar | Los operadores caen a valores por defecto; el acceso por ruta da error "unsupported column type"; los transformers no pueden aceptarlo | Sin dispatch especial; solo referencia cruda de columna | ClickHouse `Nothing`/`Object`/`Variant`/`Dynamic`/geometry, StarRocks `bitmap`/`hll`, cualquier cosa no reconocida |
+
+:::note[Duration es un tipo con visión de futuro]
+`Duration` existe hoy para que los generadores de dialectos puedan vincular tipos crudos `Interval*` e `interval` inmediatamente, pero actualmente ningún generador bifurca de manera diferente para columnas con tipo `Duration` respecto a columnas con tipo `Unknown`. La validación temporal contra columnas de duración está planificada en un spec de seguimiento.
+:::
+
+## Forma por lenguaje
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+// Use the prefixed names from the top-level flyql package:
+col := flyql.NewColumn("host", flyql.TypeString)
+
+// All twelve values:
+flyql.TypeString
+flyql.TypeInt
+flyql.TypeFloat
+flyql.TypeBool
+flyql.TypeDate
+flyql.TypeDuration
+flyql.TypeArray
+flyql.TypeMap
+flyql.TypeStruct
+flyql.TypeJSON
+flyql.TypeJSONString
+flyql.TypeUnknown
+```
+
+Las constantes residen en el subpaquete hoja `golang/flyqltype/` para evitar un ciclo de importación con `golang/transformers/`. El paquete de nivel superior `flyql` las re-exporta con el prefijo `Type` por ergonomía.
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import Column, Type
+
+col = Column(name="host", column_type=Type.String)
+
+# All twelve values:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+:::note[El nombre del parámetro es `column_type`, no `type`]
+El `Column.__init__` de Python toma `column_type:` porque `type` es un builtin de Python y ocultarlo generaría advertencias de pylint y arriesgaría bugs silenciosos cuando la función builtin `type()` se llame en el mismo scope. Este es el único lenguaje con esta diferencia de nomenclatura.
+:::
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Column, Type } from 'flyql'
+
+const col = new Column('host', Type.String)
+
+// All twelve values:
+Type.String
+Type.Int
+Type.Float
+Type.Bool
+Type.Date
+Type.Duration
+Type.Array
+Type.Map
+Type.Struct
+Type.JSON
+Type.JSONString
+Type.Unknown
+```
+
+</TabItem>
+</Tabs>
+
+## `Type.JSONString` — columnas de texto que contienen documentos JSON
+
+`Type.JSONString` es un tipo de columna canónico, no un flag de capacidad ortogonal. Declara una columna con `type: "jsonstring"` (schemas de plain-object) o pasa `Type.JSONString` / `flyqltype.JSONString` a los constructores canónicos `Column` / `NewColumn`. La columna se almacena como text/varchar en la base de datos subyacente pero su contenido es JSON válido, y los generadores envuelven el acceso con funciones de parseo específicas del dialecto:
+
+- **ClickHouse**: el acceso segmentado por clave usa `JSONExtract*` sobre la columna de texto.
+- **PostgreSQL**: el acceso segmentado por clave usa un cast `(col::jsonb)` antes de aplicar operadores de ruta JSON.
+- **StarRocks**: el acceso segmentado por clave usa `parse_json(col)->'path'`.
+
+El acceso segmentado por ruta, `has`, truthy/falsy, igualdad/desigualdad funcionan. El validador no aplica restricciones de operadores por tipo — lo que un usuario puede escribir hoy contra una columna `String`, puede escribirlo contra una columna `JSONString` después de este refactoring; la diferencia está puramente en el SQL de salida del generador.
+
+### Migración desde el boolean `jsonstring` anterior
+
+Anteriormente, una columna de texto con JSON se declaraba con dos campos: `type: "String"` **más** `jsonstring: true`. El campo booleano ha sido **eliminado** de `flyql.Column`, de cada `Column`/`ColumnDef` de dialecto y de cada cargador de plain-object. Los schemas legacy deben migrar:
+
+```diff
+- { "body": { "jsonstring": true, "type": "String" } }
++ { "body": { "type": "jsonstring" } }
+```
+
+La presencia de una clave `jsonstring` en un schema de plain-object — incluyendo restos de `"jsonstring": false` — ahora lanza un error de migración dirigido desde `FromPlainObject` / `from_plain_object` / `fromPlainObject`. Snippets de migración portables:
+
+- **jq (≥1.6):** `jq 'walk(if type == "object" then del(.jsonstring) else . end)' config.json > config.new.json`
+- **Python:** `python3 -c "import json,sys; d=json.load(open('config.json')); [c.pop('jsonstring',None) for c in (d.values() if isinstance(d,dict) else d)]; json.dump(d, open('config.new.json','w'), indent=2)"`
+
+Evita `sed` ingenuo — deja comas huérfanas cuando `jsonstring` es la última clave en un objeto y no es portable entre GNU sed y BSD sed.
+
+## Parseo en modo estricto
+
+El helper `parseFlyQLType` (`flyql.ParseType` en Go, `flyql.parse_flyql_type` en Python, `parseFlyQLType` en JS) es **estricto**: lanza un error para cualquier string que no sea uno de los 11 tokens válidos en minúsculas.
+
+El modo estricto es obligatorio porque un parseo permisivo corrompería silenciosamente a los consumidores posteriores. La clave JSON legacy `normalized_type` se detecta y produce un error de migración dirigido que apunta a esta página.
+
+## Puente desde una columna de dialecto a `flyql.ColumnSchema`
+
+Cada paquete de dialecto proporciona un helper `ToFlyQLSchema` (Go), `to_flyql_schema` (Python) o `toFlyQLSchema` (JS). Esta es la forma canónica de alimentar columnas de dialecto al validador:
+
+<Tabs syncKey="lang">
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    clickhouse "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+cols := []*clickhouse.Column{
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "host", Type: "String"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    clickhouse.NewColumn(clickhouse.ColumnDef{Name: "payload", Type: "jsonstring"}),
+}
+schema := clickhouse.ToFlyQLSchema(cols)
+diags := flyql.Diagnose(ast, schema, nil)
+```
+
+</TabItem>
+<TabItem label="Python">
+
+```python
+from flyql import diagnose
+from flyql.generators import clickhouse
+
+cols = [
+    clickhouse.Column("host", _type="String"),
+    clickhouse.Column("count", _type="Int64"),
+    clickhouse.Column("payload", _type="jsonstring"),
+]
+schema = clickhouse.to_flyql_schema(cols)
+diags = diagnose(ast, schema)
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { diagnose } from 'flyql'
+import { Column as CHColumn, toFlyQLSchema } from 'flyql/generators/clickhouse'
+
+const cols = [
+    new CHColumn('host', 'String'),
+    new CHColumn('count', 'Int64'),
+    new CHColumn('payload', 'jsonstring'),
+]
+const schema = toFlyQLSchema(cols)
+const diags = diagnose(ast, schema)
+```
+
+</TabItem>
+</Tabs>
+
+## Migración desde el vocabulario anterior
+
+Antes de la unificación, flyql tenía tres vocabularios de "tipo" paralelos:
+
+1. `transformers.TransformerType` — `string | int | float | bool | array`
+2. Constantes `NormalizedType*` de dialecto — `string | int | float | bool | date | array | map | tuple | json | geometry | interval | special` (variaba por dialecto)
+3. `flyql.Column.NormalizedType` — string de formato libre que debía coincidir con (2)
+
+Los tres están ahora colapsados en `flyql.Type`. Renombramientos durante la migración:
+
+- `tuple` (ClickHouse) → `struct`
+- `interval*` (CH/PG) → `duration`
+- `geometry`, `special` → `unknown`
+- `hstore` (PostgreSQL) → `map`
+- `jsonb` (PostgreSQL) → `json`
+
+Si anteriormente llamabas a `flyql.FromPlainObject({"col": {"normalized_type": "string"}})`, la nueva forma es `{"col": {"type": "string"}}`. La clave legacy produce un error de migración dirigido que apunta aquí.
+
+## El matcher es intencionalmente sin schema
+
+El matcher en memoria **no** consume `flyql.Type` y no recibe un parámetro de schema. La detección dinámica de JSON en el matcher (heurística `isProbablyJSONString`) es intencional — en tiempo de ejecución, el matcher inspecciona valores directamente. Si necesitas validación previa con conocimiento de schema antes del matching, ejecuta primero `diagnose()` contra un `ColumnSchema`.

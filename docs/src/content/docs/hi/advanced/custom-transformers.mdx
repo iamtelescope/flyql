@@ -245,39 +245,37 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 
 कस्टम ट्रांसफ़ॉर्मर अंतर्निहित के समान प्रकार श्रृंखला मान्यकरण में भाग लेते हैं। यदि आप `field|firstoctet|upper` चेन करते हैं, तो सिस्टम पता लगाता है कि `firstoctet` `int` आउटपुट करता है लेकिन `upper` को `string` की आवश्यकता है।
 
-उपलब्ध प्रकार: `STRING`, `INT`, `FLOAT`, `BOOL`, `ARRAY`।
+उपलब्ध प्रकार: [`flyql.Type`](/advanced/column-types/) देखें — विहित 11-मान enum (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`)।
 
-## Validation with `diagnose()`
+## `diagnose()` के साथ मान्यकरण
 
-The `diagnose()` function walks a parsed AST against a column schema and transformer registry, returning positioned `Diagnostic` records without throwing. It checks:
+`diagnose()` फ़ंक्शन एक पार्स किए गए AST को कॉलम स्कीमा और ट्रांसफ़ॉर्मर रजिस्ट्री के विरुद्ध जाँचता है, बिना अपवाद फेंके स्थितीय `Diagnostic` रिकॉर्ड लौटाता है। यह जाँचता है:
 
-- **Unknown column** — base key not in the column list
-- **Unknown transformer** — transformer name not in the registry
-- **Wrong arity** — too few or too many arguments vs `argSchema`
-- **Wrong argument type** — argument value type does not match declared `ArgSpec` type (int-to-float widening is allowed)
-- **Chain type mismatch** — output type of one transformer does not match the input type of the next, or column's normalized type does not match the first transformer's input type
+- **अज्ञात कॉलम** — बेस कुंजी कॉलम सूची में नहीं है
+- **अज्ञात ट्रांसफ़ॉर्मर** — ट्रांसफ़ॉर्मर नाम रजिस्ट्री में नहीं है
+- **गलत एरिटी** — `argSchema` की तुलना में बहुत कम या बहुत अधिक आर्गुमेंट
+- **गलत आर्गुमेंट प्रकार** — आर्गुमेंट मान प्रकार घोषित `ArgSpec` प्रकार से मेल नहीं खाता (int-to-float विस्तार की अनुमति है)
+- **चेन प्रकार असंगतता** — एक ट्रांसफ़ॉर्मर का आउटपुट प्रकार अगले के इनपुट प्रकार से मेल नहीं खाता, या कॉलम का नॉर्मलाइज़्ड प्रकार पहले ट्रांसफ़ॉर्मर के इनपुट प्रकार से मेल नहीं खाता
 
-Each diagnostic carries a `range` (source position), `message`, `severity` (`"error"`), and `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`).
+प्रत्येक डायग्नोस्टिक में `range` (स्रोत स्थिति), `message`, `severity` (`"error"`), और `code` (`"unknown_column"`, `"unknown_transformer"`, `"arg_count"`, `"arg_type"`, `"chain_type"`) होता है।
 
 ```python
 # Python
-from flyql import parse
-from flyql.core.column import Column, ColumnSchema
-from flyql.core.validator import diagnose
+from flyql import parse, Column, ColumnSchema, Type, diagnose
 
 ast = parse("hstt|upper=X").root
 columns = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
-diags = diagnose(ast, columns)  # columns is a ColumnSchema
+diags = diagnose(ast, columns)  # columns एक ColumnSchema है
 # [Diagnostic(range=Range(0, 4), message="column 'hstt' is not defined", severity='error', code='unknown_column')]
 ```
 
 ```javascript
 // JavaScript
-import { parse, Column, ColumnSchema, diagnose } from 'flyql'
+import { parse, Column, ColumnSchema, Type, diagnose } from 'flyql'
 
 const ast = parse('hstt|upper=X').root
-const columns = ColumnSchema.fromColumns([new Column('host', false, 'String', 'string')])
-const diags = diagnose(ast, columns)  // columns is a ColumnSchema
+const columns = ColumnSchema.fromColumns([new Column('host', false, Type.String)])
+const diags = diagnose(ast, columns)  // columns एक ColumnSchema है
 // [Diagnostic { range: Range(0, 4), message: "column 'hstt' is not defined", severity: 'error', code: 'unknown_column' }]
 ```
 
@@ -287,12 +285,19 @@ import flyql "github.com/iamtelescope/flyql/golang"
 
 result, _ := flyql.Parse("hstt|upper=X")
 schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
-diags := flyql.Diagnose(result.Root, schema, nil) // nil = default registry
+diags := flyql.Diagnose(result.Root, schema, nil) // nil = डिफ़ॉल्ट रजिस्ट्री
 // []Diagnostic{{Range: {0, 4}, Message: "column 'hstt' is not defined", Severity: "error", Code: "unknown_column"}}
 ```
 
-Pass a custom registry as the third argument if you have custom transformers registered. Pass `nil`/`None`/`null` to use the default registry.
+यदि आपके पास कस्टम ट्रांसफ़ॉर्मर पंजीकृत हैं तो तीसरे आर्गुमेंट के रूप में कस्टम रजिस्ट्री पास करें। डिफ़ॉल्ट रजिस्ट्री उपयोग करने के लिए `nil`/`None`/`null` पास करें।
 
 ## सुरक्षा
 
 कस्टम ट्रांसफ़ॉर्मर की `sql()` विधियाँ केवल कॉलम संदर्भ (स्कीमा से) प्राप्त करती हैं, कभी भी उपयोगकर्ता-प्रदत्त मान नहीं। उपयोगकर्ता मान जनरेटर द्वारा एस्केप/पैरामीटराइज़ किए जाते हैं। यह FlyQL की इंजेक्शन-प्रूफ़ गारंटी को बनाए रखता है — कस्टम SQL कॉलम नामों को लपेटता है, उपयोगकर्ता इनपुट को नहीं।
+
+## यह भी देखें
+
+- [कस्टम रेंडरर](/advanced/custom-renderers/) — पोस्ट-एलियास डिस्प्ले
+  मेटाडेटा डिस्क्रिप्टर पंजीकृत करें। ट्रांसफ़ॉर्मर के विपरीत, रेंडरर कभी
+  जनरेट किए गए SQL को प्रभावित नहीं करते; वे केवल यह वर्णन करते हैं कि आपके
+  एप्लिकेशन को मान कैसे रेंडर करना चाहिए।

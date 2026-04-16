@@ -1,0 +1,165 @@
+---
+title: 自定义渲染器
+description: 为你的应用注册渲染器定义和校验钩子
+---
+
+:::note
+渲染器不会在 flyql 内部执行——你的应用负责解释 `parsed_column.renderers` 并渲染值。
+:::
+
+:::note
+`metadata` 是自由格式的、由开发者定义的。flyql 核心和编辑器不会读取其中的任何特定键。如果你需要标准化字段，请在你的应用中定义，并与你注册的渲染器一起记录在文档中。
+:::
+
+语法和语义请参见[渲染器语法页面](/syntax/renderers/)。本页介绍用于将你自己的渲染器添加到校验器和编辑器的注册 API。
+
+## Renderer 接口
+
+一个 `Renderer` 声明：
+
+- **`name`** — 用户在别名管道符之后输入的标识符
+- **`arg_schema`** — 由 `ArgSpec(type, required)` 条目组成的元组，驱动参数数量和参数类型校验
+- **`metadata`** — 用于应用的可选自由格式 dict/map/object；flyql 不会检查其内容
+- **`diagnose(args, parsed_column)`** — 可选的逐渲染器钩子，返回 `Diagnostic[]` 用于自定义校验
+
+## Python 示例
+
+```python
+from flyql.flyql_type import Type
+from flyql.renderers import ArgSpec, Renderer, RendererRegistry
+from flyql.columns import parse, diagnose
+from flyql.core.validator import Diagnostic
+from flyql.core.range import Range
+
+
+class HrefRenderer(Renderer):
+    arg_schema = (ArgSpec(type=Type.String, required=True),)
+
+    @property
+    def name(self) -> str:
+        return "href"
+
+    @property
+    def metadata(self):
+        return {"html_safe": True}
+
+    def diagnose(self, arguments, parsed_column):
+        if arguments and "{{value}}" not in arguments[0]:
+            return [Diagnostic(
+                range=Range(0, 1),
+                message="href template should contain {{value}}",
+                severity="warning",
+                code="custom_href_no_placeholder",
+            )]
+        return []
+
+
+registry = RendererRegistry()
+registry.register(HrefRenderer())
+
+cols = parse('url as link|href("/users/{{value}}")',
+             capabilities={"transformers": True, "renderers": True})
+
+# ...然后使用两个注册器运行校验器：
+diags = diagnose(cols, schema, renderer_registry=registry)
+```
+
+## 注册器级别的链式钩子
+
+对于链级别的规则（例如"禁止 `href` 出现在 `truncate` 之后"），使用 `set_diagnose`：
+
+```python
+def chain_rule(parsed_column, chain):
+    names = [r["name"] for r in chain]
+    if "truncate" in names and "href" in names:
+        if names.index("truncate") < names.index("href"):
+            return [Diagnostic(
+                range=Range(0, 1),
+                message="href cannot follow truncate",
+                severity="error",
+                code="chain_forbidden",
+            )]
+    return []
+
+registry.set_diagnose(chain_rule)
+```
+
+链式钩子在逐渲染器 `diagnose` 钩子之后运行，也在内置的未知名称/参数数量/参数类型检查之后运行。
+
+## Go 示例
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/columns"
+    "github.com/iamtelescope/flyql/golang/flyqltype"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type HrefRenderer struct{ columns.BaseRenderer }
+
+func (HrefRenderer) Name() string { return "href" }
+func (HrefRenderer) ArgSchema() []transformers.ArgSpec {
+    return []transformers.ArgSpec{{Type: flyqltype.String, Required: true}}
+}
+
+reg := columns.DefaultRendererRegistry()
+_ = reg.Register(HrefRenderer{})
+
+opts := columns.DiagnoseOptions{RendererRegistry: reg}
+diags := columns.DiagnoseWithOptions(parsedColumns, schema, opts)
+```
+
+## JavaScript 示例
+
+```javascript
+import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
+import { Type } from 'flyql'
+import { parse, diagnose } from 'flyql/columns'
+
+class HrefRenderer extends Renderer {
+    get name() { return 'href' }
+    get argSchema() { return [new ArgSpec(Type.String, true)] }
+    diagnose(args, col) {
+        if (args && args[0] && !args[0].includes('{{value}}')) {
+            return [{
+                range: { start: 0, end: 1 },
+                message: 'href template should contain {{value}}',
+                severity: 'warning',
+                code: 'custom_href_no_placeholder',
+            }]
+        }
+        return []
+    }
+}
+
+const registry = new RendererRegistry()
+registry.register(new HrefRenderer())
+
+const cols = parse('url as link|href("/users/{{value}}")',
+    { transformers: true, renderers: true })
+
+const diags = diagnose(cols, schema, null, registry)
+```
+
+## 接入 flyql-vue 编辑器
+
+`FlyqlColumns` Vue 组件接受一个 `rendererRegistry` prop。提供该 prop 后，编辑器会启用后置别名渲染器解析、发出渲染器建议并展示渲染器诊断信息：
+
+```vue
+<template>
+  <FlyqlColumns
+    v-model="query"
+    :columns="schema"
+    :registry="transformerRegistry"
+    :renderer-registry="rendererRegistry"
+  />
+</template>
+```
+
+当 `rendererRegistry` 被省略或为 `null` 时，渲染器解析会完全禁用——用户输入后置别名 `|` 时会看到解析器级别的拒绝，而不是每次按键都出现 `unknown_renderer` 诊断信息。完整的 prop 参考请参见 [Columns Component](/editor/columns-component/)。
+
+## 另见
+
+- [渲染器语法](/syntax/renderers/) — 语法和语义
+- [自定义转换器](/advanced/custom-transformers/) — 转换器姊妹系统的注册 API

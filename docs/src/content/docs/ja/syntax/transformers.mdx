@@ -88,3 +88,16 @@ transformer は方言ごとの SQL 関数呼び出しを生成します。チェ
 <FlyqlCode code={`host|lower != "localhost"`} />
 <FlyqlCode code={`path|len > 0`} />
 <FlyqlCode code={`tags|split(",") has "urgent"`} />
+
+## Transformers と Renderers の違い
+
+Transformers はエイリアスの**前**に実行され、flyql が SQL に出力する値やマッチング対象の値を変更します。[Renderers](/syntax/renderers/) はエイリアスの**後**に実行され、生成される SQL や matcher の結果に影響を与えることなく表示メタデータを付与します。「この値を大文字にして返したい」場合は transformer を使います。「このカラムをアプリでクリック可能なリンクとして表示したい」場合は renderer を使います。
+
+| 観点                      | Transformer          | Renderer             |
+| ------------------------- | -------------------- | -------------------- |
+| 構文上の位置              | エイリアスの前       | エイリアスの**後**   |
+| 生成される SQL に影響     | はい                 | **いいえ**           |
+| matcher の出力に影響      | はい                 | **いいえ**           |
+| デフォルトレジストリ      | 4 つの組み込み       | 空                   |
+
+エイリアス後のパイプ構文については [Renderers](/syntax/renderers/) を、登録 API については [Custom Renderers](/advanced/custom-renderers/) を参照してください。

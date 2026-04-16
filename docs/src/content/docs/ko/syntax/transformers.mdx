@@ -88,3 +88,16 @@ Transformer는 방언별 SQL 함수 호출을 생성합니다. 체인된 transfo
 <FlyqlCode code={`host|lower != "localhost"`} />
 <FlyqlCode code={`path|len > 0`} />
 <FlyqlCode code={`tags|split(",") has "urgent"`} />
+
+## Transformers와 Renderers의 차이
+
+Transformers는 별칭 **전에** 실행되며, flyql이 SQL로 출력하거나 매칭 대상으로 사용하는 값을 변경합니다. [Renderers](/syntax/renderers/)는 별칭 **후에** 실행되며, 생성되는 SQL이나 matcher 결과에 영향을 주지 않고 표시 메타데이터를 첨부합니다. "이 값을 대문자로 반환하고 싶다"면 transformer를 사용합니다. "이 컬럼을 앱에서 클릭 가능한 링크로 렌더링하고 싶다"면 renderer를 사용합니다.
+
+| 관점                      | Transformer          | Renderer             |
+| ------------------------- | -------------------- | -------------------- |
+| 구문상 위치               | 별칭 전              | 별칭 **후**          |
+| 생성되는 SQL에 영향       | 예                   | **아니요**           |
+| matcher 출력에 영향       | 예                   | **아니요**           |
+| 기본 레지스트리           | 4개 내장             | 비어 있음            |
+
+별칭 뒤 파이프 문법은 [Renderers](/syntax/renderers/)를, 등록 API는 [Custom Renderers](/advanced/custom-renderers/)를 참조하세요.

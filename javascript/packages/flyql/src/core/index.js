@@ -12,6 +12,7 @@ export {
     VALID_KEY_VALUE_OPERATORS,
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
+    ERR_MAX_DEPTH_EXCEEDED,
 } from './constants.js'
 export { isNumeric, convertUnquotedValue } from './utils.js'
 export { Range } from './range.js'

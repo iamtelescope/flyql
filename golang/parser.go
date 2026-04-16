@@ -97,6 +97,11 @@ type Parser struct {
 	functionCurrentArg         string
 	functionParameterArgs      []*Parameter
 	functionParamBuf           string
+	// MaxDepth is the maximum nesting depth for boolean-grouping parens.
+	// Values <= 0 disable the limit. Read on every group-open, so
+	// mid-parse mutation takes effect on the next '('.
+	MaxDepth int
+	depth    int
 }
 
 func NewParser() *Parser {
@@ -112,6 +117,7 @@ func NewParser() *Parser {
 		exprStart:        -1,
 		inListValueStart: -1,
 		inListValueEnd:   -1,
+		MaxDepth:         128,
 	}
 }
 
@@ -599,6 +605,7 @@ func (p *Parser) extendTreeFromStack(boolOperator string) {
 		gs := p.groupStartStack[len(p.groupStartStack)-1]
 		p.groupStartStack = p.groupStartStack[:len(p.groupStartStack)-1]
 		groupStart = &gs
+		p.depth--
 	}
 
 	if node.Right == nil {
@@ -674,6 +681,11 @@ func (p *Parser) inStateInitial() {
 		}
 		p.extendNodesStack()
 		p.extendBoolOpStack()
+		p.depth++
+		if p.MaxDepth > 0 && p.depth > p.MaxDepth {
+			p.setErrorState(fmt.Sprintf("maximum nesting depth exceeded (%d)", p.MaxDepth), errMaxDepthExceeded)
+			return
+		}
 		p.state = stateInitial
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isDelimiter() {
@@ -1568,6 +1580,11 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		p.extendNodesStack()
 		p.extendBoolOpStack()
 		p.groupStartStack = append(p.groupStartStack, p.char.pos)
+		p.depth++
+		if p.MaxDepth > 0 && p.depth > p.MaxDepth {
+			p.setErrorState(fmt.Sprintf("maximum nesting depth exceeded (%d)", p.MaxDepth), errMaxDepthExceeded)
+			return
+		}
 		p.state = stateInitial
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
@@ -1727,6 +1744,11 @@ func (p *Parser) inStateExpectNotTarget() {
 		p.extendNodesStack()
 		p.extendBoolOpStack()
 		p.groupStartStack = append(p.groupStartStack, p.char.pos)
+		p.depth++
+		if p.MaxDepth > 0 && p.depth > p.MaxDepth {
+			p.setErrorState(fmt.Sprintf("maximum nesting depth exceeded (%d)", p.MaxDepth), errMaxDepthExceeded)
+			return
+		}
 		p.state = stateInitial
 		p.storeTypedChar(CharTypeOperator)
 	} else {
@@ -2283,6 +2305,7 @@ func (p *Parser) inStateLastChar() {
 }
 
 func (p *Parser) Parse(text string) error {
+	p.depth = 0
 	p.text = text
 	p.pos = 0
 	p.line = 0

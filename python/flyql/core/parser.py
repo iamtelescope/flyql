@@ -26,6 +26,7 @@ from flyql.core.constants import (
     ERR_INVALID_PARAMETER_NAME,
     ERR_PARAMETER_ZERO_INDEX,
     ERR_PARAMETER_IN_LIST,
+    ERR_MAX_DEPTH_EXCEEDED,
 )
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
@@ -123,6 +124,11 @@ class Parser:
         self._function_current_arg: str = ""
         self._function_parameter_args: List[Parameter] = []
         self._function_param_buf: str = ""
+        # Maximum nesting depth for boolean-grouping parens. Values `<= 0`
+        # disable the limit. Read on every group-open, so mid-parse mutation
+        # takes effect on the next `(`.
+        self.max_depth: int = 128
+        self._depth: int = 0
 
     def set_state(self, state: State) -> None:
         self.state = state
@@ -575,7 +581,11 @@ class Parser:
     def extend_tree_from_stack(self, bool_operator: str) -> None:
         node = self.nodes_stack.pop()
         negated = self.negation_stack.pop() if self.negation_stack else False
-        group_start = self._group_start_stack.pop() if self._group_start_stack else None
+        if self._group_start_stack:
+            group_start = self._group_start_stack.pop()
+            self._depth -= 1
+        else:
+            group_start = None
 
         if node.right is None:
             if self.current_node:
@@ -687,6 +697,13 @@ class Parser:
             self.extend_bool_op_stack()
             self.negation_stack.append(False)  # No negation for regular groups
             self._group_start_stack.append(start_pos)
+            self._depth += 1
+            if self.max_depth > 0 and self._depth > self.max_depth:
+                self.set_error_state(
+                    f"maximum nesting depth exceeded ({self.max_depth})",
+                    ERR_MAX_DEPTH_EXCEEDED,
+                )
+                return
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_delimiter():
@@ -1238,6 +1255,13 @@ class Parser:
             self.extend_bool_op_stack()
             self.negation_stack.append(False)  # No negation for regular groups
             self._group_start_stack.append(self.char.pos)
+            self._depth += 1
+            if self.max_depth > 0 and self._depth > self.max_depth:
+                self.set_error_state(
+                    f"maximum nesting depth exceeded ({self.max_depth})",
+                    ERR_MAX_DEPTH_EXCEEDED,
+                )
+                return
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         elif self.char.is_group_close():
@@ -1371,6 +1395,13 @@ class Parser:
             self.extend_bool_op_stack()
             self.negation_stack.append(self.consume_pending_negation())
             self._group_start_stack.append(self.char.pos)
+            self._depth += 1
+            if self.max_depth > 0 and self._depth > self.max_depth:
+                self.set_error_state(
+                    f"maximum nesting depth exceeded ({self.max_depth})",
+                    ERR_MAX_DEPTH_EXCEEDED,
+                )
+                return
             self.set_state(State.INITIAL)
             self.store_typed_char(CharType.OPERATOR)
         else:
@@ -2160,6 +2191,7 @@ class Parser:
             raise_error: If True, raise ParserError on error. If False, set error state and return.
             ignore_last_char: If True, skip final state validation (inStateLastChar)
         """
+        self._depth = 0
         self.set_text(text)
         for c in text:
             if self.state == State.ERROR:

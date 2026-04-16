@@ -146,6 +146,7 @@ export const ERR_EMPTY_PARAMETER_NAME = 74
 export const ERR_INVALID_PARAMETER_NAME = 75
 export const ERR_PARAMETER_ZERO_INDEX = 76
 export const ERR_PARAMETER_IN_LIST = 77
+export const ERR_MAX_DEPTH_EXCEEDED = 78
 
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]
 

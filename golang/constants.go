@@ -58,4 +58,5 @@ const (
 	errInvalidParameterName           = 75
 	errParameterZeroIndex             = 76
 	errParameterInList                = 77
+	errMaxDepthExceeded               = 78
 )

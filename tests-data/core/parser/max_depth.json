@@ -1,0 +1,99 @@
+{
+  "version": "1.0",
+  "description": "Max nesting-depth enforcement. Each test builds query at runtime: '('*depth + 'a=1' + ')'*depth (unless 'query_prefix'/'query_suffix' override).",
+  "test_suite": "max_depth",
+  "tests": [
+    {
+      "name": "default_allows_depth_128",
+      "depth": 128,
+      "expected_result": "success"
+    },
+    {
+      "name": "default_rejects_depth_129",
+      "depth": 129,
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 78,
+        "message_equals": "maximum nesting depth exceeded (128)"
+      }
+    },
+    {
+      "name": "custom_limit_5_allows_depth_5",
+      "depth": 5,
+      "parser_config": {"max_depth": 5},
+      "expected_result": "success"
+    },
+    {
+      "name": "custom_limit_5_rejects_depth_6",
+      "depth": 6,
+      "parser_config": {"max_depth": 5},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 78,
+        "message_equals": "maximum nesting depth exceeded (5)"
+      }
+    },
+    {
+      "name": "zero_disables_limit_allows_depth_500",
+      "depth": 500,
+      "parser_config": {"max_depth": 0},
+      "expected_result": "success"
+    },
+    {
+      "name": "negative_disables_limit_allows_depth_500",
+      "depth": 500,
+      "parser_config": {"max_depth": -1},
+      "expected_result": "success"
+    },
+    {
+      "name": "not_prefix_counts_toward_depth_and_rejects",
+      "depth": 5,
+      "query_prefix": "not ",
+      "parser_config": {"max_depth": 4},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 78,
+        "message_equals": "maximum nesting depth exceeded (4)"
+      }
+    },
+    {
+      "name": "not_prefix_within_limit_succeeds",
+      "depth": 5,
+      "query_prefix": "not ",
+      "parser_config": {"max_depth": 5},
+      "expected_result": "success"
+    },
+    {
+      "name": "and_continuation_counts_toward_depth",
+      "depth": 5,
+      "query_prefix": "a=1 and ",
+      "parser_config": {"max_depth": 4},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 78,
+        "message_equals": "maximum nesting depth exceeded (4)"
+      }
+    },
+    {
+      "name": "and_continuation_within_limit_succeeds",
+      "depth": 5,
+      "query_prefix": "a=1 and ",
+      "parser_config": {"max_depth": 5},
+      "expected_result": "success"
+    },
+    {
+      "name": "in_list_brackets_do_not_count",
+      "depth": 0,
+      "literal_query": "a in [1,2,3,4,5,6,7,8,9,10]",
+      "parser_config": {"max_depth": 1},
+      "expected_result": "success"
+    },
+    {
+      "name": "function_call_parens_do_not_count",
+      "depth": 0,
+      "literal_query": "a=ago(1h)",
+      "parser_config": {"max_depth": 1},
+      "expected_result": "success"
+    }
+  ]
+}

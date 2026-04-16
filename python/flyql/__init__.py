@@ -8,6 +8,7 @@ from .core.constants import BoolOperator, Operator
 from .core.range import Range
 from .core.validator import Diagnostic, diagnose
 from .core.exceptions import FlyqlError, KeyParseError
+from .core.constants import ERR_MAX_DEPTH_EXCEEDED
 from .transformers import (
     Transformer,
     TransformerRegistry,
@@ -55,4 +56,5 @@ __all__ = [
     "LiteralKind",
     "tokenize",
     "Token",
+    "ERR_MAX_DEPTH_EXCEEDED",
 ]

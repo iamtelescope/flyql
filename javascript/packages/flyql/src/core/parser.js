@@ -30,6 +30,7 @@ import {
     ERR_INVALID_PARAMETER_NAME,
     ERR_PARAMETER_ZERO_INDEX,
     ERR_PARAMETER_IN_LIST,
+    ERR_MAX_DEPTH_EXCEEDED,
 } from './constants.js'
 
 const _BOOL_OP_PRECEDENCE_TABLE = Object.freeze({ and: 2, or: 1 })
@@ -96,6 +97,11 @@ export class Parser {
         this._functionCurrentArg = ''
         this._functionParameterArgs = []
         this._functionParamBuf = ''
+        // Maximum nesting depth for boolean-grouping parens. Values `<= 0`
+        // disable the limit. Read on every group-open, so mid-parse mutation
+        // takes effect on the next `(`.
+        this.maxDepth = 128
+        this._depth = 0
     }
 
     setState(state) {
@@ -565,7 +571,11 @@ export class Parser {
     extendTreeFromStack(boolOperator) {
         if (!this.nodesStack.length) return
         const node = this.nodesStack.pop()
-        const groupStart = this._groupStartStack.length > 0 ? this._groupStartStack.pop() : null
+        let groupStart = null
+        if (this._groupStartStack.length > 0) {
+            groupStart = this._groupStartStack.pop()
+            this._depth -= 1
+        }
         // Pop the sub-tree's negation BEFORE the merge and apply it
         // directly to the sub-tree (currentNode at entry). This mirrors
         // the Python/Go `_apply_negation_to_tree` call path and fixes
@@ -637,6 +647,11 @@ export class Parser {
             this.extendBoolOpStack()
             this.negationStack.push(false)
             this._groupStartStack.push(startPos)
+            this._depth += 1
+            if (this.maxDepth > 0 && this._depth > this.maxDepth) {
+                this.setErrorState(`maximum nesting depth exceeded (${this.maxDepth})`, ERR_MAX_DEPTH_EXCEEDED)
+                return
+            }
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isDelimiter()) {
@@ -844,6 +859,11 @@ export class Parser {
             this.extendNodesStack()
             this.extendBoolOpStack()
             this._groupStartStack.push(this.char.pos)
+            this._depth += 1
+            if (this.maxDepth > 0 && this._depth > this.maxDepth) {
+                this.setErrorState(`maximum nesting depth exceeded (${this.maxDepth})`, ERR_MAX_DEPTH_EXCEEDED)
+                return
+            }
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else {
@@ -1636,6 +1656,11 @@ export class Parser {
             this.extendNodesStack()
             this.extendBoolOpStack()
             this._groupStartStack.push(this.char.pos)
+            this._depth += 1
+            if (this.maxDepth > 0 && this._depth > this.maxDepth) {
+                this.setErrorState(`maximum nesting depth exceeded (${this.maxDepth})`, ERR_MAX_DEPTH_EXCEEDED)
+                return
+            }
             this.setState(State.INITIAL)
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.isGroupClose()) {
@@ -2256,6 +2281,7 @@ export class Parser {
     }
 
     parse(text, raiseError = true, ignoreLastChar = false) {
+        this._depth = 0
         this.setText(text)
 
         for (let c of text) {

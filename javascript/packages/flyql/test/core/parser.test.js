@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { parse, ParserError } from '../../src/index.js'
+import { parse, Parser, ParserError } from '../../src/index.js'
+import { ERR_MAX_DEPTH_EXCEEDED } from '../../src/core/constants.js'
 import { loadTestData, astToDict, compareAst, formatAstMismatchMessage, normalizeAstForComparison } from '../helpers.js'
+
+function buildNestedQuery(depth) {
+    return '('.repeat(depth) + 'a=1' + ')'.repeat(depth)
+}
 
 function runTestCase(testCase) {
     if (testCase.expected_result === 'error') {
@@ -275,5 +280,115 @@ describe('Parser Hyphen Keys Tests', () => {
         const result2 = parse('data.user-identifier = "john-doe"')
         expect(result2.root.left.expression.key.segments).toEqual(['data', 'user-identifier'])
         expect(result2.root.left.expression.value).toBe('john-doe')
+    })
+})
+
+describe('max_depth fixture', () => {
+    const testData = loadTestData('max_depth.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            let query
+            if ('literal_query' in testCase) {
+                query = testCase.literal_query
+            } else {
+                const prefix = testCase.query_prefix || ''
+                const suffix = testCase.query_suffix || ''
+                query = prefix + buildNestedQuery(testCase.depth) + suffix
+            }
+
+            const parser = new Parser()
+            if (testCase.parser_config && 'max_depth' in testCase.parser_config) {
+                parser.maxDepth = testCase.parser_config.max_depth
+            }
+
+            parser.parse(query, false)
+
+            if (testCase.expected_result === 'error') {
+                expect(parser.errno).not.toBe(0)
+                const expected = testCase.expected_error || {}
+                if ('errno' in expected) {
+                    expect(parser.errno).toBe(expected.errno)
+                }
+                if ('message_contains' in expected) {
+                    expect(parser.errorText).toContain(expected.message_contains)
+                }
+                if ('message_equals' in expected) {
+                    expect(parser.errorText).toBe(expected.message_equals)
+                }
+            } else {
+                expect(parser.errno).toBe(0)
+                expect(parser.root).not.toBeNull()
+            }
+        })
+    })
+})
+
+describe('Parser Max Depth Direct Tests', () => {
+    it('default maxDepth allows 128', () => {
+        const parser = new Parser()
+        parser.parse(buildNestedQuery(128))
+        expect(parser.root).not.toBeNull()
+    })
+
+    it('default maxDepth rejects 129 with errno and message', () => {
+        let caught = null
+        try {
+            new Parser().parse(buildNestedQuery(129))
+        } catch (error) {
+            caught = error
+        }
+        expect(caught).toBeInstanceOf(ParserError)
+        expect(caught.errno).toBe(ERR_MAX_DEPTH_EXCEEDED)
+        expect(caught.message).toBe('maximum nesting depth exceeded (128)')
+    })
+
+    it('zero disables limit', () => {
+        const parser = new Parser()
+        parser.maxDepth = 0
+        parser.parse(buildNestedQuery(500))
+        expect(parser.root).not.toBeNull()
+    })
+
+    it('negative disables limit', () => {
+        const parser = new Parser()
+        parser.maxDepth = -1
+        parser.parse(buildNestedQuery(500))
+        expect(parser.root).not.toBeNull()
+    })
+
+    it('_depth is zero after successful parse', () => {
+        const parser = new Parser()
+        parser.parse('(a=1)')
+        expect(parser._depth).toBe(0)
+    })
+
+    it('_depth reset at top of parse after error', () => {
+        // JS parse() does not reset instance state broadly (pre-existing hazard).
+        // The second parse short-circuits on state=ERROR, but the top-of-parse
+        // `this._depth = 0` still runs — which is all this test verifies.
+        const parser = new Parser()
+        parser.parse('(((', false)
+        expect(parser.errno).not.toBe(0)
+        parser.parse('(a=1)', false)
+        expect(parser._depth).toBe(0)
+    })
+
+    it('max-depth error surfaces without raise', () => {
+        const parser = new Parser()
+        parser.parse(buildNestedQuery(129), false)
+        expect(parser.errno).toBe(ERR_MAX_DEPTH_EXCEEDED)
+        expect(parser.errorText).toContain('maximum nesting depth exceeded')
+    })
+
+    it('syntax error takes precedence over depth', () => {
+        // `==` is a syntax error, and the parser stops on the first error.
+        // Even though 9 `(` chars would blow past maxDepth=2, the syntax
+        // error at position 3 fires first.
+        const parser = new Parser()
+        parser.maxDepth = 2
+        parser.parse('(a== (((((((((', false)
+        expect(parser.errno).not.toBe(0)
+        expect(parser.errno).not.toBe(ERR_MAX_DEPTH_EXCEEDED)
     })
 })

@@ -98,21 +98,21 @@ async function pgQuery(sql) {
 
 async function runClickHouse(flyqlExpr, columns) {
     const parsed = parse(flyqlExpr)
-    const sqlWhere = chGenerateWhere(parsed.currentNode, columns)
+    const sqlWhere = chGenerateWhere(parsed.root, columns)
     const rows = await chQuery(`SELECT id FROM flyql_e2e_test WHERE ${sqlWhere} ORDER BY id`)
     return { sql: sqlWhere, ids: rows.map((r) => Number(r.id)) }
 }
 
 async function runStarRocks(flyqlExpr, columns) {
     const parsed = parse(flyqlExpr)
-    const sqlWhere = srGenerateWhere(parsed.currentNode, columns)
+    const sqlWhere = srGenerateWhere(parsed.root, columns)
     const rows = await srQuery(`SELECT id FROM flyql_e2e_test WHERE ${sqlWhere} ORDER BY id`)
     return { sql: sqlWhere, ids: rows.map((r) => Number(r.id)) }
 }
 
 async function runPostgreSQL(flyqlExpr, columns) {
     const parsed = parse(flyqlExpr)
-    const sqlWhere = pgGenerateWhere(parsed.currentNode, columns)
+    const sqlWhere = pgGenerateWhere(parsed.root, columns)
     const lines = await pgQuery(`SELECT id FROM flyql_e2e_test WHERE ${sqlWhere} ORDER BY id`)
     return { sql: sqlWhere, ids: lines.map((line) => Number(line.trim())) }
 }

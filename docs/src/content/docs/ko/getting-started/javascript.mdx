@@ -20,7 +20,7 @@ const result = parse("status = 200 and active")
 console.log(result.root)
 ```
 
-`parse()`는 AST를 나타내는 `root` 노드를 가진 `Parser` 객체를 반환합니다. 입력이 잘못되면 `ParserError`를 throw합니다.
+`parse()`는 AST를 나타내는 `root` 노드를 가진 `ParseResult` 객체를 반환합니다. 입력이 잘못되면 `ParserError`를 throw합니다.
 
 ```javascript
 import { parse, ParserError } from 'flyql'

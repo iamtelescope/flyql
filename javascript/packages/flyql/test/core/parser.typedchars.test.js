@@ -6,7 +6,8 @@ import { loadTestData } from '../helpers.js'
 
 describe('Parser typedChars functionality', () => {
     it('should collect typed chars for simple expression', () => {
-        const parser = parse('key=value')
+        const parser = new Parser()
+        parser.parse('key=value')
 
         expect(parser.typedChars).toHaveLength(9) // k,e,y,=,v,a,l,u,e
 
@@ -28,7 +29,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle spaces correctly', () => {
-        const parser = parse('key = value')
+        const parser = new Parser()
+        parser.parse('key = value')
 
         expect(parser.typedChars).toHaveLength(11)
 
@@ -51,7 +53,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle quoted strings', () => {
-        const parser = parse('name="john doe"')
+        const parser = new Parser()
+        parser.parse('name="john doe"')
 
         const quotedChars = parser.typedChars.filter(([_, type]) => type === CharType.VALUE)
 
@@ -70,14 +73,16 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle single quoted strings', () => {
-        const parser = parse("name='john'")
+        const parser = new Parser()
+        parser.parse("name='john'")
 
         const quotedChars = parser.typedChars.filter(([_, type]) => type === CharType.VALUE)
         expect(quotedChars).toHaveLength(6) // 'john' including quotes
     })
 
     it('should handle boolean operators', () => {
-        const parser = parse('a=1 and b=2')
+        const parser = new Parser()
+        parser.parse('a=1 and b=2')
 
         // Find 'and' operator chars
         const andChars = []
@@ -96,7 +101,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle parentheses', () => {
-        const parser = parse('(key=value)')
+        const parser = new Parser()
+        parser.parse('(key=value)')
 
         // First char should be operator (open paren)
         expect(parser.typedChars[0][1]).toBe(CharType.OPERATOR)
@@ -109,7 +115,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle complex operators', () => {
-        const parser = parse('count>=10')
+        const parser = new Parser()
+        parser.parse('count>=10')
 
         // Find operator chars
         const operatorChars = parser.typedChars.filter(([_, type]) => type === CharType.OPERATOR)
@@ -119,7 +126,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle regex operators', () => {
-        const parser = parse('msg~pattern')
+        const parser = new Parser()
+        parser.parse('msg~pattern')
 
         const operatorChars = parser.typedChars.filter(([_, type]) => type === CharType.OPERATOR)
         expect(operatorChars).toHaveLength(1)
@@ -127,7 +135,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle complex query', () => {
-        const parser = parse('status=200 and (service=api or service=web)')
+        const parser = new Parser()
+        parser.parse('status=200 and (service=api or service=web)')
 
         // Should have all types
         const types = new Set(parser.typedChars.map(([_, type]) => type))
@@ -138,7 +147,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should preserve position information', () => {
-        const parser = parse('a=b')
+        const parser = new Parser()
+        parser.parse('a=b')
 
         expect(parser.typedChars[0][0].pos).toBe(0) // 'a'
         expect(parser.typedChars[1][0].pos).toBe(1) // '='
@@ -146,7 +156,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should assign PIPE type to pipe character in key', () => {
-        const parser = parse('host|upper=value')
+        const parser = new Parser()
+        parser.parse('host|upper=value')
 
         // h,o,s,t = KEY; | = PIPE; u,p,p,e,r = TRANSFORMER; = = OPERATOR; v,a,l,u,e = VALUE
         expect(parser.typedChars[0][1]).toBe(CharType.KEY) // h
@@ -160,7 +171,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle chained transformers', () => {
-        const parser = parse('field|lower|len>10')
+        const parser = new Parser()
+        parser.parse('field|lower|len>10')
 
         // f,i,e,l,d = KEY; | = PIPE; l,o,w,e,r = TRANSFORMER; | = PIPE; l,e,n = TRANSFORMER; > = OPERATOR; 1,0 = VALUE
         expect(parser.typedChars[4][1]).toBe(CharType.KEY) // d
@@ -174,7 +186,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should handle transformer with spaces around operator', () => {
-        const parser = parse('message|upper = "ERROR"')
+        const parser = new Parser()
+        parser.parse('message|upper = "ERROR"')
 
         // message = KEY (7); | = PIPE; upper = TRANSFORMER (5); space; = = OPERATOR; space; "ERROR" = VALUE
         const types = parser.typedChars.map(([_, type]) => type)
@@ -191,7 +204,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('retroactively retypes known function names to FUNCTION', () => {
-        const parser = parse("created_at > startOf('week')")
+        const parser = new Parser()
+        parser.parse("created_at > startOf('week')")
         const fnChars = parser.typedChars
             .filter(([_, type]) => type === CharType.FUNCTION)
             .map(([ch, _]) => ch.value)
@@ -200,7 +214,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('emits OPERATOR for function-call structural chars', () => {
-        const parser = parse("t = startOf('month', 'Asia/Tokyo')")
+        const parser = new Parser()
+        parser.parse("t = startOf('month', 'Asia/Tokyo')")
         const opRun = parser.typedChars
             .filter(([_, type]) => type === CharType.OPERATOR)
             .map(([ch, _]) => ch.value)
@@ -211,16 +226,15 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('does not retype unknown identifiers to FUNCTION', () => {
-        const parser = parse('t > startsWith')
+        const parser = new Parser()
+        parser.parse('t > startsWith')
         const hasFn = parser.typedChars.some(([_, type]) => type === CharType.FUNCTION)
         expect(hasFn).toBe(false)
     })
 
     it('captures function name correctly after retroactive retype', () => {
-        // parser.value is cleared after retype; verify the function-call AST
-        // still carries the correct name through completeFunctionCall.
-        const parser = parse('t > ago(1h)')
-        const root = parser.root
+        const result = parse('t > ago(1h)')
+        const root = result.root
         const expr = root.expression || root.left?.expression
         expect(expr).toBeDefined()
         expect(expr.value.name).toBe('ago')
@@ -239,7 +253,8 @@ describe('Parser typedChars functionality', () => {
     })
 
     it('should not use PIPE/TRANSFORMER types for keys without pipe', () => {
-        const parser = parse('status=info')
+        const parser = new Parser()
+        parser.parse('status=info')
 
         const types = new Set(parser.typedChars.map(([_, type]) => type))
         expect(types.has(CharType.PIPE)).toBe(false)
@@ -297,7 +312,8 @@ describe('Parser typedChars functionality', () => {
         const testData = loadTestData('typed_chars.json')
         testData.tests.forEach((tc) => {
             it(tc.name, () => {
-                const parser = parse(tc.input)
+                const parser = new Parser()
+                parser.parse(tc.input)
                 const actual = parser.typedChars.map(([ch, type]) => [ch.value, type])
                 expect(actual).toEqual(tc.expected_typed_chars)
             })

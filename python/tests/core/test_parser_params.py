@@ -66,7 +66,8 @@ class TestParameterCombinations:
 class TestParseFunctionParameters:
 
     def test_parse_function_with_parameters(self):
-        parser = parse("invalid$", raise_error=False, ignore_last_char=True)
+        parser = Parser()
+        parser.parse("invalid$", raise_error=False, ignore_last_char=True)
         assert parser.state == State.ERROR
 
     def test_parse_function_defaults(self):

@@ -20,7 +20,7 @@ const result = parse("status = 200 and active")
 console.log(result.root)
 ```
 
-`parse()` AST का प्रतिनिधित्व करने वाले `root` नोड के साथ एक `Parser` ऑब्जेक्ट लौटाता है। अमान्य इनपुट पर यह `ParserError` फेंकता है:
+`parse()` AST का प्रतिनिधित्व करने वाले `root` नोड के साथ एक `ParseResult` ऑब्जेक्ट लौटाता है। अमान्य इनपुट पर यह `ParserError` फेंकता है:
 
 ```javascript
 import { parse, ParserError } from 'flyql'

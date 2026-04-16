@@ -20,7 +20,7 @@ const result = parse("status = 200 and active")
 console.log(result.root)
 ```
 
-`parse()` gibt ein `Parser`-Objekt mit einem `root`-Knoten zurück, der den AST repräsentiert. Bei ungültiger Eingabe wird ein `ParserError` geworfen:
+`parse()` gibt ein `ParseResult`-Objekt mit einem `root`-Knoten zurück, der den AST repräsentiert. Bei ungültiger Eingabe wird ein `ParserError` geworfen:
 
 ```javascript
 import { parse, ParserError } from 'flyql'

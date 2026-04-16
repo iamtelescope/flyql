@@ -65,14 +65,14 @@ def load_parity_cases() -> list[dict[str, Any]]:
 
 def _ch_run(flyql_expr: str, columns: dict[str, CHColumn]) -> tuple[str, list[int]]:
     parsed = parse(flyql_expr)
-    sql_where = ch_to_sql_where(parsed.current_node, columns)
+    sql_where = ch_to_sql_where(parsed.root, columns)
     rows = ch_query(f"SELECT id FROM flyql_e2e_test WHERE {sql_where} ORDER BY id")
     return sql_where, [r["id"] for r in rows]
 
 
 def _sr_run(flyql_expr: str, columns: dict[str, SRColumn]) -> tuple[str, list[int]]:
     parsed = parse(flyql_expr)
-    sql_where = sr_to_sql_where(parsed.current_node, columns)
+    sql_where = sr_to_sql_where(parsed.root, columns)
     rows = sr_query(f"SELECT id FROM flyql_e2e_test WHERE {sql_where} ORDER BY id")
     ids: list[int] = []
     for r in rows:
@@ -85,7 +85,7 @@ def _sr_run(flyql_expr: str, columns: dict[str, SRColumn]) -> tuple[str, list[in
 
 def _pg_run(flyql_expr: str, columns: dict[str, PGColumn]) -> tuple[str, list[int]]:
     parsed = parse(flyql_expr)
-    sql_where = pg_to_sql_where(parsed.current_node, columns)
+    sql_where = pg_to_sql_where(parsed.root, columns)
     lines = pg_query(f"SELECT id FROM flyql_e2e_test WHERE {sql_where} ORDER BY id")
     return sql_where, [int(line.strip()) for line in lines if line.strip()]
 

@@ -24,7 +24,7 @@ result = parse("status = 200 and active")
 print(result.root)
 ```
 
-`parse()` retourne un objet `Parser` avec un noeud `root` representant l'AST. Elle leve une `ParserError` en cas d'entree invalide.
+`parse()` retourne un objet `ParseResult` avec un noeud `root` representant l'AST. Elle leve une `ParserError` en cas d'entree invalide.
 
 ## Generer du SQL
 

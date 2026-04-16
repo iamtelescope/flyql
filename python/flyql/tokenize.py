@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from .core.constants import CharType
-from .core.parser import parse as _parse
+from .core.parser import Parser
 
 _NUMERIC_RE = re.compile(r"^-?\d+(\.\d+)?([eE][+-]?\d+)?$")
 
@@ -46,7 +46,8 @@ def tokenize(text: str, mode: str = "query") -> List[Token]:
     if not text:
         return []
 
-    parser = _parse(text, raise_error=False)
+    parser = Parser()
+    parser.parse(text, raise_error=False)
     typed_chars = parser.typed_chars
 
     groups: List[Dict[str, Any]] = []

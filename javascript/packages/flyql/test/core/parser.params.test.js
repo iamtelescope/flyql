@@ -68,7 +68,8 @@ describe('parameter combinations', () => {
 
 describe('parse function parameters', () => {
     it('should pass parameters to Parser.parse', () => {
-        const parser = parse('invalid$', false, true)
+        const parser = new Parser()
+        parser.parse('invalid$', false, true)
         expect(parser.state).toBe(State.ERROR)
     })
 

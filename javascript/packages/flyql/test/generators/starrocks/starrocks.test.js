@@ -30,7 +30,6 @@ function runTestSuite(fixtureName) {
         for (const tc of fixture.tests) {
             it(tc.name, () => {
                 const result = parse(tc.input)
-                if (result.error) throw new Error(`Parse error: ${result.error}`)
 
                 if (tc.expected_result === 'success') {
                     const sql = generateWhere(result.root, columns)

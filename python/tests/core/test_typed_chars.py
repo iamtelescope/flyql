@@ -1,12 +1,13 @@
 import pytest
-from flyql.core.parser import parse
+from flyql.core.parser import Parser, parse
 from flyql.core.constants import CharType
 from tests.core.helpers import load_test_data
 
 
 class TestTypedChars:
     def test_simple_expression(self):
-        parser = parse("key=value")
+        parser = Parser()
+        parser.parse("key=value")
 
         assert len(parser.typed_chars) == 9  # k,e,y,=,v,a,l,u,e
 
@@ -27,7 +28,8 @@ class TestTypedChars:
         assert parser.typed_chars[4][0].value == "v"
 
     def test_spaces_handling(self):
-        parser = parse("key = value")
+        parser = Parser()
+        parser.parse("key = value")
 
         # Find all space chars
         space_chars = [
@@ -42,7 +44,8 @@ class TestTypedChars:
         assert parser.typed_chars[5][1] == CharType.SPACE  # After '='
 
     def test_quoted_strings(self):
-        parser = parse('name="john doe"')
+        parser = Parser()
+        parser.parse('name="john doe"')
 
         # Find all value chars
         value_chars = [
@@ -60,7 +63,8 @@ class TestTypedChars:
         assert value_chars[5][0].value == " "
 
     def test_single_quoted_strings(self):
-        parser = parse("name='john'")
+        parser = Parser()
+        parser.parse("name='john'")
 
         value_chars = [
             (char, char_type)
@@ -73,7 +77,8 @@ class TestTypedChars:
         assert value_chars[-1][0].value == "'"
 
     def test_boolean_operators(self):
-        parser = parse("a=1 and b=2")
+        parser = Parser()
+        parser.parse("a=1 and b=2")
 
         # Find operator chars for 'and'
         operator_positions = []
@@ -85,7 +90,8 @@ class TestTypedChars:
         assert len(operator_positions) >= 3
 
     def test_parentheses(self):
-        parser = parse("(key=value)")
+        parser = Parser()
+        parser.parse("(key=value)")
 
         # First char should be operator (open paren)
         assert parser.typed_chars[0][1] == CharType.OPERATOR
@@ -96,7 +102,8 @@ class TestTypedChars:
         assert parser.typed_chars[-1][0].value == ")"
 
     def test_complex_operators(self):
-        parser = parse("count>=10")
+        parser = Parser()
+        parser.parse("count>=10")
 
         # Find operator chars
         operator_chars = [
@@ -109,7 +116,8 @@ class TestTypedChars:
         assert operator_chars[1][0].value == "="
 
     def test_regex_operators(self):
-        parser = parse("msg~pattern")
+        parser = Parser()
+        parser.parse("msg~pattern")
 
         operator_chars = [
             (char, char_type)
@@ -120,7 +128,8 @@ class TestTypedChars:
         assert operator_chars[0][0].value == "~"
 
     def test_not_regex_operator(self):
-        parser = parse("msg!~pattern")
+        parser = Parser()
+        parser.parse("msg!~pattern")
 
         operator_chars = [
             (char, char_type)
@@ -132,7 +141,8 @@ class TestTypedChars:
         assert operator_chars[1][0].value == "~"
 
     def test_complex_query(self):
-        parser = parse("status=200 and (service=api or service=web)")
+        parser = Parser()
+        parser.parse("status=200 and (service=api or service=web)")
 
         # Check all types are present
         char_types = set(char_type for _, char_type in parser.typed_chars)
@@ -142,14 +152,16 @@ class TestTypedChars:
         assert CharType.SPACE in char_types
 
     def test_position_preservation(self):
-        parser = parse("a=b")
+        parser = Parser()
+        parser.parse("a=b")
 
         assert parser.typed_chars[0][0].pos == 0  # 'a'
         assert parser.typed_chars[1][0].pos == 1  # '='
         assert parser.typed_chars[2][0].pos == 2  # 'b'
 
     def test_nested_keys(self):
-        parser = parse("user:name=john")
+        parser = Parser()
+        parser.parse("user:name=john")
 
         # All chars in 'user:name' should be KEY type
         key_chars = []
@@ -162,7 +174,8 @@ class TestTypedChars:
         assert "".join(key_chars) == "user:name"
 
     def test_empty_value(self):
-        parser = parse("key=")
+        parser = Parser()
+        parser.parse("key=")
 
         # Should have key and operator but no value chars
         char_types = [char_type for _, char_type in parser.typed_chars]
@@ -171,7 +184,8 @@ class TestTypedChars:
         # No VALUE type chars expected for empty value
 
     def test_line_position_tracking(self):
-        parser = parse("a=1 and \nb=2")
+        parser = Parser()
+        parser.parse("a=1 and \nb=2")
 
         # Find newline position
         newline_pos = None
@@ -186,14 +200,16 @@ class TestTypedChars:
                 assert char.line == 1
 
     def test_function_retroactive_retype(self):
-        parser = parse("created_at > startOf('week')")
+        parser = Parser()
+        parser.parse("created_at > startOf('week')")
         fn_chars = "".join(
             c.value for c, ct in parser.typed_chars if ct == CharType.FUNCTION
         )
         assert fn_chars == "startOf"
 
     def test_function_structural_chars_are_operators(self):
-        parser = parse("t = startOf('month', 'Asia/Tokyo')")
+        parser = Parser()
+        parser.parse("t = startOf('month', 'Asia/Tokyo')")
         ops = "".join(
             c.value for c, ct in parser.typed_chars if ct == CharType.OPERATOR
         )
@@ -202,19 +218,18 @@ class TestTypedChars:
         assert ")" in ops
 
     def test_unknown_identifier_not_retyped_function(self):
-        parser = parse("t > startsWith")
+        parser = Parser()
+        parser.parse("t > startsWith")
         assert not any(ct == CharType.FUNCTION for _, ct in parser.typed_chars)
 
     def test_function_name_captured_after_retype(self):
-        parser = parse("t > ago(1h)")
-        root = parser.root
+        result = parse("t > ago(1h)")
+        root = result.root
         expr = root.expression if root.expression is not None else root.left.expression
         assert expr is not None
         assert expr.value.name == "ago"
 
     def test_mid_typing_function_call_retype(self):
-        from flyql.core.parser import Parser
-
         parser = Parser()
         parser.parse("t > ago(", raise_error=False)
         fn_chars = "".join(
@@ -285,6 +300,7 @@ _fixture_data = load_test_data("typed_chars.json")
     ids=[tc["name"] for tc in _fixture_data["tests"]],
 )
 def test_typed_chars_shared_fixture(test_case):
-    parser = parse(test_case["input"])
+    parser = Parser()
+    parser.parse(test_case["input"])
     actual = [[c.value, ct.value] for c, ct in parser.typed_chars]
     assert actual == test_case["expected_typed_chars"]

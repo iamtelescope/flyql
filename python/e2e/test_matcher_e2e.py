@@ -53,7 +53,7 @@ def match_row(query: str, data: dict[str, Any]) -> bool:
     result = parse(query)
     evaluator = Evaluator()
     record = Record(data)
-    return evaluator.evaluate(result.current_node, record)
+    return evaluator.evaluate(result.root, record)
 
 
 def ids_match(expected: list[int], got: list[int]) -> bool:

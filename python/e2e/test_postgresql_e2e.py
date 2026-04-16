@@ -161,7 +161,7 @@ def test_postgresql_where(
 
     try:
         parsed = parse(flyql)
-        sql_where = to_sql_where(parsed.current_node, columns)
+        sql_where = to_sql_where(parsed.root, columns)
         result["sql"] = sql_where
 
         query = f"SELECT id FROM flyql_e2e_test WHERE {sql_where} ORDER BY id"
@@ -281,7 +281,7 @@ def test_postgresql_join(
 
     try:
         parsed = parse(flyql)
-        sql_where = to_sql_where(parsed.current_node, join_columns)
+        sql_where = to_sql_where(parsed.root, join_columns)
         result["sql"] = sql_where
 
         query = f"SELECT t.id FROM flyql_e2e_test t INNER JOIN flyql_e2e_related r ON t.id = r.test_id WHERE {sql_where} ORDER BY t.id"

@@ -1,4 +1,4 @@
-from flyql.core.parser import Parser, ParserError, parse
+from flyql.core.parser import Parser, ParserError, ParseResult, parse
 from flyql.core.tree import Node
 from flyql.core.expression import Expression
 from flyql.core.key import Key, Transformer, parse_key
@@ -12,6 +12,7 @@ __all__ = [
     "parse",
     "Parser",
     "ParserError",
+    "ParseResult",
     "Node",
     "Expression",
     "Key",

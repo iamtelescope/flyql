@@ -24,7 +24,7 @@ result = parse("status = 200 and active")
 print(result.root)
 ```
 
-`parse()` は、AST を表す `root` ノードを持つ `Parser` オブジェクトを返します。入力が不正な場合は `ParserError` を送出します。
+`parse()` は、AST を表す `root` ノードを持つ `ParseResult` オブジェクトを返します。入力が不正な場合は `ParserError` を送出します。
 
 ## SQL を生成する
 

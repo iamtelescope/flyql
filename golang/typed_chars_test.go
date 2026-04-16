@@ -34,18 +34,18 @@ func TestTypedCharsSharedFixtures(t *testing.T) {
 
 	for _, tc := range testFile.Tests {
 		t.Run(tc.Name, func(t *testing.T) {
-			result, err := Parse(tc.Input)
-			if err != nil {
+			p := NewParser()
+			if err := p.Parse(tc.Input); err != nil {
 				t.Fatalf("parse error for %q: %v", tc.Input, err)
 			}
 
-			if len(result.TypedChars) != len(tc.ExpectedTypedChars) {
+			if len(p.TypedChars) != len(tc.ExpectedTypedChars) {
 				t.Fatalf("typed chars length mismatch for %q: got %d, want %d",
-					tc.Input, len(result.TypedChars), len(tc.ExpectedTypedChars))
+					tc.Input, len(p.TypedChars), len(tc.ExpectedTypedChars))
 			}
 
 			for i, expected := range tc.ExpectedTypedChars {
-				actual := result.TypedChars[i]
+				actual := p.TypedChars[i]
 				actualValue := string(actual.Value)
 				if actualValue != expected[0] || actual.Type != expected[1] {
 					t.Errorf("typed char [%d] for %q: got [%q, %q], want [%q, %q]",
@@ -57,12 +57,12 @@ func TestTypedCharsSharedFixtures(t *testing.T) {
 }
 
 func TestTypedCharsFunctionRetroactiveRetype(t *testing.T) {
-	result, err := Parse("created_at > startOf('week')")
-	if err != nil {
+	p := NewParser()
+	if err := p.Parse("created_at > startOf('week')"); err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 	var fn strings.Builder
-	for _, tc := range result.TypedChars {
+	for _, tc := range p.TypedChars {
 		if tc.Type == CharTypeFunction {
 			fn.WriteRune(tc.Value)
 		}
@@ -74,14 +74,14 @@ func TestTypedCharsFunctionRetroactiveRetype(t *testing.T) {
 
 func TestTypedCharsFunctionStructuralChars(t *testing.T) {
 	input := "t = startOf('month', 'Asia/Tokyo')"
-	result, err := Parse(input)
-	if err != nil {
+	p := NewParser()
+	if err := p.Parse(input); err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 	// Expected OPERATOR positions (0-indexed): 2 (=), 11 ((), 19 (,), 33 ())
 	wantOpPositions := map[int]rune{2: '=', 11: '(', 19: ',', 33: ')'}
 	gotOps := make(map[int]rune)
-	for _, tc := range result.TypedChars {
+	for _, tc := range p.TypedChars {
 		if tc.Type == CharTypeOperator {
 			gotOps[tc.Pos] = tc.Value
 		}
@@ -97,11 +97,11 @@ func TestTypedCharsFunctionStructuralChars(t *testing.T) {
 }
 
 func TestTypedCharsUnknownIdentifierNotFunction(t *testing.T) {
-	result, err := Parse("t > startsWith")
-	if err != nil {
+	p := NewParser()
+	if err := p.Parse("t > startsWith"); err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
-	for _, tc := range result.TypedChars {
+	for _, tc := range p.TypedChars {
 		if tc.Type == CharTypeFunction {
 			t.Errorf("unexpected FUNCTION type for unknown identifier")
 		}
@@ -185,17 +185,17 @@ func TestDurationOrderingInvalid(t *testing.T) {
 }
 
 func TestTypedCharsPositionTracking(t *testing.T) {
-	result, err := Parse("key=value")
-	if err != nil {
+	p := NewParser()
+	if err := p.Parse("key=value"); err != nil {
 		t.Fatalf("parse error: %v", err)
 	}
 
-	if len(result.TypedChars) != 9 {
-		t.Fatalf("expected 9 typed chars, got %d", len(result.TypedChars))
+	if len(p.TypedChars) != 9 {
+		t.Fatalf("expected 9 typed chars, got %d", len(p.TypedChars))
 	}
 
 	// Verify positions
-	for i, tc := range result.TypedChars {
+	for i, tc := range p.TypedChars {
 		if tc.Pos != i {
 			t.Errorf("typed char [%d] pos: got %d, want %d", i, tc.Pos, i)
 		}
@@ -214,8 +214,8 @@ func TestTypedCharsPositionTracking(t *testing.T) {
 		CharTypeValue, CharTypeValue, CharTypeValue, CharTypeValue, CharTypeValue, // v, a, l, u, e
 	}
 	for i, et := range expectedTypes {
-		if result.TypedChars[i].Type != et {
-			t.Errorf("typed char [%d] type: got %q, want %q", i, result.TypedChars[i].Type, et)
+		if p.TypedChars[i].Type != et {
+			t.Errorf("typed char [%d] type: got %q, want %q", i, p.TypedChars[i].Type, et)
 		}
 	}
 }

@@ -2402,8 +2402,14 @@ export class Parser {
     }
 }
 
+export class ParseResult {
+    constructor(root) {
+        this.root = root
+    }
+}
+
 export function parse(text, raiseError = true, ignoreLastChar = false) {
     const parser = new Parser()
     parser.parse(text, raiseError, ignoreLastChar)
-    return parser
+    return new ParseResult(parser.root)
 }

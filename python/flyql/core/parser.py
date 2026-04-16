@@ -2268,11 +2268,18 @@ class Parser:
         self.root = self.current_node
 
 
+class ParseResult:
+    __slots__ = ("root",)
+
+    def __init__(self, root: Optional[Node]) -> None:
+        self.root = root
+
+
 def parse(
     text: str, raise_error: bool = True, ignore_last_char: bool = False
-) -> Parser:
+) -> ParseResult:
     """
-    Parse the given text and return a Parser instance.
+    Parse the given text and return a ParseResult with the AST root node.
 
     Args:
         text: The text to parse
@@ -2281,4 +2288,4 @@ def parse(
     """
     parser = Parser()
     parser.parse(text, raise_error, ignore_last_char)
-    return parser
+    return ParseResult(root=parser.root)

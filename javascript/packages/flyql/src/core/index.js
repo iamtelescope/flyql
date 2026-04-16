@@ -1,4 +1,4 @@
-export { Parser, parse } from './parser.js'
+export { Parser, ParseResult, parse } from './parser.js'
 export { Expression, FunctionCall, Duration, Parameter } from './expression.js'
 export { Key, KeyParser, parseKey } from './key.js'
 export { Node } from './tree.js'

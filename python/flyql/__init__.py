@@ -1,4 +1,4 @@
-from .core.parser import Parser, ParserError, parse
+from .core.parser import Parser, ParserError, ParseResult, parse
 from .core.tree import Node
 from .core.expression import Expression, FunctionCall, Duration, Parameter
 from .bind import bind_params
@@ -26,6 +26,7 @@ __all__ = [
     "parse",
     "Parser",
     "ParserError",
+    "ParseResult",
     "Node",
     "Expression",
     "FunctionCall",

@@ -49,7 +49,7 @@
       "name": "not_has_json_column",
       "input": "new_json not has 'key'",
       "expected_result": "success",
-      "expected_sql": "NOT JSONHas(toJSONString(new_json), 'key')"
+      "expected_sql": "(new_json IS NOT NULL AND NOT JSONHas(toJSONString(new_json), 'key'))"
     },
     {
       "name": "has_jsonstring_column",
@@ -61,7 +61,7 @@
       "name": "not_has_jsonstring_column",
       "input": "json_column not has 'key'",
       "expected_result": "success",
-      "expected_sql": "NOT JSONHas(json_column, 'key')"
+      "expected_sql": "(json_column IS NOT NULL AND NOT JSONHas(json_column, 'key'))"
     },
     {
       "name": "has_with_and",

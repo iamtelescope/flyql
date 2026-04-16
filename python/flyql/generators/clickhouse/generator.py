@@ -395,7 +395,8 @@ def in_expression_to_sql_where(
                         f"JSONType({col_id}, {json_path_str}) = 'Bool', JSONExtractBool({col_id}, {json_path_str}) IN ({values_sql})",  # pylint: disable=line-too-long
                     ]
                 )
-            multi_if.append("0")
+            fallback = "1" if is_not_in else "0"
+            multi_if.append(fallback)
             multi_if_str = ",".join(multi_if)
             not_prefix = "NOT " if is_not_in else ""
             text = f"{not_prefix}multiIf({multi_if_str})"
@@ -410,7 +411,10 @@ def in_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"{leaf_expr} {sql_op} ({values_sql})"
+            result = f"{leaf_expr} {sql_op} ({values_sql})"
+            if is_not_in:
+                result = f"(mapContains({col_id}, {escaped_map_key}) AND {result})"
+            return result
         elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -425,7 +429,10 @@ def in_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"{leaf_expr} {sql_op} ({values_sql})"
+            result = f"{leaf_expr} {sql_op} ({values_sql})"
+            if is_not_in:
+                result = f"(length({col_id}) >= {sql_index} AND {result})"
+            return result
         else:
             raise FlyqlError("path search for unsupported column type")
     else:
@@ -494,7 +501,7 @@ def has_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             if is_not_has:
-                return f"position({leaf_expr}, {value}) = 0"
+                return f"(mapContains({col_id}, {escaped_map_key}) AND position({leaf_expr}, {value}) = 0)"
             return f"position({leaf_expr}, {value}) > 0"
         elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
@@ -511,7 +518,7 @@ def has_expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             if is_not_has:
-                return f"position({leaf_expr}, {value}) = 0"
+                return f"(length({col_id}) >= {sql_index} AND position({leaf_expr}, {value}) = 0)"
             return f"position({leaf_expr}, {value}) > 0"
         else:
             raise FlyqlError("path search for unsupported column type")
@@ -538,11 +545,11 @@ def has_expression_to_sql_where(
         return f"mapContains({col_ref}, {value})"
     elif column.flyql_type == Type.JSON:
         if is_not_has:
-            return f"NOT JSONHas(toJSONString({col_ref}), {value})"
+            return f"({col_ref} IS NOT NULL AND NOT JSONHas(toJSONString({col_ref}), {value}))"
         return f"JSONHas(toJSONString({col_ref}), {value})"
     elif column.flyql_type == Type.JSONString:
         if is_not_has:
-            return f"NOT JSONHas({col_ref}, {value})"
+            return f"({col_ref} IS NOT NULL AND NOT JSONHas({col_ref}, {value}))"
         return f"JSONHas({col_ref}, {value})"
     elif column.flyql_type == Type.String:
         if is_not_has:
@@ -633,7 +640,10 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"{func_name}({leaf_expr}, {value})"
+            result = f"{func_name}({leaf_expr}, {value})"
+            if is_negated_like:
+                result = f"(mapContains({col_id}, {escaped_map_key}) AND {result})"
+            return result
         elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -648,7 +658,10 @@ def like_expression_to_sql_where(
                 leaf_expr = apply_transformer_sql(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
-            return f"{func_name}({leaf_expr}, {value})"
+            result = f"{func_name}({leaf_expr}, {value})"
+            if is_negated_like:
+                result = f"(length({col_id}) >= {sql_index} AND {result})"
+            return result
         else:
             raise FlyqlError("path search for unsupported column type")
 
@@ -865,7 +878,10 @@ def expression_to_sql_where(
                                 f"JSONType({col_id}, {json_path_str}) = 'Bool', {func}(JSONExtractBool({col_id}, {json_path_str}), {expression.value})",  # pylint: disable=line-too-long
                             ]
                         )
-                    multi_if.append("0")
+                    fallback = (
+                        "1" if expression.operator == Operator.NOT_REGEX.value else "0"
+                    )
+                    multi_if.append(fallback)
                     multi_if_str = ",".join(multi_if)
                     text = f"{reverse_operator}multiIf({multi_if_str})"
             if expression.operator in (
@@ -906,6 +922,11 @@ def expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             text = f"{reverse_operator}{func}({leaf_expr}, {value})"
+            if expression.operator in (
+                Operator.NOT_EQUALS.value,
+                Operator.NOT_REGEX.value,
+            ):
+                text = f"(mapContains({col_id}, {escaped_map_key}) AND {text})"
         elif column.flyql_type == Type.Array:
             array_index_str = ".".join(expression.key.segments[1:])
             try:
@@ -925,6 +946,11 @@ def expression_to_sql_where(
                     leaf_expr, expression.key.transformers, "clickhouse"
                 )
             text = f"{reverse_operator}{func}({leaf_expr}, {value})"
+            if expression.operator in (
+                Operator.NOT_EQUALS.value,
+                Operator.NOT_REGEX.value,
+            ):
+                text = f"(length({col_id}) >= {sql_index} AND {text})"
         else:
             raise FlyqlError("path search for unsupported column type")
 

@@ -348,7 +348,8 @@ function expressionToSQLSegmented(expr, columns) {
                         `JSONType(${colId}, ${jsonPathStr}) = 'Bool', ${funcName}(JSONExtractBool(${colId}, ${jsonPathStr}), ${numValue})`,
                     )
                 }
-                multiIf.push('0')
+                const fallback = expr.operator === Operator.NOT_REGEX ? '1' : '0'
+                multiIf.push(fallback)
                 text = `${reverseOperator}multiIf(${multiIf.join(',')})`
             }
         }
@@ -391,7 +392,11 @@ function expressionToSQLSegmented(expr, columns) {
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
-        return `${reverseOperator}${funcName}(${leafExpr}, ${value})`
+        let text = `${reverseOperator}${funcName}(${leafExpr}, ${value})`
+        if (expr.operator === Operator.NOT_EQUALS || expr.operator === Operator.NOT_REGEX) {
+            text = `(mapContains(${colId}, ${escapedMapKey}) AND ${text})`
+        }
+        return text
     } else if (column.flyqlType() === Type.Array) {
         const arrayIndexStr = expr.key.segments.slice(1).join('.')
         const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -408,7 +413,11 @@ function expressionToSQLSegmented(expr, columns) {
         if (hasTransformers) {
             leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
         }
-        return `${reverseOperator}${funcName}(${leafExpr}, ${value})`
+        let text = `${reverseOperator}${funcName}(${leafExpr}, ${value})`
+        if (expr.operator === Operator.NOT_EQUALS || expr.operator === Operator.NOT_REGEX) {
+            text = `(length(${colId}) >= ${sqlIndex} AND ${text})`
+        }
+        return text
     } else {
         throw new Error('path search for unsupported column type')
     }
@@ -496,7 +505,8 @@ function inExpressionToSQL(expr, columns) {
                     `JSONType(${colId}, ${jsonPathStr}) = 'Bool', JSONExtractBool(${colId}, ${jsonPathStr}) IN (${valuesSQL})`,
                 )
             }
-            multiIf.push('0')
+            const fallback = isNotIn ? '1' : '0'
+            multiIf.push(fallback)
             const notPrefix = isNotIn ? 'NOT ' : ''
             let text = `${notPrefix}multiIf(${multiIf.join(',')})`
             if (isNotIn) {
@@ -510,7 +520,11 @@ function inExpressionToSQL(expr, columns) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${leafExpr} ${sqlOp} (${valuesSQL})`
+            let result = `${leafExpr} ${sqlOp} (${valuesSQL})`
+            if (isNotIn) {
+                result = `(mapContains(${colId}, ${escapedMapKey}) AND ${result})`
+            }
+            return result
         } else if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
             const arrayIndex = parseInt(arrayIndexStr, 10)
@@ -522,7 +536,11 @@ function inExpressionToSQL(expr, columns) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${leafExpr} ${sqlOp} (${valuesSQL})`
+            let result = `${leafExpr} ${sqlOp} (${valuesSQL})`
+            if (isNotIn) {
+                result = `(length(${colId}) >= ${sqlIndex} AND ${result})`
+            }
+            return result
         } else {
             throw new Error('path search for unsupported column type')
         }
@@ -755,7 +773,7 @@ function hasExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             if (isNotHas) {
-                return `position(${leafExpr}, ${value}) = 0`
+                return `(mapContains(${colId}, ${escapedMapKey}) AND position(${leafExpr}, ${value}) = 0)`
             }
             return `position(${leafExpr}, ${value}) > 0`
         } else if (column.flyqlType() === Type.Array) {
@@ -770,7 +788,7 @@ function hasExpressionToSQL(expr, columns) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
             if (isNotHas) {
-                return `position(${leafExpr}, ${value}) = 0`
+                return `(length(${colId}) >= ${sqlIndex} AND position(${leafExpr}, ${value}) = 0)`
             }
             return `position(${leafExpr}, ${value}) > 0`
         } else {
@@ -806,14 +824,14 @@ function hasExpressionToSQL(expr, columns) {
 
     if (column.flyqlType() === Type.JSON) {
         if (isNotHas) {
-            return `NOT JSONHas(toJSONString(${colRef}), ${value})`
+            return `(${colRef} IS NOT NULL AND NOT JSONHas(toJSONString(${colRef}), ${value}))`
         }
         return `JSONHas(toJSONString(${colRef}), ${value})`
     }
 
     if (column.flyqlType() === Type.JSONString) {
         if (isNotHas) {
-            return `NOT JSONHas(${colRef}, ${value})`
+            return `(${colRef} IS NOT NULL AND NOT JSONHas(${colRef}, ${value}))`
         }
         return `JSONHas(${colRef}, ${value})`
     }
@@ -908,7 +926,11 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${funcName}(${leafExpr}, ${value})`
+            let result = `${funcName}(${leafExpr}, ${value})`
+            if (isNegatedLike) {
+                result = `(mapContains(${colId}, ${escapedMapKey}) AND ${result})`
+            }
+            return result
         }
         if (column.flyqlType() === Type.Array) {
             const arrayIndexStr = expr.key.segments.slice(1).join('.')
@@ -919,7 +941,11 @@ function likeExpressionToSQL(expr, columns, registry = null) {
             if (hasTransformers) {
                 leafExpr = applyTransformerSQL(leafExpr, expr.key.transformers, 'clickhouse')
             }
-            return `${funcName}(${leafExpr}, ${value})`
+            let result = `${funcName}(${leafExpr}, ${value})`
+            if (isNegatedLike) {
+                result = `(length(${colId}) >= ${sqlIndex} AND ${result})`
+            }
+            return result
         }
         throw new Error('path search for unsupported column type')
     }

@@ -451,7 +451,11 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 						colIdent, jsonPathStr, colIdent, jsonPathStr, valuesSQL),
 				)
 			}
-			multiIf = append(multiIf, "0")
+			fallback := "0"
+			if isNotIn {
+				fallback = "1"
+			}
+			multiIf = append(multiIf, fallback)
 			notPrefix := ""
 			if isNotIn {
 				notPrefix = "NOT "
@@ -475,7 +479,11 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
+			result := fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL)
+			if isNotIn {
+				result = fmt.Sprintf("(mapContains(%s, %s) AND %s)", getIdentifier(column), escapedMapKey, result)
+			}
+			return result, nil
 		} else if column.FlyQLType() == flyqltype.Array {
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -491,7 +499,11 @@ func inExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column) 
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL), nil
+			result := fmt.Sprintf("%s %s (%s)", leafExpr, sqlOp, valuesSQL)
+			if isNotIn {
+				result = fmt.Sprintf("(length(%s) >= %d AND %s)", getIdentifier(column), sqlIndex, result)
+			}
+			return result, nil
 		} else {
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -605,7 +617,7 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 				}
 			}
 			if isNotHas {
-				return fmt.Sprintf("position(%s, %s) = 0", leafExpr, value), nil
+				return fmt.Sprintf("(mapContains(%s, %s) AND position(%s, %s) = 0)", getIdentifier(column), escapedMapKey, leafExpr, value), nil
 			}
 			return fmt.Sprintf("position(%s, %s) > 0", leafExpr, value), nil
 		} else if column.FlyQLType() == flyqltype.Array {
@@ -624,7 +636,7 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 				}
 			}
 			if isNotHas {
-				return fmt.Sprintf("position(%s, %s) = 0", leafExpr, value), nil
+				return fmt.Sprintf("(length(%s) >= %d AND position(%s, %s) = 0)", getIdentifier(column), sqlIndex, leafExpr, value), nil
 			}
 			return fmt.Sprintf("position(%s, %s) > 0", leafExpr, value), nil
 		} else {
@@ -665,12 +677,12 @@ func hasExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column)
 		return fmt.Sprintf("mapContains(%s, %s)", colRef, value), nil
 	} else if column.FlyQLType() == flyqltype.JSON {
 		if isNotHas {
-			return fmt.Sprintf("NOT JSONHas(toJSONString(%s), %s)", colRef, value), nil
+			return fmt.Sprintf("(%s IS NOT NULL AND NOT JSONHas(toJSONString(%s), %s))", colRef, colRef, value), nil
 		}
 		return fmt.Sprintf("JSONHas(toJSONString(%s), %s)", colRef, value), nil
 	} else if column.FlyQLType() == flyqltype.JSONString {
 		if isNotHas {
-			return fmt.Sprintf("NOT JSONHas(%s, %s)", colRef, value), nil
+			return fmt.Sprintf("(%s IS NOT NULL AND NOT JSONHas(%s, %s))", colRef, colRef, value), nil
 		}
 		return fmt.Sprintf("JSONHas(%s, %s)", colRef, value), nil
 	} else if column.FlyQLType() == flyqltype.String {
@@ -1094,7 +1106,11 @@ func likeExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value), nil
+			result := fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value)
+			if isNegatedLike {
+				result = fmt.Sprintf("(mapContains(%s, %s) AND %s)", colID, escapedMapKey, result)
+			}
+			return result, nil
 		case flyqltype.Array:
 			arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
 			arrayIndex, err := strconv.Atoi(arrayIndexStr)
@@ -1109,7 +1125,11 @@ func likeExpressionToSQLWhere(expr *flyql.Expression, columns map[string]*Column
 					return "", err
 				}
 			}
-			return fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value), nil
+			result := fmt.Sprintf("%s(%s, %s)", funcName, leafExpr, value)
+			if isNegatedLike {
+				result = fmt.Sprintf("(length(%s) >= %d AND %s)", colID, sqlIndex, result)
+			}
+			return result, nil
 		default:
 			return "", fmt.Errorf("path search for unsupported column type")
 		}
@@ -1249,7 +1269,11 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 							colIdent, jsonPathStr, funcName, colIdent, jsonPathStr, numValue),
 					)
 				}
-				multiIf = append(multiIf, "0")
+				fallback := "0"
+				if expr.Operator == flyql.OpNotRegex {
+					fallback = "1"
+				}
+				multiIf = append(multiIf, fallback)
 				text = fmt.Sprintf("%smultiIf(%s)", reverseOperator, strings.Join(multiIf, ","))
 			}
 		}
@@ -1324,7 +1348,11 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				return "", err
 			}
 		}
-		return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, value), nil
+		text := fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, value)
+		if expr.Operator == flyql.OpNotEquals || expr.Operator == flyql.OpNotRegex {
+			text = fmt.Sprintf("(mapContains(%s, %s) AND %s)", getIdentifier(column), escapedMapKey, text)
+		}
+		return text, nil
 
 	} else if column.FlyQLType() == flyqltype.Array {
 		arrayIndexStr := strings.Join(expr.Key.Segments[1:], ".")
@@ -1352,7 +1380,11 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 				return "", err
 			}
 		}
-		return fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, value), nil
+		text := fmt.Sprintf("%s%s(%s, %s)", reverseOperator, funcName, leafExpr, value)
+		if expr.Operator == flyql.OpNotEquals || expr.Operator == flyql.OpNotRegex {
+			text = fmt.Sprintf("(length(%s) >= %d AND %s)", getIdentifier(column), sqlIndex, text)
+		}
+		return text, nil
 
 	} else {
 		return "", fmt.Errorf("path search for unsupported column type")

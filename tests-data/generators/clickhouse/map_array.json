@@ -19,7 +19,7 @@
       "name": "map_not_equals",
       "input": "metadata.key1!='value1'",
       "expected_result": "success",
-      "expected_sql": "notEquals(metadata['key1'], 'value1')"
+      "expected_sql": "(mapContains(metadata, 'key1') AND notEquals(metadata['key1'], 'value1'))"
     },
     {
       "name": "map_regex_match",
@@ -31,7 +31,7 @@
       "name": "map_regex_not_match",
       "input": "metadata.pattern!~'test.*'",
       "expected_result": "success",
-      "expected_sql": "NOT match(metadata['pattern'], 'test.*')"
+      "expected_sql": "(mapContains(metadata, 'pattern') AND NOT match(metadata['pattern'], 'test.*'))"
     },
     {
       "name": "array_index_0",
@@ -49,13 +49,19 @@
       "name": "array_not_equals",
       "input": "tags.0!='excluded'",
       "expected_result": "success",
-      "expected_sql": "notEquals(tags[1], 'excluded')"
+      "expected_sql": "(length(tags) >= 1 AND notEquals(tags[1], 'excluded'))"
     },
     {
       "name": "array_regex_match",
       "input": "tags.0~'tag.*'",
       "expected_result": "success",
       "expected_sql": "match(tags[1], 'tag.*')"
+    },
+    {
+      "name": "array_regex_not_match",
+      "input": "tags.0!~'tag.*'",
+      "expected_result": "success",
+      "expected_sql": "(length(tags) >= 1 AND NOT match(tags[1], 'tag.*'))"
     },
     {
       "name": "map_key_with_single_quote",
@@ -79,7 +85,7 @@
       "name": "map_not_like",
       "input": "metadata.region not like 'us-%'",
       "expected_result": "success",
-      "expected_sql": "notLike(metadata['region'], 'us-%')"
+      "expected_sql": "(mapContains(metadata, 'region') AND notLike(metadata['region'], 'us-%'))"
     },
     {
       "name": "map_ilike",
@@ -91,7 +97,7 @@
       "name": "map_not_ilike",
       "input": "metadata.region not ilike 'US-%'",
       "expected_result": "success",
-      "expected_sql": "notILike(metadata['region'], 'US-%')"
+      "expected_sql": "(mapContains(metadata, 'region') AND notILike(metadata['region'], 'US-%'))"
     },
     {
       "name": "array_like",
@@ -103,7 +109,7 @@
       "name": "array_not_like",
       "input": "tags.0 not like 'w%'",
       "expected_result": "success",
-      "expected_sql": "notLike(tags[1], 'w%')"
+      "expected_sql": "(length(tags) >= 1 AND notLike(tags[1], 'w%'))"
     },
     {
       "name": "array_ilike",
@@ -115,7 +121,7 @@
       "name": "array_not_ilike",
       "input": "tags.0 not ilike 'W%'",
       "expected_result": "success",
-      "expected_sql": "notILike(tags[1], 'W%')"
+      "expected_sql": "(length(tags) >= 1 AND notILike(tags[1], 'W%'))"
     },
     {
       "name": "map_has",
@@ -127,7 +133,7 @@
       "name": "map_not_has",
       "input": "metadata.region not has 'us'",
       "expected_result": "success",
-      "expected_sql": "position(metadata['region'], 'us') = 0"
+      "expected_sql": "(mapContains(metadata, 'region') AND position(metadata['region'], 'us') = 0)"
     },
     {
       "name": "map_truthy",
@@ -151,7 +157,7 @@
       "name": "map_not_in",
       "input": "metadata.region not in ['us', 'eu']",
       "expected_result": "success",
-      "expected_sql": "metadata['region'] NOT IN ('us', 'eu')"
+      "expected_sql": "(mapContains(metadata, 'region') AND metadata['region'] NOT IN ('us', 'eu'))"
     },
     {
       "name": "map_gt",
@@ -187,7 +193,7 @@
       "name": "array_not_has",
       "input": "tags.0 not has 'web'",
       "expected_result": "success",
-      "expected_sql": "position(tags[1], 'web') = 0"
+      "expected_sql": "(length(tags) >= 1 AND position(tags[1], 'web') = 0)"
     },
     {
       "name": "array_truthy",
@@ -211,7 +217,7 @@
       "name": "array_not_in",
       "input": "tags.0 not in ['web', 'api']",
       "expected_result": "success",
-      "expected_sql": "tags[1] NOT IN ('web', 'api')"
+      "expected_sql": "(length(tags) >= 1 AND tags[1] NOT IN ('web', 'api'))"
     },
     {
       "name": "array_gt",

@@ -89,7 +89,7 @@
       "name": "jsonstring_regex_not_match",
       "input": "json_column.message!~'error.*'",
       "expected_result": "success",
-      "expected_sql": "(JSONHas(json_column, 'message') AND NOT multiIf(JSONType(json_column, 'message') = 'String', match(JSONExtractString(json_column, 'message'), 'error.*'),0))"
+      "expected_sql": "(JSONHas(json_column, 'message') AND NOT multiIf(JSONType(json_column, 'message') = 'String', match(JSONExtractString(json_column, 'message'), 'error.*'),1))"
     },
     {
       "name": "native_json_like",
@@ -227,7 +227,7 @@
       "name": "jsonstring_not_in_strings",
       "input": "json_column.name not in ['a', 'b']",
       "expected_result": "success",
-      "expected_sql": "(JSONHas(json_column, 'name') AND NOT multiIf(JSONType(json_column, 'name') = 'String', JSONExtractString(json_column, 'name') IN ('a', 'b'),0))"
+      "expected_sql": "(JSONHas(json_column, 'name') AND NOT multiIf(JSONType(json_column, 'name') = 'String', JSONExtractString(json_column, 'name') IN ('a', 'b'),1))"
     },
     {
       "name": "jsonstring_in_numeric",

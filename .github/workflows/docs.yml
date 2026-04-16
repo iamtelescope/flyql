@@ -7,7 +7,7 @@ on:
       - 'docs/**'
       - 'python/snippets/**'
       - 'javascript/snippets/**'
-      - 'javascript/src/**'
+      - 'javascript/packages/**'
       - 'golang/snippets/**'
   workflow_dispatch:
 

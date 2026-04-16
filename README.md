@@ -323,8 +323,8 @@ Built-in transformers:
 FlyQL ships with a Vue 3 editor component that provides syntax highlighting, autocomplete, and schema-driven value suggestions:
 
 ```javascript
-import { FlyqlEditor } from 'flyql/editor'
-import 'flyql/editor/flyql.css'
+import { FlyqlEditor } from 'flyql-vue'
+import 'flyql-vue/flyql.css'
 ```
 
 ```html

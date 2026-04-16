@@ -2,7 +2,7 @@ import { Parser } from './parser.js'
 import { ParsedColumn } from './column.js'
 import { ParserError } from './exceptions.js'
 import { parseKey } from '../core/key.js'
-import { CharType, TRANSFORMER_INFO, TRANSFORMER_OPERATOR, COLUMNS_DELIMITER } from './constants.js'
+import { CharType, TRANSFORMER_OPERATOR, COLUMNS_DELIMITER } from './constants.js'
 import { State } from './state.js'
 import { validateColumns, validateColumnNames } from './validation.js'
 import { diagnose } from './validator.js'
@@ -49,7 +49,6 @@ export {
     ParserError,
     CharType,
     State,
-    TRANSFORMER_INFO,
     TRANSFORMER_OPERATOR,
     COLUMNS_DELIMITER,
     validateColumns,

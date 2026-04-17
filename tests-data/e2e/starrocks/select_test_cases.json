@@ -971,6 +971,54 @@
           "EU-WEST"
         ]
       ]
+    },
+    {
+      "name": "renderer_suffix_tag_no_arg",
+      "select_columns": "id, message as msg|tag",
+      "expected_column_names": [
+        "id",
+        "msg"
+      ],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"],
+        ["6", "hello test"]
+      ]
+    },
+    {
+      "name": "renderer_suffix_tag_string_arg",
+      "select_columns": "id, message as msg|tag('red')",
+      "expected_column_names": [
+        "id",
+        "msg"
+      ],
+      "expected_rows": [
+        ["1", "hello"],
+        ["2", "world"],
+        ["3", "hello world"],
+        ["4", ""],
+        ["5", "error test"],
+        ["6", "hello test"]
+      ]
+    },
+    {
+      "name": "renderer_suffix_transformer_plus_renderer",
+      "select_columns": "id, message|upper as msg|tag",
+      "expected_column_names": [
+        "id",
+        "msg"
+      ],
+      "expected_rows": [
+        ["1", "HELLO"],
+        ["2", "WORLD"],
+        ["3", "HELLO WORLD"],
+        ["4", ""],
+        ["5", "ERROR TEST"],
+        ["6", "HELLO TEST"]
+      ]
     }
   ]
 }

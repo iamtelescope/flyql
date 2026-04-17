@@ -182,7 +182,7 @@ function _columnFromPlainObject(name, raw) {
             flyqlType = typeStr // preserve raw string for the editor normalizer
         }
     }
-    return new Column(name, flyqlType, {
+    const col = new Column(name, flyqlType, {
         values: raw.values || [],
         suggest: raw.suggest !== undefined ? raw.suggest : true,
         matchName: name,
@@ -190,4 +190,6 @@ function _columnFromPlainObject(name, raw) {
         autocomplete: raw.autocomplete,
         displayName: raw.display_name || raw.displayName || '',
     })
+    if (raw.description) col.description = raw.description
+    return col
 }

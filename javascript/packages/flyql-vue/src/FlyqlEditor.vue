@@ -129,7 +129,10 @@
                             <span class="flyql-panel__badge" :class="'flyql-panel__badge--' + item.type">
                                 {{ badgeText(item.type) }}
                             </span>
-                            <span class="flyql-panel__label" v-html="highlightMatch(item.label)"></span>
+                            <span
+                                class="flyql-panel__label"
+                                v-html="highlightMatch(item.displayLabel || truncateLabel(item.label), item.label)"
+                            ></span>
                             <span
                                 v-if="item.detail"
                                 class="flyql-panel__detail"
@@ -176,16 +179,16 @@
                         <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
                     </div>
                 </div>
-                <div class="flyql-panel__footer">
-                    <span v-if="context && context.key && suggestionType === 'value'" class="flyql-panel__footer-col">{{
-                        context.key
-                    }}</span>
-                    <span class="flyql-panel__footer-label">{{ stateLabel }}</span>
-                    <span
-                        v-if="suggestionType === 'value' && suggestions.length > 0 && incomplete"
-                        class="flyql-panel__footer-status"
-                        >partial results</span
-                    >
+                <div v-if="shouldShowInfo" class="flyql-panel__info">
+                    <div class="flyql-panel__header">Info</div>
+                    <div class="flyql-panel__footer">
+                        <div class="flyql-panel__footer-row">
+                            <span class="flyql-panel__footer-path" v-html="highlightMatch(selectedInfo.label)"></span>
+                        </div>
+                        <div v-if="selectedInfo.description" class="flyql-panel__footer-desc">
+                            {{ selectedInfo.description }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </Teleport>
@@ -195,6 +198,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { EditorEngine } from './engine.js'
+import { insertAtSelection, truncateLabel, labelWasTruncated } from './editor-helpers.js'
 import './flyql.css'
 
 // ── Props & Emits ──
@@ -271,9 +275,24 @@ const panelStyle = computed(() => ({
     top: panelTop.value + 'px',
 }))
 
-function highlightMatch(label) {
-    return engine.highlightMatch(label)
+function highlightMatch(label, originalLabel = null) {
+    return engine.highlightMatch(label, originalLabel)
 }
+
+const selectedFullLabel = computed(() => {
+    const item = suggestions.value[selectedIndex.value]
+    if (!item || !item.label) return ''
+    return labelWasTruncated(item.label) ? item.label : ''
+})
+
+const selectedInfo = ref(null)
+const shouldShowInfo = computed(() => {
+    const info = selectedInfo.value
+    if (!info) return false
+    const item = suggestions.value[selectedIndex.value]
+    const shortened = item && item.displayLabel && item.displayLabel !== item.label
+    return shortened || labelWasTruncated(info.label) || !!info.description
+})
 
 function filterColumnValueDiagnostics() {
     const ta = textareaRef.value
@@ -317,6 +336,7 @@ function syncFromEngine() {
     context.value = engine.context
     activeTab.value = engine.activeTab
     diagnostics.value = engine.diagnostics
+    selectedInfo.value = engine.getSelectedInfo()
 
     // Check for parse-error transitions
     const currentError = engine.getParseError()
@@ -627,30 +647,13 @@ function acceptSuggestion(index) {
         }
     }
 
-    ta.focus()
-    ta.selectionStart = range.start
-    ta.selectionEnd = range.end
-
-    const inputEvent = new InputEvent('beforeinput', {
-        inputType: 'insertText',
-        data: insertText,
-        bubbles: true,
-        cancelable: true,
-    })
-    const cancelled = !ta.dispatchEvent(inputEvent)
-    if (!cancelled) {
-        const before = ta.value.substring(0, range.start)
-        const after = ta.value.substring(range.end)
-        ta.value = before + insertText + after
-        ta.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: insertText, bubbles: true }))
-    }
+    insertAtSelection(ta, range, insertText)
 
     let newCursorPos = range.start + insertText.length
     if (suggestion.cursorOffset) {
-        newCursorPos += suggestion.cursorOffset
+        newCursorPos = range.start + insertText.length + suggestion.cursorOffset
+        ta.setSelectionRange(newCursorPos, newCursorPos)
     }
-    ta.selectionStart = newCursorPos
-    ta.selectionEnd = newCursorPos
     const newValue = ta.value
 
     engine.setQuery(newValue)
@@ -766,6 +769,7 @@ watch(activated, (val) => {
 })
 
 watch(selectedIndex, async (idx) => {
+    selectedInfo.value = engine.getSelectedInfo()
     await nextTick()
     const el = itemRefs.value[idx]
     if (el) {

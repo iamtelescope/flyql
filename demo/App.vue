@@ -45,6 +45,7 @@
                                 <FlyqlColumns
                                     v-model="selectExpr"
                                     :columns="editorColumns"
+                                    :renderer-registry="_rendererRegistry"
                                     :dark="isDark"
                                     :placeholder="otelLogs.defaults.columnsPlaceholder"
                                     @update:parsed="onColumnsParsed"
@@ -182,7 +183,13 @@
                                                 <td v-for="(col, ci) in displayColumns" :key="ci"
                                                     class="px-3 py-2 text-gray-700 dark:text-gray-300 align-top"
                                                     :class="typeof getRowValue(row, ci) === 'string' && getRowValue(row, ci)?.startsWith('{') ? 'text-gray-500 dark:text-gray-400 text-[11px] whitespace-nowrap' : 'whitespace-nowrap'"
-                                                >{{ getRowValue(row, ci) }}</td>
+                                                >
+                                                    <span
+                                                        v-if="getTagClasses(ci)"
+                                                        :class="getTagClasses(ci)"
+                                                    >{{ getRowValue(row, ci) }}</span>
+                                                    <template v-else>{{ getRowValue(row, ci) }}</template>
+                                                </td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -192,16 +199,53 @@
                     </div>
 
                     <!-- Schema sidebar -->
-                    <div class="mt-6 lg:mt-0 lg:w-[280px] lg:flex-shrink-0 lg:sticky lg:top-20 lg:self-start lg:order-2">
+                    <div class="mt-6 lg:mt-0 lg:w-[340px] lg:flex-shrink-0 lg:sticky lg:top-20 lg:self-start lg:order-2 space-y-4">
+                        <!-- FlyQL columns -->
                         <div class="rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
                             <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                                 <svg class="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
-                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Columns</span>
+                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">FlyQL Columns</span>
                             </div>
-                            <div class="p-3 max-h-[60vh] overflow-y-auto">
-                                <div v-for="col in schemaColumns" :key="col.name" class="flex items-center justify-between py-0.5 px-1 text-sm font-mono">
-                                    <span class="flyql-col-column">{{ col.name }}</span>
-                                    <span class="text-xs flyql-schema-type" :data-type="col.type">{{ col.type }}</span>
+                            <div class="p-3 max-h-[40vh] overflow-y-auto">
+                                <div v-for="col in schemaColumns" :key="col.name" class="flex items-center justify-between gap-2 py-0.5 px-1 text-sm font-mono">
+                                    <span class="flyql-col-column flex-shrink-0">{{ col.name }}</span>
+                                    <span
+                                        class="text-xs flyql-schema-type truncate min-w-0 text-right"
+                                        :data-type="col.type"
+                                        :title="col.type"
+                                    >{{ col.type }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Dialect columns (only when SQL tab active) -->
+                        <div
+                            v-if="outputTab === 'sql'"
+                            class="rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800"
+                        >
+                            <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                                <img
+                                    v-if="isDark && dialects[dialectIdx].iconDark"
+                                    :src="dialects[dialectIdx].iconDark"
+                                    :alt="dialects[dialectIdx].name"
+                                    class="h-4 w-4"
+                                />
+                                <img
+                                    v-else
+                                    :src="dialects[dialectIdx].icon"
+                                    :alt="dialects[dialectIdx].name"
+                                    class="h-4 w-4"
+                                />
+                                <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider"
+                                    >{{ dialects[dialectIdx].name }} Columns</span
+                                >
+                            </div>
+                            <div class="p-3 max-h-[40vh] overflow-y-auto">
+                                <div v-for="col in schemaColumns" :key="col.name" class="flex items-center justify-between gap-2 py-0.5 px-1 text-sm font-mono">
+                                    <span class="flyql-col-column flex-shrink-0">{{ col.name }}</span>
+                                    <span
+                                        class="text-xs text-gray-600 dark:text-gray-400 truncate min-w-0 text-right"
+                                        :title="dialectTypeFor(col)"
+                                    >{{ dialectTypeFor(col) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -235,8 +279,10 @@ import { generateWhere as generatePostgreSQL, generateSelect as pgSelect, newCol
 import { generateWhere as generateStarRocks, generateSelect as srSelect, newColumn as srNewColumn } from '../javascript/packages/flyql/src/generators/starrocks/index.js'
 import { match } from '../javascript/packages/flyql/src/matcher/index.js'
 import { defaultRegistry } from '../javascript/packages/flyql/src/transformers/registry.js'
+import { demoRendererRegistry } from './renderers.js'
 
 const _transformerRegistry = defaultRegistry()
+const _rendererRegistry = demoRendererRegistry()
 
 import otelLogs from '../tests-data/otel/logs.json'
 import logoSvg from './flyql.svg'
@@ -249,14 +295,20 @@ const schemaColumns = otelLogs.schemaColumns
 
 const editorColumns = ColumnSchema.fromPlainObject(otelLogs.editorColumns)
 
-const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, type]) => [name, chNewColumn(name, type)]))
-const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, type]) => [name, pgNewColumn(name, type)]))
-const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, type]) => [name, srNewColumn(name, type)]))
+function resolveDialectSpec(entry) {
+    return typeof entry === 'string' ? entry : entry?.flyql || entry?.db || ''
+}
+function resolveDialectDb(entry) {
+    return typeof entry === 'string' ? entry : entry?.db || ''
+}
+const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, t]) => [name, chNewColumn(name, resolveDialectSpec(t))]))
+const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, t]) => [name, pgNewColumn(name, resolveDialectSpec(t))]))
+const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, t]) => [name, srNewColumn(name, resolveDialectSpec(t))]))
 
 const dialects = [
-    { key: 'ch', name: 'ClickHouse', icon: chIconLight, iconDark: chIconDark },
-    { key: 'pg', name: 'PostgreSQL', icon: pgIcon, iconDark: null },
-    { key: 'sr', name: 'StarRocks', icon: srIcon, iconDark: null },
+    { key: 'ch', name: 'ClickHouse', icon: chIconLight, iconDark: chIconDark, dialectTypeKey: 'clickhouse' },
+    { key: 'pg', name: 'PostgreSQL', icon: pgIcon, iconDark: null, dialectTypeKey: 'postgresql' },
+    { key: 'sr', name: 'StarRocks', icon: srIcon, iconDark: null, dialectTypeKey: 'starrocks' },
 ]
 
 const columnPresets = [
@@ -268,7 +320,7 @@ const examples = otelLogs.examples
 const highlightEngine = new EditorEngine(editorColumns)
 const exampleHighlights = examples.map((q) => highlightEngine.getHighlightTokens(q))
 
-const columnsHighlightEngine = new ColumnsEngine(editorColumns)
+const columnsHighlightEngine = new ColumnsEngine(editorColumns, { rendererRegistry: _rendererRegistry })
 const presetHighlights = columnPresets.map((p) => columnsHighlightEngine.getHighlightTokens(p.value) || p.label)
 
 // Resolve ResourceAttributes references from shared JSON (records store service name as string ref)
@@ -351,6 +403,19 @@ function getRowValue(row, colIdx) {
     return val
 }
 
+// If the parsed column at `colIdx` has a `|tag` renderer, return the class list
+// to paint the value as a pill/badge. First arg (optional) is a color keyword:
+// 'red' | 'green' | 'blue' | 'yellow' | 'gray' (default: gray).
+function getTagClasses(colIdx) {
+    const cols = snapshotColumns.value.length > 0 ? snapshotColumns.value : parsedColumns.value
+    const col = cols[colIdx]
+    if (!col || !col.renderers || col.renderers.length === 0) return null
+    const tagRenderer = col.renderers.find((r) => r.name === 'tag')
+    if (!tagRenderer) return null
+    const color = (tagRenderer.arguments && tagRenderer.arguments[0]) || 'gray'
+    return ['flyql-demo-tag', `flyql-demo-tag--${color}`]
+}
+
 
 const editorRef = ref(null)
 const parseError = ref(null)
@@ -363,6 +428,12 @@ const matchResults = ref(sampleRecords.map(() => null))
 
 const canRun = computed(() => !parseError.value)
 const matchedCount = computed(() => matchResults.value.filter((m) => m === true).length)
+
+function dialectTypeFor(col) {
+    const dKey = dialects[dialectIdx.value]?.dialectTypeKey
+    const entry = dKey && otelLogs.dialectTypes[dKey]?.[col.name]
+    return resolveDialectDb(entry)
+}
 
 const highlightedSql = computed(() => {
     const r = sqlResults.value[dialectIdx.value]
@@ -487,6 +558,30 @@ body:where(.dark, .dark *) { background-color: #1c1c1c; color: #ffffff; }
 .flyql-schema-type[data-type="string"] { color: var(--flyql-value-color); }
 .flyql-schema-type[data-type="number"] { color: var(--flyql-number-color); }
 .flyql-schema-type[data-type="object"] { color: var(--flyql-operator-color); }
+.flyql-schema-type[data-type="jsonstring"] { color: var(--flyql-renderer-color); }
+
+/* Demo-only `|tag` renderer — pill/badge styling for filter-data table cells.
+   Default is gray; explicit color args ('red' | 'green' | 'blue' | 'yellow') map
+   to themed pills. Colors use Tailwind-like neutral palettes for familiarity. */
+.flyql-demo-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.flyql-demo-tag--gray   { background: #e5e7eb; color: #374151; }
+.flyql-demo-tag--red    { background: #fee2e2; color: #991b1b; }
+.flyql-demo-tag--green  { background: #dcfce7; color: #166534; }
+.flyql-demo-tag--blue   { background: #dbeafe; color: #1e40af; }
+.flyql-demo-tag--yellow { background: #fef9c3; color: #854d0e; }
+body:where(.dark, .dark *) .flyql-demo-tag--gray   { background: #374151; color: #d1d5db; }
+body:where(.dark, .dark *) .flyql-demo-tag--red    { background: #7f1d1d; color: #fecaca; }
+body:where(.dark, .dark *) .flyql-demo-tag--green  { background: #14532d; color: #bbf7d0; }
+body:where(.dark, .dark *) .flyql-demo-tag--blue   { background: #1e3a8a; color: #bfdbfe; }
+body:where(.dark, .dark *) .flyql-demo-tag--yellow { background: #78350f; color: #fde68a; }
 
 /* SQL syntax highlighting */
 .sql-hl-keyword { color: #0451a5; font-weight: 600; }

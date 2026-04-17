@@ -4,6 +4,7 @@ import { LiteralKind } from '../../literal/literal_kind.js'
 import { FunctionCall, Parameter } from '../../core/expression.js'
 import { FlyqlError } from '../../core/exceptions.js'
 import { parseKey } from '../../core/key.js'
+import { parse as parseColumns } from '../../columns/index.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
 import { defaultRegistry } from '../../transformers/index.js'
@@ -953,7 +954,11 @@ function parseRawSelectColumns(text) {
         let name, alias
         if (idx >= 0) {
             name = part.substring(0, idx).trim()
-            alias = part.substring(idx + 4).trim()
+            const aliasRaw = part.substring(idx + 4).trim()
+            // Strip trailing renderer chain (`|renderer(args)...`) — renderers
+            // are UI-level metadata and have no effect on the emitted SQL.
+            const pipeIdx = aliasRaw.indexOf('|')
+            alias = pipeIdx >= 0 ? aliasRaw.substring(0, pipeIdx).trim() : aliasRaw
         } else {
             name = part
             alias = ''
@@ -1011,12 +1016,14 @@ function buildSelectExpr(identifier, column, path, pathQuoted) {
 }
 
 export function generateSelect(text, columns, registry = null) {
-    const raws = parseRawSelectColumns(text)
+    // Use the canonical columns parser — see ClickHouse equivalent for rationale.
+    const parsedCols = parseColumns(text, { transformers: true, renderers: true })
     const selectColumns = []
     const exprs = []
 
-    for (const raw of raws) {
-        const key = parseKey(raw.name)
+    for (const parsed of parsedCols) {
+        const key = parsed.key
+        key.transformers = parsed.transformers
         const { column, path, pathQuoted } = resolveColumn(key, columns)
 
         const identifier = getIdentifier(column)
@@ -1029,7 +1036,7 @@ export function generateSelect(text, columns, registry = null) {
             sqlExpr = applyTransformerSQL(sqlExpr, key.transformers, 'postgresql', registry)
         }
 
-        let alias = raw.alias
+        let alias = parsed.alias
         if (alias) {
             sqlExpr = `${sqlExpr} AS ${escapeIdentifier(alias)}`
         } else if (path.length > 0) {

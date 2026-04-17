@@ -1,13 +1,15 @@
 import math
 import re
 from dataclasses import dataclass, field
-from typing import List, Mapping, Optional, Tuple, Any
+from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from flyql.columns import parse as parse_columns
 from flyql.core.exceptions import FlyqlError
 from flyql.core.expression import Expression, FunctionCall, Parameter
+from flyql.core.range import Range
 from flyql.flyql_type import Type
 from flyql.literal import LiteralKind
-from flyql.core.key import Key, parse_key
+from flyql.core.key import Key, Transformer, parse_key
 from flyql.core.constants import (
     Operator,
     VALID_KEY_VALUE_OPERATORS,
@@ -1117,25 +1119,22 @@ class SelectResult:
     sql: str = ""
 
 
-def _parse_raw_select_columns(text: str) -> List[Tuple[str, str]]:
-    parts = text.split(",")
-    result: List[Tuple[str, str]] = []
-    for part in parts:
-        part = part.strip()
-        if not part:
-            continue
-        lower = part.lower()
-        idx = lower.find(" as ")
-        if idx >= 0:
-            name = part[:idx].strip()
-            alias = part[idx + 4 :].strip()
-        else:
-            name = part
-            alias = ""
-        if not name:
-            raise FlyqlError("empty column name")
-        result.append((name, alias))
-    return result
+def _to_key_transformers(ts: List[Dict[str, Any]]) -> List[Transformer]:
+    """Convert columns-parser transformer dicts into Key-dataclass Transformer
+    instances. Ranges are zero-valued; downstream consumers read only ``name``
+    and ``arguments``. Arguments are copied (not aliased) so downstream
+    mutation cannot leak back into the source ParsedColumn.
+    """
+    return [
+        Transformer(
+            name=t["name"],
+            arguments=list(t["arguments"]),
+            range=Range(0, 0),
+            name_range=Range(0, 0),
+            argument_ranges=[],
+        )
+        for t in ts
+    ]
 
 
 def _resolve_column(
@@ -1206,12 +1205,15 @@ def to_sql_select(
     registry: Optional[TransformerRegistry] = None,
 ) -> SelectResult:
     """Generate a StarRocks SELECT clause from a column expression string."""
-    raws = _parse_raw_select_columns(text)
+    parsed_cols = parse_columns(
+        text, capabilities={"transformers": True, "renderers": True}
+    )
     select_columns: List[SelectColumn] = []
     exprs: List[str] = []
 
-    for name, alias in raws:
-        key = parse_key(name)
+    for parsed in parsed_cols:
+        key = parse_key(parsed.name, 0)
+        key.transformers = _to_key_transformers(parsed.transformers)
         column, path = _resolve_column(key, columns)
 
         sql_expr = _build_select_expr(column, path)
@@ -1221,6 +1223,7 @@ def to_sql_select(
                 sql_expr, key.transformers, "starrocks", registry=registry
             )
 
+        alias = parsed.alias or ""
         if alias:
             if not VALID_ALIAS_PATTERN.match(alias):
                 raise FlyqlError(f"invalid alias: {alias}")

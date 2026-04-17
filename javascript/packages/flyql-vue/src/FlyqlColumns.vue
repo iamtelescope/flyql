@@ -69,7 +69,7 @@
                     <span v-else>no context</span>
                 </div>
                 <div class="flyql-panel__header">
-                    Suggestions: <span class="flyql-panel__state">{{ stateLabel }}</span>
+                    Suggestions
                     <span
                         v-if="isLoading && suggestions.length > 0"
                         class="flyql-panel__spinner flyql-panel__spinner--inline"
@@ -96,7 +96,10 @@
                             <span class="flyql-panel__badge" :class="'flyql-panel__badge--' + item.type">
                                 {{ badgeText(item.type) }}
                             </span>
-                            <span class="flyql-panel__label" v-html="highlightMatch(item.label)"></span>
+                            <span
+                                class="flyql-panel__label"
+                                v-html="highlightMatch(item.displayLabel || truncateLabel(item.label), item.label)"
+                            ></span>
                             <span v-if="item.detail" class="flyql-panel__detail">{{ item.detail }}</span>
                         </li>
                     </ul>
@@ -128,14 +131,16 @@
                         <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
                     </div>
                 </div>
-                <div class="flyql-panel__footer">
-                    <span v-if="footerInfo && footerInfo.column" class="flyql-panel__footer-col">{{
-                        footerInfo.column
-                    }}</span>
-                    <span v-if="footerInfo && footerInfo.type" class="flyql-panel__footer-label">{{
-                        footerInfo.type
-                    }}</span>
-                    <span v-if="!footerInfo" class="flyql-panel__footer-label">{{ stateLabel }}</span>
+                <div v-if="shouldShowInfo" class="flyql-panel__info">
+                    <div class="flyql-panel__header">Info</div>
+                    <div class="flyql-panel__footer">
+                        <div class="flyql-panel__footer-row">
+                            <span class="flyql-panel__footer-path" v-html="highlightMatch(selectedInfo.label)"></span>
+                        </div>
+                        <div v-if="selectedInfo.description" class="flyql-panel__footer-desc">
+                            {{ selectedInfo.description }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </Teleport>
@@ -145,6 +150,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ColumnsEngine } from './columns-engine.js'
+import { insertAtSelection, truncateLabel, labelWasTruncated } from './editor-helpers.js'
 import './flyql.css'
 
 const props = defineProps({
@@ -218,9 +224,24 @@ const panelStyle = computed(() => ({
     top: panelTop.value + 'px',
 }))
 
-function highlightMatch(label) {
-    return engine.highlightMatch(label)
+function highlightMatch(label, originalLabel = null) {
+    return engine.highlightMatch(label, originalLabel)
 }
+
+const selectedFullLabel = computed(() => {
+    const item = suggestions.value[selectedIndex.value]
+    if (!item || !item.label) return ''
+    return labelWasTruncated(item.label) ? item.label : ''
+})
+
+const selectedInfo = ref(null)
+const shouldShowInfo = computed(() => {
+    const info = selectedInfo.value
+    if (!info) return false
+    const item = suggestions.value[selectedIndex.value]
+    const shortened = item && item.displayLabel && item.displayLabel !== item.label
+    return shortened || labelWasTruncated(info.label) || !!info.description
+})
 
 function syncFromEngine() {
     suggestions.value = engine.suggestions
@@ -230,6 +251,7 @@ function syncFromEngine() {
     context.value = engine.context
     footerInfo.value = engine.getFooterInfo()
     diagnostics.value = engine.diagnostics
+    selectedInfo.value = engine.getSelectedInfo()
 
     const currentError = engine.getParseError()
     if (currentError !== lastParseError.value) {
@@ -463,23 +485,18 @@ function acceptSuggestion(index) {
     const range = engine.getInsertRange(ctx, currentValue, suggestion)
     const insertText = suggestion.insertText
 
-    const before = currentValue.substring(0, range.start)
-    const after = currentValue.substring(range.end)
-    const newValue = before + insertText + after
+    insertAtSelection(ta, range, insertText)
     let newCursorPos = range.start + insertText.length
     if (suggestion.cursorOffset) {
-        newCursorPos += suggestion.cursorOffset
+        newCursorPos = range.start + insertText.length + suggestion.cursorOffset
+        ta.setSelectionRange(newCursorPos, newCursorPos)
     }
+    const newValue = ta.value
 
-    // Update engine state first
+    // Update engine state
     engine.setQuery(newValue)
     engine.setCursorPosition(newCursorPos)
 
-    // Update DOM and emit
-    ta.value = newValue
-    ta.selectionStart = newCursorPos
-    ta.selectionEnd = newCursorPos
-    ta.focus()
     emit('update:modelValue', newValue)
     emitParsed()
 
@@ -593,6 +610,7 @@ watch(
 )
 
 watch(selectedIndex, async (idx) => {
+    selectedInfo.value = engine.getSelectedInfo()
     await nextTick()
     const el = itemRefs.value[idx]
     if (el) {

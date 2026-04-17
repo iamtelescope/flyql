@@ -7,17 +7,19 @@
         { "name": "ServiceName", "type": "string" },
         { "name": "Body", "type": "string" },
         { "name": "ResourceAttributes", "type": "object" },
-        { "name": "LogAttributes", "type": "object" }
+        { "name": "LogAttributes", "type": "object" },
+        { "name": "Metadata", "type": "object" },
+        { "name": "Payload", "type": "jsonstring" }
     ],
     "editorColumns": {
         "Timestamp": { "type": "string", "suggest": true },
         "TraceId": { "type": "string", "suggest": true },
         "SpanId": { "type": "string", "suggest": true },
         "TraceFlags": { "type": "number", "suggest": true },
-        "SeverityText": { "type": "string", "suggest": true, "autocomplete": true, "values": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"] },
+        "SeverityText": { "type": "string", "suggest": true, "autocomplete": true, "values": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"], "description": "Textual severity level of the log record (OTel: severityText)." },
         "SeverityNumber": { "type": "number", "suggest": true },
-        "ServiceName": { "type": "string", "suggest": true, "autocomplete": true, "values": ["api-gateway", "order-service", "payment-service"] },
-        "Body": { "type": "string", "suggest": true },
+        "ServiceName": { "type": "string", "suggest": true, "autocomplete": true, "values": ["api-gateway", "order-service", "payment-service"], "description": "Logical service name the log originated from (OTel: service.name)." },
+        "Body": { "type": "string", "suggest": true, "description": "Free-form log message body." },
         "ResourceSchemaUrl": { "type": "string", "suggest": true },
         "ResourceAttributes": {
             "type": "object", "suggest": true,
@@ -58,52 +60,114 @@
         "ScopeVersion": { "type": "string", "suggest": true },
         "ScopeAttributes": { "type": "object", "suggest": true, "children": { "component": { "type": "string", "suggest": true } } },
         "LogAttributes": {
-            "type": "object", "suggest": true,
+            "type": "object", "suggest": true, "description": "Per-record attribute map (OTel: LogRecord.Attributes). Flat string-to-string map.",
             "children": {
-                "http": {
+                "http": { "type": "string", "suggest": true, "description": "HTTP request/response attributes container (leaf in flat map)." },
+                "error": { "type": "string", "suggest": true, "description": "Error attributes container (leaf in flat map)." },
+                "db": { "type": "string", "suggest": true, "description": "Database call attributes container (leaf in flat map)." },
+                "messaging": { "type": "string", "suggest": true, "description": "Messaging-system attributes container (leaf in flat map)." },
+                "rpc": { "type": "string", "suggest": true, "description": "RPC call attributes container (leaf in flat map)." },
+                "retry": { "type": "string", "suggest": true, "description": "Retry attributes container (leaf in flat map)." }
+            }
+        },
+        "Metadata": {
+            "type": "object", "suggest": true, "description": "Per-record JSON blob with nested application metadata.",
+            "children": {
+                "enterprise": {
                     "type": "object", "suggest": true,
                     "children": {
-                        "method": { "type": "string", "suggest": true, "autocomplete": true, "values": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
-                        "url": { "type": "string", "suggest": true },
-                        "status_code": { "type": "number", "suggest": true },
-                        "duration_ms": { "type": "number", "suggest": true }
+                        "observability": {
+                            "type": "object", "suggest": true,
+                            "children": {
+                                "telemetry": {
+                                    "type": "object", "suggest": true,
+                                    "children": {
+                                        "emission": {
+                                            "type": "object", "suggest": true,
+                                            "children": {
+                                                "pipeline": {
+                                                    "type": "object", "suggest": true,
+                                                    "children": {
+                                                        "checkpoint": {
+                                                            "type": "object", "suggest": true,
+                                                            "children": {
+                                                                "durationMs": { "type": "number", "suggest": true },
+                                                                "recordsProcessed": { "type": "number", "suggest": true },
+                                                                "backpressureRatio": { "type": "number", "suggest": true }
+                                                            }
+                                                        },
+                                                        "buffer": {
+                                                            "type": "object", "suggest": true,
+                                                            "children": {
+                                                                "sizeBytes": { "type": "number", "suggest": true },
+                                                                "highWatermarkReachedAt": { "type": "string", "suggest": true }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "sampler": {
+                                                    "type": "object", "suggest": true,
+                                                    "children": {
+                                                        "rate": { "type": "number", "suggest": true },
+                                                        "decisionAlgorithmVersion": { "type": "string", "suggest": true }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "retention": {
+                                            "type": "object", "suggest": true,
+                                            "children": {
+                                                "policy": {
+                                                    "type": "object", "suggest": true,
+                                                    "children": {
+                                                        "windowDays": { "type": "number", "suggest": true },
+                                                        "tierDefinitionColdStorageAccessTierNameSuffixOverride": { "type": "string", "suggest": true }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "governance": {
+                            "type": "object", "suggest": true,
+                            "children": {
+                                "compliance": {
+                                    "type": "object", "suggest": true,
+                                    "children": {
+                                        "auditTrail": {
+                                            "type": "object", "suggest": true,
+                                            "children": {
+                                                "retention": {
+                                                    "type": "object", "suggest": true,
+                                                    "children": {
+                                                        "configurationProfileIdentifierSuffixVerboseNameDecoratedForTestingLongLeafOverflowCase": { "type": "string", "suggest": true }
+                                                    }
+                                                },
+                                                "signer": {
+                                                    "type": "object", "suggest": true,
+                                                    "children": {
+                                                        "keyId": { "type": "string", "suggest": true },
+                                                        "algorithm": { "type": "string", "suggest": true, "autocomplete": true, "values": ["RS256", "ES256", "EdDSA"] }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                },
-                "error": {
-                    "type": "object", "suggest": true,
-                    "children": {
-                        "type": { "type": "string", "suggest": true },
-                        "message": { "type": "string", "suggest": true }
-                    }
-                },
-                "db": {
-                    "type": "object", "suggest": true,
-                    "children": {
-                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["postgresql", "redis", "mysql"] },
-                        "operation": { "type": "string", "suggest": true, "autocomplete": true, "values": ["SELECT", "INSERT", "UPDATE", "DELETE", "GET", "SET"] },
-                        "statement": { "type": "string", "suggest": true },
-                        "duration_ms": { "type": "number", "suggest": true }
-                    }
-                },
-                "messaging": {
-                    "type": "object", "suggest": true,
-                    "children": {
-                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["kafka", "rabbitmq"] },
-                        "destination": { "type": "string", "suggest": true },
-                        "operation": { "type": "string", "suggest": true, "autocomplete": true, "values": ["publish", "consume"] },
-                        "message": { "type": "object", "suggest": true, "children": { "id": { "type": "string", "suggest": true } } }
-                    }
-                },
-                "rpc": {
-                    "type": "object", "suggest": true,
-                    "children": {
-                        "system": { "type": "string", "suggest": true, "autocomplete": true, "values": ["grpc"] },
-                        "service": { "type": "string", "suggest": true },
-                        "method": { "type": "string", "suggest": true },
-                        "grpc": { "type": "object", "suggest": true, "children": { "status_code": { "type": "number", "suggest": true } } }
-                    }
-                },
-                "retry": { "type": "object", "suggest": true, "children": { "count": { "type": "number", "suggest": true } } }
+                }
+            }
+        },
+        "Payload": {
+            "type": "jsonstring", "suggest": true, "description": "Application-level event payload stored as a JSON string. Accessed via JSON extract in generated SQL.",
+            "children": {
+                "userId": { "type": "string", "suggest": true, "description": "Authenticated user identifier." },
+                "action": { "type": "string", "suggest": true, "autocomplete": true, "values": ["view", "click", "submit", "purchase"], "description": "High-level action the event represents." },
+                "latencyMs": { "type": "number", "suggest": true, "description": "End-to-end latency of the event in milliseconds." }
             }
         }
     },
@@ -113,17 +177,19 @@
             "TraceId": "String",
             "SpanId": "String",
             "TraceFlags": "UInt8",
-            "SeverityText": "LowCardinality(String)",
+            "SeverityText": "String",
             "SeverityNumber": "UInt8",
-            "ServiceName": "LowCardinality(String)",
+            "ServiceName": "String",
             "Body": "String",
-            "ResourceSchemaUrl": "LowCardinality(String)",
-            "ResourceAttributes": "Map(LowCardinality(String), String)",
-            "ScopeSchemaUrl": "LowCardinality(String)",
+            "ResourceSchemaUrl": "String",
+            "ResourceAttributes": "Map(String, String)",
+            "ScopeSchemaUrl": "String",
             "ScopeName": "String",
-            "ScopeVersion": "LowCardinality(String)",
-            "ScopeAttributes": "Map(LowCardinality(String), String)",
-            "LogAttributes": "Map(LowCardinality(String), String)"
+            "ScopeVersion": "String",
+            "ScopeAttributes": "Map(String, String)",
+            "LogAttributes": "Map(String, String)",
+            "Metadata": "JSON",
+            "Payload": { "db": "String", "flyql": "jsonstring" }
         },
         "postgresql": {
             "Timestamp": "timestamp",
@@ -135,12 +201,14 @@
             "ServiceName": "text",
             "Body": "text",
             "ResourceSchemaUrl": "text",
-            "ResourceAttributes": "jsonb",
+            "ResourceAttributes": "hstore",
             "ScopeSchemaUrl": "text",
             "ScopeName": "text",
             "ScopeVersion": "text",
-            "ScopeAttributes": "jsonb",
-            "LogAttributes": "jsonb"
+            "ScopeAttributes": "hstore",
+            "LogAttributes": "hstore",
+            "Metadata": "jsonb",
+            "Payload": { "db": "text", "flyql": "jsonstring" }
         },
         "starrocks": {
             "Timestamp": "DATETIME",
@@ -152,24 +220,27 @@
             "ServiceName": "VARCHAR",
             "Body": "VARCHAR",
             "ResourceSchemaUrl": "VARCHAR",
-            "ResourceAttributes": "JSON",
+            "ResourceAttributes": "MAP<VARCHAR, VARCHAR>",
             "ScopeSchemaUrl": "VARCHAR",
             "ScopeName": "VARCHAR",
             "ScopeVersion": "VARCHAR",
-            "ScopeAttributes": "JSON",
-            "LogAttributes": "JSON"
+            "ScopeAttributes": "MAP<VARCHAR, VARCHAR>",
+            "LogAttributes": "MAP<VARCHAR, VARCHAR>",
+            "Metadata": "JSON",
+            "Payload": { "db": "VARCHAR", "flyql": "jsonstring" }
         }
     },
     "examples": [
         "Body ilike \"%timeout%\"",
         "not SeverityText = \"INFO\"",
-        "LogAttributes.db.system",
-        "ResourceAttributes.service.name = @ServiceName"
+        "LogAttributes.db",
+        "ResourceAttributes.service.name = @ServiceName",
+        "Metadata.enterprise.observability.telemetry.emission.sampler.rate >= 0.5"
     ],
     "defaults": {
-        "query": "(SeverityText in [\"ERROR\", \"WARN\"]) or (LogAttributes.http.status_code >= 400 and ServiceName = \"api-gateway\")",
-        "selectExpr": "Timestamp, SeverityText|lower as Severity, ServiceName, Body, LogAttributes.http.status_code as StatusCode",
-        "columnsPlaceholder": "SeverityText, ServiceName, LogAttributes.http.status_code as status",
+        "query": "(SeverityText in [\"ERROR\", \"WARN\"]) or (ServiceName = \"api-gateway\" and Body ilike \"%timeout%\")",
+        "selectExpr": "Timestamp, SeverityText|lower as Severity, ServiceName, Body, LogAttributes.http as HttpAttrs",
+        "columnsPlaceholder": "SeverityText, ServiceName, LogAttributes.http as http",
         "queryPlaceholder": "SeverityText = \"ERROR\" and ServiceName = \"api-gateway\""
     },
     "resourceAttributes": {
@@ -190,25 +261,25 @@
         }
     },
     "records": [
-        { "Timestamp": "2026-04-07 14:23:15.100234567", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "00f067aa0ba902b7", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "Incoming request POST /api/v1/orders from 203.0.113.42", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/orders" } } },
-        { "Timestamp": "2026-04-07 14:23:15.115892341", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "1a2b3c4d5e6f7a8b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Creating order for user_id=12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": {} },
-        { "Timestamp": "2026-04-07 14:23:15.145003200", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "2b3c4d5e6f7a8b9c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Querying user credit balance", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "SELECT", "statement": "SELECT credit_balance FROM users WHERE id = $1", "duration_ms": 23 } } },
-        { "Timestamp": "2026-04-07 14:23:15.220451890", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "3c4d5e6f7a8b9c0d", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Processing payment for order ord-98765, amount=149.99 USD", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": {} },
-        { "Timestamp": "2026-04-07 14:23:15.620781234", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "4d5e6f7a8b9c0d1e", "TraceFlags": 1, "SeverityText": "ERROR", "SeverityNumber": 17, "ServiceName": "payment-service", "Body": "Payment gateway timeout: dial tcp 10.0.5.23:3000: i/o timeout after 400ms", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "error": { "type": "ConnectionTimeoutError", "message": "dial tcp 10.0.5.23:3000: i/o timeout" }, "retry": { "count": 3 } } },
-        { "Timestamp": "2026-04-07 14:23:15.630112456", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "5e6f7a8b9c0d1e2f", "TraceFlags": 1, "SeverityText": "WARN", "SeverityNumber": 13, "ServiceName": "order-service", "Body": "Payment failed for order ord-98765, marking as pending_payment", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "UPDATE", "statement": "UPDATE orders SET status = $1 WHERE id = $2", "duration_ms": 8 } } },
-        { "Timestamp": "2026-04-07 14:23:16.123890123", "TraceId": "4bf92f3577b34da6a3ce929d0e0e4736", "SpanId": "6f7a8b9c0d1e2f3a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "POST /api/v1/orders completed with status 202", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/orders", "status_code": 202, "duration_ms": 1023 } } },
-        { "Timestamp": "2026-04-07 14:23:47.200100000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "7a8b9c0d1e2f3a4b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "Incoming request GET /api/v1/users/12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/users/12345" } } },
-        { "Timestamp": "2026-04-07 14:23:47.208340000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "8b9c0d1e2f3a4b5c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Fetching user profile for id=12345", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": {} },
-        { "Timestamp": "2026-04-07 14:23:47.210520000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "9c0d1e2f3a4b5c6d", "TraceFlags": 1, "SeverityText": "DEBUG", "SeverityNumber": 5, "ServiceName": "order-service", "Body": "Cache hit for user:12345 in Redis, ttl=1842s", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "redis", "operation": "GET", "duration_ms": 2 } } },
-        { "Timestamp": "2026-04-07 14:23:47.225670000", "TraceId": "7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8", "SpanId": "0d1e2f3a4b5c6d7e", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /api/v1/users/12345 completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/users/12345", "status_code": 200, "duration_ms": 25 } } },
-        { "Timestamp": "2026-04-07 14:24:02.100200000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "1e2f3a4b5c6d7e8f", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Retrying payment pm-44321 for order ord-98765 (attempt 1)", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "messaging": { "system": "kafka", "destination": "payment-retry", "operation": "consume" } } },
-        { "Timestamp": "2026-04-07 14:24:02.450890000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "2f3a4b5c6d7e8f9a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Payment pm-44321 processed successfully via gRPC", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "rpc": { "system": "grpc", "service": "PaymentGateway", "method": "ChargeCard", "grpc": { "status_code": 0 } } } },
-        { "Timestamp": "2026-04-07 14:24:02.480120000", "TraceId": "c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6", "SpanId": "3a4b5c6d7e8f9a0b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "Published payment-completed event for order ord-98765", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "messaging": { "system": "kafka", "destination": "order-events", "operation": "publish", "message": { "id": "msg-f7e6d5c4" } } } },
-        { "Timestamp": "2026-04-07 14:24:30.001230000", "TraceId": "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0", "SpanId": "4b5c6d7e8f9a0b1c", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /healthz completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/healthz", "status_code": 200, "duration_ms": 1 } } },
-        { "Timestamp": "2026-04-07 14:24:45.330890000", "TraceId": "f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1", "SpanId": "5c6d7e8f9a0b1c2d", "TraceFlags": 1, "SeverityText": "WARN", "SeverityNumber": 13, "ServiceName": "api-gateway", "Body": "Rate limit threshold 80% reached for client 203.0.113.50", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "POST", "url": "/api/v1/search", "status_code": 429, "duration_ms": 5 } } },
-        { "Timestamp": "2026-04-07 14:25:10.992340000", "TraceId": "a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2", "SpanId": "6d7e8f9a0b1c2d3e", "TraceFlags": 1, "SeverityText": "ERROR", "SeverityNumber": 17, "ServiceName": "order-service", "Body": "Failed to connect to PostgreSQL: connection refused", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "error": { "type": "ConnectionRefusedError", "message": "dial tcp 10.0.3.15:5432: connection refused" }, "db": { "system": "postgresql" } } },
-        { "Timestamp": "2026-04-07 14:25:30.112560000", "TraceId": "b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3", "SpanId": "7e8f9a0b1c2d3e4f", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "payment-service", "Body": "gRPC ChargeCard completed for amount=249.00 currency=EUR", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "payment-service", "ScopeSchemaUrl": "", "ScopeName": "opentelemetry.instrumentation.flask", "ScopeVersion": "0.44b0", "ScopeAttributes": { "component": "flask" }, "LogAttributes": { "rpc": { "system": "grpc", "service": "PaymentGateway", "method": "ChargeCard", "grpc": { "status_code": 0 } } } },
-        { "Timestamp": "2026-04-07 14:26:00.445670000", "TraceId": "c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4", "SpanId": "8f9a0b1c2d3e4f5a", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "api-gateway", "Body": "GET /api/v1/products completed with status 200", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "api-gateway", "ScopeSchemaUrl": "", "ScopeName": "go.opentelemetry.io/contrib/instrumentation/net/http", "ScopeVersion": "0.49.0", "ScopeAttributes": { "component": "http-server" }, "LogAttributes": { "http": { "method": "GET", "url": "/api/v1/products", "status_code": 200, "duration_ms": 89 } } },
-        { "Timestamp": "2026-04-07 14:26:15.778230000", "TraceId": "d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5", "SpanId": "9a0b1c2d3e4f5a6b", "TraceFlags": 1, "SeverityText": "INFO", "SeverityNumber": 9, "ServiceName": "order-service", "Body": "Order ord-98765 status updated to confirmed", "ResourceSchemaUrl": "https://opentelemetry.io/schemas/1.21.0", "ResourceAttributes": "order-service", "ScopeSchemaUrl": "", "ScopeName": "io.opentelemetry.instrumentation.spring-webmvc", "ScopeVersion": "2.1.0", "ScopeAttributes": { "component": "spring-webmvc" }, "LogAttributes": { "db": { "system": "postgresql", "operation": "UPDATE", "statement": "UPDATE orders SET status = $1 WHERE id = $2", "duration_ms": 12 } } }
+        {"Timestamp":"2026-04-07 14:23:15.100234567","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"00f067aa0ba902b7","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"Incoming request POST /api/v1/orders from 203.0.113.42","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=POST url=/api/v1/orders"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.1,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":5,"recordsProcessed":100}}}}}}},"Payload":"{\"userId\":\"u-10000\",\"action\":\"view\",\"latencyMs\":10}"},
+        {"Timestamp":"2026-04-07 14:23:15.115892341","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"1a2b3c4d5e6f7a8b","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"order-service","Body":"Creating order for user_id=12345","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.3,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":8,"recordsProcessed":117}}}}}}},"Payload":"{\"userId\":\"u-10001\",\"action\":\"click\",\"latencyMs\":17}"},
+        {"Timestamp":"2026-04-07 14:23:15.145003200","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"2b3c4d5e6f7a8b9c","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"order-service","Body":"Querying user credit balance","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{"db":"system=postgresql operation=SELECT duration_ms=23"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.5,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":11,"recordsProcessed":134}}}}}}},"Payload":"{\"userId\":\"u-10002\",\"action\":\"submit\",\"latencyMs\":24}"},
+        {"Timestamp":"2026-04-07 14:23:15.220451890","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"3c4d5e6f7a8b9c0d","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"payment-service","Body":"Processing payment for order ord-98765, amount=149.99 USD","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.7,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":14,"recordsProcessed":151}}}}}}},"Payload":"{\"userId\":\"u-10003\",\"action\":\"purchase\",\"latencyMs\":31}"},
+        {"Timestamp":"2026-04-07 14:23:15.620781234","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"4d5e6f7a8b9c0d1e","TraceFlags":1,"SeverityText":"ERROR","SeverityNumber":17,"ServiceName":"payment-service","Body":"Payment gateway timeout: dial tcp 10.0.5.23:3000: i/o timeout after 400ms","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{"error":"type=ConnectionTimeoutError message=dial tcp 10.0.5.23:3000: i/o timeout","retry":"count=3"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.9,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":17,"recordsProcessed":168}}}}}}},"Payload":"{\"userId\":\"u-10004\",\"action\":\"view\",\"latencyMs\":38}"},
+        {"Timestamp":"2026-04-07 14:23:15.630112456","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"5e6f7a8b9c0d1e2f","TraceFlags":1,"SeverityText":"WARN","SeverityNumber":13,"ServiceName":"order-service","Body":"Payment failed for order ord-98765, marking as pending_payment","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{"db":"system=postgresql operation=UPDATE duration_ms=8"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.1,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":20,"recordsProcessed":185}}}}}}},"Payload":"{\"userId\":\"u-10005\",\"action\":\"click\",\"latencyMs\":45}"},
+        {"Timestamp":"2026-04-07 14:23:16.123890123","TraceId":"4bf92f3577b34da6a3ce929d0e0e4736","SpanId":"6f7a8b9c0d1e2f3a","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"POST /api/v1/orders completed with status 202","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=POST url=/api/v1/orders status_code=202 duration_ms=1023"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.3,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":23,"recordsProcessed":202}}}}}}},"Payload":"{\"userId\":\"u-10006\",\"action\":\"submit\",\"latencyMs\":52}"},
+        {"Timestamp":"2026-04-07 14:23:47.200100000","TraceId":"7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8","SpanId":"7a8b9c0d1e2f3a4b","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"Incoming request GET /api/v1/users/12345","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=GET url=/api/v1/users/12345"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.5,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":26,"recordsProcessed":219}}}}}}},"Payload":"{\"userId\":\"u-10007\",\"action\":\"purchase\",\"latencyMs\":59}"},
+        {"Timestamp":"2026-04-07 14:23:47.208340000","TraceId":"7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8","SpanId":"8b9c0d1e2f3a4b5c","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"order-service","Body":"Fetching user profile for id=12345","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.7,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":29,"recordsProcessed":236}}}}}}},"Payload":"{\"userId\":\"u-10008\",\"action\":\"view\",\"latencyMs\":66}"},
+        {"Timestamp":"2026-04-07 14:23:47.210520000","TraceId":"7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8","SpanId":"9c0d1e2f3a4b5c6d","TraceFlags":1,"SeverityText":"DEBUG","SeverityNumber":5,"ServiceName":"order-service","Body":"Cache hit for user:12345 in Redis, ttl=1842s","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{"db":"system=redis operation=GET duration_ms=2"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.9,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":32,"recordsProcessed":253}}}}}}},"Payload":"{\"userId\":\"u-10009\",\"action\":\"click\",\"latencyMs\":73}"},
+        {"Timestamp":"2026-04-07 14:23:47.225670000","TraceId":"7a0c7e5e15b34d6fa4b0c3d2e1f0a9b8","SpanId":"0d1e2f3a4b5c6d7e","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"GET /api/v1/users/12345 completed with status 200","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=GET url=/api/v1/users/12345 status_code=200 duration_ms=25"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.1,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":35,"recordsProcessed":270}}}}}}},"Payload":"{\"userId\":\"u-10010\",\"action\":\"submit\",\"latencyMs\":80}"},
+        {"Timestamp":"2026-04-07 14:24:02.100200000","TraceId":"c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6","SpanId":"1e2f3a4b5c6d7e8f","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"payment-service","Body":"Retrying payment pm-44321 for order ord-98765 (attempt 1)","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{"messaging":"system=kafka destination=payment-retry operation=consume"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.3,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":38,"recordsProcessed":287}}}}}}},"Payload":"{\"userId\":\"u-10011\",\"action\":\"purchase\",\"latencyMs\":87}"},
+        {"Timestamp":"2026-04-07 14:24:02.450890000","TraceId":"c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6","SpanId":"2f3a4b5c6d7e8f9a","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"payment-service","Body":"Payment pm-44321 processed successfully via gRPC","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{"rpc":"system=grpc service=PaymentGateway method=ChargeCard"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.5,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":41,"recordsProcessed":304}}}}}}},"Payload":"{\"userId\":\"u-10012\",\"action\":\"view\",\"latencyMs\":94}"},
+        {"Timestamp":"2026-04-07 14:24:02.480120000","TraceId":"c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6","SpanId":"3a4b5c6d7e8f9a0b","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"payment-service","Body":"Published payment-completed event for order ord-98765","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{"messaging":"system=kafka destination=order-events operation=publish"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.7,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":44,"recordsProcessed":321}}}}}}},"Payload":"{\"userId\":\"u-10013\",\"action\":\"click\",\"latencyMs\":101}"},
+        {"Timestamp":"2026-04-07 14:24:30.001230000","TraceId":"e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0","SpanId":"4b5c6d7e8f9a0b1c","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"GET /healthz completed with status 200","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=GET url=/healthz status_code=200 duration_ms=1"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.9,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":47,"recordsProcessed":338}}}}}}},"Payload":"{\"userId\":\"u-10014\",\"action\":\"submit\",\"latencyMs\":108}"},
+        {"Timestamp":"2026-04-07 14:24:45.330890000","TraceId":"f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1","SpanId":"5c6d7e8f9a0b1c2d","TraceFlags":1,"SeverityText":"WARN","SeverityNumber":13,"ServiceName":"api-gateway","Body":"Rate limit threshold 80% reached for client 203.0.113.50","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=POST url=/api/v1/search status_code=429 duration_ms=5"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.1,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":50,"recordsProcessed":355}}}}}}},"Payload":"{\"userId\":\"u-10015\",\"action\":\"purchase\",\"latencyMs\":115}"},
+        {"Timestamp":"2026-04-07 14:25:10.992340000","TraceId":"a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2","SpanId":"6d7e8f9a0b1c2d3e","TraceFlags":1,"SeverityText":"ERROR","SeverityNumber":17,"ServiceName":"order-service","Body":"Failed to connect to PostgreSQL: connection refused","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{"error":"type=ConnectionRefusedError message=dial tcp 10.0.3.15:5432: connection refused","db":"system=postgresql"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.3,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":53,"recordsProcessed":372}}}}}}},"Payload":"{\"userId\":\"u-10016\",\"action\":\"view\",\"latencyMs\":122}"},
+        {"Timestamp":"2026-04-07 14:25:30.112560000","TraceId":"b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3","SpanId":"7e8f9a0b1c2d3e4f","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"payment-service","Body":"gRPC ChargeCard completed for amount=249.00 currency=EUR","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"payment-service","ScopeSchemaUrl":"","ScopeName":"opentelemetry.instrumentation.flask","ScopeVersion":"0.44b0","ScopeAttributes":{"component":"flask"},"LogAttributes":{"rpc":"system=grpc service=PaymentGateway method=ChargeCard"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.5,"decisionAlgorithmVersion":"v3.0"},"pipeline":{"checkpoint":{"durationMs":56,"recordsProcessed":389}}}}}}},"Payload":"{\"userId\":\"u-10017\",\"action\":\"click\",\"latencyMs\":129}"},
+        {"Timestamp":"2026-04-07 14:26:00.445670000","TraceId":"c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4","SpanId":"8f9a0b1c2d3e4f5a","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"api-gateway","Body":"GET /api/v1/products completed with status 200","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"api-gateway","ScopeSchemaUrl":"","ScopeName":"go.opentelemetry.io/contrib/instrumentation/net/http","ScopeVersion":"0.49.0","ScopeAttributes":{"component":"http-server"},"LogAttributes":{"http":"method=GET url=/api/v1/products status_code=200 duration_ms=89"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.7,"decisionAlgorithmVersion":"v1.0"},"pipeline":{"checkpoint":{"durationMs":59,"recordsProcessed":406}}}}}}},"Payload":"{\"userId\":\"u-10018\",\"action\":\"submit\",\"latencyMs\":136}"},
+        {"Timestamp":"2026-04-07 14:26:15.778230000","TraceId":"d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5","SpanId":"9a0b1c2d3e4f5a6b","TraceFlags":1,"SeverityText":"INFO","SeverityNumber":9,"ServiceName":"order-service","Body":"Order ord-98765 status updated to confirmed","ResourceSchemaUrl":"https://opentelemetry.io/schemas/1.21.0","ResourceAttributes":"order-service","ScopeSchemaUrl":"","ScopeName":"io.opentelemetry.instrumentation.spring-webmvc","ScopeVersion":"2.1.0","ScopeAttributes":{"component":"spring-webmvc"},"LogAttributes":{"db":"system=postgresql operation=UPDATE duration_ms=12"},"Metadata":{"enterprise":{"observability":{"telemetry":{"emission":{"sampler":{"rate":0.9,"decisionAlgorithmVersion":"v2.0"},"pipeline":{"checkpoint":{"durationMs":62,"recordsProcessed":423}}}}}}},"Payload":"{\"userId\":\"u-10019\",\"action\":\"purchase\",\"latencyMs\":143}"}
     ]
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/columns"
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
@@ -24,34 +25,22 @@ type SelectResult struct {
 	SQL     string
 }
 
-type rawSelectColumn struct {
-	name  string
-	alias string
-}
-
-func parseRawSelectColumns(text string) ([]rawSelectColumn, error) {
-	parts := strings.Split(text, ",")
-	result := make([]rawSelectColumn, 0, len(parts))
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
+// toKeyTransformers converts columns-package transformers (the canonical
+// parser's output shape) to flyql-package transformers (the Key's field
+// type). Ranges are zero-valued; downstream consumers read only Name
+// and Arguments. Arguments are copied (not aliased) so downstream
+// mutation cannot leak back into the source ParsedColumn.
+func toKeyTransformers(cts []columns.Transformer) []flyql.Transformer {
+	result := make([]flyql.Transformer, len(cts))
+	for i, ct := range cts {
+		args := make([]any, len(ct.Arguments))
+		copy(args, ct.Arguments)
+		result[i] = flyql.Transformer{
+			Name:      ct.Name,
+			Arguments: args,
 		}
-		lower := strings.ToLower(part)
-		idx := strings.Index(lower, " as ")
-		var name, alias string
-		if idx >= 0 {
-			name = strings.TrimSpace(part[:idx])
-			alias = strings.TrimSpace(part[idx+4:])
-		} else {
-			name = part
-		}
-		if name == "" {
-			return nil, fmt.Errorf("empty column name")
-		}
-		result = append(result, rawSelectColumn{name: name, alias: alias})
 	}
-	return result, nil
+	return result
 }
 
 // resolveColumn finds the column using greedy longest-match on key segments.
@@ -130,24 +119,25 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 //	columns["users.name"] = &Column{RawIdentifier: "u.name", Type: "text"}
 //
 // No implicit aliases are added; use "col as alias" explicitly.
-func ToSQLSelect(text string, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (*SelectResult, error) {
-	raws, err := parseRawSelectColumns(text)
+func ToSQLSelect(text string, cols map[string]*Column, registry ...*transformers.TransformerRegistry) (*SelectResult, error) {
+	parsedCols, err := columns.Parse(text, columns.Capabilities{Transformers: true, Renderers: true})
 	if err != nil {
 		return nil, err
 	}
 
 	result := &SelectResult{
-		Columns: make([]*SelectColumn, 0, len(raws)),
+		Columns: make([]*SelectColumn, 0, len(parsedCols)),
 	}
-	exprs := make([]string, 0, len(raws))
+	exprs := make([]string, 0, len(parsedCols))
 
-	for _, raw := range raws {
-		key, err := flyql.ParseKey(raw.name, 0)
+	for _, parsed := range parsedCols {
+		key, err := flyql.ParseKey(parsed.Name, 0)
 		if err != nil {
-			return nil, fmt.Errorf("invalid column name %q: %w", raw.name, err)
+			return nil, fmt.Errorf("invalid column name %q: %w", parsed.Name, err)
 		}
+		key.Transformers = toKeyTransformers(parsed.Transformers)
 
-		col, path, pathQuoted, err := resolveColumn(key, columns)
+		col, path, pathQuoted, err := resolveColumn(key, cols)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +145,7 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 		identifier := getIdentifier(col)
 		sqlExpr, err := buildSelectExpr(identifier, col, path, pathQuoted)
 		if err != nil {
-			return nil, fmt.Errorf("column %q: %w", raw.name, err)
+			return nil, fmt.Errorf("column %q: %w", parsed.Name, err)
 		}
 
 		if len(key.Transformers) > 0 {
@@ -166,18 +156,21 @@ func ToSQLSelect(text string, columns map[string]*Column, registry ...*transform
 				reg = transformers.DefaultRegistry()
 			}
 			if err := validateTransformerChain(key.Transformers, reg); err != nil {
-				return nil, fmt.Errorf("column %q: %w", raw.name, err)
+				return nil, fmt.Errorf("column %q: %w", parsed.Name, err)
 			}
 			if len(path) > 0 && ((col.FlyQLType() == flyqltype.JSON) || col.FlyQLType() == flyqltype.JSONString) {
 				sqlExpr = fmt.Sprintf("(%s)::text", sqlExpr)
 			}
 			sqlExpr, err = applyTransformerSQL(sqlExpr, key.Transformers, "postgresql", reg)
 			if err != nil {
-				return nil, fmt.Errorf("column %q: %w", raw.name, err)
+				return nil, fmt.Errorf("column %q: %w", parsed.Name, err)
 			}
 		}
 
-		alias := raw.alias
+		alias := ""
+		if parsed.Alias != nil {
+			alias = *parsed.Alias
+		}
 		if alias != "" {
 			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, EscapeIdentifier(alias))
 		} else if len(path) > 0 {

@@ -146,8 +146,10 @@ describe('ColumnsEngine', () => {
             engine.setCursorPosition(0)
             await engine.updateSuggestions()
             const item = engine.suggestions.find((s) => s.label === 'level')
-            // Editor normalizes raw 'enum' input to canonical Type.String.
-            expect(item.detail).toBe('string')
+            // Display shows the user-provided type string ('enum') — the engine
+            // internally normalizes it to Type.String, but rawType is preserved
+            // for display so users see what they wrote in the schema.
+            expect(item.detail).toBe('enum')
         })
 
         it('shows message when no columns match', async () => {
@@ -491,6 +493,72 @@ describe('ColumnsEngine', () => {
         it('returns plain text when no prefix', () => {
             const engine = new ColumnsEngine(TEST_COLUMNS)
             expect(engine.highlightMatch('level')).toBe('level')
+        })
+
+        it('wraps dots in path-dot span (no prefix)', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('foo.bar.baz')
+            const matches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(matches).not.toBeNull()
+            expect(matches.length).toBe(2)
+        })
+
+        it('wraps single dot for no-prefix plain case', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('a.b')
+            expect(html).toBe('a<span class="flyql-path-dot">.</span>b')
+        })
+
+        it('preserves match span alongside path-dot span when label starts with prefix', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: 'fo' }
+            const html = engine.highlightMatch('foo.bar')
+            expect(html).toContain('flyql-panel__match')
+            expect(html).toContain('flyql-path-dot')
+        })
+
+        it('wraps dot inside matched prefix when prefix spans the dot', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: 'foo.' }
+            const html = engine.highlightMatch('foo.bar')
+            expect(html).toMatch(
+                /<span class="flyql-panel__match">[^<]*foo<span class="flyql-path-dot">\.<\/span><\/span>bar/,
+            )
+        })
+
+        it('escapes HTML around dots without corrupting entities', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('a.b<c.d')
+            expect(html).toBe('a<span class="flyql-path-dot">.</span>b&lt;c<span class="flyql-path-dot">.</span>d')
+        })
+
+        it('highlights visible overlap in truncated label when prefix extends into kept suffix', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: 'service.api.users.pr' }
+            const original = 'service.api.users.profile.emailAddress'
+            const truncated = '\u2026api.users.profile.emailAddress'
+            const html = engine.highlightMatch(truncated, original)
+            expect(html.startsWith('\u2026<span class="flyql-panel__match">')).toBe(true)
+            expect(html).toContain('flyql-panel__match')
+        })
+
+        it('does not highlight when prefix is entirely inside stripped portion', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: 'serv' }
+            const original = 'service.api.users.profile.emailAddress'
+            const truncated = '\u2026api.users.profile.emailAddress'
+            const html = engine.highlightMatch(truncated, original)
+            expect(html).not.toContain('flyql-panel__match')
+        })
+
+        it('escapes full untruncated labels safely for footer v-html path (F15)', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const evilLabel = '<script>alert(1)</script>.<img src=x onerror=alert(1)>'
+            const html = engine.highlightMatch(evilLabel)
+            expect(html).not.toContain('<script>')
+            expect(html).not.toContain('<img')
+            expect(html).toContain('&lt;script&gt;')
+            expect(html).toContain('&lt;img')
         })
     })
 

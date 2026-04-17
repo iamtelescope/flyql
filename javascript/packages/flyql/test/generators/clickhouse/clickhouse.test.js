@@ -231,7 +231,9 @@ describe('generateSelect', () => {
     })
 
     it('rejects invalid alias characters', () => {
-        expect(() => generateSelect('message as msg; DROP TABLE', columns)).toThrow('invalid alias')
+        // Canonical columns parser sanitizes whitespace/punctuation, but an alias
+        // that starts with a digit still fails the generator's validAliasPattern.
+        expect(() => generateSelect('message as 123abc', columns)).toThrow('invalid alias')
     })
 
     it('accepts valid alias', () => {

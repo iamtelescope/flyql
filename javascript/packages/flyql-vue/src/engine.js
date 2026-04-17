@@ -55,6 +55,10 @@ const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))
 
 function _applyEditorTypeNormalization(col) {
     if (col.type && !_FLYQL_TYPE_VALUES.has(col.type)) {
+        // Preserve the user-provided type string for display (shown in
+        // suggestion detail column). `col.type` is then normalized to a
+        // canonical flyql.Type for internal engine/validator consumption.
+        if (col.rawType === undefined) col.rawType = col.type
         const mapped = EDITOR_TYPE_TO_FLYQL[col.type]
         col.type = mapped !== undefined ? mapped : Type.Unknown
     }
@@ -95,6 +99,28 @@ function escapeHtml(str) {
         .replace(/'/g, '&#x27;')
 }
 
+function wrapDots(escaped) {
+    // escaped is already HTML-safe; dots in escaped text map 1:1 to dots in label.
+    return escaped.replace(/\./g, '<span class="flyql-path-dot">.</span>')
+}
+
+/**
+ * Walk backward in `text` from position `segmentStart` to find the dotted
+ * identifier path that precedes a diagnostic segment (i.e., the parent path
+ * for an unknown-column nested diagnostic). Returns `null` if the segment is
+ * not preceded by a dot.
+ */
+function extractParentPathFromText(text, segmentStart) {
+    if (segmentStart <= 0 || text[segmentStart - 1] !== '.') return null
+    let start = segmentStart - 1
+    while (start > 0) {
+        const c = text[start - 1]
+        if (/[A-Za-z0-9_.]/.test(c)) start--
+        else break
+    }
+    return text.substring(start, segmentStart - 1)
+}
+
 /**
  * Normalize newlines to spaces for parser consumption.
  * The editor supports multiline visually, but the parser only recognizes spaces as delimiters.
@@ -103,13 +129,19 @@ function normalizeForParser(text) {
     return text.replace(/\r\n/g, '  ').replace(/[\r\n]/g, ' ')
 }
 
+// Token types whose contents can be dotted identifier paths in this editor —
+// apply path-dot coloring so separators are visually distinct in the
+// highlighted query, not just in the suggestion panel.
+const DOT_PATH_CHAR_TYPES = new Set([CharType.KEY, CharType.COLUMN])
+
 function wrapSpan(charType, text) {
     const escaped = escapeHtml(text)
+    const content = DOT_PATH_CHAR_TYPES.has(charType) ? wrapDots(escaped) : escaped
     const cls = CHAR_TYPE_CLASS[charType]
     if (cls) {
-        return `<span class="${cls}">${escaped}</span>`
+        return `<span class="${cls}">${content}</span>`
     }
-    return escaped
+    return content
 }
 
 export class EditorEngine {
@@ -271,7 +303,30 @@ export class EditorEngine {
                     const match = d.message.match(/^column '(.+)' is not defined$/)
                     if (!match) return true
                     const partial = match[1].toLowerCase()
-                    return !columnNames.some((n) => n.startsWith(partial) && n !== partial)
+                    if (columnNames.some((n) => n.startsWith(partial) && n !== partial)) return false
+                    // Nested-path suppression: the validator reports only the failing segment,
+                    // so reconstruct the parent dotted path from the query text using the
+                    // diagnostic's range, walk the schema to that parent, and check siblings.
+                    const parentPath = extractParentPathFromText(normalized, d.range.start)
+                    if (parentPath) {
+                        const parentSegments = parentPath.toLowerCase().split('.')
+                        let cur = this.columns.columns
+                        let reached = true
+                        for (const seg of parentSegments) {
+                            const keys = Object.keys(cur)
+                            const k = keys.find((kk) => kk.toLowerCase() === seg)
+                            if (!k || !cur[k] || !cur[k].children) {
+                                reached = false
+                                break
+                            }
+                            cur = cur[k].children
+                        }
+                        if (reached) {
+                            const childNames = Object.keys(cur).map((n) => n.toLowerCase())
+                            if (childNames.some((n) => n.startsWith(partial) && n !== partial)) return false
+                        }
+                    }
+                    return true
                 }
                 return true
             })
@@ -917,14 +972,66 @@ export class EditorEngine {
     }
 
     /**
-     * Highlight the matching portion of a suggestion label.
+     * Info-box data for the current selection.
+     * Returns {label, type, description, hasChildren} for whichever column the
+     * user is "on" right now — either the selected column suggestion, or the
+     * filter column inferred from parser context when no column is selected
+     * (e.g., value/operator/boolOp phases). Returns null if there's nothing
+     * useful to display.
      */
-    highlightMatch(label) {
+    getSelectedInfo() {
+        if (!this.context) return null
+        const selected = this.suggestions[this.state.selectedIndex]
+        let targetKey = null
+        if (selected && selected.type === 'column') {
+            targetKey = selected.label
+        } else if (this.context.key) {
+            targetKey = this.context.key
+        }
+        if (!targetKey) return null
+        const def = resolveColumnDef(this.columns, targetKey)
+        const type = def ? def.rawType || def.type || '' : (selected && selected.detail) || ''
+        return {
+            label: targetKey,
+            type,
+            description: def && def.description ? def.description : '',
+            hasChildren: def ? !!def.children : false,
+        }
+    }
+
+    /**
+     * Highlight the matching portion of a suggestion label.
+     * When `originalLabel` is provided and `label` is a truncated form (leading
+     * U+2026 ellipsis) of the original, and the user's typed prefix extends
+     * into the kept suffix, the visible overlap is wrapped in
+     * `.flyql-panel__match` so the user sees where their typed prefix ends up
+     * inside the stripped label.
+     */
+    highlightMatch(label, originalLabel = null) {
         const prefix = this.getFilterPrefix()
-        if (!prefix) return escapeHtml(label)
-        if (!label.toLowerCase().startsWith(prefix.toLowerCase())) return escapeHtml(label)
-        const matched = escapeHtml(label.substring(0, prefix.length))
-        const rest = escapeHtml(label.substring(prefix.length))
-        return `<span class="flyql-panel__match">${matched}</span>${rest}`
+        if (!prefix) return wrapDots(escapeHtml(label))
+        const lowerLabel = label.toLowerCase()
+        const lowerPrefix = prefix.toLowerCase()
+        if (lowerLabel.startsWith(lowerPrefix)) {
+            const matched = wrapDots(escapeHtml(label.substring(0, prefix.length)))
+            const rest = wrapDots(escapeHtml(label.substring(prefix.length)))
+            return `<span class="flyql-panel__match">${matched}</span>${rest}`
+        }
+        if (
+            originalLabel &&
+            label !== originalLabel &&
+            label.startsWith('\u2026') &&
+            originalLabel.toLowerCase().startsWith(lowerPrefix)
+        ) {
+            const kept = label.substring(1)
+            const strippedLen = originalLabel.length - kept.length
+            if (prefix.length > strippedLen) {
+                const visibleMatchLen = Math.min(prefix.length - strippedLen, kept.length)
+                const matched = wrapDots(escapeHtml(kept.substring(0, visibleMatchLen)))
+                const rest = wrapDots(escapeHtml(kept.substring(visibleMatchLen)))
+                return `\u2026<span class="flyql-panel__match">${matched}</span>${rest}`
+            }
+        }
+        return wrapDots(escapeHtml(label))
     }
 }

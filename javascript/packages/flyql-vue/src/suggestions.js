@@ -130,9 +130,10 @@ export function getNestedColumnSuggestions(schema, prefix) {
         const hasChildren = !!def.children
         result.push({
             label: fullPath,
+            displayLabel: '\u2026' + displayName + (hasChildren ? '.' : ''),
             insertText: hasChildren ? fullPath + '.' : fullPath,
             type: 'column',
-            detail: def.type || '',
+            detail: def.rawType || def.type || '',
         })
     }
     return result
@@ -183,7 +184,7 @@ export function getKeySuggestions(schema, prefix) {
             label: name,
             insertText: hasChildren ? name + '.' : name,
             type: 'column',
-            detail: col.type || '',
+            detail: col.rawType || col.type || '',
         })
     }
     return result
@@ -498,6 +499,7 @@ function filterDiscoveredKeys(keys, parentPath, childPrefix) {
             const fullPath = parentPath + '.' + k.name
             return {
                 label: fullPath,
+                displayLabel: '\u2026' + k.name,
                 insertText: k.hasChildren ? fullPath + '.' : fullPath,
                 type: 'column',
                 detail: k.type || 'unknown',

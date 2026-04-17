@@ -742,6 +742,78 @@ describe('EditorEngine', () => {
             expect(html).not.toContain('<b>')
             expect(html).toContain('&lt;b&gt;')
         })
+
+        it('wraps dots in path-dot span (no prefix)', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('foo.bar.baz')
+            const matches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(matches).not.toBeNull()
+            expect(matches.length).toBe(2)
+        })
+
+        it('wraps single dot for no-prefix plain case', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('a.b')
+            expect(html).toBe('a<span class="flyql-path-dot">.</span>b')
+        })
+
+        it('preserves match span alongside path-dot span when label starts with prefix', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', key: 'fo' }
+            const html = engine.highlightMatch('foo.bar')
+            expect(html).toContain('flyql-panel__match')
+            expect(html).toContain('flyql-path-dot')
+        })
+
+        it('wraps dot inside matched prefix when prefix spans the dot', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', key: 'foo.' }
+            const html = engine.highlightMatch('foo.bar')
+            expect(html).toMatch(
+                /<span class="flyql-panel__match">[^<]*foo<span class="flyql-path-dot">\.<\/span><\/span>bar/,
+            )
+        })
+
+        it('escapes HTML around dots without corrupting entities', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.highlightMatch('a.b<c.d')
+            expect(html).toBe('a<span class="flyql-path-dot">.</span>b&lt;c<span class="flyql-path-dot">.</span>d')
+        })
+
+        it('highlights visible overlap in truncated label when prefix extends into kept suffix', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            // Simulate typing 'status.users.pr' → original label ends with '...users.profile.emailAddress'
+            engine.context = { expecting: 'column', key: 'service.api.users.pr' }
+            const original = 'service.api.users.profile.emailAddress'
+            const truncated = '\u2026api.users.profile.emailAddress'
+            const html = engine.highlightMatch(truncated, original)
+            // ellipsis is preserved as-is, match span wraps the visible overlap at start of kept suffix
+            expect(html.startsWith('\u2026<span class="flyql-panel__match">')).toBe(true)
+            expect(html).toContain('flyql-panel__match')
+        })
+
+        it('does not highlight when prefix is entirely inside stripped portion', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', key: 'serv' }
+            const original = 'service.api.users.profile.emailAddress'
+            const truncated = '\u2026api.users.profile.emailAddress'
+            const html = engine.highlightMatch(truncated, original)
+            // User's typed prefix 'serv' is entirely in the stripped part — no match span.
+            expect(html).not.toContain('flyql-panel__match')
+        })
+
+        it('escapes full untruncated labels safely for footer v-html path (F15)', () => {
+            // Footer binds v-html="highlightMatch(selectedFullLabel)" with the untruncated label.
+            // This test guards the widest potential XSS surface by asserting no raw <script> or
+            // tag can escape into the output even for labels crafted with HTML/JS content.
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const evilLabel = '<script>alert(1)</script>.<img src=x onerror=alert(1)>'
+            const html = engine.highlightMatch(evilLabel)
+            expect(html).not.toContain('<script>')
+            expect(html).not.toContain('<img')
+            expect(html).toContain('&lt;script&gt;')
+            expect(html).toContain('&lt;img')
+        })
     })
 
     describe('async value loading', () => {
@@ -1159,8 +1231,10 @@ describe('EditorEngine', () => {
             await engine.updateSuggestions()
             expect(engine.suggestionType).toBe('column')
             expect(engine.suggestions[0].label).toBe('status')
-            // Editor normalizes the raw 'enum' input to canonical Type.String.
-            expect(engine.suggestions[0].detail).toBe('string')
+            // Display shows the user-provided type string ('enum') — internal
+            // normalization canonicalizes it to Type.String, but rawType is
+            // preserved so users see the schema-declared type.
+            expect(engine.suggestions[0].detail).toBe('enum')
 
             // Operator phase (after known column)
             engine.setQuery('status')

@@ -17,6 +17,7 @@
     --flyql-parameter-color: #a855f7;
     --flyql-warning-color: #e5a100;
     --flyql-diag-highlight: rgba(255, 0, 0, 0.15);
+    --flyql-path-separator-color: #4ca772;
 
     --flyql-dropdown-bg: #ffffff;
     --flyql-dropdown-border: #d4d4d4;
@@ -41,11 +42,12 @@
     --flyql-number-color: #b5cea8;
     --flyql-error-color: #f48771;
     --flyql-transformer-color: #6e9fff;
-    --flyql-renderer-color: #ce93d8;
+    --flyql-renderer-color: #e0b3e6;
     --flyql-wildcard-color: #e06c75;
-    --flyql-parameter-color: #c678dd;
+    --flyql-parameter-color: #d4a5e8;
     --flyql-warning-color: #cca700;
     --flyql-diag-highlight: rgba(255, 80, 80, 0.35);
+    --flyql-path-separator-color: #a3d9a5;
 
     --flyql-dropdown-bg: #252526;
     --flyql-dropdown-border: #454545;
@@ -214,6 +216,19 @@
     padding-bottom: 0;
 }
 
+.flyql-panel__info {
+    border-top: 1px solid var(--flyql-dropdown-border);
+    flex-shrink: 0;
+}
+
+.flyql-panel__info .flyql-panel__header {
+    padding-bottom: 0;
+}
+
+.flyql-panel__info .flyql-panel__footer {
+    border-top: none;
+}
+
 .flyql-panel__diagnostic-item:last-child {
     padding-bottom: 8px;
 }
@@ -260,33 +275,68 @@
 
 .flyql-panel__footer {
     display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 6px 10px 8px;
+    font-size: 12px;
+    color: var(--flyql-text);
+    border-top: 1px solid var(--flyql-dropdown-border);
+    border-radius: 0 0 6px 6px;
+}
+
+.flyql-panel__footer-row {
+    display: flex;
     align-items: baseline;
     gap: 8px;
-    flex-shrink: 0;
-    padding: 6px 10px;
-    font-size: 11px;
-    line-height: 1;
-    color: var(--flyql-text);
-    opacity: 0.5;
-    border-top: 1px solid var(--flyql-dropdown-border);
-    background: color-mix(in srgb, var(--flyql-dropdown-bg) 96%, var(--flyql-text) 4%);
-    border-radius: 0 0 6px 6px;
+    min-width: 0;
 }
 
 .flyql-panel__footer-col {
     font-family: var(--flyql-code-font-family);
     font-weight: 600;
     color: var(--flyql-key-color);
-    opacity: 1;
 }
 
 .flyql-panel__footer-label {
-    font-style: italic;
+    color: var(--flyql-text);
+}
+
+.flyql-panel__footer-type {
+    font-family: var(--flyql-code-font-family);
+    color: var(--flyql-placeholder-color);
+}
+
+.flyql-panel__footer-hint {
+    color: var(--flyql-placeholder-color);
+}
+
+.flyql-panel__footer-hint kbd {
+    font-family: var(--flyql-code-font-family);
+    padding: 0 4px;
+    border: 1px solid var(--flyql-dropdown-border);
+    border-radius: 3px;
+    background: var(--flyql-dropdown-bg);
+}
+
+.flyql-panel__footer-desc {
+    color: color-mix(in srgb, var(--flyql-text) 75%, transparent);
+    line-height: 1.35;
 }
 
 .flyql-panel__footer-status {
     margin-left: auto;
-    font-size: 10px;
+    color: var(--flyql-placeholder-color);
+}
+
+.flyql-panel__footer-path {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--flyql-code-font-family);
+    color: var(--flyql-text);
+    white-space: normal;
+    word-break: break-all;
+    line-height: 1.35;
 }
 
 /* ── Loader bar ── */
@@ -371,7 +421,7 @@
 
 .flyql-panel__item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     padding: 4px 10px;
     cursor: pointer;
@@ -430,8 +480,10 @@
 
 .flyql-panel__label {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-all;
+    line-height: 1.35;
     color: var(--flyql-text);
     font-family: var(--flyql-code-font-family);
 }
@@ -439,6 +491,17 @@
 .flyql-panel__match {
     color: var(--flyql-key-color);
     font-weight: 600;
+}
+
+.flyql-path-dot {
+    color: var(--flyql-path-separator-color);
+}
+
+.flyql-panel__match .flyql-path-dot,
+.flyql-key .flyql-path-dot,
+.flyql-column .flyql-path-dot,
+.flyql-col-column .flyql-path-dot {
+    color: var(--flyql-path-separator-color);
 }
 
 .flyql-panel__detail {

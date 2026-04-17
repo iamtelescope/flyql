@@ -336,10 +336,10 @@ func (p *Parser) parseKeyWithRange(keyRange Range) (Key, bool) {
 		if kpe, ok := err.(*KeyParseError); ok {
 			p.state = stateError
 			p.errorText = kpe.Message
-			p.errno = 60
+			p.errno = errKeyParseFailed
 			p.errorRange = kpe.Range
 		} else {
-			p.setErrorState(err.Error(), 1)
+			p.setErrorState(err.Error(), errUnknownState)
 		}
 		return Key{Segments: []string{""}, Range: keyRange, SegmentRanges: []Range{keyRange}}, false
 	}
@@ -367,7 +367,7 @@ func (p *Parser) newExpression() *Expression {
 
 	if value == "null" && !valueIsString {
 		if p.keyValueOperator != OpEquals && p.keyValueOperator != OpNotEquals {
-			p.setErrorState(fmt.Sprintf("null value cannot be used with operator '%s'", p.keyValueOperator), 51)
+			p.setErrorState(fmt.Sprintf("null value cannot be used with operator '%s'", p.keyValueOperator), errNullNotAllowedWithOperator)
 		}
 		return &Expression{
 			Key:           key,
@@ -397,7 +397,7 @@ func (p *Parser) newExpression() *Expression {
 	}
 	expr, exprErr := NewExpression(key, p.keyValueOperator, value, valueIsString)
 	if exprErr != nil {
-		p.setErrorState(exprErr.Error(), 1)
+		p.setErrorState(exprErr.Error(), errUnknownState)
 		return nil
 	}
 	expr.Range = exprRange
@@ -412,7 +412,7 @@ func (p *Parser) newTruthyExpression() *Expression {
 	key, _ := p.parseKeyWithRange(keyRange)
 	expr, exprErr := NewExpression(key, OpTruthy, "", true)
 	if exprErr != nil {
-		p.setErrorState(exprErr.Error(), 1)
+		p.setErrorState(exprErr.Error(), errUnknownState)
 		return nil
 	}
 	expr.Range = exprRange
@@ -704,7 +704,7 @@ func (p *Parser) inStateInitial() {
 		p.state = stateDoubleQuotedKey
 		p.storeTypedChar(CharTypeKey)
 	} else {
-		p.setErrorState("invalid character", 1)
+		p.setErrorState("invalid character", errUnknownState)
 	}
 }
 
@@ -777,7 +777,7 @@ func (p *Parser) inStateKey() {
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 9)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInExpr)
 			return
 		}
 		p.extendTreeWithExpression(p.newTruthyExpression())
@@ -791,7 +791,7 @@ func (p *Parser) inStateKey() {
 		p.state = stateExpectBoolOp
 		p.storeTypedChar(CharTypeOperator)
 	} else {
-		p.setErrorState("invalid character", 3)
+		p.setErrorState("invalid character", errInvalidCharInKey)
 	}
 }
 
@@ -808,7 +808,7 @@ func (p *Parser) inStateExpectOperator() {
 		p.state = stateKeyValueOperator
 		p.storeTypedChar(CharTypeOperator)
 	} else {
-		p.setErrorState("expected operator", 28)
+		p.setErrorState("expected operator", errExpectedOperatorOrUnclosedString)
 	}
 }
 
@@ -856,7 +856,7 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'has'", 50)
+			p.setErrorState("expected value after 'has'", errExpectedValueOrKeyword)
 		}
 		return
 	}
@@ -909,7 +909,7 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'ilike'", 50)
+			p.setErrorState("expected value after 'ilike'", errExpectedValueOrKeyword)
 		}
 		return
 	}
@@ -952,7 +952,7 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'like'", 50)
+			p.setErrorState("expected value after 'like'", errExpectedValueOrKeyword)
 		}
 		return
 	}
@@ -969,7 +969,7 @@ func (p *Parser) inStateKeyValueOperator() {
 			p.isNotIn = false
 			p.state = stateExpectListValue
 		} else {
-			p.setErrorState("expected '[' after 'in'", 47)
+			p.setErrorState("expected '[' after 'in'", errExpectedListStartAfterIn)
 		}
 		return
 	}
@@ -977,7 +977,7 @@ func (p *Parser) inStateKeyValueOperator() {
 	if p.char.isDelimiter() {
 		p.storeTypedChar(CharTypeSpace)
 		if !validKeyValueOperators[p.keyValueOperator] {
-			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+			p.setErrorState("unknown operator: "+p.keyValueOperator, errInvalidCharOrUnknownOperator)
 		} else {
 			p.state = stateExpectValue
 		}
@@ -986,7 +986,7 @@ func (p *Parser) inStateKeyValueOperator() {
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isParameterStart() {
 		if !validKeyValueOperators[p.keyValueOperator] {
-			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+			p.setErrorState("unknown operator: "+p.keyValueOperator, errInvalidCharOrUnknownOperator)
 		} else {
 			p.valueStart = p.char.pos
 			p.state = stateParameter
@@ -994,7 +994,7 @@ func (p *Parser) inStateKeyValueOperator() {
 		}
 	} else if p.char.isValue() {
 		if !validKeyValueOperators[p.keyValueOperator] {
-			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+			p.setErrorState("unknown operator: "+p.keyValueOperator, errInvalidCharOrUnknownOperator)
 		} else {
 			p.state = stateValue
 			p.extendValue()
@@ -1002,7 +1002,7 @@ func (p *Parser) inStateKeyValueOperator() {
 		}
 	} else if p.char.isSingleQuote() {
 		if !validKeyValueOperators[p.keyValueOperator] {
-			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+			p.setErrorState("unknown operator: "+p.keyValueOperator, errInvalidCharOrUnknownOperator)
 		} else {
 			p.setValueIsString()
 			p.state = stateSingleQuotedValue
@@ -1010,14 +1010,14 @@ func (p *Parser) inStateKeyValueOperator() {
 		}
 	} else if p.char.isDoubleQuote() {
 		if !validKeyValueOperators[p.keyValueOperator] {
-			p.setErrorState("unknown operator: "+p.keyValueOperator, 10)
+			p.setErrorState("unknown operator: "+p.keyValueOperator, errInvalidCharOrUnknownOperator)
 		} else {
 			p.setValueIsString()
 			p.state = stateDoubleQuotedValue
 			p.storeTypedChar(CharTypeValue)
 		}
 	} else {
-		p.setErrorState("invalid character", 4)
+		p.setErrorState("invalid character", errInvalidCharInKeyValueOperator)
 	}
 }
 
@@ -1046,7 +1046,7 @@ func (p *Parser) inStateExpectValue() {
 		p.state = stateDoubleQuotedValue
 		p.storeTypedChar(CharTypeValue)
 	} else {
-		p.setErrorState("expected value", 29)
+		p.setErrorState("expected value", errExpectedValue)
 	}
 }
 
@@ -1082,7 +1082,7 @@ func (p *Parser) inStateValue() {
 		}
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 9)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInExpr)
 			return
 		}
 		p.extendTree()
@@ -1096,7 +1096,7 @@ func (p *Parser) inStateValue() {
 		p.state = stateExpectBoolOp
 		p.storeTypedChar(CharTypeOperator)
 	} else {
-		p.setErrorState("invalid character", 10)
+		p.setErrorState("invalid character", errInvalidCharOrUnknownOperator)
 	}
 }
 
@@ -1147,7 +1147,7 @@ func (p *Parser) parseDurationBuf() bool {
 			return false
 		}
 		prevMagnitude = magnitude
-		val, err := strconv.ParseInt(numBuf, 10, 64)
+		val, err := strconv.ParseInt(numBuf, errInvalidCharOrUnknownOperator, 64)
 		if err != nil {
 			p.setErrorState(fmt.Sprintf("invalid duration value '%s'", numBuf), errInvalidDuration)
 			return false
@@ -1589,7 +1589,7 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 15)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInBoolDelim)
 			return
 		}
 		p.resetData()
@@ -1601,7 +1601,7 @@ func (p *Parser) inStateBoolOpDelimiter() {
 		p.state = stateExpectBoolOp
 		p.storeTypedChar(CharTypeOperator)
 	} else {
-		p.setErrorState("invalid character", 18)
+		p.setErrorState("invalid character", errInvalidCharInBoolDelim)
 	}
 }
 
@@ -1615,7 +1615,7 @@ func (p *Parser) inStateExpectBoolOp() {
 		return
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 19)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInExpectBool)
 			return
 		}
 		p.resetData()
@@ -1631,14 +1631,14 @@ func (p *Parser) inStateExpectBoolOp() {
 		p.extendBoolOperator()
 		p.storeTypedChar(CharTypeOperator)
 		if len(p.boolOperator) > 3 || !validBoolOperatorChars[p.char.value] {
-			p.setErrorState("invalid character", 20)
+			p.setErrorState("invalid character", errInvalidCharInExpectBool)
 		} else {
 			if validBoolOperators[p.boolOperator] {
 				nextPos := p.char.pos + 1
 				if nextPos < len(p.text) {
 					nextChar := newChar(rune(p.text[nextPos]), nextPos, 0, 0)
 					if !nextChar.isDelimiter() {
-						p.setErrorState("expected delimiter after bool operator", 23)
+						p.setErrorState("expected delimiter after bool operator", errExpectedDelimAfterBoolOp)
 						return
 					}
 					p.state = stateBoolOpDelimiter
@@ -1664,7 +1664,7 @@ func (p *Parser) inStateKeyOrBoolOp() {
 		p.storeTypedChar(CharTypeOperator)
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 19)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInExpectBool)
 			return
 		}
 		p.extendTreeWithExpression(p.newTruthyExpression())
@@ -1705,7 +1705,7 @@ func (p *Parser) inStateKeyOrBoolOp() {
 			if nextPos < len(p.text) {
 				nextChar := newChar(rune(p.text[nextPos]), nextPos, 0, 0)
 				if !nextChar.isDelimiter() {
-					p.setErrorState("expected delimiter after bool operator", 23)
+					p.setErrorState("expected delimiter after bool operator", errExpectedDelimAfterBoolOp)
 					return
 				}
 				p.state = stateBoolOpDelimiter
@@ -1714,7 +1714,7 @@ func (p *Parser) inStateKeyOrBoolOp() {
 			}
 		}
 	} else {
-		p.setErrorState("expected operator", 32)
+		p.setErrorState("expected operator", errExpectedOperatorOrBoolOp)
 	}
 }
 
@@ -1752,7 +1752,7 @@ func (p *Parser) inStateExpectNotTarget() {
 		p.state = stateInitial
 		p.storeTypedChar(CharTypeOperator)
 	} else {
-		p.setErrorState("expected key or group after not", 33)
+		p.setErrorState("expected key or group after not", errExpectedKeyOrParenAfterNot)
 	}
 }
 
@@ -1766,14 +1766,14 @@ func (p *Parser) inStateExpectInKeyword() {
 			p.keyValueOperator += "o"
 			p.storeTypedChar(CharTypeOperator)
 		} else {
-			p.setErrorState("expected 'not' or 'in' keyword", 41)
+			p.setErrorState("expected 'not' or 'in' keyword", errExpectedNotOrInKeyword)
 		}
 	} else if p.keyValueOperator == "no" {
 		if p.char.value == 't' {
 			p.keyValueOperator += "t"
 			p.storeTypedChar(CharTypeOperator)
 		} else {
-			p.setErrorState("expected 'not' keyword", 41)
+			p.setErrorState("expected 'not' keyword", errExpectedNotOrInKeyword)
 		}
 	} else if p.keyValueOperator == "not" {
 		if p.char.isDelimiter() {
@@ -1782,10 +1782,10 @@ func (p *Parser) inStateExpectInKeyword() {
 			p.isNotIn = true
 			p.state = stateExpectListStart
 		} else {
-			p.setErrorState("expected space after 'not'", 41)
+			p.setErrorState("expected space after 'not'", errExpectedNotOrInKeyword)
 		}
 	} else {
-		p.setErrorState("unexpected state in expect_in_keyword", 41)
+		p.setErrorState("unexpected state in expect_in_keyword", errExpectedNotOrInKeyword)
 	}
 }
 
@@ -1823,7 +1823,7 @@ func (p *Parser) inStateExpectListStart() {
 		p.storeTypedChar(CharTypeOperator)
 		p.state = stateExpectListValue
 	} else {
-		p.setErrorState("expected '['", 42)
+		p.setErrorState("expected '['", errExpectedListStart)
 	}
 }
 
@@ -1864,10 +1864,10 @@ func (p *Parser) inStateExpectHasKeyword() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'not has'", 50)
+			p.setErrorState("expected value after 'not has'", errExpectedValueOrKeyword)
 		}
 	} else {
-		p.setErrorState("expected 'has' keyword", 50)
+		p.setErrorState("expected 'has' keyword", errExpectedValueOrKeyword)
 	}
 }
 
@@ -1912,7 +1912,7 @@ func (p *Parser) inStateExpectLikeKeyword() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'not like'", 50)
+			p.setErrorState("expected value after 'not like'", errExpectedValueOrKeyword)
 		}
 		// Path B: disambiguate "i" -> "in" vs "ilike"
 	} else if p.keyValueOperator == "i" && p.char.value == 'n' {
@@ -1960,10 +1960,10 @@ func (p *Parser) inStateExpectLikeKeyword() {
 			p.extendValue()
 			p.storeTypedChar(CharTypeValue)
 		} else {
-			p.setErrorState("expected value after 'not ilike'", 50)
+			p.setErrorState("expected value after 'not ilike'", errExpectedValueOrKeyword)
 		}
 	} else {
-		p.setErrorState("expected 'like' or 'ilike' keyword", 50)
+		p.setErrorState("expected 'like' or 'ilike' keyword", errExpectedValueOrKeyword)
 	}
 }
 
@@ -1998,7 +1998,7 @@ func (p *Parser) inStateExpectListValue() {
 		p.storeTypedChar(CharTypeValue)
 		p.state = stateInListValue
 	} else {
-		p.setErrorState("expected value in list", 43)
+		p.setErrorState("expected value in list", errExpectedValueInList)
 	}
 }
 
@@ -2032,7 +2032,7 @@ func (p *Parser) inStateInListValue() {
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
 	} else {
-		p.setErrorState("unexpected character in list value", 44)
+		p.setErrorState("unexpected character in list value", errUnexpectedCharInListValue)
 	}
 }
 
@@ -2100,7 +2100,7 @@ func (p *Parser) inStateInListParameter() {
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
 	} else {
-		p.setErrorState("invalid character in parameter name", 10)
+		p.setErrorState("invalid character in parameter name", errInvalidCharOrUnknownOperator)
 	}
 }
 
@@ -2166,7 +2166,7 @@ func (p *Parser) inStateExpectListCommaOrEnd() {
 		p.resetBoolOperator()
 		p.state = stateExpectBoolOp
 	} else {
-		p.setErrorState("expected ',' or ']'", 46)
+		p.setErrorState("expected ',' or ']'", errExpectedCommaOrListEnd)
 	}
 }
 
@@ -2227,7 +2227,7 @@ func (p *Parser) inStateParameter() {
 		}
 	} else if p.char.isGroupClose() {
 		if len(p.nodesStack) == 0 {
-			p.setErrorState("unmatched parenthesis", 9)
+			p.setErrorState("unmatched parenthesis", errUnmatchedParenInExpr)
 			return
 		}
 		p.finalizeParameter()
@@ -2242,13 +2242,13 @@ func (p *Parser) inStateParameter() {
 			p.storeTypedChar(CharTypeOperator)
 		}
 	} else {
-		p.setErrorState("invalid character in parameter name", 10)
+		p.setErrorState("invalid character in parameter name", errInvalidCharOrUnknownOperator)
 	}
 }
 
 func (p *Parser) inStateLastChar() {
 	if p.state == stateInitial && len(p.nodesStack) == 0 {
-		p.setErrorState("empty input", 24)
+		p.setErrorState("empty input", errEmptyInput)
 	} else if p.state == stateFunctionArgs ||
 		p.state == stateFunctionDuration ||
 		p.state == stateFunctionQuotedArg ||
@@ -2272,10 +2272,10 @@ func (p *Parser) inStateLastChar() {
 		p.state == stateInListDoubleQuotedValue ||
 		p.state == stateExpectListCommaOrEnd ||
 		p.state == stateInListParameter {
-		p.setErrorState("unexpected EOF", 25)
+		p.setErrorState("unexpected EOF", errUnexpectedEof)
 	} else if p.state == stateKey {
 		if p.key == NotKeyword {
-			p.setErrorState("unexpected EOF after 'not'", 25)
+			p.setErrorState("unexpected EOF after 'not'", errUnexpectedEof)
 		} else {
 			p.extendTreeWithExpression(p.newTruthyExpression())
 			p.resetBoolOperator()
@@ -2284,7 +2284,7 @@ func (p *Parser) inStateLastChar() {
 		p.extendTreeWithExpression(p.newTruthyExpression())
 		p.resetBoolOperator()
 	} else if p.state == stateDoubleQuotedValue || p.state == stateSingleQuotedValue {
-		p.setErrorState("unclosed string", 28)
+		p.setErrorState("unclosed string", errExpectedOperatorOrUnclosedString)
 		return
 	} else if p.state == stateValue {
 		p.extendTree()
@@ -2295,12 +2295,12 @@ func (p *Parser) inStateLastChar() {
 			p.resetBoolOperator()
 		}
 	} else if p.state == stateBoolOpDelimiter {
-		p.setErrorState("unexpected EOF", 26)
+		p.setErrorState("unexpected EOF", errUnexpectedEofInKey)
 		return
 	}
 
 	if p.state != stateError && len(p.nodesStack) > 0 {
-		p.setErrorState("unmatched parenthesis", 27)
+		p.setErrorState("unmatched parenthesis", errUnmatchedParenAtEof)
 	}
 }
 
@@ -2400,7 +2400,7 @@ func (p *Parser) Parse(text string) error {
 		case stateFunctionParameter:
 			p.inStateFunctionParameter()
 		default:
-			p.setErrorState("unknown state", 1)
+			p.setErrorState("unknown state", errUnknownState)
 		}
 
 		if p.state == stateError {

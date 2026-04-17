@@ -34,17 +34,19 @@ from flyql.transformers.registry import TransformerRegistry, default_registry
 
 DiagnosticSeverity = Literal["error", "warning"]
 
-CODE_UNKNOWN_COLUMN = "unknown_column"
-CODE_UNKNOWN_TRANSFORMER = "unknown_transformer"
-CODE_ARG_COUNT = "arg_count"
-CODE_ARG_TYPE = "arg_type"
-CODE_CHAIN_TYPE = "chain_type"
-CODE_INVALID_AST = "invalid_ast"
-CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
-CODE_INVALID_COLUMN_VALUE = "invalid_column_value"
-CODE_UNKNOWN_RENDERER = "unknown_renderer"
-CODE_RENDERER_ARG_COUNT = "renderer_arg_count"
-CODE_RENDERER_ARG_TYPE = "renderer_arg_type"
+from flyql.errors_generated import (
+    CODE_ARG_COUNT,
+    CODE_ARG_TYPE,
+    CODE_CHAIN_TYPE,
+    CODE_INVALID_AST,
+    CODE_INVALID_COLUMN_VALUE,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_COLUMN_VALUE,
+    CODE_UNKNOWN_RENDERER,
+    CODE_UNKNOWN_TRANSFORMER,
+)
 
 _VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
 

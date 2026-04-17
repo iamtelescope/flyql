@@ -4,17 +4,32 @@ import { ColumnSchema } from './column.js'
 import { Range } from './range.js'
 import { defaultRegistry } from '../transformers/registry.js'
 
-export const CODE_UNKNOWN_COLUMN = 'unknown_column'
-export const CODE_UNKNOWN_TRANSFORMER = 'unknown_transformer'
-export const CODE_ARG_COUNT = 'arg_count'
-export const CODE_ARG_TYPE = 'arg_type'
-export const CODE_CHAIN_TYPE = 'chain_type'
-export const CODE_INVALID_AST = 'invalid_ast'
-export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
-export const CODE_INVALID_COLUMN_VALUE = 'invalid_column_value'
-export const CODE_UNKNOWN_RENDERER = 'unknown_renderer'
-export const CODE_RENDERER_ARG_COUNT = 'renderer_arg_count'
-export const CODE_RENDERER_ARG_TYPE = 'renderer_arg_type'
+import {
+    CODE_ARG_COUNT,
+    CODE_ARG_TYPE,
+    CODE_CHAIN_TYPE,
+    CODE_INVALID_AST,
+    CODE_INVALID_COLUMN_VALUE,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_COLUMN_VALUE,
+    CODE_UNKNOWN_RENDERER,
+    CODE_UNKNOWN_TRANSFORMER,
+} from '../errors_generated.js'
+export {
+    CODE_ARG_COUNT,
+    CODE_ARG_TYPE,
+    CODE_CHAIN_TYPE,
+    CODE_INVALID_AST,
+    CODE_INVALID_COLUMN_VALUE,
+    CODE_RENDERER_ARG_COUNT,
+    CODE_RENDERER_ARG_TYPE,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_COLUMN_VALUE,
+    CODE_UNKNOWN_RENDERER,
+    CODE_UNKNOWN_TRANSFORMER,
+}
 
 const VALID_COLUMN_NAME_RE = /^[a-zA-Z0-9_.:/@|-]+$/
 

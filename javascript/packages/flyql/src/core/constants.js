@@ -138,16 +138,6 @@ export const DURATION_UNIT_MAGNITUDE = Object.freeze({
     w: 5,
 })
 
-export const ERR_UNKNOWN_FUNCTION = 70
-export const ERR_INVALID_FUNCTION_ARGS = 71
-export const ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR = 72
-export const ERR_INVALID_DURATION = 73
-export const ERR_EMPTY_PARAMETER_NAME = 74
-export const ERR_INVALID_PARAMETER_NAME = 75
-export const ERR_PARAMETER_ZERO_INDEX = 76
-export const ERR_PARAMETER_IN_LIST = 77
-export const ERR_MAX_DEPTH_EXCEEDED = 78
-
 export const VALID_BOOL_OPERATORS = [BoolOperator.AND, BoolOperator.OR]
 
 export const VALID_BOOL_OPERATORS_CHARS = ['a', 'n', 'd', 'o', 'r']

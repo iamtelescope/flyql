@@ -79,7 +79,7 @@ func TestRendererUnknown(t *testing.T) {
 	_ = reg.Register(hrefRenderer{})
 	cols := parseCols(t, `url as link|unknown("x")`)
 	diags := DiagnoseWithOptions(cols, makeURLSchema(), DiagnoseOptions{RendererRegistry: reg})
-	if len(diags) != 1 || diags[0].Code != flyql.CodeUnknownRenderer {
+	if len(diags) != 1 || diags[0].Code != CodeUnknownRenderer {
 		t.Fatalf("expected 1 unknown_renderer diag, got %+v", diags)
 	}
 }
@@ -101,7 +101,7 @@ func TestRendererArgCount(t *testing.T) {
 	diags := DiagnoseWithOptions(cols, makeURLSchema(), DiagnoseOptions{RendererRegistry: reg})
 	found := false
 	for _, d := range diags {
-		if d.Code == flyql.CodeRendererArgCount {
+		if d.Code == CodeRendererArgCount {
 			found = true
 		}
 	}
@@ -117,7 +117,7 @@ func TestRendererArgType(t *testing.T) {
 	diags := DiagnoseWithOptions(cols, makeURLSchema(), DiagnoseOptions{RendererRegistry: reg})
 	found := false
 	for _, d := range diags {
-		if d.Code == flyql.CodeRendererArgType {
+		if d.Code == CodeRendererArgType {
 			found = true
 		}
 	}
@@ -186,7 +186,7 @@ func TestRendererChainLevelDiagnoseHook(t *testing.T) {
 func TestRendererNilRegistryEmitsUnknownRenderer(t *testing.T) {
 	cols := parseCols(t, `url as link|href("/x")`)
 	diags := DiagnoseWithOptions(cols, makeURLSchema(), DiagnoseOptions{})
-	if len(diags) != 1 || diags[0].Code != flyql.CodeUnknownRenderer {
+	if len(diags) != 1 || diags[0].Code != CodeUnknownRenderer {
 		t.Fatalf("expected 1 unknown_renderer diag, got %+v", diags)
 	}
 }

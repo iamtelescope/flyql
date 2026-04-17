@@ -284,7 +284,7 @@ class TestDurationOrdering:
     )
     def test_invalid_duration_ordering(self, inp, why):
         from flyql.core.parser import parse, ParserError
-        from flyql.core.constants import ERR_INVALID_DURATION
+        from flyql.errors_generated import ERR_INVALID_DURATION
 
         with pytest.raises(ParserError) as exc_info:
             parse(inp)

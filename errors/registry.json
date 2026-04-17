@@ -1,0 +1,372 @@
+{
+  "version": 1,
+  "categories": {
+    "core_parser": {
+      "code_type": "int",
+      "errors": {
+        "1": {
+          "name": "ERR_UNKNOWN_STATE",
+          "message": "unknown parser state",
+          "description": "Internal parser invariant violation — the state machine reached a state with no handler. User-visible only on a parser bug.",
+          "dynamic_message": true
+        },
+        "3": {
+          "name": "ERR_INVALID_CHAR_IN_KEY",
+          "message": "invalid character",
+          "description": ""
+        },
+        "4": {
+          "name": "ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR",
+          "message": "invalid character",
+          "description": ""
+        },
+        "9": {
+          "name": "ERR_UNMATCHED_PAREN_IN_EXPR",
+          "message": "unmatched parenthesis",
+          "description": ""
+        },
+        "10": {
+          "name": "ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR",
+          "message": "invalid character or unknown operator",
+          "description": "Semantic overload: emitted for both unknown operator values and invalid characters in parameter names / values.",
+          "dynamic_message": true
+        },
+        "11": {
+          "name": "ERR_INVALID_CHAR_IN_QUOTED_VALUE",
+          "message": "invalid character",
+          "description": "Invalid character inside a quoted value (outside of IN-list). Python and JS emit this; Go parser currently passes such characters through silently — gap documented and fixed in a follow-up spec."
+        },
+        "15": {
+          "name": "ERR_UNMATCHED_PAREN_IN_BOOL_DELIM",
+          "message": "unmatched parenthesis",
+          "description": ""
+        },
+        "18": {
+          "name": "ERR_INVALID_CHAR_IN_BOOL_DELIM",
+          "message": "invalid character",
+          "description": ""
+        },
+        "19": {
+          "name": "ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL",
+          "message": "unmatched parenthesis",
+          "description": ""
+        },
+        "20": {
+          "name": "ERR_INVALID_CHAR_IN_EXPECT_BOOL",
+          "message": "invalid character",
+          "description": ""
+        },
+        "23": {
+          "name": "ERR_EXPECTED_DELIM_AFTER_BOOL_OP",
+          "message": "expected delimiter after bool operator",
+          "description": ""
+        },
+        "24": {
+          "name": "ERR_EMPTY_INPUT",
+          "message": "empty input",
+          "description": ""
+        },
+        "25": {
+          "name": "ERR_UNEXPECTED_EOF",
+          "message": "unexpected EOF",
+          "description": "EOF reached in a state that cannot terminate cleanly; the message may specify context (e.g. \"unexpected EOF after 'not'\").",
+          "dynamic_message": true
+        },
+        "26": {
+          "name": "ERR_UNEXPECTED_EOF_IN_KEY",
+          "message": "unexpected EOF",
+          "description": ""
+        },
+        "27": {
+          "name": "ERR_UNMATCHED_PAREN_AT_EOF",
+          "message": "unmatched parenthesis",
+          "description": ""
+        },
+        "28": {
+          "name": "ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING",
+          "message": "expected operator or unclosed string",
+          "description": "Dual-purpose errno emitted both when an operator is expected after a key and when a quoted string is unterminated at EOF. Splitting into two codes is a follow-up spec.",
+          "dynamic_message": true
+        },
+        "29": {
+          "name": "ERR_EXPECTED_VALUE",
+          "message": "expected value",
+          "description": ""
+        },
+        "30": {
+          "name": "ERR_INVALID_CHAR_IN_SINGLE_QUOTED_KEY",
+          "message": "invalid character in quoted key",
+          "description": ""
+        },
+        "31": {
+          "name": "ERR_INVALID_CHAR_IN_DOUBLE_QUOTED_KEY",
+          "message": "invalid character in quoted key",
+          "description": ""
+        },
+        "32": {
+          "name": "ERR_EXPECTED_OPERATOR_OR_BOOL_OP",
+          "message": "expected operator or boolean operator",
+          "description": ""
+        },
+        "33": {
+          "name": "ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT",
+          "message": "expected key or ( after 'not'",
+          "description": ""
+        },
+        "41": {
+          "name": "ERR_EXPECTED_NOT_OR_IN_KEYWORD",
+          "message": "expected 'not' or 'in' keyword",
+          "description": "Emitted while parsing the 'not' / 'not in' prefix; the specific message identifies which token was missing.",
+          "dynamic_message": true
+        },
+        "42": {
+          "name": "ERR_EXPECTED_LIST_START",
+          "message": "expected '['",
+          "description": ""
+        },
+        "43": {
+          "name": "ERR_EXPECTED_VALUE_IN_LIST",
+          "message": "expected value in list",
+          "description": ""
+        },
+        "44": {
+          "name": "ERR_UNEXPECTED_CHAR_IN_LIST_VALUE",
+          "message": "unexpected character in list value",
+          "description": ""
+        },
+        "45": {
+          "name": "ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE",
+          "message": "invalid character in quoted value",
+          "description": "Invalid character inside a quoted value inside an IN-list. Python and JS emit this at in_state_in_list_single_quoted_value / _double_quoted_value; Go parser currently passes such characters through silently — gap documented and fixed in a follow-up spec."
+        },
+        "46": {
+          "name": "ERR_EXPECTED_COMMA_OR_LIST_END",
+          "message": "expected ',' or ']'",
+          "description": ""
+        },
+        "47": {
+          "name": "ERR_EXPECTED_LIST_START_AFTER_IN",
+          "message": "expected '[' after 'in'",
+          "description": ""
+        },
+        "50": {
+          "name": "ERR_EXPECTED_VALUE_OR_KEYWORD",
+          "message": "expected value or keyword",
+          "description": "Emitted for 'expected value after has/like/ilike/not has/not like/not ilike' and 'expected has/like/ilike keyword' variants.",
+          "dynamic_message": true
+        },
+        "51": {
+          "name": "ERR_NULL_NOT_ALLOWED_WITH_OPERATOR",
+          "message": "null value cannot be used with operator",
+          "description": "",
+          "dynamic_message": true
+        },
+        "60": {
+          "name": "ERR_KEY_PARSE_FAILED",
+          "message": "key parsing failed",
+          "description": "Wraps a KeyParseError raised by the key parser; the surfaced message is propagated from the wrapped exception.",
+          "dynamic_message": true
+        },
+        "70": {
+          "name": "ERR_UNKNOWN_FUNCTION",
+          "message": "unknown function",
+          "description": "",
+          "dynamic_message": true
+        },
+        "71": {
+          "name": "ERR_INVALID_FUNCTION_ARGS",
+          "message": "invalid function argument",
+          "description": "",
+          "dynamic_message": true
+        },
+        "72": {
+          "name": "ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR",
+          "message": "function not allowed with operator",
+          "description": "",
+          "dynamic_message": true
+        },
+        "73": {
+          "name": "ERR_INVALID_DURATION",
+          "message": "invalid duration",
+          "description": "",
+          "dynamic_message": true
+        },
+        "74": {
+          "name": "ERR_EMPTY_PARAMETER_NAME",
+          "message": "empty parameter name",
+          "description": ""
+        },
+        "75": {
+          "name": "ERR_INVALID_PARAMETER_NAME",
+          "message": "invalid parameter name",
+          "description": ""
+        },
+        "76": {
+          "name": "ERR_PARAMETER_ZERO_INDEX",
+          "message": "positional parameters are 1-indexed",
+          "description": ""
+        },
+        "78": {
+          "name": "ERR_MAX_DEPTH_EXCEEDED",
+          "message": "maximum nesting depth exceeded",
+          "description": "",
+          "dynamic_message": true
+        }
+      }
+    },
+    "columns_parser": {
+      "code_type": "int",
+      "errors": {
+        "1": {
+          "name": "COLUMNS_ERR_UNKNOWN_STATE",
+          "message": "unknown state",
+          "description": "Internal parser invariant violation.",
+          "dynamic_message": true
+        },
+        "2": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN",
+          "message": "invalid character",
+          "description": ""
+        },
+        "3": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR",
+          "message": "invalid character",
+          "description": ""
+        },
+        "4": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR",
+          "message": "invalid character, expected alias operator",
+          "description": ""
+        },
+        "5": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER",
+          "message": "invalid character, expected alias delimiter",
+          "description": ""
+        },
+        "6": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_IN_COLUMN",
+          "message": "invalid character",
+          "description": ""
+        },
+        "7": {
+          "name": "COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER",
+          "message": "invalid transformer or renderer",
+          "description": "Emitted at multiple sites: 'expected transformer after operator', 'expected renderer after operator', 'invalid character, expected transformer', 'invalid character, expected renderer', 'invalid character in renderer name'.",
+          "dynamic_message": true
+        },
+        "8": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS",
+          "message": "invalid character",
+          "description": ""
+        },
+        "9": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_IN_ARGS",
+          "message": "invalid character",
+          "description": "Emitted for 'invalid character. Expected bracket close or transformer/renderer argument delimiter'.",
+          "dynamic_message": true
+        },
+        "10": {
+          "name": "COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG",
+          "message": "invalid character",
+          "description": ""
+        },
+        "11": {
+          "name": "COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS",
+          "message": "renderers not enabled or missing alias",
+          "description": "Emitted for 'renderers are not enabled' and 'renderers require an alias'.",
+          "dynamic_message": true
+        },
+        "12": {
+          "name": "COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG",
+          "message": "unexpected end of quoted argument value",
+          "description": ""
+        },
+        "13": {
+          "name": "COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR",
+          "message": "unexpected end of alias. Expected alias value",
+          "description": ""
+        },
+        "14": {
+          "name": "COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE",
+          "message": "unexpected end of alias. Expected alias value",
+          "description": ""
+        },
+        "15": {
+          "name": "COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST",
+          "message": "unexpected end of arguments list",
+          "description": ""
+        },
+        "16": {
+          "name": "COLUMNS_ERR_EXPECTED_CLOSING_PAREN",
+          "message": "expected closing parenthesis",
+          "description": ""
+        },
+        "17": {
+          "name": "COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED",
+          "message": "transformers are not enabled",
+          "description": ""
+        }
+      }
+    },
+    "validator": {
+      "code_type": "string",
+      "errors": {
+        "unknown_column": {
+          "name": "CODE_UNKNOWN_COLUMN",
+          "message": "unknown column",
+          "description": ""
+        },
+        "unknown_transformer": {
+          "name": "CODE_UNKNOWN_TRANSFORMER",
+          "message": "unknown transformer",
+          "description": ""
+        },
+        "arg_count": {
+          "name": "CODE_ARG_COUNT",
+          "message": "transformer argument count mismatch",
+          "description": ""
+        },
+        "arg_type": {
+          "name": "CODE_ARG_TYPE",
+          "message": "transformer argument type mismatch",
+          "description": ""
+        },
+        "chain_type": {
+          "name": "CODE_CHAIN_TYPE",
+          "message": "transformer chain type mismatch",
+          "description": ""
+        },
+        "invalid_ast": {
+          "name": "CODE_INVALID_AST",
+          "message": "invalid AST",
+          "description": ""
+        },
+        "unknown_column_value": {
+          "name": "CODE_UNKNOWN_COLUMN_VALUE",
+          "message": "unknown column value",
+          "description": ""
+        },
+        "invalid_column_value": {
+          "name": "CODE_INVALID_COLUMN_VALUE",
+          "message": "invalid column value",
+          "description": ""
+        },
+        "unknown_renderer": {
+          "name": "CODE_UNKNOWN_RENDERER",
+          "message": "unknown renderer",
+          "description": ""
+        },
+        "renderer_arg_count": {
+          "name": "CODE_RENDERER_ARG_COUNT",
+          "message": "renderer argument count mismatch",
+          "description": ""
+        },
+        "renderer_arg_type": {
+          "name": "CODE_RENDERER_ARG_TYPE",
+          "message": "renderer argument type mismatch",
+          "description": ""
+        }
+      }
+    }
+  }
+}

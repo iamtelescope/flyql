@@ -40,3 +40,8 @@ docs-dev:
 	cd docs && npm run dev
 run-docs:
 	cd docs && npm install && npm run dev
+
+generate-errors:
+	python3 errors/generate.py
+
+.PHONY: generate-errors

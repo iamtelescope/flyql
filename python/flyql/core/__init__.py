@@ -7,7 +7,7 @@ from flyql.core.constants import BoolOperator, Operator
 from flyql.core.range import Range
 from flyql.core.validator import Diagnostic, diagnose
 from flyql.core.exceptions import FlyqlError, KeyParseError
-from flyql.core.constants import ERR_MAX_DEPTH_EXCEEDED
+from flyql.errors_generated import ERR_MAX_DEPTH_EXCEEDED
 
 __all__ = [
     "parse",

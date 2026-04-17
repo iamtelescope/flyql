@@ -3,6 +3,25 @@ import { State } from './state.js'
 import { ParserError } from './exceptions.js'
 import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, CharType } from './constants.js'
 import { Range } from '../core/range.js'
+import {
+    COLUMNS_ERR_EXPECTED_CLOSING_PAREN,
+    COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS,
+    COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR,
+    COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN,
+    COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER,
+    COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
+    COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
+    COLUMNS_ERR_INVALID_CHAR_IN_COLUMN,
+    COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG,
+    COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+    COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED,
+    COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
+    COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
+    COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
+    COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+    COLUMNS_ERR_UNKNOWN_STATE,
+} from '../errors_generated.js'
 
 export class Parser {
     constructor(capabilities) {
@@ -354,7 +373,7 @@ export class Parser {
             } else if (this.state === State.EXPECT_RENDERER_ARGUMENT_DELIMITER) {
                 this.inStateExpectRendererArgumentDelimiter()
             } else {
-                this.setErrorState(`unknown state: ${this.state}`, 1)
+                this.setErrorState(`unknown state: ${this.state}`, COLUMNS_ERR_UNKNOWN_STATE)
             }
             i += 1
             this.linePos += 1
@@ -382,16 +401,25 @@ export class Parser {
             if (this.alias) {
                 this.storeColumn()
             } else {
-                this.setErrorState('unexpected end of alias. Expected alias value', 13)
+                this.setErrorState(
+                    'unexpected end of alias. Expected alias value',
+                    COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
+                )
             }
         } else if (this.state === State.EXPECT_ALIAS_OPERATOR) {
             if (this.aliasOperator) {
-                this.setErrorState('unexpected end of alias. Expected alias value', 14)
+                this.setErrorState(
+                    'unexpected end of alias. Expected alias value',
+                    COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
+                )
             } else {
                 this.storeColumn()
             }
         } else if (this.state === State.EXPECT_ALIAS_DELIMITER) {
-            this.setErrorState('unexpected end of alias. Expected alias value', 14)
+            this.setErrorState(
+                'unexpected end of alias. Expected alias value',
+                COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
+            )
         } else if (this.state === State.TRANSFORMER) {
             if (this.transformer) {
                 this.storeTransformer()
@@ -406,15 +434,15 @@ export class Parser {
             this.state === State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED ||
             this.state === State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED
         ) {
-            this.setErrorState('unexpected end of quoted argument value', 12)
+            this.setErrorState('unexpected end of quoted argument value', COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG)
         } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER) {
-            this.setErrorState('unexpected end of arguments list', 15)
+            this.setErrorState('unexpected end of arguments list', COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST)
         } else if (this.state === State.EXPECT_TRANSFORMER_ARGUMENT) {
-            this.setErrorState('expected closing parenthesis', 16)
+            this.setErrorState('expected closing parenthesis', COLUMNS_ERR_EXPECTED_CLOSING_PAREN)
         } else if (this.state === State.TRANSFORMER_ARGUMENT) {
-            this.setErrorState('expected closing parenthesis', 16)
+            this.setErrorState('expected closing parenthesis', COLUMNS_ERR_EXPECTED_CLOSING_PAREN)
         } else if (this.state === State.EXPECT_TRANSFORMER) {
-            this.setErrorState('expected transformer after operator', 7)
+            this.setErrorState('expected transformer after operator', COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER)
         } else if (this.state === State.RENDERER) {
             if (this.renderer) {
                 this.storeRenderer()
@@ -429,15 +457,15 @@ export class Parser {
             this.state === State.RENDERER_ARGUMENT_DOUBLE_QUOTED ||
             this.state === State.RENDERER_ARGUMENT_SINGLE_QUOTED
         ) {
-            this.setErrorState('unexpected end of quoted argument value', 12)
+            this.setErrorState('unexpected end of quoted argument value', COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG)
         } else if (this.state === State.EXPECT_RENDERER_ARGUMENT_DELIMITER) {
-            this.setErrorState('unexpected end of arguments list', 15)
+            this.setErrorState('unexpected end of arguments list', COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST)
         } else if (this.state === State.EXPECT_RENDERER_ARGUMENT) {
-            this.setErrorState('expected closing parenthesis', 16)
+            this.setErrorState('expected closing parenthesis', COLUMNS_ERR_EXPECTED_CLOSING_PAREN)
         } else if (this.state === State.RENDERER_ARGUMENT) {
-            this.setErrorState('expected closing parenthesis', 16)
+            this.setErrorState('expected closing parenthesis', COLUMNS_ERR_EXPECTED_CLOSING_PAREN)
         } else if (this.state === State.EXPECT_RENDERER) {
-            this.setErrorState('expected renderer after operator', 7)
+            this.setErrorState('expected renderer after operator', COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER)
         }
     }
 
@@ -451,7 +479,7 @@ export class Parser {
             this.setState(State.COLUMN)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character', 2)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN)
         }
     }
 
@@ -469,14 +497,14 @@ export class Parser {
         } else if (this.char.isTransformerOperator()) {
             if (!this.capabilities.transformers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('transformers are not enabled', 17)
+                this.setErrorState('transformers are not enabled', COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED)
                 return
             }
             this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character', 6)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_COLUMN)
         }
     }
 
@@ -487,7 +515,7 @@ export class Parser {
             this.setState(State.TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character, expected transformer', 7)
+            this.setErrorState('invalid character, expected transformer', COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER)
         }
     }
 
@@ -570,7 +598,10 @@ export class Parser {
         } else if (this.char.isBracketClose()) {
             this.setState(State.TRANSFORMER_COMPLETE)
         } else {
-            this.setErrorState('invalid character. Expected bracket close or transformer argument delimiter', 9)
+            this.setErrorState(
+                'invalid character. Expected bracket close or transformer argument delimiter',
+                COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
+            )
         }
     }
 
@@ -597,7 +628,7 @@ export class Parser {
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', 10)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
         }
     }
 
@@ -624,7 +655,7 @@ export class Parser {
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', 10)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
         }
     }
 
@@ -642,7 +673,7 @@ export class Parser {
         } else if (this.char.isTransformerOperator()) {
             if (!this.capabilities.transformers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('transformers are not enabled', 17)
+                this.setErrorState('transformers are not enabled', COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED)
                 return
             }
             this.trackChar(CharType.OPERATOR)
@@ -650,7 +681,7 @@ export class Parser {
             this.setState(State.EXPECT_TRANSFORMER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character', 8)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS)
         }
     }
 
@@ -671,14 +702,17 @@ export class Parser {
             }
             if (this.aliasOperator.length === 2) {
                 if (this.aliasOperator.toLowerCase() !== VALID_ALIAS_OPERATOR) {
-                    this.setErrorState('invalid character', 3)
+                    this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR)
                 } else {
                     this.setState(State.EXPECT_ALIAS_DELIMITER)
                     this.resetAliasOperator()
                 }
             }
         } else {
-            this.setErrorState('invalid character, expected alias operator', 4)
+            this.setErrorState(
+                'invalid character, expected alias operator',
+                COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
+            )
         }
     }
 
@@ -696,12 +730,12 @@ export class Parser {
         } else if (this.char.isTransformerOperator()) {
             if (!this.capabilities.renderers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('renderers are not enabled', 11)
+                this.setErrorState('renderers are not enabled', COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS)
                 return
             }
             if (!this.alias) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('renderers require an alias', 11)
+                this.setErrorState('renderers require an alias', COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS)
                 return
             }
             this.trackChar(CharType.RENDERER_PIPE)
@@ -716,7 +750,10 @@ export class Parser {
             this.setState(State.EXPECT_ALIAS)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character, expected alias delimiter', 5)
+            this.setErrorState(
+                'invalid character, expected alias delimiter',
+                COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER,
+            )
         }
     }
 
@@ -727,7 +764,7 @@ export class Parser {
             this.setState(State.RENDERER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character, expected renderer', 7)
+            this.setErrorState('invalid character, expected renderer', COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER)
         }
     }
 
@@ -756,7 +793,7 @@ export class Parser {
             this.setState(State.EXPECT_RENDERER_ARGUMENT)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character in renderer name', 7)
+            this.setErrorState('invalid character in renderer name', COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER)
         }
     }
 
@@ -776,7 +813,7 @@ export class Parser {
             this.setState(State.EXPECT_RENDERER)
         } else {
             this.trackChar(CharType.ERROR)
-            this.setErrorState('invalid character', 8)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS)
         }
     }
 
@@ -832,7 +869,10 @@ export class Parser {
             this.trackChar(CharType.OPERATOR)
             this.setState(State.RENDERER_COMPLETE)
         } else {
-            this.setErrorState('invalid character. Expected bracket close or renderer argument delimiter', 9)
+            this.setErrorState(
+                'invalid character. Expected bracket close or renderer argument delimiter',
+                COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
+            )
         }
     }
 
@@ -860,7 +900,7 @@ export class Parser {
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', 10)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
         }
     }
 
@@ -888,7 +928,7 @@ export class Parser {
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', 10)
+            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
         }
     }
 }

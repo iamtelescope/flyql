@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse, Parser, ParserError } from '../../src/index.js'
-import { ERR_MAX_DEPTH_EXCEEDED } from '../../src/core/constants.js'
+import { ERR_MAX_DEPTH_EXCEEDED } from '../../src/errors_generated.js'
 import { loadTestData, astToDict, compareAst, formatAstMismatchMessage, normalizeAstForComparison } from '../helpers.js'
 
 function buildNestedQuery(depth) {

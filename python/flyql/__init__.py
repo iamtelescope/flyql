@@ -8,7 +8,7 @@ from .core.constants import BoolOperator, Operator
 from .core.range import Range
 from .core.validator import Diagnostic, diagnose
 from .core.exceptions import FlyqlError, KeyParseError
-from .core.constants import ERR_MAX_DEPTH_EXCEEDED
+from .errors_generated import ERR_MAX_DEPTH_EXCEEDED
 from .transformers import (
     Transformer,
     TransformerRegistry,

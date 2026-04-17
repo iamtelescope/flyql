@@ -12,14 +12,13 @@ export {
     VALID_KEY_VALUE_OPERATORS,
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
-    ERR_MAX_DEPTH_EXCEEDED,
 } from './constants.js'
+export { ERR_MAX_DEPTH_EXCEEDED } from '../errors_generated.js'
 export { isNumeric, convertUnquotedValue } from './utils.js'
 export { Range } from './range.js'
 export { Column, ColumnSchema } from './column.js'
+export { Diagnostic, diagnose } from './validator.js'
 export {
-    Diagnostic,
-    diagnose,
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
     CODE_ARG_COUNT,
@@ -27,4 +26,4 @@ export {
     CODE_CHAIN_TYPE,
     CODE_INVALID_AST,
     CODE_UNKNOWN_COLUMN_VALUE,
-} from './validator.js'
+} from '../errors_generated.js'

@@ -194,7 +194,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 						Range:    nameRange,
 						Message:  fmt.Sprintf("unknown renderer: '%s'", renderer.Name),
 						Severity: flyql.SeverityError,
-						Code:     flyql.CodeUnknownRenderer,
+						Code:     CodeUnknownRenderer,
 					})
 				}
 				continue
@@ -224,7 +224,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 					Range:    fullRange,
 					Message:  fmt.Sprintf("%s expects %s, got %d", renderer.Name, expectStr, got),
 					Severity: flyql.SeverityError,
-					Code:     flyql.CodeRendererArgCount,
+					Code:     CodeRendererArgCount,
 				})
 			}
 
@@ -245,7 +245,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 						Range:    argRanges[j],
 						Message:  fmt.Sprintf("argument %d of %s: expected %s, got %s", j+1, renderer.Name, expected, actual),
 						Severity: flyql.SeverityError,
-						Code:     flyql.CodeRendererArgType,
+						Code:     CodeRendererArgType,
 					})
 				}
 			}

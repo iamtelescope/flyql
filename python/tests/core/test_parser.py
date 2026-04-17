@@ -1,6 +1,6 @@
 import pytest
 from flyql.core.parser import parse, Parser, ParserError
-from flyql.core.constants import ERR_MAX_DEPTH_EXCEEDED
+from flyql.errors_generated import ERR_MAX_DEPTH_EXCEEDED
 from .helpers import (
     load_test_data,
     ast_to_dict,

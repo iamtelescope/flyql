@@ -455,7 +455,7 @@ func (p *parser) parse(text string) error {
 		case stateExpectRendererArgumentDelimiter:
 			p.inStateExpectRendererArgumentDelimiter()
 		default:
-			p.setErrorState(fmt.Sprintf("unknown state: %d", p.state), 1)
+			p.setErrorState(fmt.Sprintf("unknown state: %d", p.state), columnsErrUnknownState)
 		}
 
 		i++
@@ -485,16 +485,16 @@ func (p *parser) inStateLastChar() {
 		if p.alias != "" {
 			p.storeColumn()
 		} else {
-			p.setErrorState("unexpected end of alias. Expected alias value", 13)
+			p.setErrorState("unexpected end of alias. Expected alias value", columnsErrUnexpectedEndOfAliasOperator)
 		}
 	case stateExpectAliasOperator:
 		if p.aliasOperator != "" {
-			p.setErrorState("unexpected end of alias. Expected alias value", 14)
+			p.setErrorState("unexpected end of alias. Expected alias value", columnsErrUnexpectedEndExpectedAliasValue)
 		} else {
 			p.storeColumn()
 		}
 	case stateExpectAliasDelimiter:
-		p.setErrorState("unexpected end of alias. Expected alias value", 14)
+		p.setErrorState("unexpected end of alias. Expected alias value", columnsErrUnexpectedEndExpectedAliasValue)
 	case stateTransformer:
 		if p.transformer != "" {
 			p.storeTransformer()
@@ -506,15 +506,15 @@ func (p *parser) inStateLastChar() {
 		p.storeTransformer()
 		p.storeColumn()
 	case stateTransformerArgumentDoubleQuoted, stateTransformerArgumentSingleQuoted:
-		p.setErrorState("unexpected end of quoted argument value", 12)
+		p.setErrorState("unexpected end of quoted argument value", columnsErrUnexpectedEndOfQuotedArg)
 	case stateExpectTransformerArgumentDelimiter:
-		p.setErrorState("unexpected end of arguments list", 15)
+		p.setErrorState("unexpected end of arguments list", columnsErrUnexpectedEndOfArgsList)
 	case stateExpectTransformerArgument:
-		p.setErrorState("expected closing parenthesis", 16)
+		p.setErrorState("expected closing parenthesis", columnsErrExpectedClosingParen)
 	case stateTransformerArgument:
-		p.setErrorState("expected closing parenthesis", 16)
+		p.setErrorState("expected closing parenthesis", columnsErrExpectedClosingParen)
 	case stateExpectTransformer:
-		p.setErrorState("expected transformer after operator", 7)
+		p.setErrorState("expected transformer after operator", columnsErrInvalidTransformerOrRenderer)
 	case stateRenderer:
 		if p.renderer != "" {
 			p.storeRenderer()
@@ -526,15 +526,15 @@ func (p *parser) inStateLastChar() {
 		p.storeRenderer()
 		p.storeColumn()
 	case stateRendererArgumentDoubleQuoted, stateRendererArgumentSingleQuoted:
-		p.setErrorState("unexpected end of quoted argument value", 12)
+		p.setErrorState("unexpected end of quoted argument value", columnsErrUnexpectedEndOfQuotedArg)
 	case stateExpectRendererArgumentDelimiter:
-		p.setErrorState("unexpected end of arguments list", 15)
+		p.setErrorState("unexpected end of arguments list", columnsErrUnexpectedEndOfArgsList)
 	case stateExpectRendererArgument:
-		p.setErrorState("expected closing parenthesis", 16)
+		p.setErrorState("expected closing parenthesis", columnsErrExpectedClosingParen)
 	case stateRendererArgument:
-		p.setErrorState("expected closing parenthesis", 16)
+		p.setErrorState("expected closing parenthesis", columnsErrExpectedClosingParen)
 	case stateExpectRenderer:
-		p.setErrorState("expected renderer after operator", 7)
+		p.setErrorState("expected renderer after operator", columnsErrInvalidTransformerOrRenderer)
 	}
 }
 
@@ -548,7 +548,7 @@ func (p *parser) inStateExpectColumn() {
 		p.column += p.charValue
 		p.state = stateColumn
 	} else {
-		p.setErrorState("invalid character", 2)
+		p.setErrorState("invalid character", columnsErrInvalidCharExpectColumn)
 	}
 }
 
@@ -565,12 +565,12 @@ func (p *parser) inStateColumn() {
 		p.storeColumn()
 	} else if p.charValue == "|" {
 		if !p.capabilities.Transformers {
-			p.setErrorState("transformers are not enabled", 17)
+			p.setErrorState("transformers are not enabled", columnsErrTransformersNotEnabled)
 			return
 		}
 		p.state = stateExpectTransformer
 	} else {
-		p.setErrorState("invalid character", 6)
+		p.setErrorState("invalid character", columnsErrInvalidCharInColumn)
 	}
 }
 
@@ -582,7 +582,7 @@ func (p *parser) inStateExpectTransformer() {
 		p.transformer += p.charValue
 		p.state = stateTransformer
 	} else {
-		p.setErrorState("invalid character, expected transformer", 7)
+		p.setErrorState("invalid character, expected transformer", columnsErrInvalidTransformerOrRenderer)
 	}
 }
 
@@ -608,9 +608,9 @@ func (p *parser) inStateTransformer() {
 		p.storeArgument()
 		p.storeTransformer()
 		// Python raises ValueError here, but let's match the behavior
-		p.setErrorState("unsupported close bracket", 8)
+		p.setErrorState("unsupported close bracket", columnsErrInvalidCharAfterArgs)
 	} else {
-		p.setErrorState("unsupported char in transformer", 8)
+		p.setErrorState("unsupported char in transformer", columnsErrInvalidCharAfterArgs)
 	}
 }
 
@@ -661,7 +661,7 @@ func (p *parser) inStateExpectTransformerArgumentDelimiter() {
 	} else if p.charValue == ")" {
 		p.state = stateTransformerComplete
 	} else {
-		p.setErrorState("invalid character. Expected bracket close or transformer argument delimiter", 9)
+		p.setErrorState("invalid character. Expected bracket close or transformer argument delimiter", columnsErrInvalidCharInArgs)
 	}
 }
 
@@ -687,7 +687,7 @@ func (p *parser) inStateTransformerArgumentDoubleQuoted() {
 			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", 10)
+		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
 	}
 }
 
@@ -713,7 +713,7 @@ func (p *parser) inStateTransformerArgumentSingleQuoted() {
 			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", 10)
+		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
 	}
 }
 
@@ -727,13 +727,13 @@ func (p *parser) inStateTransformerComplete() {
 		p.state = stateExpectColumn
 	} else if p.charValue == "|" {
 		if !p.capabilities.Transformers {
-			p.setErrorState("transformers are not enabled", 17)
+			p.setErrorState("transformers are not enabled", columnsErrTransformersNotEnabled)
 			return
 		}
 		p.storeTransformer()
 		p.state = stateExpectTransformer
 	} else {
-		p.setErrorState("invalid character", 8)
+		p.setErrorState("invalid character", columnsErrInvalidCharAfterArgs)
 	}
 }
 
@@ -750,14 +750,14 @@ func (p *parser) inStateExpectAliasOperator() {
 		}
 		if len(p.aliasOperator) == 2 {
 			if strings.ToLower(p.aliasOperator) != "as" {
-				p.setErrorState("invalid character", 3)
+				p.setErrorState("invalid character", columnsErrInvalidCharExpectAliasOperator)
 			} else {
 				p.state = stateExpectAliasDelimiter
 				p.aliasOperator = ""
 			}
 		}
 	} else {
-		p.setErrorState("invalid character, expected alias operator", 4)
+		p.setErrorState("invalid character, expected alias operator", columnsErrInvalidCharExpectedAliasOperator)
 	}
 }
 
@@ -771,11 +771,11 @@ func (p *parser) inStateExpectAlias() {
 		p.storeColumn()
 	} else if p.charValue == "|" {
 		if !p.capabilities.Renderers {
-			p.setErrorState("renderers are not enabled", 11)
+			p.setErrorState("renderers are not enabled", columnsErrRenderersNotEnabledOrNoAlias)
 			return
 		}
 		if p.alias == "" {
-			p.setErrorState("renderers require an alias", 11)
+			p.setErrorState("renderers require an alias", columnsErrRenderersNotEnabledOrNoAlias)
 			return
 		}
 		p.state = stateExpectRenderer
@@ -790,7 +790,7 @@ func (p *parser) inStateExpectRenderer() {
 		p.renderer += p.charValue
 		p.state = stateRenderer
 	} else {
-		p.setErrorState("invalid character, expected renderer", 7)
+		p.setErrorState("invalid character, expected renderer", columnsErrInvalidTransformerOrRenderer)
 	}
 }
 
@@ -815,7 +815,7 @@ func (p *parser) inStateRenderer() {
 	} else if p.charValue == "(" {
 		p.state = stateExpectRendererArgument
 	} else {
-		p.setErrorState("invalid character in renderer name", 7)
+		p.setErrorState("invalid character in renderer name", columnsErrInvalidTransformerOrRenderer)
 	}
 }
 
@@ -830,7 +830,7 @@ func (p *parser) inStateRendererComplete() {
 		p.storeRenderer()
 		p.state = stateExpectRenderer
 	} else {
-		p.setErrorState("invalid character", 8)
+		p.setErrorState("invalid character", columnsErrInvalidCharAfterArgs)
 	}
 }
 
@@ -881,7 +881,7 @@ func (p *parser) inStateExpectRendererArgumentDelimiter() {
 	} else if p.charValue == ")" {
 		p.state = stateRendererComplete
 	} else {
-		p.setErrorState("invalid character. Expected bracket close or renderer argument delimiter", 9)
+		p.setErrorState("invalid character. Expected bracket close or renderer argument delimiter", columnsErrInvalidCharInArgs)
 	}
 }
 
@@ -907,7 +907,7 @@ func (p *parser) inStateRendererArgumentDoubleQuoted() {
 			p.state = stateExpectRendererArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", 10)
+		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
 	}
 }
 
@@ -933,7 +933,7 @@ func (p *parser) inStateRendererArgumentSingleQuoted() {
 			p.state = stateExpectRendererArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", 10)
+		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
 	}
 }
 
@@ -941,7 +941,7 @@ func (p *parser) inStateExpectAliasDelimiter() {
 	if p.charValue == " " {
 		p.state = stateExpectAlias
 	} else {
-		p.setErrorState("invalid character, expected alias delimiter", 5)
+		p.setErrorState("invalid character, expected alias delimiter", columnsErrInvalidCharExpectedAliasDelimiter)
 	}
 }
 

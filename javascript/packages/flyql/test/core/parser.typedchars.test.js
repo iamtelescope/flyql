@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { parse, Parser, CharType } from '../../src/index.js'
 import { ParserError } from '../../src/core/exceptions.js'
-import { ERR_INVALID_DURATION, KNOWN_FUNCTIONS } from '../../src/core/constants.js'
+import { KNOWN_FUNCTIONS } from '../../src/core/constants.js'
+import { ERR_INVALID_DURATION } from '../../src/errors_generated.js'
 import { loadTestData } from '../helpers.js'
 
 describe('Parser typedChars functionality', () => {

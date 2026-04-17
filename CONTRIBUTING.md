@@ -101,6 +101,34 @@ make e2e-viewer # inspect e2e results
 
 These requirements may seem strict. They exist because FlyQL guarantees behavioral parity across multiple languages and database backends. A change that works in one implementation but breaks another - or passes unit tests but fails against a real database - is not ready to merge. Consistency is a feature of this project, and contributions are expected to uphold it.
 
+## Installing Codegen Dependencies
+
+The shared error registry (`errors/registry.json`) is compiled into per-language constants by `errors/generate.py`. The generated files are checked into git, so most contributors never run the script — but if you touch error codes (or the generator) you need the same formatters CI uses:
+
+- **Python:** `black==25.1.0`. Already installed by `cd python && make install`.
+- **Go:** `gofmt`, shipped with the Go 1.21+ toolchain.
+- **Prettier:** pinned devDependency of the JS package. `cd javascript/packages/flyql && npm ci` installs it.
+
+`make generate-errors` fails fast with a clear message if any formatter is missing.
+
+## Adding or Changing Error Codes
+
+FlyQL's parser and validator emit numeric errnos (`ERR_*` / `COLUMNS_ERR_*`) and string diagnostic codes (`CODE_*`) that must stay identical across Go, Python, and JavaScript. The single source of truth is `errors/registry.json`; per-language constant modules are generated from it.
+
+To add, rename, or remove an error code:
+
+1. Edit `errors/registry.json`. Each entry has `name`, `message`, `description`, and optional `dynamic_message: true` for codes whose runtime message is interpolated.
+2. Run `make generate-errors` from the repo root. This rewrites the six generated files:
+   - `python/flyql/errors_generated.py`
+   - `javascript/packages/flyql/src/errors_generated.js`
+   - `golang/errors_generated.go` + `golang/errors_generated_test.go`
+   - `golang/columns/errors_generated.go` + `golang/columns/errors_generated_test.go`
+3. Commit both `errors/registry.json` and the updated generated files in the same change — CI rejects PRs that change the registry without re-running codegen (and vice versa).
+4. If you're introducing a new code, wire it into the parser/validator call site in the language you're working in, then mirror the call site across the other two implementations.
+5. If the change alters parse behavior, add or update the shared fixture under `tests-data/core/parser/` — remember the fixture format supports both `"errno": N` and `"errno_options": [N, M, ...]`.
+
+The parity tests (`test_error_registry_parity.py` / `error-registry-parity.test.js` / `error_registry_parity_test.go`) run under the standard `make test` and catch any divergence between the registry and the generated modules.
+
 ## Getting Help
 
 If you're unsure about anything, open a GitHub issue to discuss before investing time in implementation. We're happy to help clarify scope and expectations.

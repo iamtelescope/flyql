@@ -9,6 +9,25 @@ from .constants import (
     VALID_ALIAS_OPERATOR,
 )
 from flyql.core.range import Range
+from flyql.errors_generated import (
+    COLUMNS_ERR_EXPECTED_CLOSING_PAREN,
+    COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS,
+    COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR,
+    COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN,
+    COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER,
+    COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
+    COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
+    COLUMNS_ERR_INVALID_CHAR_IN_COLUMN,
+    COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG,
+    COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+    COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED,
+    COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
+    COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
+    COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
+    COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+    COLUMNS_ERR_UNKNOWN_STATE,
+)
 
 
 class Parser:
@@ -328,7 +347,9 @@ class Parser:
             elif self.state == State.EXPECT_RENDERER_ARGUMENT_DELIMITER:
                 self.in_state_expect_renderer_argument_delimiter()
             else:
-                self.set_error_state(f"unknown state: {self.state}", 1)
+                self.set_error_state(
+                    f"unknown state: {self.state}", COLUMNS_ERR_UNKNOWN_STATE
+                )
             i += 1
             self.line_pos += 1
 
@@ -357,20 +378,25 @@ class Parser:
                 self.store_column()
             else:
                 self.set_error_state(
-                    "unexpected end of alias. Expected alias value", 13
+                    "unexpected end of alias. Expected alias value",
+                    COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
                 )
         elif self.state == State.EXPECT_ALIAS_OPERATOR:
             # Only error if we started reading an alias operator
             # If alias_operator is empty, we just had trailing spaces - that's OK
             if self.alias_operator:
                 self.set_error_state(
-                    "unexpected end of alias. Expected alias value", 14
+                    "unexpected end of alias. Expected alias value",
+                    COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
                 )
             else:
                 # Just trailing spaces after column - store the column
                 self.store_column()
         elif self.state == State.EXPECT_ALIAS_DELIMITER:
-            self.set_error_state("unexpected end of alias. Expected alias value", 14)
+            self.set_error_state(
+                "unexpected end of alias. Expected alias value",
+                COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
+            )
         elif self.state == State.TRANSFORMER:
             if self.transformer:
                 self.store_transformer()
@@ -383,18 +409,31 @@ class Parser:
             self.state == State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED
             or self.state == State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED
         ):
-            self.set_error_state("unexpected end of quoted argument value", 12)
+            self.set_error_state(
+                "unexpected end of quoted argument value",
+                COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+            )
         elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER:
-            self.set_error_state("unexpected end of arguments list", 15)
+            self.set_error_state(
+                "unexpected end of arguments list",
+                COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
+            )
         elif self.state == State.EXPECT_TRANSFORMER_ARGUMENT:
             # Ended while expecting transformer argument (unclosed parenthesis)
-            self.set_error_state("expected closing parenthesis", 16)
+            self.set_error_state(
+                "expected closing parenthesis", COLUMNS_ERR_EXPECTED_CLOSING_PAREN
+            )
         elif self.state == State.TRANSFORMER_ARGUMENT:
             # Ended in middle of reading argument
-            self.set_error_state("expected closing parenthesis", 16)
+            self.set_error_state(
+                "expected closing parenthesis", COLUMNS_ERR_EXPECTED_CLOSING_PAREN
+            )
         elif self.state == State.EXPECT_TRANSFORMER:
             # Ended after | with no transformer name
-            self.set_error_state("expected transformer after operator", 7)
+            self.set_error_state(
+                "expected transformer after operator",
+                COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+            )
         elif self.state == State.RENDERER:
             if self.renderer:
                 self.store_renderer()
@@ -407,15 +446,28 @@ class Parser:
             self.state == State.RENDERER_ARGUMENT_DOUBLE_QUOTED
             or self.state == State.RENDERER_ARGUMENT_SINGLE_QUOTED
         ):
-            self.set_error_state("unexpected end of quoted argument value", 12)
+            self.set_error_state(
+                "unexpected end of quoted argument value",
+                COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+            )
         elif self.state == State.EXPECT_RENDERER_ARGUMENT_DELIMITER:
-            self.set_error_state("unexpected end of arguments list", 15)
+            self.set_error_state(
+                "unexpected end of arguments list",
+                COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
+            )
         elif self.state == State.EXPECT_RENDERER_ARGUMENT:
-            self.set_error_state("expected closing parenthesis", 16)
+            self.set_error_state(
+                "expected closing parenthesis", COLUMNS_ERR_EXPECTED_CLOSING_PAREN
+            )
         elif self.state == State.RENDERER_ARGUMENT:
-            self.set_error_state("expected closing parenthesis", 16)
+            self.set_error_state(
+                "expected closing parenthesis", COLUMNS_ERR_EXPECTED_CLOSING_PAREN
+            )
         elif self.state == State.EXPECT_RENDERER:
-            self.set_error_state("expected renderer after operator", 7)
+            self.set_error_state(
+                "expected renderer after operator",
+                COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+            )
 
     def in_state_expect_column(self) -> None:
         if not self.char:
@@ -426,7 +478,9 @@ class Parser:
             self.extend_column()
             self.set_state(State.COLUMN)
         else:
-            self.set_error_state("invalid character", 2)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN
+            )
 
     def in_state_column(self) -> None:
         if not self.char:
@@ -440,11 +494,15 @@ class Parser:
             self.store_column()
         elif self.char.is_transformer_operator():
             if not self.capabilities["transformers"]:
-                self.set_error_state("transformers are not enabled", 17)
+                self.set_error_state(
+                    "transformers are not enabled", COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED
+                )
                 return
             self.set_state(State.EXPECT_TRANSFORMER)
         else:
-            self.set_error_state("invalid character", 6)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_COLUMN
+            )
 
     def in_state_expect_transformer(self) -> None:
         if not self.char:
@@ -453,7 +511,10 @@ class Parser:
             self.extend_transformer()
             self.set_state(State.TRANSFORMER)
         else:
-            self.set_error_state("invalid character, expected transformer", 7)
+            self.set_error_state(
+                "invalid character, expected transformer",
+                COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+            )
 
     def in_state_transformer(self) -> None:
         if not self.char:
@@ -522,7 +583,7 @@ class Parser:
         else:
             self.set_error_state(
                 "invalid character. Expected bracket close or transformer argument delimiter",
-                9,
+                COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
             )
 
     def in_state_transformer_argument_double_quoted(self) -> None:
@@ -547,7 +608,9 @@ class Parser:
                 self.store_argument()
                 self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state("invalid character", 10)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            )
 
     def in_state_transformer_argument_single_quoted(self) -> None:
         if not self.char:
@@ -571,7 +634,9 @@ class Parser:
                 self.store_argument()
                 self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state("invalid character", 10)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            )
 
     def in_state_transformer_complete(self) -> None:
         if not self.char:
@@ -585,12 +650,16 @@ class Parser:
             self.set_state(State.EXPECT_COLUMN)
         elif self.char.is_transformer_operator():
             if not self.capabilities["transformers"]:
-                self.set_error_state("transformers are not enabled", 17)
+                self.set_error_state(
+                    "transformers are not enabled", COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED
+                )
                 return
             self.store_transformer()
             self.set_state(State.EXPECT_TRANSFORMER)
         else:
-            self.set_error_state("invalid character", 8)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS
+            )
 
     def in_state_expect_alias_operator(self) -> None:
         if not self.char:
@@ -607,14 +676,20 @@ class Parser:
                 return
             if len(self.alias_operator) == 2:
                 if self.alias_operator.lower() != VALID_ALIAS_OPERATOR:
-                    self.set_error_state("invalid character", 3)
+                    self.set_error_state(
+                        "invalid character",
+                        COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR,
+                    )
                 else:
                     self.set_state(State.EXPECT_ALIAS_DELIMITER)
                     self.reset_alias_operator()
             else:
                 return
         else:
-            self.set_error_state("invalid character, expected alias operator", 4)
+            self.set_error_state(
+                "invalid character, expected alias operator",
+                COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
+            )
 
     def in_state_expect_alias(self) -> None:
         if not self.char:
@@ -628,10 +703,16 @@ class Parser:
             self.store_column()
         elif self.char.is_transformer_operator():
             if not self.capabilities["renderers"]:
-                self.set_error_state("renderers are not enabled", 11)
+                self.set_error_state(
+                    "renderers are not enabled",
+                    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+                )
                 return
             if not self.alias:
-                self.set_error_state("renderers require an alias", 11)
+                self.set_error_state(
+                    "renderers require an alias",
+                    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+                )
                 return
             self.set_state(State.EXPECT_RENDERER)
 
@@ -642,7 +723,10 @@ class Parser:
             self.extend_renderer()
             self.set_state(State.RENDERER)
         else:
-            self.set_error_state("invalid character, expected renderer", 7)
+            self.set_error_state(
+                "invalid character, expected renderer",
+                COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+            )
 
     def in_state_renderer(self) -> None:
         if not self.char:
@@ -665,7 +749,10 @@ class Parser:
         elif self.char.is_bracket_open():
             self.set_state(State.EXPECT_RENDERER_ARGUMENT)
         else:
-            self.set_error_state("invalid character in renderer name", 7)
+            self.set_error_state(
+                "invalid character in renderer name",
+                COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
+            )
 
     def in_state_expect_renderer_argument(self) -> None:
         if not self.char:
@@ -710,7 +797,7 @@ class Parser:
         else:
             self.set_error_state(
                 "invalid character. Expected bracket close or renderer argument delimiter",
-                9,
+                COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
             )
 
     def in_state_renderer_argument_double_quoted(self) -> None:
@@ -735,7 +822,9 @@ class Parser:
                 self.store_renderer_argument()
                 self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state("invalid character", 10)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            )
 
     def in_state_renderer_argument_single_quoted(self) -> None:
         if not self.char:
@@ -759,7 +848,9 @@ class Parser:
                 self.store_renderer_argument()
                 self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state("invalid character", 10)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            )
 
     def in_state_renderer_complete(self) -> None:
         if not self.char:
@@ -774,7 +865,9 @@ class Parser:
             self.store_renderer()
             self.set_state(State.EXPECT_RENDERER)
         else:
-            self.set_error_state("invalid character", 8)
+            self.set_error_state(
+                "invalid character", COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS
+            )
 
     def in_state_expect_alias_delimiter(self) -> None:
         if not self.char:
@@ -782,4 +875,7 @@ class Parser:
         if self.char.is_alias_delimiter():
             self.set_state(State.EXPECT_ALIAS)
         else:
-            self.set_error_state("invalid character, expected alias delimiter", 5)
+            self.set_error_state(
+                "invalid character, expected alias delimiter",
+                COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER,
+            )

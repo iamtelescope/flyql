@@ -1,0 +1,167 @@
+{
+  "version": "1.0",
+  "description": "One triggering input per registered errno in columns_parser. Every registry entry must have a corresponding fixture entry here.",
+  "test_suite": "columns_errno_coverage",
+  "tests": [
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_EXPECT_COLUMN",
+      "input": ",col",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 2,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_EXPECT_ALIAS_OPERATOR",
+      "input": "col sa",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 3,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR",
+      "input": "col aX b",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 4,
+        "message_contains": "expected alias operator"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_DELIMITER",
+      "input": "col asX",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 5,
+        "message_contains": "expected alias delimiter"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_IN_COLUMN",
+      "input": "col(X",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 6,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER",
+      "input": "col|",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": "expected transformer"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS",
+      "input": "col|foo(1)X",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 8,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_INVALID_CHAR_IN_ARGS",
+      "input": "col|foo(\"a\" \"b\")",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 9,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_RENDERERS_NOT_ENABLED",
+      "input": "col as a|x",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 11,
+        "message_contains": "renderers are not enabled"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG",
+      "input": "col|foo('abc",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 12,
+        "message_contains": "unexpected end of quoted argument"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR",
+      "input": "col as ",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 13,
+        "message_contains": "unexpected end of alias"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE",
+      "input": "col a",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 14,
+        "message_contains": "unexpected end of alias"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST",
+      "input": "col|foo(\"a\"",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 15,
+        "message_contains": "unexpected end of arguments list"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_EXPECTED_CLOSING_PAREN",
+      "input": "col|foo(1",
+      "capabilities": {"transformers": true, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 16,
+        "message_contains": "expected closing parenthesis"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED",
+      "input": "col|foo(1)",
+      "capabilities": {"transformers": false, "renderers": false},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 17,
+        "message_contains": "transformers are not enabled"
+      }
+    },
+    {
+      "name": "COLUMNS_ERR_RENDERER_REQUIRES_ALIAS",
+      "input": "url as |href(\"x\")",
+      "capabilities": {"transformers": true, "renderers": true},
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 18,
+        "message_contains": "renderers require an alias"
+      }
+    }
+  ]
+}

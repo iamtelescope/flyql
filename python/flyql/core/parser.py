@@ -25,24 +25,22 @@ from flyql.errors_generated import (
     ERR_EXPECTED_COMMA_OR_LIST_END,
     ERR_EXPECTED_DELIM_AFTER_BOOL_OP,
     ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT,
+    ERR_EXPECTED_KEYWORD_AFTER_NOT,
     ERR_EXPECTED_LIST_START,
     ERR_EXPECTED_LIST_START_AFTER_IN,
     ERR_EXPECTED_NOT_OR_IN_KEYWORD,
     ERR_EXPECTED_OPERATOR_OR_BOOL_OP,
-    ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING,
     ERR_EXPECTED_VALUE,
+    ERR_EXPECTED_VALUE_AFTER_KEYWORD,
     ERR_EXPECTED_VALUE_IN_LIST,
-    ERR_EXPECTED_VALUE_OR_KEYWORD,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
     ERR_INVALID_CHAR_IN_BOOL_DELIM,
-    ERR_INVALID_CHAR_IN_DOUBLE_QUOTED_KEY,
     ERR_INVALID_CHAR_IN_EXPECT_BOOL,
     ERR_INVALID_CHAR_IN_KEY,
     ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR,
-    ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE,
-    ERR_INVALID_CHAR_IN_QUOTED_VALUE,
-    ERR_INVALID_CHAR_IN_SINGLE_QUOTED_KEY,
-    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+    ERR_INVALID_CHAR_IN_PARAMETER_NAME,
+    ERR_INVALID_CHAR_IN_VALUE,
+    ERR_INVALID_CHAR_INITIAL,
     ERR_INVALID_DURATION,
     ERR_INVALID_FUNCTION_ARGS,
     ERR_INVALID_PARAMETER_NAME,
@@ -50,11 +48,12 @@ from flyql.errors_generated import (
     ERR_MAX_DEPTH_EXCEEDED,
     ERR_NULL_NOT_ALLOWED_WITH_OPERATOR,
     ERR_PARAMETER_ZERO_INDEX,
+    ERR_UNCLOSED_STRING,
     ERR_UNEXPECTED_CHAR_IN_LIST_VALUE,
     ERR_UNEXPECTED_EOF,
     ERR_UNEXPECTED_EOF_IN_KEY,
     ERR_UNKNOWN_FUNCTION,
-    ERR_UNKNOWN_STATE,
+    ERR_UNKNOWN_OPERATOR,
     ERR_UNMATCHED_PAREN_AT_EOF,
     ERR_UNMATCHED_PAREN_IN_BOOL_DELIM,
     ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL,
@@ -754,7 +753,7 @@ class Parser:
             self.set_state(State.DOUBLE_QUOTED_KEY)
             self.store_typed_char(CharType.KEY)
         else:
-            self.set_error_state("invalid character", ERR_UNKNOWN_STATE)
+            self.set_error_state("invalid character", ERR_INVALID_CHAR_INITIAL)
             return
 
     def in_state_key(self) -> None:
@@ -849,8 +848,8 @@ class Parser:
             self.set_state(State.KEY_VALUE_OPERATOR)
             self.store_typed_char(CharType.OPERATOR)
         else:
-            self.set_error_state(
-                "expected operator", ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING
+            raise AssertionError(
+                "unreachable: State.EXPECT_OPERATOR is never entered by the state machine"
             )
 
     def in_state_key_value_operator(self) -> None:
@@ -897,7 +896,7 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'has'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'has'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
             return
         elif self.key_value_operator == "l" and self.char.value == "i":
@@ -939,7 +938,7 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'like'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'like'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
             return
         elif self.key_value_operator == "i" and self.char.value == "n":
@@ -988,7 +987,7 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'ilike'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'ilike'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
             return
         elif self.key_value_operator == "in":
@@ -1011,7 +1010,7 @@ class Parser:
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(
                     f"unknown operator: {self.key_value_operator}",
-                    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                    ERR_UNKNOWN_OPERATOR,
                 )
             else:
                 self.set_state(State.EXPECT_VALUE)
@@ -1022,7 +1021,7 @@ class Parser:
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(
                     f"unknown operator: {self.key_value_operator}",
-                    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                    ERR_UNKNOWN_OPERATOR,
                 )
             else:
                 self._value_start = self.char.pos
@@ -1032,7 +1031,7 @@ class Parser:
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(
                     f"unknown operator: {self.key_value_operator}",
-                    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                    ERR_UNKNOWN_OPERATOR,
                 )
             else:
                 self.set_state(State.VALUE)
@@ -1042,7 +1041,7 @@ class Parser:
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(
                     f"unknown operator: {self.key_value_operator}",
-                    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                    ERR_UNKNOWN_OPERATOR,
                 )
             else:
                 self.set_value_is_string()
@@ -1052,7 +1051,7 @@ class Parser:
             if self.key_value_operator not in VALID_KEY_VALUE_OPERATORS:
                 self.set_error_state(
                     f"unknown operator: {self.key_value_operator}",
-                    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                    ERR_UNKNOWN_OPERATOR,
                 )
             else:
                 self.set_value_is_string()
@@ -1136,9 +1135,7 @@ class Parser:
                 self.set_state(State.EXPECT_BOOL_OP)
                 self.store_typed_char(CharType.OPERATOR)
         else:
-            self.set_error_state(
-                "invalid character", ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR
-            )
+            self.set_error_state("invalid character", ERR_INVALID_CHAR_IN_VALUE)
             return
 
     def _finalize_parameter(self) -> None:
@@ -1214,7 +1211,7 @@ class Parser:
         else:
             self.set_error_state(
                 "invalid character in parameter name",
-                ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                ERR_INVALID_CHAR_IN_PARAMETER_NAME,
             )
 
     def in_state_single_quoted_value(self) -> None:
@@ -1237,8 +1234,9 @@ class Parser:
                 self.reset_data()
                 self.reset_bool_operator()
         else:
-            self.set_error_state("invalid character", ERR_INVALID_CHAR_IN_QUOTED_VALUE)
-            return
+            raise AssertionError(
+                "unreachable: is_single_quoted_value() is true for every non-quote char"
+            )
 
     def in_state_double_quoted_value(self) -> None:
         if not self.char:
@@ -1260,8 +1258,9 @@ class Parser:
                 self.reset_data()
                 self.reset_bool_operator()
         else:
-            self.set_error_state("invalid character", ERR_INVALID_CHAR_IN_QUOTED_VALUE)
-            return
+            raise AssertionError(
+                "unreachable: is_double_quoted_value() is true for every non-quote char"
+            )
 
     def in_state_single_quoted_key(self) -> None:
         if not self.char:
@@ -1279,10 +1278,9 @@ class Parser:
                 self.extend_key()
                 self.set_state(State.KEY)
         else:
-            self.set_error_state(
-                "invalid character in quoted key", ERR_INVALID_CHAR_IN_SINGLE_QUOTED_KEY
+            raise AssertionError(
+                "unreachable: is_single_quoted_value() is true for every non-quote char"
             )
-            return
 
     def in_state_double_quoted_key(self) -> None:
         if not self.char:
@@ -1300,10 +1298,9 @@ class Parser:
                 self.extend_key()
                 self.set_state(State.KEY)
         else:
-            self.set_error_state(
-                "invalid character in quoted key", ERR_INVALID_CHAR_IN_DOUBLE_QUOTED_KEY
+            raise AssertionError(
+                "unreachable: is_double_quoted_value() is true for every non-quote char"
             )
-            return
 
     def in_state_bool_op_delimiter(self) -> None:
         if not self.char:
@@ -1528,8 +1525,8 @@ class Parser:
                     "expected space after 'not'", ERR_EXPECTED_NOT_OR_IN_KEYWORD
                 )
         else:
-            self.set_error_state(
-                "unexpected state in expect_in_keyword", ERR_EXPECTED_NOT_OR_IN_KEYWORD
+            raise AssertionError(
+                f"unreachable: expect_in_keyword with key_value_operator={self.key_value_operator!r}"
             )
 
     def in_state_expect_list_start(self) -> None:
@@ -1606,11 +1603,11 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'not has'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'not has'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
         else:
             self.set_error_state(
-                "expected 'has' keyword", ERR_EXPECTED_VALUE_OR_KEYWORD
+                "expected 'has' keyword", ERR_EXPECTED_KEYWORD_AFTER_NOT
             )
 
     def in_state_expect_like_keyword(self) -> None:
@@ -1655,7 +1652,7 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'not like'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'not like'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
         # Path B: disambiguate 'i' → 'in' (not in) vs 'il' (not ilike)
         elif self.key_value_operator == "i" and self.char.value == "n":
@@ -1704,11 +1701,11 @@ class Parser:
                 self.store_typed_char(CharType.VALUE)
             else:
                 self.set_error_state(
-                    "expected value after 'not ilike'", ERR_EXPECTED_VALUE_OR_KEYWORD
+                    "expected value after 'not ilike'", ERR_EXPECTED_VALUE_AFTER_KEYWORD
                 )
         else:
             self.set_error_state(
-                "expected 'like' or 'ilike' keyword", ERR_EXPECTED_VALUE_OR_KEYWORD
+                "expected 'like' or 'ilike' keyword", ERR_EXPECTED_KEYWORD_AFTER_NOT
             )
 
     def in_state_expect_list_value(self) -> None:
@@ -1842,7 +1839,7 @@ class Parser:
         else:
             self.set_error_state(
                 "invalid character in parameter name",
-                ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+                ERR_INVALID_CHAR_IN_PARAMETER_NAME,
             )
 
     def in_state_in_list_single_quoted_value(self) -> None:
@@ -1864,9 +1861,8 @@ class Parser:
                     return
                 self.set_state(State.EXPECT_LIST_COMMA_OR_END)
         else:
-            self.set_error_state(
-                "invalid character in quoted value",
-                ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE,
+            raise AssertionError(
+                "unreachable: is_X_quoted_value() is true for every non-quote char"
             )
 
     def in_state_in_list_double_quoted_value(self) -> None:
@@ -1888,9 +1884,8 @@ class Parser:
                     return
                 self.set_state(State.EXPECT_LIST_COMMA_OR_END)
         else:
-            self.set_error_state(
-                "invalid character in quoted value",
-                ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE,
+            raise AssertionError(
+                "unreachable: is_X_quoted_value() is true for every non-quote char"
             )
 
     def in_state_expect_list_comma_or_end(self) -> None:
@@ -2236,7 +2231,8 @@ class Parser:
             self.store_typed_char(CharType.SPACE)
         else:
             self.set_error_state(
-                "invalid character in parameter name", ERR_INVALID_FUNCTION_ARGS
+                "invalid character in parameter name",
+                ERR_INVALID_CHAR_IN_PARAMETER_NAME,
             )
 
     def in_state_last_char(self) -> None:
@@ -2280,9 +2276,7 @@ class Parser:
             self.extend_tree(self.new_truthy_expression())
             self.reset_bool_operator()
         elif self.state in (State.DOUBLE_QUOTED_VALUE, State.SINGLE_QUOTED_VALUE):
-            self.set_error_state(
-                "unclosed string", ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING
-            )
+            self.set_error_state("unclosed string", ERR_UNCLOSED_STRING)
             return
         elif self.state == State.VALUE:
             self.extend_tree()
@@ -2386,7 +2380,9 @@ class Parser:
                 case State.PARAMETER:
                     self.in_state_parameter()
                 case _:
-                    self.set_error_state(f"Unknown state: {self.state}", ERR_UNKNOWN_STATE)  # type: ignore[unreachable]
+                    raise AssertionError(
+                        f"unreachable: unexpected parser state {self.state!r}"
+                    )
 
             if self.state == State.ERROR:  # type: ignore[comparison-overlap]
                 break  # type: ignore[unreachable]

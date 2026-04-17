@@ -12,15 +12,14 @@ import {
     COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
     COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
     COLUMNS_ERR_INVALID_CHAR_IN_COLUMN,
-    COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG,
     COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
-    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+    COLUMNS_ERR_RENDERER_REQUIRES_ALIAS,
+    COLUMNS_ERR_RENDERERS_NOT_ENABLED,
     COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED,
     COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
     COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
     COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
     COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
-    COLUMNS_ERR_UNKNOWN_STATE,
 } from '../errors_generated.js'
 
 export class Parser {
@@ -373,7 +372,7 @@ export class Parser {
             } else if (this.state === State.EXPECT_RENDERER_ARGUMENT_DELIMITER) {
                 this.inStateExpectRendererArgumentDelimiter()
             } else {
-                this.setErrorState(`unknown state: ${this.state}`, COLUMNS_ERR_UNKNOWN_STATE)
+                throw new Error(`unreachable: unexpected columns parser state ${this.state}`)
             }
             i += 1
             this.linePos += 1
@@ -628,7 +627,7 @@ export class Parser {
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
+            throw new Error('unreachable: isTransformerXQuotedArgumentValue() is true for every non-quote char')
         }
     }
 
@@ -655,7 +654,7 @@ export class Parser {
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
+            throw new Error('unreachable: isTransformerXQuotedArgumentValue() is true for every non-quote char')
         }
     }
 
@@ -730,12 +729,12 @@ export class Parser {
         } else if (this.char.isTransformerOperator()) {
             if (!this.capabilities.renderers) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('renderers are not enabled', COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS)
+                this.setErrorState('renderers are not enabled', COLUMNS_ERR_RENDERERS_NOT_ENABLED)
                 return
             }
             if (!this.alias) {
                 this.trackChar(CharType.ERROR)
-                this.setErrorState('renderers require an alias', COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS)
+                this.setErrorState('renderers require an alias', COLUMNS_ERR_RENDERER_REQUIRES_ALIAS)
                 return
             }
             this.trackChar(CharType.RENDERER_PIPE)
@@ -900,7 +899,7 @@ export class Parser {
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
+            throw new Error('unreachable: isTransformerXQuotedArgumentValue() is true for every non-quote char')
         }
     }
 
@@ -928,7 +927,7 @@ export class Parser {
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }
         } else {
-            this.setErrorState('invalid character', COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG)
+            throw new Error('unreachable: isTransformerXQuotedArgumentValue() is true for every non-quote char')
         }
     }
 }

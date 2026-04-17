@@ -29,24 +29,22 @@ import {
     ERR_EXPECTED_COMMA_OR_LIST_END,
     ERR_EXPECTED_DELIM_AFTER_BOOL_OP,
     ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT,
+    ERR_EXPECTED_KEYWORD_AFTER_NOT,
     ERR_EXPECTED_LIST_START,
     ERR_EXPECTED_LIST_START_AFTER_IN,
     ERR_EXPECTED_NOT_OR_IN_KEYWORD,
     ERR_EXPECTED_OPERATOR_OR_BOOL_OP,
-    ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING,
     ERR_EXPECTED_VALUE,
+    ERR_EXPECTED_VALUE_AFTER_KEYWORD,
     ERR_EXPECTED_VALUE_IN_LIST,
-    ERR_EXPECTED_VALUE_OR_KEYWORD,
     ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR,
     ERR_INVALID_CHAR_IN_BOOL_DELIM,
-    ERR_INVALID_CHAR_IN_DOUBLE_QUOTED_KEY,
     ERR_INVALID_CHAR_IN_EXPECT_BOOL,
     ERR_INVALID_CHAR_IN_KEY,
     ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR,
-    ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE,
-    ERR_INVALID_CHAR_IN_QUOTED_VALUE,
-    ERR_INVALID_CHAR_IN_SINGLE_QUOTED_KEY,
-    ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR,
+    ERR_INVALID_CHAR_IN_PARAMETER_NAME,
+    ERR_INVALID_CHAR_IN_VALUE,
+    ERR_INVALID_CHAR_INITIAL,
     ERR_INVALID_DURATION,
     ERR_INVALID_FUNCTION_ARGS,
     ERR_INVALID_PARAMETER_NAME,
@@ -54,11 +52,12 @@ import {
     ERR_MAX_DEPTH_EXCEEDED,
     ERR_NULL_NOT_ALLOWED_WITH_OPERATOR,
     ERR_PARAMETER_ZERO_INDEX,
+    ERR_UNCLOSED_STRING,
     ERR_UNEXPECTED_CHAR_IN_LIST_VALUE,
     ERR_UNEXPECTED_EOF,
     ERR_UNEXPECTED_EOF_IN_KEY,
     ERR_UNKNOWN_FUNCTION,
-    ERR_UNKNOWN_STATE,
+    ERR_UNKNOWN_OPERATOR,
     ERR_UNMATCHED_PAREN_AT_EOF,
     ERR_UNMATCHED_PAREN_IN_BOOL_DELIM,
     ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL,
@@ -705,7 +704,7 @@ export class Parser {
             this.setState(State.DOUBLE_QUOTED_KEY)
             this.storeTypedChar(CharType.KEY)
         } else {
-            this.setErrorState('invalid character', ERR_UNKNOWN_STATE)
+            this.setErrorState('invalid character', ERR_INVALID_CHAR_INITIAL)
         }
     }
 
@@ -806,7 +805,7 @@ export class Parser {
             this.setState(State.KEY_VALUE_OPERATOR)
             this.storeTypedChar(CharType.OPERATOR)
         } else {
-            this.setErrorState('expected operator', ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING)
+            throw new Error('unreachable: State.EXPECT_OPERATOR is never entered by the state machine')
         }
     }
 
@@ -954,7 +953,7 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'has'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'has'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
             return
         }
@@ -1015,7 +1014,7 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'ilike'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'ilike'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
             return
         }
@@ -1064,7 +1063,7 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'like'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'like'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
             return
         }
@@ -1089,7 +1088,7 @@ export class Parser {
         if (this.char.isDelimiter()) {
             this.storeTypedChar(CharType.SPACE)
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
-                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_UNKNOWN_OPERATOR)
             } else {
                 this.setState(State.EXPECT_VALUE)
             }
@@ -1098,7 +1097,7 @@ export class Parser {
             this.storeTypedChar(CharType.OPERATOR)
         } else if (this.char.value === DOLLAR) {
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
-                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_UNKNOWN_OPERATOR)
             } else {
                 this._valueStart = this.char.pos
                 this.setState(State.PARAMETER)
@@ -1106,7 +1105,7 @@ export class Parser {
             }
         } else if (this.char.isValue()) {
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
-                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_UNKNOWN_OPERATOR)
             } else {
                 this.setState(State.VALUE)
                 this.extendValue()
@@ -1114,7 +1113,7 @@ export class Parser {
             }
         } else if (this.char.isSingleQuote()) {
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
-                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_UNKNOWN_OPERATOR)
             } else {
                 this.setValueIsString()
                 this.setState(State.SINGLE_QUOTED_VALUE)
@@ -1122,7 +1121,7 @@ export class Parser {
             }
         } else if (this.char.isDoubleQuote()) {
             if (!VALID_KEY_VALUE_OPERATORS.includes(this.keyValueOperator)) {
-                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+                this.setErrorState(`unknown operator: ${this.keyValueOperator}`, ERR_UNKNOWN_OPERATOR)
             } else {
                 this.setValueIsString()
                 this.setState(State.DOUBLE_QUOTED_VALUE)
@@ -1226,7 +1225,7 @@ export class Parser {
                 this.storeTypedChar(CharType.OPERATOR)
             }
         } else {
-            this.setErrorState('invalid character', ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+            this.setErrorState('invalid character', ERR_INVALID_CHAR_IN_VALUE)
         }
     }
 
@@ -1271,7 +1270,7 @@ export class Parser {
                     return false
                 }
                 prevMagnitude = magnitude
-                this._functionDurations.push(new Duration(parseInt(numBuf, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR), c))
+                this._functionDurations.push(new Duration(parseInt(numBuf, ERR_UNKNOWN_OPERATOR), c))
                 numBuf = ''
             }
         }
@@ -1508,7 +1507,7 @@ export class Parser {
                 this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
                 return false
             }
-            if (parseInt(name, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR) === 0) {
+            if (parseInt(name, ERR_UNKNOWN_OPERATOR) === 0) {
                 this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
                 return false
             }
@@ -1545,7 +1544,7 @@ export class Parser {
             this.setState(State.FUNCTION_EXPECT_COMMA_OR_CLOSE)
             this.storeTypedChar(CharType.SPACE)
         } else {
-            this.setErrorState('invalid character in parameter name', ERR_INVALID_FUNCTION_ARGS)
+            this.setErrorState('invalid character in parameter name', ERR_INVALID_CHAR_IN_PARAMETER_NAME)
         }
     }
 
@@ -1579,7 +1578,7 @@ export class Parser {
                 this.resetBoolOperator()
             }
         } else {
-            this.setErrorState('invalid character', ERR_INVALID_CHAR_IN_QUOTED_VALUE)
+            throw new Error('unreachable: isXQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -1613,7 +1612,7 @@ export class Parser {
                 this.resetBoolOperator()
             }
         } else {
-            this.setErrorState('invalid character', ERR_INVALID_CHAR_IN_QUOTED_VALUE)
+            throw new Error('unreachable: isXQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -1635,7 +1634,7 @@ export class Parser {
                 this.setState(State.KEY)
             }
         } else {
-            this.setErrorState('invalid character in quoted key', ERR_INVALID_CHAR_IN_SINGLE_QUOTED_KEY)
+            throw new Error('unreachable: isSingleQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -1657,7 +1656,7 @@ export class Parser {
                 this.setState(State.KEY)
             }
         } else {
-            this.setErrorState('invalid character in quoted key', ERR_INVALID_CHAR_IN_DOUBLE_QUOTED_KEY)
+            throw new Error('unreachable: isDoubleQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -1792,7 +1791,7 @@ export class Parser {
                 this.setErrorState("expected space after 'not'", ERR_EXPECTED_NOT_OR_IN_KEYWORD)
             }
         } else {
-            this.setErrorState('unexpected state in expect_in_keyword', ERR_EXPECTED_NOT_OR_IN_KEYWORD)
+            throw new Error(`unreachable: expect_in_keyword with keyValueOperator=${this.keyValueOperator}`)
         }
     }
 
@@ -1873,10 +1872,10 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'not has'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'not has'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
         } else {
-            this.setErrorState("expected 'has' keyword", ERR_EXPECTED_VALUE_OR_KEYWORD)
+            this.setErrorState("expected 'has' keyword", ERR_EXPECTED_KEYWORD_AFTER_NOT)
         }
     }
 
@@ -1921,7 +1920,7 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'not like'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'not like'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
             // Path B: disambiguating "not in" vs "not ilike" (entered with keyValueOperator = 'i')
         } else if (this.keyValueOperator === 'i' && this.char.value === 'n') {
@@ -1971,10 +1970,10 @@ export class Parser {
                 this.extendValue()
                 this.storeTypedChar(CharType.VALUE)
             } else {
-                this.setErrorState("expected value after 'not ilike'", ERR_EXPECTED_VALUE_OR_KEYWORD)
+                this.setErrorState("expected value after 'not ilike'", ERR_EXPECTED_VALUE_AFTER_KEYWORD)
             }
         } else {
-            this.setErrorState("expected 'like' or 'ilike' keyword", ERR_EXPECTED_VALUE_OR_KEYWORD)
+            this.setErrorState("expected 'like' or 'ilike' keyword", ERR_EXPECTED_KEYWORD_AFTER_NOT)
         }
     }
 
@@ -2060,7 +2059,7 @@ export class Parser {
                 this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
                 return false
             }
-            if (parseInt(name, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR) === 0) {
+            if (parseInt(name, ERR_UNKNOWN_OPERATOR) === 0) {
                 this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
                 return false
             }
@@ -2110,7 +2109,7 @@ export class Parser {
             this.resetBoolOperator()
             this.setState(State.EXPECT_BOOL_OP)
         } else {
-            this.setErrorState('invalid character in parameter name', ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+            this.setErrorState('invalid character in parameter name', ERR_INVALID_CHAR_IN_PARAMETER_NAME)
         }
     }
 
@@ -2134,7 +2133,7 @@ export class Parser {
                 this.setState(State.EXPECT_LIST_COMMA_OR_END)
             }
         } else {
-            this.setErrorState('invalid character in quoted value', ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE)
+            throw new Error('unreachable: isXQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -2158,7 +2157,7 @@ export class Parser {
                 this.setState(State.EXPECT_LIST_COMMA_OR_END)
             }
         } else {
-            this.setErrorState('invalid character in quoted value', ERR_INVALID_CHAR_IN_LIST_QUOTED_VALUE)
+            throw new Error('unreachable: isXQuotedValue() is true for every non-quote char')
         }
     }
 
@@ -2195,7 +2194,7 @@ export class Parser {
                 this.setErrorState('invalid parameter name', ERR_INVALID_PARAMETER_NAME)
                 return
             }
-            if (parseInt(name, ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR) === 0) {
+            if (parseInt(name, ERR_UNKNOWN_OPERATOR) === 0) {
                 this.setErrorState('positional parameters are 1-indexed', ERR_PARAMETER_ZERO_INDEX)
                 return
             }
@@ -2252,7 +2251,7 @@ export class Parser {
                 this.storeTypedChar(CharType.OPERATOR)
             }
         } else {
-            this.setErrorState('invalid character in parameter name', ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR)
+            this.setErrorState('invalid character in parameter name', ERR_INVALID_CHAR_IN_PARAMETER_NAME)
         }
     }
 
@@ -2298,7 +2297,7 @@ export class Parser {
             this.extendTreeWithExpression(this.newTruthyExpression())
             this.resetBoolOperator()
         } else if (this.state === State.DOUBLE_QUOTED_VALUE || this.state === State.SINGLE_QUOTED_VALUE) {
-            this.setErrorState('unclosed string', ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING)
+            this.setErrorState('unclosed string', ERR_UNCLOSED_STRING)
             return
         } else if (this.state === State.VALUE) {
             this.extendTree()
@@ -2431,7 +2430,7 @@ export class Parser {
                     this.inStateParameter()
                     break
                 default:
-                    this.setErrorState(`Unknown state: ${this.state}`, ERR_UNKNOWN_STATE)
+                    throw new Error(`unreachable: unexpected parser state ${this.state}`)
             }
 
             if (this.state === State.ERROR) {

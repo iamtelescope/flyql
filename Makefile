@@ -44,4 +44,7 @@ run-docs:
 generate-errors:
 	python3 errors/generate.py
 
-.PHONY: generate-errors
+e2e-errno-parity:
+	$(MAKE) -C e2e errno-parity
+
+.PHONY: generate-errors e2e-errno-parity

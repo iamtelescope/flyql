@@ -126,8 +126,10 @@ To add, rename, or remove an error code:
 3. Commit both `errors/registry.json` and the updated generated files in the same change — CI rejects PRs that change the registry without re-running codegen (and vice versa).
 4. If you're introducing a new code, wire it into the parser/validator call site in the language you're working in, then mirror the call site across the other two implementations.
 5. If the change alters parse behavior, add or update the shared fixture under `tests-data/core/parser/` — remember the fixture format supports both `"errno": N` and `"errno_options": [N, M, ...]`.
+6. Add a fixture entry that triggers the new code to `tests-data/core/parser/errno_coverage.json` (core codes) or `tests-data/core/parser/columns_errno_coverage.json` (columns codes). If the code is provably unreachable via user input, list its name in `known_unreachable_codes` instead — the per-language coverage tests use that list to allow-list dead branches while still enforcing that every reachable code has a trigger.
+7. Run `make e2e-errno-parity` locally to verify all three parsers agree on the errno + error text for each fixture entry. Requires `jq` and local Python/Node/Go toolchains; no DB containers needed.
 
-The parity tests (`test_error_registry_parity.py` / `error-registry-parity.test.js` / `error_registry_parity_test.go`) run under the standard `make test` and catch any divergence between the registry and the generated modules.
+The parity tests (`test_error_registry_parity.py` / `error-registry-parity.test.js` / `error_registry_parity_test.go`) run under the standard `make test` and catch any divergence between the registry and the generated modules. The cross-language errno-parity harness runs in a dedicated `errno-parity` CI job and surfaces any fixture mismatch.
 
 ## Getting Help
 

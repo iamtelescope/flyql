@@ -18,15 +18,14 @@ from flyql.errors_generated import (
     COLUMNS_ERR_INVALID_CHAR_EXPECTED_ALIAS_OPERATOR,
     COLUMNS_ERR_INVALID_CHAR_IN_ARGS,
     COLUMNS_ERR_INVALID_CHAR_IN_COLUMN,
-    COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG,
     COLUMNS_ERR_INVALID_TRANSFORMER_OR_RENDERER,
-    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+    COLUMNS_ERR_RENDERER_REQUIRES_ALIAS,
+    COLUMNS_ERR_RENDERERS_NOT_ENABLED,
     COLUMNS_ERR_TRANSFORMERS_NOT_ENABLED,
     COLUMNS_ERR_UNEXPECTED_END_EXPECTED_ALIAS_VALUE,
     COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
     COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
     COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
-    COLUMNS_ERR_UNKNOWN_STATE,
 )
 
 
@@ -347,8 +346,8 @@ class Parser:
             elif self.state == State.EXPECT_RENDERER_ARGUMENT_DELIMITER:
                 self.in_state_expect_renderer_argument_delimiter()
             else:
-                self.set_error_state(
-                    f"unknown state: {self.state}", COLUMNS_ERR_UNKNOWN_STATE
+                raise AssertionError(
+                    f"unreachable: unexpected columns parser state {self.state!r}"
                 )
             i += 1
             self.line_pos += 1
@@ -608,8 +607,8 @@ class Parser:
                 self.store_argument()
                 self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state(
-                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            raise AssertionError(
+                "unreachable: is_transformer_X_quoted_argument_value() is true for every non-quote char"
             )
 
     def in_state_transformer_argument_single_quoted(self) -> None:
@@ -634,8 +633,8 @@ class Parser:
                 self.store_argument()
                 self.set_state(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state(
-                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            raise AssertionError(
+                "unreachable: is_transformer_X_quoted_argument_value() is true for every non-quote char"
             )
 
     def in_state_transformer_complete(self) -> None:
@@ -705,13 +704,13 @@ class Parser:
             if not self.capabilities["renderers"]:
                 self.set_error_state(
                     "renderers are not enabled",
-                    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+                    COLUMNS_ERR_RENDERERS_NOT_ENABLED,
                 )
                 return
             if not self.alias:
                 self.set_error_state(
                     "renderers require an alias",
-                    COLUMNS_ERR_RENDERERS_NOT_ENABLED_OR_NO_ALIAS,
+                    COLUMNS_ERR_RENDERER_REQUIRES_ALIAS,
                 )
                 return
             self.set_state(State.EXPECT_RENDERER)
@@ -822,8 +821,8 @@ class Parser:
                 self.store_renderer_argument()
                 self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state(
-                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            raise AssertionError(
+                "unreachable: is_transformer_X_quoted_argument_value() is true for every non-quote char"
             )
 
     def in_state_renderer_argument_single_quoted(self) -> None:
@@ -848,8 +847,8 @@ class Parser:
                 self.store_renderer_argument()
                 self.set_state(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
         else:
-            self.set_error_state(
-                "invalid character", COLUMNS_ERR_INVALID_CHAR_IN_QUOTED_ARG
+            raise AssertionError(
+                "unreachable: is_transformer_X_quoted_argument_value() is true for every non-quote char"
             )
 
     def in_state_renderer_complete(self) -> None:

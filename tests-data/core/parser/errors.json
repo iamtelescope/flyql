@@ -150,7 +150,7 @@
       "input": "host='123",
       "expected_result": "error",
       "expected_error": {
-        "errno": 28,
+        "errno": 6,
         "message_contains": "unclosed string"
       }
     },
@@ -159,7 +159,7 @@
       "input": "host=\"123",
       "expected_result": "error",
       "expected_error": {
-        "errno": 28,
+        "errno": 6,
         "message_contains": "unclosed string"
       }
     }

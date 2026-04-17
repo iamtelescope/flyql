@@ -269,6 +269,147 @@ def _build_collapsed_results(sql_groups: dict) -> list:
     return rows
 
 
+REPO_ROOT = SCRIPT_DIR.parent
+CORE_COVERAGE_FIXTURE = REPO_ROOT / "tests-data" / "core" / "parser" / "errno_coverage.json"
+COLUMNS_COVERAGE_FIXTURE = REPO_ROOT / "tests-data" / "core" / "parser" / "columns_errno_coverage.json"
+GO_PARITY_CLI_DIR = REPO_ROOT / "golang" / "e2e"
+GO_PARITY_CLI_BIN = GO_PARITY_CLI_DIR / "_bin" / "errno_parity_cli"
+PY_PARITY_CLI = SCRIPT_DIR / "errno_parity_py_cli.py"
+JS_PARITY_CLI = SCRIPT_DIR / "errno_parity_js_cli.js"
+
+
+def _resolve_parity_input(entry):
+    if "input" in entry:
+        return entry["input"]
+    c = entry["input_construction"]
+    if c["type"] == "nested_parens":
+        depth = c["depth"]
+        return "(" * depth + "a=1" + ")" * depth
+    raise RuntimeError(f"unknown input_construction type: {c['type']!r}")
+
+
+def _run_parity_stub(cmd, label):
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except subprocess.TimeoutExpired:
+        return None, f"{label}: timed out"
+    if proc.returncode != 0:
+        return None, f"{label}: exit {proc.returncode}: {proc.stderr.strip() or proc.stdout.strip()}"
+    line = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
+    try:
+        return json.loads(line), None
+    except json.JSONDecodeError as e:
+        return None, f"{label}: json decode error: {e}: stdout={proc.stdout!r}"
+
+
+def run_errno_parity(args):
+    # Build the Go CLI.
+    print("[errno-parity] Building Go CLI...")
+    rc = subprocess.run(
+        ["go", "build", "-o", str(GO_PARITY_CLI_BIN.relative_to(GO_PARITY_CLI_DIR)), "./errno_parity_cli"],
+        cwd=str(GO_PARITY_CLI_DIR),
+    ).returncode
+    if rc != 0:
+        print("[errno-parity] Go build failed", file=sys.stderr)
+        return 1
+
+    core_fixture = json.loads(CORE_COVERAGE_FIXTURE.read_text(encoding="utf-8"))
+    columns_fixture = json.loads(COLUMNS_COVERAGE_FIXTURE.read_text(encoding="utf-8"))
+    py_exe = sys.executable
+
+    results = []
+    mismatches = 0
+
+    def _dispatch(entry, category):
+        inp = _resolve_parity_input(entry)
+        caps = entry.get("capabilities") or {}
+        py_flags = [f"--category={category}", f"--input={inp}"]
+        js_flags = [f"--category={category}", f"--input={inp}"]
+        go_flags = [f"--category={category}", f"--input={inp}"]
+        if caps.get("transformers"):
+            py_flags.append("--transformers")
+            js_flags.append("--transformers")
+            go_flags.append("--transformers")
+        if caps.get("renderers"):
+            py_flags.append("--renderers")
+            js_flags.append("--renderers")
+            go_flags.append("--renderers")
+        py_res, py_err = _run_parity_stub([py_exe, str(PY_PARITY_CLI)] + py_flags, "python")
+        js_res, js_err = _run_parity_stub(["node", str(JS_PARITY_CLI)] + js_flags, "javascript")
+        go_res, go_err = _run_parity_stub([str(GO_PARITY_CLI_BIN)] + go_flags, "go")
+
+        errors = [e for e in (py_err, js_err, go_err) if e]
+        per_lang = {
+            "python": py_res if py_res else None,
+            "javascript": js_res if js_res else None,
+            "go": go_res if go_res else None,
+        }
+
+        expected = entry.get("expected_error") or {}
+        expected_errno = expected.get("errno")
+        expected_options = expected.get("errno_options")
+
+        per_lang_errnos = {lang: (v["errno"] if v else None) for lang, v in per_lang.items()}
+        per_lang_text = {lang: (v["error_text"] if v else None) for lang, v in per_lang.items()}
+
+        diverging = []
+        if errors:
+            diverging.append("STUB_ERROR")
+        else:
+            if expected_errno is not None:
+                for lang, errno in per_lang_errnos.items():
+                    if errno != expected_errno:
+                        diverging.append(lang)
+            elif expected_options:
+                for lang, errno in per_lang_errnos.items():
+                    if errno not in expected_options:
+                        diverging.append(lang)
+            else:
+                distinct = {e for e in per_lang_errnos.values() if e is not None}
+                if len(distinct) > 1:
+                    diverging = sorted(per_lang_errnos.keys())
+
+        return {
+            "name": entry["name"],
+            "category": category,
+            "input": inp,
+            "expected_errno": expected_errno,
+            "expected_errno_options": expected_options,
+            "errnos_per_language": per_lang_errnos,
+            "error_text_per_language": per_lang_text,
+            "stub_errors": errors,
+            "diverging_languages": diverging,
+            "pass": not diverging,
+        }
+
+    for entry in core_fixture["tests"]:
+        r = _dispatch(entry, "core")
+        results.append(r)
+        if not r["pass"]:
+            mismatches += 1
+    for entry in columns_fixture["tests"]:
+        r = _dispatch(entry, "columns")
+        results.append(r)
+        if not r["pass"]:
+            mismatches += 1
+
+    report = {
+        "suite": "errno-parity",
+        "total": len(results),
+        "passed": len(results) - mismatches,
+        "failed": mismatches,
+        "entries": results,
+    }
+
+    out_path = args.json or str(SCRIPT_DIR / "output" / "errno_parity.json")
+    out_file = Path(out_path)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(f"[errno-parity] Wrote {out_file}")
+    print(f"[errno-parity] {report['passed']}/{report['total']} entries pass")
+    return 0 if mismatches == 0 else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="FlyQL E2E orchestrator")
     parser.add_argument(
@@ -298,7 +439,22 @@ def main():
         default="",
         help="Also write a JSON report to this path (machine-readable, for LLM consumption)",
     )
+    parser.add_argument(
+        "--skip-dbs",
+        action="store_true",
+        default=False,
+        help="Skip DB orchestration (for suites that don't need containers, e.g. --errno-parity).",
+    )
+    parser.add_argument(
+        "--errno-parity",
+        action="store_true",
+        default=False,
+        help="Run the cross-language errno-parity harness instead of the default e2e language suites.",
+    )
     args = parser.parse_args()
+
+    if args.errno_parity:
+        return run_errno_parity(args)
 
     languages = [l.strip() for l in args.languages.split(",") if l.strip()]
     for lang in languages:
@@ -545,4 +701,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    rc = main()
+    if isinstance(rc, int):
+        sys.exit(rc)

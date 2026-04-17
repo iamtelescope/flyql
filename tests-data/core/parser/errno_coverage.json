@@ -1,0 +1,352 @@
+{
+  "version": "1.0",
+  "description": "One triggering input per registered errno in core_parser. Every registry entry must have a corresponding fixture entry here.",
+  "test_suite": "errno_coverage",
+  "tests": [
+    {
+      "name": "ERR_INVALID_CHAR_INITIAL",
+      "input": ")a=1",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 1,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_VALUE",
+      "input": "key=val\"xyz",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 2,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_KEY",
+      "input": "ke$y=value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 3,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR",
+      "input": "key=)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 4,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_PARAMETER_NAME",
+      "input": "key=$p@m",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 5,
+        "message_contains": "invalid character in parameter name"
+      }
+    },
+    {
+      "name": "ERR_UNCLOSED_STRING",
+      "input": "key='abc",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 6,
+        "message_contains": "unclosed string"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_KEYWORD_AFTER_NOT",
+      "input": "key not hx",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 7,
+        "message_contains": "keyword"
+      }
+    },
+    {
+      "name": "ERR_UNMATCHED_PAREN_IN_EXPR",
+      "input": "a)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 9,
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "ERR_UNKNOWN_OPERATOR",
+      "input": "key==value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 10,
+        "message_contains": "unknown operator"
+      }
+    },
+    {
+      "name": "ERR_UNMATCHED_PAREN_IN_BOOL_DELIM",
+      "input": "a=1 and )b=2",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 15,
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_BOOL_DELIM",
+      "input": "a=1 and $",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 18,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL",
+      "input": "a=1 )",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 19,
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "ERR_INVALID_CHAR_IN_EXPECT_BOOL",
+      "input": "a=1 $",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 20,
+        "message_contains": "invalid character"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_DELIM_AFTER_BOOL_OP",
+      "input": "a=1 andb=2",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 23,
+        "message_contains": "expected delimiter after bool operator"
+      }
+    },
+    {
+      "name": "ERR_EMPTY_INPUT",
+      "input": "",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 24,
+        "message_contains": "empty input"
+      }
+    },
+    {
+      "name": "ERR_UNEXPECTED_EOF",
+      "input": "not",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 25,
+        "message_contains": "unexpected EOF"
+      }
+    },
+    {
+      "name": "ERR_UNEXPECTED_EOF_IN_KEY",
+      "input": "abc and ",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 26,
+        "message_contains": "unexpected EOF"
+      }
+    },
+    {
+      "name": "ERR_UNMATCHED_PAREN_AT_EOF",
+      "input": "(a=1",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 27,
+        "message_contains": "unmatched parenthesis"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_VALUE",
+      "input": "key= =value",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 29,
+        "message_contains": "expected value"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_OPERATOR_OR_BOOL_OP",
+      "input": "a b",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 32,
+        "message_contains": "expected operator"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT",
+      "input": "not !",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 33,
+        "message_contains": "after"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_NOT_OR_IN_KEYWORD",
+      "input": "key n ",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 41,
+        "message_contains": "keyword"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_LIST_START",
+      "input": "key in 1",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 42,
+        "message_contains": "expected '['"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_VALUE_IN_LIST",
+      "input": "key in [=]",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 43,
+        "message_contains": "expected value in list"
+      }
+    },
+    {
+      "name": "ERR_UNEXPECTED_CHAR_IN_LIST_VALUE",
+      "input": "key in [abc(]",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 44,
+        "message_contains": "unexpected character in list value"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_COMMA_OR_LIST_END",
+      "input": "key in [1 2]",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 46,
+        "message_contains": "expected ',' or ']'"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_LIST_START_AFTER_IN",
+      "input": "key inx",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 47,
+        "message_contains": "expected '[' after 'in'"
+      }
+    },
+    {
+      "name": "ERR_EXPECTED_VALUE_AFTER_KEYWORD",
+      "input": "key has(v)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 50,
+        "message_contains": "expected value after"
+      }
+    },
+    {
+      "name": "ERR_NULL_NOT_ALLOWED_WITH_OPERATOR",
+      "input": "key>null",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 51,
+        "message_contains": "null value cannot be used with operator"
+      }
+    },
+    {
+      "name": "ERR_KEY_PARSE_FAILED",
+      "input": "key|=1",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 60,
+        "message_contains": "empty transformer name"
+      }
+    },
+    {
+      "name": "ERR_UNKNOWN_FUNCTION",
+      "input": "key=xyzfunc()",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 70,
+        "message_contains": "unknown function"
+      }
+    },
+    {
+      "name": "ERR_INVALID_FUNCTION_ARGS",
+      "input": "a=today(@)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 71,
+        "message_contains": "invalid function argument"
+      }
+    },
+    {
+      "name": "ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR",
+      "input": "a~now()",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 72,
+        "message_contains": "is not valid with"
+      }
+    },
+    {
+      "name": "ERR_INVALID_DURATION",
+      "input": "a>ago(1x)",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 73,
+        "message_contains": "invalid duration"
+      }
+    },
+    {
+      "name": "ERR_EMPTY_PARAMETER_NAME",
+      "input": "key=$",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 74,
+        "message_contains": "empty parameter name"
+      }
+    },
+    {
+      "name": "ERR_INVALID_PARAMETER_NAME",
+      "input": "key=$1abc",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 75,
+        "message_contains": "invalid parameter name"
+      }
+    },
+    {
+      "name": "ERR_PARAMETER_ZERO_INDEX",
+      "input": "key=$0",
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 76,
+        "message_contains": "positional parameters are 1-indexed"
+      }
+    },
+    {
+      "name": "ERR_MAX_DEPTH_EXCEEDED",
+      "input_construction": {
+        "type": "nested_parens",
+        "depth": 129
+      },
+      "expected_result": "error",
+      "expected_error": {
+        "errno": 78,
+        "message_contains": "maximum nesting depth exceeded"
+      }
+    }
+  ]
+}

@@ -455,7 +455,7 @@ func (p *parser) parse(text string) error {
 		case stateExpectRendererArgumentDelimiter:
 			p.inStateExpectRendererArgumentDelimiter()
 		default:
-			p.setErrorState(fmt.Sprintf("unknown state: %d", p.state), columnsErrUnknownState)
+			panic(fmt.Sprintf("unreachable: unexpected columns parser state %d", p.state))
 		}
 
 		i++
@@ -687,7 +687,7 @@ func (p *parser) inStateTransformerArgumentDoubleQuoted() {
 			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
+		panic("unreachable: isTransformerXQuotedArgumentValue is true for every non-quote char")
 	}
 }
 
@@ -713,7 +713,7 @@ func (p *parser) inStateTransformerArgumentSingleQuoted() {
 			p.state = stateExpectTransformerArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
+		panic("unreachable: isTransformerXQuotedArgumentValue is true for every non-quote char")
 	}
 }
 
@@ -771,11 +771,11 @@ func (p *parser) inStateExpectAlias() {
 		p.storeColumn()
 	} else if p.charValue == "|" {
 		if !p.capabilities.Renderers {
-			p.setErrorState("renderers are not enabled", columnsErrRenderersNotEnabledOrNoAlias)
+			p.setErrorState("renderers are not enabled", columnsErrRenderersNotEnabled)
 			return
 		}
 		if p.alias == "" {
-			p.setErrorState("renderers require an alias", columnsErrRenderersNotEnabledOrNoAlias)
+			p.setErrorState("renderers require an alias", columnsErrRendererRequiresAlias)
 			return
 		}
 		p.state = stateExpectRenderer
@@ -907,7 +907,7 @@ func (p *parser) inStateRendererArgumentDoubleQuoted() {
 			p.state = stateExpectRendererArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
+		panic("unreachable: isTransformerXQuotedArgumentValue is true for every non-quote char")
 	}
 }
 
@@ -933,7 +933,7 @@ func (p *parser) inStateRendererArgumentSingleQuoted() {
 			p.state = stateExpectRendererArgumentDelimiter
 		}
 	} else {
-		p.setErrorState("invalid character", columnsErrInvalidCharInQuotedArg)
+		panic("unreachable: isTransformerXQuotedArgumentValue is true for every non-quote char")
 	}
 }
 

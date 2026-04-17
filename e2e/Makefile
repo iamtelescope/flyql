@@ -4,7 +4,7 @@ LANGUAGES    ?= go,javascript,python
 DATABASES    ?= clickhouse,postgresql,starrocks
 PYTHON       ?= python3
 
-.PHONY: up down test-go test-js test-python test run install clean viewer audit
+.PHONY: up down test-go test-js test-python test run install clean viewer audit errno-parity
 
 up:
 	env $$(cat $(VERSION_FILE) | xargs) docker compose up -d --wait || (bash wait-for-dbs.sh)
@@ -38,6 +38,9 @@ viewer:
 
 clean: down
 	rm -f $(JSON_REPORT)
+
+errno-parity: install
+	.venv/bin/python3 runner.py --errno-parity --skip-dbs --json $(CURDIR)/output/errno_parity.json
 
 audit: up
 	-docker compose exec -T starrocks bash -c "mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/init.sql && mysql -h 127.0.0.1 -P 9030 -u root < /opt/starrocks/join_init.sql" 2>/dev/null

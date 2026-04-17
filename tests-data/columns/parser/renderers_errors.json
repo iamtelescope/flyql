@@ -25,7 +25,7 @@
       "input": "url as |href(\"x\")",
       "expected_result": "error",
       "expected_error": {
-        "errno": 11,
+        "errno": 18,
         "message_contains": "renderers require an alias"
       }
     },

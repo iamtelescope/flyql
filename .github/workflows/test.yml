@@ -89,3 +89,31 @@ jobs:
       - name: Test
         working-directory: golang
         run: make install test
+
+  errno-parity:
+    name: Cross-language errno parity
+    runs-on: ubuntu-latest
+    needs: [python, javascript, golang, error-registry]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: false
+      - name: Install e2e runner venv
+        working-directory: e2e
+        run: make install
+      - name: Run errno-parity harness
+        run: make e2e-errno-parity
+      - name: Upload parity report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: errno-parity-report
+          path: e2e/output/errno_parity.json

@@ -6,7 +6,6 @@ package columns
 
 // columns_parser errnos.
 const (
-	columnsErrUnknownState                      = 1
 	columnsErrInvalidCharExpectColumn           = 2
 	columnsErrInvalidCharExpectAliasOperator    = 3
 	columnsErrInvalidCharExpectedAliasOperator  = 4
@@ -15,19 +14,18 @@ const (
 	columnsErrInvalidTransformerOrRenderer      = 7
 	columnsErrInvalidCharAfterArgs              = 8
 	columnsErrInvalidCharInArgs                 = 9
-	columnsErrInvalidCharInQuotedArg            = 10
-	columnsErrRenderersNotEnabledOrNoAlias      = 11
+	columnsErrRenderersNotEnabled               = 11
 	columnsErrUnexpectedEndOfQuotedArg          = 12
 	columnsErrUnexpectedEndOfAliasOperator      = 13
 	columnsErrUnexpectedEndExpectedAliasValue   = 14
 	columnsErrUnexpectedEndOfArgsList           = 15
 	columnsErrExpectedClosingParen              = 16
 	columnsErrTransformersNotEnabled            = 17
+	columnsErrRendererRequiresAlias             = 18
 )
 
 // columnsParserMessages maps columns_parser errnos to canonical messages.
 var columnsParserMessages = map[int]string{
-	columnsErrUnknownState:                      "unknown state",
 	columnsErrInvalidCharExpectColumn:           "invalid character",
 	columnsErrInvalidCharExpectAliasOperator:    "invalid character",
 	columnsErrInvalidCharExpectedAliasOperator:  "invalid character, expected alias operator",
@@ -36,14 +34,14 @@ var columnsParserMessages = map[int]string{
 	columnsErrInvalidTransformerOrRenderer:      "invalid transformer or renderer",
 	columnsErrInvalidCharAfterArgs:              "invalid character",
 	columnsErrInvalidCharInArgs:                 "invalid character",
-	columnsErrInvalidCharInQuotedArg:            "invalid character",
-	columnsErrRenderersNotEnabledOrNoAlias:      "renderers not enabled or missing alias",
+	columnsErrRenderersNotEnabled:               "renderers are not enabled",
 	columnsErrUnexpectedEndOfQuotedArg:          "unexpected end of quoted argument value",
 	columnsErrUnexpectedEndOfAliasOperator:      "unexpected end of alias. Expected alias value",
 	columnsErrUnexpectedEndExpectedAliasValue:   "unexpected end of alias. Expected alias value",
 	columnsErrUnexpectedEndOfArgsList:           "unexpected end of arguments list",
 	columnsErrExpectedClosingParen:              "expected closing parenthesis",
 	columnsErrTransformersNotEnabled:            "transformers are not enabled",
+	columnsErrRendererRequiresAlias:             "renderers require an alias",
 }
 
 // Renderer diagnostic codes (moved from package flyql; renderers are a columns feature).

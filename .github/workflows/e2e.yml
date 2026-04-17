@@ -125,20 +125,20 @@ jobs:
           path: e2e/output/report.json
 
       - name: Prepare Pages artifact
-        if: ${{ inputs.publish }}
+        if: ${{ success() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.publish) }}
         run: |
           mkdir -p pages
           cp e2e/output/report.json pages/e2e-report.json
 
       - name: Upload Pages artifact
-        if: ${{ inputs.publish }}
+        if: ${{ success() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.publish) }}
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages/
 
   deploy:
     name: Publish report
-    if: ${{ inputs.publish }}
+    if: ${{ success() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.publish) }}
     needs: e2e
     runs-on: ubuntu-latest
     environment:

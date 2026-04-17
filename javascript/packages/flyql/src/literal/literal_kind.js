@@ -9,11 +9,11 @@
  * Tech Decision #2.
  */
 export const LiteralKind = Object.freeze({
-    INTEGER: 'integer',
+    INTEGER: 'int',
     BIGINT: 'bigint',
     FLOAT: 'float',
     STRING: 'string',
-    BOOLEAN: 'boolean',
+    BOOLEAN: 'bool',
     NULL: 'null',
     ARRAY: 'array',
     COLUMN: 'column',

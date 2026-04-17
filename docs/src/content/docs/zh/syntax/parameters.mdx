@@ -140,10 +140,10 @@ err := flyql.BindParams(ast.Root, map[string]any{
 | 原生类型 | 对应 `value_type` |
 |----------|-------------------|
 | `string` | `"string"` |
-| `int`（在 int64 范围内） | `"integer"` |
+| `int`（在 int64 范围内） | `"int"` |
 | `int`（超出 int64 范围） | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 类型由**绑定值的运行时类型**决定，而不是通过把值作为字符串解析得到。绑定 `"200"` 产生的是字符串，而不是整数：
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 不支持的类型（例如 `Decimal`、`BigInt`、自定义对象、`undefined`）会抛出错误：

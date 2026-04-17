@@ -51,7 +51,7 @@ Listen unterstützen heterogene Werte – du kannst Strings, Zahlen, Booleans un
 
 <FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-Jedes Element trägt seinen eigenen Typ im `valuesTypes`-Array des geparsten Ausdrucks (z. B. `["integer", "string", "boolean", "null"]`). Bei leeren Listen ist `valuesTypes` `null`.
+Jedes Element trägt seinen eigenen Typ im `valuesTypes`-Array des geparsten Ausdrucks (z. B. `["int", "string", "bool", "null"]`). Bei leeren Listen ist `valuesTypes` `null`.
 
 Wenn ein SQL-Generator eine Liste verarbeitet, prüft er, ob die Werttypen der Liste mit dem Typ der Zielspalte kompatibel sind. Werden beispielsweise String-Werte an eine numerische Spalte übergeben, führt das bei der SQL-Generierung zu einem Validierungsfehler.
 

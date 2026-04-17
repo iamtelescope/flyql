@@ -35,7 +35,7 @@ Uma `Expression` representa uma condição única — uma chave, um operador e u
 | `key` | `Key` | O campo a ser testado (por exemplo, <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | Um de: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
 | `value` | `any` | O valor de comparação. Uma string, número, booleano, null, `FunctionCall` ou `Parameter` para operadores escalares. Vazio para <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` ou `null` | O tipo explícito de `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` ou `"parameter"`. `null` para <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` ou `null` | O tipo explícito de `value`: `"int"`, `"bigint"`, `"float"`, `"string"`, `"bool"`, `"null"`, `"function"` ou `"parameter"`. `null` para <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
 | `values` | `array` ou `null` | Lista de valores para operadores <FlyqlToken type="operator">in</FlyqlToken> e <FlyqlToken type="operator">not in</FlyqlToken>. Pode ser heterogénea e pode conter entradas `Parameter`. `null` para outros operadores. |
 | `valuesTypes` | `string[]` ou `null` | Array de tipos por elemento, paralelo a `values`. Cada elemento é uma das constantes de tipo (incluindo `"parameter"`). `null` quando `values` não é utilizado. |
 
@@ -274,7 +274,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### Parâmetro dentro de uma lista IN

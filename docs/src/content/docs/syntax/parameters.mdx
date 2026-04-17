@@ -140,10 +140,10 @@ The bound value's native type determines the resulting `value_type` in the AST:
 | Native type | Resulting `value_type` |
 |-------------|------------------------|
 | `string` | `"string"` |
-| `int` (within int64 range) | `"integer"` |
+| `int` (within int64 range) | `"int"` |
 | `int` (outside int64 range) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 The type is determined by the **bound value's runtime type**, not by parsing the value as a string. Binding `"200"` produces a string, not an integer:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 Unsupported types (e.g., `Decimal`, `BigInt`, custom objects, `undefined`) raise an error:

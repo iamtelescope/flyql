@@ -41,7 +41,7 @@ func loadBindSharedTestData(t *testing.T) bindSharedTestFile {
 }
 
 // normalizeParams converts JSON-decoded float64 values that have no fractional
-// component into int64, so that "integer" test cases produce literal.Integer
+// component into int64, so that "int" test cases produce literal.Integer
 // rather than literal.Float. This matches how JS/Python handle whole numbers.
 func normalizeParams(params map[string]any) map[string]any {
 	out := make(map[string]any, len(params))
@@ -66,7 +66,7 @@ func coerceExpectedValue(expected any, valueType string) any {
 		return expected
 	}
 	switch valueType {
-	case "integer":
+	case "int":
 		return int64(f)
 	case "float":
 		return f

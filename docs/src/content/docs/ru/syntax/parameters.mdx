@@ -140,10 +140,10 @@ err := flyql.BindParams(ast.Root, map[string]any{
 | Нативный тип | Результирующий `value_type` |
 |--------------|------------------------------|
 | `string` | `"string"` |
-| `int` (в диапазоне int64) | `"integer"` |
+| `int` (в диапазоне int64) | `"int"` |
 | `int` (вне диапазона int64) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 Тип определяется по **типу связанного значения во время выполнения**, а не по разбору значения как строки. Связывание `"200"` даёт строку, а не целое число:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 Неподдерживаемые типы (например, `Decimal`, `BigInt`, пользовательские объекты, `undefined`) вызывают ошибку:

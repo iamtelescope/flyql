@@ -51,7 +51,7 @@ Les listes prennent en charge des valeurs heterogenes — vous pouvez melanger c
 
 <FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-Chaque element possede son propre type dans le tableau `valuesTypes` de l'expression analysee (par ex. `["integer", "string", "boolean", "null"]`). Pour les listes vides, `valuesTypes` est `null`.
+Chaque element possede son propre type dans le tableau `valuesTypes` de l'expression analysee (par ex. `["int", "string", "bool", "null"]`). Pour les listes vides, `valuesTypes` est `null`.
 
 Lorsqu'un generateur SQL traite une liste, il valide que les types de valeurs de la liste sont compatibles avec le type de la colonne cible. Par exemple, passer des valeurs de type chaine a une colonne numerique generera une erreur de validation lors de la generation SQL.
 

@@ -51,7 +51,7 @@ Lists support heterogeneous values — you can mix strings, numbers, booleans, a
 
 <FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-Each element carries its own type in the `valuesTypes` array on the parsed expression (e.g. `["integer", "string", "boolean", "null"]`). For empty lists, `valuesTypes` is `null`.
+Each element carries its own type in the `valuesTypes` array on the parsed expression (e.g. `["int", "string", "bool", "null"]`). For empty lists, `valuesTypes` is `null`.
 
 When a SQL generator processes a list, it validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
 

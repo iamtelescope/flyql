@@ -51,7 +51,7 @@ As listas suportam valores heterogeneos — pode misturar strings, numeros, bool
 
 <FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-Cada elemento transporta o seu proprio tipo no array `valuesTypes` da expressao analisada (por exemplo, `["integer", "string", "boolean", "null"]`). Para listas vazias, `valuesTypes` e `null`.
+Cada elemento transporta o seu proprio tipo no array `valuesTypes` da expressao analisada (por exemplo, `["int", "string", "bool", "null"]`). Para listas vazias, `valuesTypes` e `null`.
 
 Quando um gerador SQL processa uma lista, valida que os tipos dos valores da lista sao compativeis com o tipo da coluna de destino. Por exemplo, passar valores de texto para uma coluna numerica produzira um erro de validacao durante a geracao de SQL.
 

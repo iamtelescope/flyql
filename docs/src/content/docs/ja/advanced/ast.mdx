@@ -35,7 +35,7 @@ AST は 3 種類の型で構成されます。**Node**（木構造）、**Expres
 | `key` | `Key` | 評価対象のフィールド。例: <FlyqlToken type="key">status</FlyqlToken>、<FlyqlToken type="key">user.metadata.role</FlyqlToken> |
 | `operator` | `string` | <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken> のいずれか |
 | `value` | `any` | 比較値。スカラー演算子では string、number、boolean、null のいずれかです。<FlyqlToken type="operator">in</FlyqlToken> と <FlyqlToken type="operator">not in</FlyqlToken> では空です |
-| `valueType` | `string` or `null` | `value` の明示的な型。`"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"` のいずれか。<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> では `null` |
+| `valueType` | `string` or `null` | `value` の明示的な型。`"int"`, `"bigint"`, `"float"`, `"string"`, `"bool"`, `"null"` のいずれか。<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> では `null` |
 | `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> 用の値リスト。異種型も可。他の演算子では `null` |
 | `valuesTypes` | `string[]` or `null` | `values` と対応する要素ごとの型配列。`values` を使わない場合は `null` |
 
@@ -275,7 +275,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### IN リスト内のパラメータ

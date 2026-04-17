@@ -4,11 +4,11 @@ import { LiteralKind } from '../src/literal/literal_kind.js'
 
 describe('LiteralKind', () => {
     const expectedValues = {
-        INTEGER: 'integer',
+        INTEGER: 'int',
         BIGINT: 'bigint',
         FLOAT: 'float',
         STRING: 'string',
-        BOOLEAN: 'boolean',
+        BOOLEAN: 'bool',
         NULL: 'null',
         ARRAY: 'array',
         COLUMN: 'column',

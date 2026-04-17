@@ -340,7 +340,7 @@
           "value_type": null,
           "values": ["active", {"name": "x", "positional": false}, 200],
           "values_type": null,
-          "values_types": ["column", "parameter", "integer"]
+          "values_types": ["column", "parameter", "int"]
         },
         "left": null,
         "right": null

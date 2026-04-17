@@ -140,10 +140,10 @@ err := flyql.BindParams(ast.Root, map[string]any{
 | 네이티브 타입 | 결과 `value_type` |
 |---------------|-------------------|
 | `string` | `"string"` |
-| `int` (int64 범위 내) | `"integer"` |
+| `int` (int64 범위 내) | `"int"` |
 | `int` (int64 범위 밖) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 타입은 값을 문자열로 파싱하는 것이 아니라 **바인딩된 값의 런타임 타입**으로 결정됩니다. `"200"`을 바인딩하면 정수가 아니라 문자열이 됩니다.
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 지원되지 않는 타입(예: `Decimal`, `BigInt`, 사용자 정의 객체, `undefined`)은 에러를 발생시킵니다.

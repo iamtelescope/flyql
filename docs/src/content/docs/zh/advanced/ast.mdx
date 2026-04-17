@@ -35,7 +35,7 @@ AST 由三种类型组成：**Node**（树结构）、**Expression**（叶子条
 | `key` | `Key` | 被测试的字段（例如 <FlyqlToken type="key">status</FlyqlToken>、<FlyqlToken type="key">user.metadata.role</FlyqlToken>）。 |
 | `operator` | `string` | 以下之一：<FlyqlToken type="operator">=</FlyqlToken>、<FlyqlToken type="operator">!=</FlyqlToken>、<FlyqlToken type="operator">{'~'}</FlyqlToken>、<FlyqlToken type="operator">{'!~'}</FlyqlToken>、<FlyqlToken type="operator">{'>'}</FlyqlToken>、<FlyqlToken type="operator">{'<'}</FlyqlToken>、<FlyqlToken type="operator">{'>='}</FlyqlToken>、<FlyqlToken type="operator">{'<='}</FlyqlToken>、<FlyqlToken type="operator">truthy</FlyqlToken>、<FlyqlToken type="operator">in</FlyqlToken>、<FlyqlToken type="operator">not in</FlyqlToken>、<FlyqlToken type="operator">has</FlyqlToken>、<FlyqlToken type="operator">not has</FlyqlToken>。 |
 | `value` | `any` | 比较值。对于标量操作符，可以是字符串、数字、Boolean、Null、`FunctionCall` 或 `Parameter`。对于 <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 为空。 |
-| `valueType` | `string` or `null` | `value` 的显式类型：`"integer"`、`"bigint"`、`"float"`、`"string"`、`"boolean"`、`"null"`、`"function"` 或 `"parameter"`。<FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> 时为 `null`。 |
+| `valueType` | `string` or `null` | `value` 的显式类型：`"int"`、`"bigint"`、`"float"`、`"string"`、`"bool"`、`"null"`、`"function"` 或 `"parameter"`。<FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> 时为 `null`。 |
 | `values` | `array` or `null` | <FlyqlToken type="operator">in</FlyqlToken> 和 <FlyqlToken type="operator">not in</FlyqlToken> 操作符的值列表。可以是异构的，并且可以包含 `Parameter` 条目。其他操作符时为 `null`。 |
 | `valuesTypes` | `string[]` or `null` | 与 `values` 平行的逐元素类型数组。每个元素是类型常量之一（包括 `"parameter"`）。未使用 `values` 时为 `null`。 |
 
@@ -274,7 +274,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### IN 列表中的参数

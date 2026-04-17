@@ -140,10 +140,10 @@ Der native Typ des gebundenen Werts bestimmt den resultierenden `value_type` im 
 | Nativer Typ | Resultierender `value_type` |
 |-------------|-----------------------------|
 | `string` | `"string"` |
-| `int` (innerhalb des int64-Bereichs) | `"integer"` |
+| `int` (innerhalb des int64-Bereichs) | `"int"` |
 | `int` (außerhalb des int64-Bereichs) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 Der Typ wird durch den **Laufzeittyp des gebundenen Werts** bestimmt, nicht durch Parsen des Werts als String. Das Binden von `"200"` erzeugt einen String, keine Ganzzahl:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      -> 200
-# expression.value_type -> "integer"
+# expression.value_type -> "int"
 ```
 
 Nicht unterstützte Typen (z. B. `Decimal`, `BigInt`, eigene Objekte, `undefined`) führen zu einem Fehler:

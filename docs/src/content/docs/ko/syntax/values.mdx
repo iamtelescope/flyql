@@ -18,7 +18,7 @@ int64 범위 안의 정수:
 <FlyqlCode code={`status != 200`} />
 <FlyqlCode code={`age >= 18`} />
 
-AST: `value_type: "integer"`
+AST: `value_type: "int"`
 
 ### BigInt
 
@@ -69,7 +69,7 @@ AST: `value_type: "string"`
 <FlyqlCode code={`debug = false`} />
 <FlyqlCode code={`active != true`} />
 
-AST: `value_type: "boolean"`, 값은 네이티브 boolean입니다.
+AST: `value_type: "bool"`, 값은 네이티브 boolean입니다.
 
 대문자가 섞인 변형(`True`, `FALSE`)은 boolean이 아니라 컬럼 참조로 처리됩니다.
 

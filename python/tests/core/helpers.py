@@ -188,7 +188,7 @@ def _expressions_equal(actual: Dict[str, Any], expected: Dict[str, Any]) -> bool
             return False
         # Large integer values are stored as strings in test data to avoid JSON
         # precision loss. Compare by converting both sides to string.
-        if actual["value_type"] in ("number", "integer", "bigint") and isinstance(
+        if actual["value_type"] in ("number", "int", "bigint") and isinstance(
             expected["value"], str
         ):
             if str(actual["value"]) != expected["value"]:

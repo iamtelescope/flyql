@@ -6,11 +6,11 @@ from enum import Enum
 class LiteralKind(str, Enum):
     """Kind of literal recorded on a parsed Expression."""
 
-    INTEGER = "integer"
+    INTEGER = "int"
     BIGINT = "bigint"
     FLOAT = "float"
     STRING = "string"
-    BOOLEAN = "boolean"
+    BOOLEAN = "bool"
     NULL = "null"
     ARRAY = "array"
     COLUMN = "column"

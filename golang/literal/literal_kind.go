@@ -12,11 +12,11 @@ package literal
 type LiteralKind string
 
 const (
-	Integer   LiteralKind = "integer"
+	Integer   LiteralKind = "int"
 	BigInt    LiteralKind = "bigint"
 	Float     LiteralKind = "float"
 	String    LiteralKind = "string"
-	Boolean   LiteralKind = "boolean"
+	Boolean   LiteralKind = "bool"
 	Null      LiteralKind = "null"
 	Array     LiteralKind = "array"
 	Column    LiteralKind = "column"

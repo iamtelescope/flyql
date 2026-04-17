@@ -35,7 +35,7 @@ An `Expression` represents a single condition — a key, an operator, and a valu
 | `key` | `Key` | The field being tested (e.g. <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | One of: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
 | `value` | `any` | The comparison value. A string, number, boolean, null, `FunctionCall`, or `Parameter` for scalar operators. Empty for <FlyqlToken type="operator">in</FlyqlToken> and <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` or `null` | The explicit type of `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"`, or `"parameter"`. `null` for <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` or `null` | The explicit type of `value`: `"int"`, `"bigint"`, `"float"`, `"string"`, `"bool"`, `"null"`, `"function"`, or `"parameter"`. `null` for <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
 | `values` | `array` or `null` | List of values for <FlyqlToken type="operator">in</FlyqlToken> and <FlyqlToken type="operator">not in</FlyqlToken> operators. Can be heterogeneous and may contain `Parameter` entries. `null` for other operators. |
 | `valuesTypes` | `string[]` or `null` | Per-element type array parallel to `values`. Each element is one of the type constants (including `"parameter"`). `null` when `values` is not used. |
 
@@ -274,7 +274,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### Parameter inside an IN-list

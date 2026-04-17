@@ -31,7 +31,7 @@
           "key": "status",
           "operator": "=",
           "value": 200.0,
-          "value_type": "integer"
+          "value_type": "int"
         },
         "left": null,
         "right": null
@@ -52,7 +52,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -64,7 +64,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -86,7 +86,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -98,7 +98,7 @@
             "key": "b",
             "operator": "=",
             "value": 2.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -200,7 +200,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -222,7 +222,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -234,7 +234,7 @@
             "key": "error",
             "operator": "=",
             "value": true,
-            "value_type": "boolean"
+            "value_type": "bool"
           },
           "left": null,
           "right": null
@@ -357,7 +357,7 @@
               "key": "status",
               "operator": "=",
               "value": 200.0,
-              "value_type": "integer"
+              "value_type": "int"
             },
             "left": null,
             "right": null
@@ -409,7 +409,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -425,7 +425,7 @@
               "key": "b",
               "operator": "=",
               "value": 2.0,
-              "value_type": "integer"
+              "value_type": "int"
             },
             "left": null,
             "right": null
@@ -437,7 +437,7 @@
               "key": "c",
               "operator": "=",
               "value": 3.0,
-              "value_type": "integer"
+              "value_type": "int"
             },
             "left": null,
             "right": null

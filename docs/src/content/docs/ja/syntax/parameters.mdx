@@ -140,10 +140,10 @@ err := flyql.BindParams(ast.Root, map[string]any{
 | ネイティブ型 | 生成される `value_type` |
 |--------------|------------------------|
 | `string` | `"string"` |
-| `int`（int64 の範囲内） | `"integer"` |
+| `int`（int64 の範囲内） | `"int"` |
 | `int`（int64 の範囲外） | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 型はバインドした値の **実行時の型** によって決まります。文字列として parse されるわけではありません。`"200"` をバインドすると string になり、integer にはなりません。
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 サポートされていない型（`Decimal`、`BigInt`、カスタムオブジェクト、`undefined` など）はエラーになります。

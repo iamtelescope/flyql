@@ -7,11 +7,11 @@ func TestLiteralKindConstants(t *testing.T) {
 		constant LiteralKind
 		expected string
 	}{
-		{Integer, "integer"},
+		{Integer, "int"},
 		{BigInt, "bigint"},
 		{Float, "float"},
 		{String, "string"},
-		{Boolean, "boolean"},
+		{Boolean, "bool"},
 		{Null, "null"},
 		{Array, "array"},
 		{Column, "column"},

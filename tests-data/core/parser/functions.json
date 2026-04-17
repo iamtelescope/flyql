@@ -428,7 +428,7 @@
             "value_type": null,
             "values": [500, 502],
             "values_type": null,
-            "values_types": ["integer", "integer"]
+            "values_types": ["int", "int"]
           },
           "left": null,
           "right": null

@@ -132,7 +132,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -154,7 +154,7 @@
             "key": "status",
             "operator": "=",
             "value": 200.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null

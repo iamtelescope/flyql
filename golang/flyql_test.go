@@ -244,7 +244,7 @@ func compareExpectedASTs(t *testing.T, got *expectedAST, want *expectedAST, path
 			case string:
 				// A string expected value with numeric value_type means a large integer
 				// stored as string to avoid JSON float64 precision loss.
-				if want.Expression.ValueType == "integer" || want.Expression.ValueType == "bigint" {
+				if want.Expression.ValueType == "int" || want.Expression.ValueType == "bigint" {
 					var gotStr string
 					switch gv := got.Expression.Value.(type) {
 					case int64:

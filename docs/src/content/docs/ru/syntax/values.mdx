@@ -18,7 +18,7 @@ FlyQL поддерживает 10 типов значений: **Integer**, **Bi
 <FlyqlCode code={`status != 200`} />
 <FlyqlCode code={`age >= 18`} />
 
-AST: `value_type: "integer"`
+AST: `value_type: "int"`
 
 ### BigInt
 
@@ -69,7 +69,7 @@ AST: `value_type: "string"`
 <FlyqlCode code={`debug = false`} />
 <FlyqlCode code={`active != true`} />
 
-AST: `value_type: "boolean"`, значение — нативный boolean.
+AST: `value_type: "bool"`, значение — нативный boolean.
 
 Варианты с заглавной буквы (`True`, `FALSE`) интерпретируются как строки.
 

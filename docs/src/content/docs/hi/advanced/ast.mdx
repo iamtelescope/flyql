@@ -35,7 +35,7 @@ AST तीन प्रकारों से बनता है: **Node** (ट
 | `key` | `Key` | परीक्षित फ़ील्ड (जैसे <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>)। |
 | `operator` | `string` | इनमें से एक: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>। |
 | `value` | `any` | तुलना मान। स्केलर ऑपरेटरों के लिए स्ट्रिंग, संख्या, बूलियन, null, `FunctionCall`, या `Parameter`। <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> के लिए खाली। |
-| `valueType` | `string` या `null` | `value` का स्पष्ट प्रकार: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"`, या `"parameter"`। <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> के लिए `null`। |
+| `valueType` | `string` या `null` | `value` का स्पष्ट प्रकार: `"int"`, `"bigint"`, `"float"`, `"string"`, `"bool"`, `"null"`, `"function"`, या `"parameter"`। <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken> के लिए `null`। |
 | `values` | `array` या `null` | <FlyqlToken type="operator">in</FlyqlToken> और <FlyqlToken type="operator">not in</FlyqlToken> ऑपरेटरों के लिए मानों की सूची। विषम हो सकती है और इसमें `Parameter` प्रविष्टियाँ हो सकती हैं। अन्य ऑपरेटरों के लिए `null`। |
 | `valuesTypes` | `string[]` या `null` | `values` के समानांतर प्रति-तत्व प्रकार ऐरे। प्रत्येक तत्व प्रकार स्थिरांकों में से एक है (`"parameter"` सहित)। जब `values` का उपयोग नहीं होता तो `null`। |
 
@@ -274,7 +274,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### IN-सूची के अंदर पैरामीटर

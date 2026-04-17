@@ -140,10 +140,10 @@ O tipo nativo do valor ligado determina o `value_type` resultante na AST:
 | Tipo nativo | `value_type` resultante |
 |-------------|------------------------|
 | `string` | `"string"` |
-| `int` (dentro do intervalo int64) | `"integer"` |
+| `int` (dentro do intervalo int64) | `"int"` |
 | `int` (fora do intervalo int64) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 O tipo é determinado pelo **tipo em tempo de execução do valor ligado**, não por parsing do valor como string. Fazer bind de `"200"` produz uma string, não um inteiro:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 Tipos não suportados (ex.: `Decimal`, `BigInt`, objetos customizados, `undefined`) geram um erro:

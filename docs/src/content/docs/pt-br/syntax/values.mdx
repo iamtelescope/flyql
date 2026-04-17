@@ -18,7 +18,7 @@ Números inteiros dentro do intervalo int64:
 <FlyqlCode code={`status != 200`} />
 <FlyqlCode code={`age >= 18`} />
 
-AST: `value_type: "integer"`
+AST: `value_type: "int"`
 
 ### BigInt
 
@@ -69,7 +69,7 @@ As palavras-chave <FlyqlToken type="boolean">true</FlyqlToken> e <FlyqlToken typ
 <FlyqlCode code={`debug = false`} />
 <FlyqlCode code={`active != true`} />
 
-AST: `value_type: "boolean"`, o valor é um booleano nativo.
+AST: `value_type: "bool"`, o valor é um booleano nativo.
 
 Variantes com inicial maiúscula (`True`, `FALSE`) são tratadas como strings.
 

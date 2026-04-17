@@ -35,7 +35,7 @@ AST состоит из трёх типов: **Node** (древовидная с
 | `key` | `Key` | Поле, которое проверяется (например, <FlyqlToken type="key">status</FlyqlToken>, <FlyqlToken type="key">user.metadata.role</FlyqlToken>). |
 | `operator` | `string` | Один из: <FlyqlToken type="operator">=</FlyqlToken>, <FlyqlToken type="operator">!=</FlyqlToken>, <FlyqlToken type="operator">{'~'}</FlyqlToken>, <FlyqlToken type="operator">{'!~'}</FlyqlToken>, <FlyqlToken type="operator">{'>'}</FlyqlToken>, <FlyqlToken type="operator">{'<'}</FlyqlToken>, <FlyqlToken type="operator">{'>='}</FlyqlToken>, <FlyqlToken type="operator">{'<='}</FlyqlToken>, <FlyqlToken type="operator">truthy</FlyqlToken>, <FlyqlToken type="operator">in</FlyqlToken>, <FlyqlToken type="operator">not in</FlyqlToken>, <FlyqlToken type="operator">has</FlyqlToken>, <FlyqlToken type="operator">not has</FlyqlToken>. |
 | `value` | `any` | Значение для сравнения. Строка, число, Boolean, Null, `FunctionCall` или `Parameter` для скалярных операторов. Пустое для <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. |
-| `valueType` | `string` или `null` | Явный тип `value`: `"integer"`, `"bigint"`, `"float"`, `"string"`, `"boolean"`, `"null"`, `"function"` или `"parameter"`. `null` для <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
+| `valueType` | `string` или `null` | Явный тип `value`: `"int"`, `"bigint"`, `"float"`, `"string"`, `"bool"`, `"null"`, `"function"` или `"parameter"`. `null` для <FlyqlToken type="operator">in</FlyqlToken>/<FlyqlToken type="operator">not in</FlyqlToken>. |
 | `values` | `array` или `null` | Список значений для операторов <FlyqlToken type="operator">in</FlyqlToken> и <FlyqlToken type="operator">not in</FlyqlToken>. Может быть гетерогенным и может содержать элементы `Parameter`. `null` для остальных операторов. |
 | `valuesTypes` | `string[]` или `null` | Массив типов для каждого элемента, параллельный `values`. Каждый элемент — одна из констант типов (включая `"parameter"`). `null`, если `values` не используется. |
 
@@ -274,7 +274,7 @@ Node (leaf)
     key: { segments: ["status"], raw: "status" }
     operator: "="
     value: 200
-    valueType: "integer"
+    valueType: "int"
 ```
 
 ### Параметр внутри IN-списка

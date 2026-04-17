@@ -18,7 +18,7 @@ int64 の範囲内に収まる整数です。
 <FlyqlCode code={`status != 200`} />
 <FlyqlCode code={`age >= 18`} />
 
-AST: `value_type: "integer"`
+AST: `value_type: "int"`
 
 ### BigInt
 
@@ -69,7 +69,7 @@ AST: `value_type: "string"`
 <FlyqlCode code={`debug = false`} />
 <FlyqlCode code={`active != true`} />
 
-AST: `value_type: "boolean"`。値はネイティブ boolean です。
+AST: `value_type: "bool"`。値はネイティブ boolean です。
 
 先頭が大文字のバリエーション（`True`、`FALSE`）は文字列として扱われます。
 

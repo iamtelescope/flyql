@@ -140,10 +140,10 @@ El tipo nativo del valor asociado determina el `value_type` resultante en el AST
 | Tipo nativo | `value_type` resultante |
 |-------------|-------------------------|
 | `string` | `"string"` |
-| `int` (dentro del rango int64) | `"integer"` |
+| `int` (dentro del rango int64) | `"int"` |
 | `int` (fuera del rango int64) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 El tipo se determina por el **tipo en tiempo de ejecución del valor asociado**, no parseando el valor como string. Asociar `"200"` produce un string, no un entero:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 Los tipos no soportados (por ejemplo `Decimal`, `BigInt`, objetos personalizados, `undefined`) producen un error:

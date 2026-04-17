@@ -17,7 +17,7 @@
       "params": {"x": 42},
       "expected_result": "success",
       "expected_value": 42,
-      "expected_value_type": "integer"
+      "expected_value_type": "int"
     },
     {
       "name": "bind_named_float",
@@ -33,7 +33,7 @@
       "params": {"x": true},
       "expected_result": "success",
       "expected_value": true,
-      "expected_value_type": "boolean"
+      "expected_value_type": "bool"
     },
     {
       "name": "bind_named_bool_false",
@@ -41,7 +41,7 @@
       "params": {"x": false},
       "expected_result": "success",
       "expected_value": false,
-      "expected_value_type": "boolean"
+      "expected_value_type": "bool"
     },
     {
       "name": "bind_named_null",
@@ -65,7 +65,7 @@
       "params": {"1": 42},
       "expected_result": "success",
       "expected_value": 42,
-      "expected_value_type": "integer"
+      "expected_value_type": "int"
     },
     {
       "name": "error_missing_param",

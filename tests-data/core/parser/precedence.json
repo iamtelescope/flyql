@@ -18,7 +18,7 @@
             "key": "status",
             "operator": "=",
             "value": 1,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -34,7 +34,7 @@
               "key": "status",
               "operator": "=",
               "value": 2,
-              "value_type": "integer"
+              "value_type": "int"
             },
             "left": null,
             "right": null
@@ -46,7 +46,7 @@
               "key": "status",
               "operator": "=",
               "value": 3,
-              "value_type": "integer"
+              "value_type": "int"
             },
             "left": null,
             "right": null
@@ -69,14 +69,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -88,14 +88,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -117,14 +117,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -132,7 +132,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -153,14 +153,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -168,7 +168,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -189,7 +189,7 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
@@ -204,14 +204,14 @@
               "left": {
                 "bool_operator": "",
                 "negated": false,
-                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
                 "left": null,
                 "right": null
               },
               "right": {
                 "bool_operator": "",
                 "negated": false,
-                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
                 "left": null,
                 "right": null
               }
@@ -219,7 +219,7 @@
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -228,7 +228,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+          "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -249,14 +249,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -264,7 +264,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -285,14 +285,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -304,14 +304,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -329,7 +329,7 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "status", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "status", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
@@ -344,14 +344,14 @@
             "left": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "integer"},
+              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "int"},
               "left": null,
               "right": null
             },
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "integer"},
+              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -363,14 +363,14 @@
             "left": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "integer"},
+              "expression": {"key": "status", "operator": "=", "value": 2, "value_type": "int"},
               "left": null,
               "right": null
             },
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "integer"},
+              "expression": {"key": "status", "operator": "=", "value": 3, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -389,14 +389,14 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
         "right": {
           "bool_operator": "",
           "negated": true,
-          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -413,7 +413,7 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
@@ -424,14 +424,14 @@
           "left": {
             "bool_operator": "",
             "negated": true,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -477,14 +477,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -496,14 +496,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -521,7 +521,7 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
@@ -536,14 +536,14 @@
             "left": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
               "left": null,
               "right": null
             },
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -551,7 +551,7 @@
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -573,14 +573,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -592,14 +592,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+            "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -617,7 +617,7 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
@@ -632,14 +632,14 @@
             "left": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+              "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
               "left": null,
               "right": null
             },
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -647,7 +647,7 @@
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+            "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -669,14 +669,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -692,14 +692,14 @@
             "left": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+              "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
               "left": null,
               "right": null
             },
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -707,7 +707,7 @@
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -725,14 +725,14 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -749,14 +749,14 @@
         "left": {
           "bool_operator": "",
           "negated": true,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -773,14 +773,14 @@
         "left": {
           "bool_operator": "",
           "negated": true,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -801,14 +801,14 @@
           "left": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+            "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
             "left": null,
             "right": null
           },
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+            "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -816,7 +816,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+          "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
           "left": null,
           "right": null
         }
@@ -833,7 +833,7 @@
         "left": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "integer"},
+          "expression": {"key": "a", "operator": "=", "value": 1, "value_type": "int"},
           "left": null,
           "right": null
         },
@@ -852,14 +852,14 @@
               "left": {
                 "bool_operator": "",
                 "negated": false,
-                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+                "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
                 "left": null,
                 "right": null
               },
               "right": {
                 "bool_operator": "",
                 "negated": false,
-                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "integer"},
+                "expression": {"key": "c", "operator": "=", "value": 3, "value_type": "int"},
                 "left": null,
                 "right": null
               }
@@ -867,7 +867,7 @@
             "right": {
               "bool_operator": "",
               "negated": false,
-              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "integer"},
+              "expression": {"key": "d", "operator": "=", "value": 4, "value_type": "int"},
               "left": null,
               "right": null
             }
@@ -875,7 +875,7 @@
           "right": {
             "bool_operator": "",
             "negated": false,
-            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "integer"},
+            "expression": {"key": "e", "operator": "=", "value": 5, "value_type": "int"},
             "left": null,
             "right": null
           }
@@ -900,7 +900,7 @@
         "right": {
           "bool_operator": "",
           "negated": false,
-          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "integer"},
+          "expression": {"key": "b", "operator": "=", "value": 2, "value_type": "int"},
           "left": null,
           "right": null
         }

@@ -1,5 +1,6 @@
 import pytest
 
+from flyql import Type
 from flyql.literal import LiteralKind
 
 
@@ -7,11 +8,11 @@ class TestLiteralKind:
     @pytest.mark.parametrize(
         "member, expected_value",
         [
-            (LiteralKind.INTEGER, "integer"),
+            (LiteralKind.INTEGER, "int"),
             (LiteralKind.BIGINT, "bigint"),
             (LiteralKind.FLOAT, "float"),
             (LiteralKind.STRING, "string"),
-            (LiteralKind.BOOLEAN, "boolean"),
+            (LiteralKind.BOOLEAN, "bool"),
             (LiteralKind.NULL, "null"),
             (LiteralKind.ARRAY, "array"),
             (LiteralKind.COLUMN, "column"),
@@ -30,11 +31,11 @@ class TestLiteralKind:
     @pytest.mark.parametrize(
         "member, expected_value",
         [
-            (LiteralKind.INTEGER, "integer"),
+            (LiteralKind.INTEGER, "int"),
             (LiteralKind.BIGINT, "bigint"),
             (LiteralKind.FLOAT, "float"),
             (LiteralKind.STRING, "string"),
-            (LiteralKind.BOOLEAN, "boolean"),
+            (LiteralKind.BOOLEAN, "bool"),
             (LiteralKind.NULL, "null"),
             (LiteralKind.ARRAY, "array"),
             (LiteralKind.COLUMN, "column"),
@@ -52,3 +53,7 @@ class TestLiteralKind:
         from flyql import LiteralKind as VT
 
         assert VT is LiteralKind
+
+    def test_literal_kind_matches_type_for_shared_values(self) -> None:
+        assert LiteralKind.INTEGER.value == Type.Int.value == "int"
+        assert LiteralKind.BOOLEAN.value == Type.Bool.value == "bool"

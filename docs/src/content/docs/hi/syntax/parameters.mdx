@@ -140,10 +140,10 @@ err := flyql.BindParams(ast.Root, map[string]any{
 | नेटिव प्रकार | परिणामी `value_type` |
 |-------------|------------------------|
 | `string` | `"string"` |
-| `int` (int64 रेंज के भीतर) | `"integer"` |
+| `int` (int64 रेंज के भीतर) | `"int"` |
 | `int` (int64 रेंज से बाहर) | `"bigint"` |
 | `float` | `"float"` |
-| `bool` | `"boolean"` |
+| `bool` | `"bool"` |
 | `null` / `None` / `nil` | `"null"` |
 
 प्रकार **बाउंड मान के रनटाइम प्रकार** से निर्धारित होता है, मान को स्ट्रिंग के रूप में पार्स करके नहीं। `"200"` को बाइंड करना एक स्ट्रिंग उत्पन्न करता है, पूर्णांक नहीं:
@@ -155,7 +155,7 @@ bind_params(parse("a = $x").root, {"x": "200"})
 
 bind_params(parse("a = $x").root, {"x": 200})
 # expression.value      → 200
-# expression.value_type → "integer"
+# expression.value_type → "int"
 ```
 
 असमर्थित प्रकार (जैसे `Decimal`, `BigInt`, कस्टम ऑब्जेक्ट, `undefined`) त्रुटि उत्पन्न करते हैं:

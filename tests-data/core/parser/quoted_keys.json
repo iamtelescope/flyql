@@ -13,7 +13,7 @@
           "key": "key.'part.with.dot'.just.simple.part",
           "operator": "=",
           "value": 123.0,
-          "value_type": "integer"
+          "value_type": "int"
         },
         "left": null,
         "right": null
@@ -29,7 +29,7 @@
           "key": "key.\"part.with.dot\".just.simple.part",
           "operator": "=",
           "value": 456.0,
-          "value_type": "integer"
+          "value_type": "int"
         },
         "left": null,
         "right": null
@@ -61,7 +61,7 @@
           "key": "key.'part\\'s.value'.test",
           "operator": "=",
           "value": 789.0,
-          "value_type": "integer"
+          "value_type": "int"
         },
         "left": null,
         "right": null
@@ -77,7 +77,7 @@
           "key": "key.\"part\\\"s.value\".test",
           "operator": "=",
           "value": 999.0,
-          "value_type": "integer"
+          "value_type": "int"
         },
         "left": null,
         "right": null
@@ -112,7 +112,7 @@
             "key": "key.'part.with.colon'.test",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -123,7 +123,7 @@
             "key": "normal.key",
             "operator": "=",
             "value": 2.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -175,7 +175,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -186,7 +186,7 @@
             "key": "'quoted.key'",
             "operator": "=",
             "value": 2.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -206,7 +206,7 @@
             "key": "a",
             "operator": "=",
             "value": 1.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null
@@ -217,7 +217,7 @@
             "key": "\"quoted.key\"",
             "operator": "=",
             "value": 2.0,
-            "value_type": "integer"
+            "value_type": "int"
           },
           "left": null,
           "right": null

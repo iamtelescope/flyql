@@ -38,7 +38,7 @@ function buildColumns(dialect, factory) {
     const colData = loadJSON(path.join(testDataDir, dialect, 'columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        columns[key] = factory(col.name, col.type, col.values)
+        columns[key] = factory({ name: col.name, type: col.type, values: col.values })
     }
     return columns
 }

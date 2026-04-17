@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { generateSelect, newColumn } from '../../../src/generators/postgresql/index.js'
 
 describe('PostgreSQL generateSelect — renderer-suffix in alias (regression)', () => {
-    const columns = { message: newColumn('message', 'text') }
+    const columns = { message: newColumn({ name: 'message', type: 'text' }) }
 
     it('|tag no-arg: alias is clean and |tag is absent from the column expression', () => {
         const result = generateSelect('message as msg|tag', columns)

@@ -32,8 +32,8 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("status >= 400 and host like 'prod%'")
 
 const columns = {
-    status: newColumn("status", false, "UInt32", null),
-    host: newColumn("host", false, "String", null),
+    status: newColumn({ name: 'status', type: 'UInt32' }),
+    host: newColumn({ name: 'host', type: 'String' }),
 }
 
 const sql = generateWhere(result.root, columns)
@@ -71,7 +71,7 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 
 const result = parse("message|upper = 'ERROR'")
 
-const columns = { message: newColumn('message', false, 'String') }
+const columns = { message: newColumn({ name: 'message', type: 'String' }) }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')
 ```

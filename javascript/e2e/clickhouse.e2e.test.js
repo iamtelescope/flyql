@@ -44,7 +44,7 @@ function buildColumns() {
     const colData = loadJSON(path.join(testDataDir, 'clickhouse', 'columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        columns[key] = newColumn(col.name, col.type, col.values)
+        columns[key] = newColumn({ name: col.name, type: col.type, values: col.values })
     }
     return columns
 }
@@ -53,7 +53,7 @@ function buildJoinColumns() {
     const colData = loadJSON(path.join(testDataDir, 'clickhouse', 'join_columns.json'))
     const columns = {}
     for (const [key, col] of Object.entries(colData.columns)) {
-        const column = newColumn(col.name, col.type, col.values)
+        const column = newColumn({ name: col.name, type: col.type, values: col.values })
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }

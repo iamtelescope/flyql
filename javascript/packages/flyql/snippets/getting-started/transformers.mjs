@@ -5,6 +5,6 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("message|upper = 'ERROR'")
 
 // Generate SQL for ClickHouse
-const columns = { message: newColumn('message', 'String') }
+const columns = { message: newColumn({ name: 'message', type: 'String' }) }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')

@@ -48,8 +48,8 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("status >= 400 and host like 'prod%'")
 
 const columns = {
-    status: newColumn("status", "UInt32"),
-    host: newColumn("host", "String"),
+    status: newColumn({ name: "status", type: "UInt32" }),
+    host: newColumn({ name: "host", type: "String" }),
 }
 
 const sql = generateWhere(result.root, columns)
@@ -65,7 +65,7 @@ import { generateWhere, newColumn } from 'flyql/generators/postgresql'
 import { generateWhere, newColumn } from 'flyql/generators/starrocks'
 ```
 
-Nota: O `newColumn` do PostgreSQL tem uma assinatura diferente — `newColumn(name, type, values)` (sem parâmetro `jsonString`).
+Nota: As três fábricas `newColumn` compartilham a mesma forma — `newColumn({ name, type, values? })`.
 
 ## Matching em Memória
 
@@ -130,7 +130,7 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("message|upper = 'ERROR'")
 
 // Gerar SQL para ClickHouse
-const columns = { message: newColumn('message', 'String') }
+const columns = { message: newColumn({ name: 'message', type: 'String' }) }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')
 ```

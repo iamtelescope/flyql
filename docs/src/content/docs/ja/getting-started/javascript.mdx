@@ -48,8 +48,8 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("status >= 400 and host like 'prod%'")
 
 const columns = {
-    status: newColumn("status", "UInt32"),
-    host: newColumn("host", "String"),
+    status: newColumn({ name: "status", type: "UInt32" }),
+    host: newColumn({ name: "host", type: "String" }),
 }
 
 const sql = generateWhere(result.root, columns)
@@ -65,7 +65,7 @@ import { generateWhere, newColumn } from 'flyql/generators/postgresql'
 import { generateWhere, newColumn } from 'flyql/generators/starrocks'
 ```
 
-注: PostgreSQL の `newColumn` はシグネチャが異なり、`newColumn(name, type, values)` です。`jsonString` パラメータはありません。
+注: 3 つの `newColumn` ファクトリはすべて同じ形 — `newColumn({ name, type, values? })` です。
 
 ## メモリ上でマッチさせる
 
@@ -121,8 +121,8 @@ bindParams(result.root, { code: 200, env: 'prod' })
 
 // SQL を生成
 const columns = {
-    status: newColumn("status", "Int32"),
-    env: newColumn("env", "String"),
+    status: newColumn({ name: "status", type: "Int32" }),
+    env: newColumn({ name: "env", type: "String" }),
 }
 const sql = generateWhere(result.root, columns)
 console.log(sql)
@@ -142,7 +142,7 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("message|upper = 'ERROR'")
 
 // ClickHouse 用の SQL を生成
-const columns = { message: newColumn('message', 'String') }
+const columns = { message: newColumn({ name: 'message', type: 'String' }) }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')
 ```

@@ -123,9 +123,9 @@ columns := map[string]*clickhouse.Column{
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", "String"),
-    data:    newColumn("data", "JSON"),        // native JSON
-    log:     newColumn("log", "jsonstring"),    // JSON-in-text
+    message: newColumn({ name: "message", type: "String" }),
+    data:    newColumn({ name: "data", type: "JSON" }),        // native JSON
+    log:     newColumn({ name: "log", type: "jsonstring" }),    // JSON-in-text
 }
 ```
 

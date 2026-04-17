@@ -80,8 +80,25 @@ export function normalizePostgreSQLType(pgType) {
     return Type.Unknown
 }
 
+/**
+ * Opaque PostgreSQL-dialect Column. Construct via `newColumn({...})` or `new Column({...})`.
+ * The flyql semantic type is computed at construction via `normalizePostgreSQLType`.
+ */
 export class Column {
-    constructor(name, type, values, displayName = '', rawIdentifier = '') {
+    constructor(opts) {
+        if (opts == null || typeof opts !== 'object' || Array.isArray(opts)) {
+            throw new FlyqlError(`Column: expected an options object ({ name, type, values? }); got ${typeof opts}`)
+        }
+        const { name, type, values = null, displayName = '', rawIdentifier = '' } = opts
+        if (typeof name !== 'string' || !name) {
+            throw new FlyqlError(`Column: 'name' must be a non-empty string`)
+        }
+        if (typeof type !== 'string') {
+            throw new FlyqlError(
+                `Column: 'type' must be a raw-type string (e.g. 'text', 'jsonstring'); got ${typeof type}`,
+            )
+        }
+
         this.name = name
         this.values = values || []
         this.displayName = displayName
@@ -99,19 +116,16 @@ export class Column {
         return this._flyqlType
     }
 
+    /** @deprecated Pass `rawIdentifier` in the options object to `newColumn()` / `new Column()` instead. Slated for removal in a follow-up. */
     withRawIdentifier(identifier) {
         this.rawIdentifier = identifier
         return this
     }
 }
 
-export function newColumn(name, type, values) {
-    if (typeof type !== 'string') {
-        throw new FlyqlError(
-            `newColumn: second argument must be a raw-type string (e.g. 'text', 'jsonstring'); got ${typeof type}. ` +
-                `If you are upgrading from the pre-spec API that took 'jsonString' as the second positional parameter, ` +
-                `it has been removed; see migration guide at docs.flyql.dev/advanced/column-types`,
-        )
+export function newColumn(opts) {
+    if (opts == null || typeof opts !== 'object' || Array.isArray(opts)) {
+        throw new FlyqlError(`newColumn: expected an options object ({ name, type, values? }); got ${typeof opts}`)
     }
-    return new Column(name, type, values)
+    return new Column(opts)
 }

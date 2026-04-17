@@ -126,9 +126,9 @@ columns := map[string]*postgresql.Column{
 ```javascript
 // JavaScript
 const columns = {
-    message: newColumn("message", "varchar"),
-    data:    newColumn("data", "jsonb"),
-    log:     newColumn("log", "jsonstring"),
+    message: newColumn({ name: "message", type: "varchar" }),
+    data:    newColumn({ name: "data", type: "jsonb" }),
+    log:     newColumn({ name: "log", type: "jsonstring" }),
 }
 ```
 

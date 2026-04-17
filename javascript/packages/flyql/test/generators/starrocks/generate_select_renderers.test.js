@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { generateSelect, newColumn } from '../../../src/generators/starrocks/index.js'
 
 describe('StarRocks generateSelect — renderer-suffix in alias (regression)', () => {
-    const columns = { message: newColumn('message', 'VARCHAR') }
+    const columns = { message: newColumn({ name: 'message', type: 'VARCHAR' }) }
 
     it('|tag no-arg: alias is clean and |tag is absent from the column expression', () => {
         const result = generateSelect('message as msg|tag', columns)

@@ -48,8 +48,8 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("status >= 400 and host like 'prod%'")
 
 const columns = {
-    status: newColumn("status", "UInt32"),
-    host: newColumn("host", "String"),
+    status: newColumn({ name: "status", type: "UInt32" }),
+    host: newColumn({ name: "host", type: "String" }),
 }
 
 const sql = generateWhere(result.root, columns)
@@ -65,7 +65,7 @@ import { generateWhere, newColumn } from 'flyql/generators/postgresql'
 import { generateWhere, newColumn } from 'flyql/generators/starrocks'
 ```
 
-참고: PostgreSQL의 `newColumn`은 시그니처가 다릅니다. `newColumn(name, type, values)`이며 `jsonString` 매개변수가 없습니다.
+참고: 세 가지 `newColumn` 팩토리는 모두 같은 형태 — `newColumn({ name, type, values? })`를 사용합니다.
 
 ## 메모리에서 매칭하기
 
@@ -130,7 +130,7 @@ import { generateWhere, newColumn } from 'flyql/generators/clickhouse'
 const result = parse("message|upper = 'ERROR'")
 
 // ClickHouse용 SQL 생성
-const columns = { message: newColumn('message', 'String') }
+const columns = { message: newColumn({ name: 'message', type: 'String' }) }
 const sql = generateWhere(result.root, columns)
 console.log(sql) // equals(upper(message), 'ERROR')
 ```

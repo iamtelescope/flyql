@@ -26,7 +26,7 @@ function buildColumns() {
     const columnsData = loadFixture('columns.json')
     const columns = {}
     for (const [key, col] of Object.entries(columnsData.columns)) {
-        const column = newColumn(col.name, col.type, col.values)
+        const column = newColumn({ name: col.name, type: col.type, values: col.values })
         if (col.raw_identifier) {
             column.withRawIdentifier(col.raw_identifier)
         }
@@ -175,5 +175,23 @@ describe('PostgreSQL Generator', () => {
         it('wraps simple name', () => {
             expect(escapeIdentifier('count')).toBe('"count"')
         })
+    })
+})
+
+describe('PostgreSQL newColumn API guardrails', () => {
+    it('throws on positional call', () => {
+        expect(() => newColumn('status', 'integer', null)).toThrow(/expected an options object/)
+    })
+
+    it('throws on empty object with name required', () => {
+        expect(() => newColumn({})).toThrow(/'name' must be a non-empty string/)
+    })
+
+    it('throws on non-string type', () => {
+        expect(() => newColumn({ name: 'x', type: 123 })).toThrow(/'type' must be a raw-type string/)
+    })
+
+    it('direct new Column({}) throws — same contract as newColumn({})', () => {
+        expect(() => new Column({})).toThrow(/'name' must be a non-empty string/)
     })
 })

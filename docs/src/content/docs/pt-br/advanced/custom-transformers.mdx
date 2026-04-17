@@ -147,7 +147,7 @@ const registry = defaultRegistry()
 registry.register(new FirstOctetTransformer())
 
 const result = parse("src_ip|firstoctet > 192")
-const columns = { src_ip: newColumn('src_ip', 'text') }
+const columns = { src_ip: newColumn({ name: 'src_ip', type: 'text' }) }
 const sql = generateWhere(result.root, columns, registry)
 // CAST(SPLIT_PART(src_ip, '.', 1) AS INTEGER) > 192
 ```

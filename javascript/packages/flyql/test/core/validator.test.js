@@ -223,14 +223,14 @@ describe('Validator (language-specific)', () => {
         // After the unify-column-type-system refactor, dialect Columns are
         // opaque — bridge via flyql.Column to get a canonical column for
         // the validator.
-        const ch = new CHColumn('host', 'String')
+        const ch = new CHColumn({ name: 'host', type: 'String' })
         const bridged = new Column(ch.name, ch.flyqlType(), { matchName: ch.matchName })
         const ast = parseAst("host='X'")
         expect(diagnose(ast, ColumnSchema.fromColumns([bridged]), registry)).toEqual([])
     })
 
     it('should use matchName for escaped identifiers', () => {
-        const col = new CHColumn('1host', 'String')
+        const col = new CHColumn({ name: '1host', type: 'String' })
         expect(col.name).toBe('`1host`')
         expect(col.matchName).toBe('1host')
     })

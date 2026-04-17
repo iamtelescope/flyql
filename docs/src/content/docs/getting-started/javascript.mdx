@@ -44,7 +44,7 @@ PostgreSQL and StarRocks generators follow the same pattern:
 
 <Snippet code={otherGeneratorsSnippet} lang="javascript" />
 
-All three dialect `newColumn` factories share the same `(name, type, values)` signature. Columns that store JSON in a text/varchar field are declared with `type: "jsonstring"`.
+All three dialect `newColumn` factories share the same options-object shape: `newColumn({ name, type, values? })`. Columns that store JSON in a text/varchar field are declared with `type: "jsonstring"`.
 
 ## Match In-Memory
 

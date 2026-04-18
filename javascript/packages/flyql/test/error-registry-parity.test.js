@@ -19,6 +19,7 @@ const MESSAGE_MAPS = {
     core_parser: errorsGenerated.CORE_PARSER_MESSAGES,
     columns_parser: errorsGenerated.COLUMNS_PARSER_MESSAGES,
     validator: errorsGenerated.VALIDATOR_MESSAGES,
+    matcher: errorsGenerated.MATCHER_MESSAGES,
 }
 
 function expectedKey(codeType, key) {

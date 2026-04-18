@@ -107,3 +107,11 @@ var generatedValidatorMessages = map[string]string{
 	"CODE_UNKNOWN_COLUMN_VALUE": "unknown column value",
 	"CODE_UNKNOWN_TRANSFORMER":  "unknown transformer",
 }
+
+var generatedMatcherConstants = map[string]string{
+	"ERR_RE2_MISSING": errRe2Missing,
+}
+
+var generatedMatcherMessages = map[string]string{
+	"ERR_RE2_MISSING": "regex matching requires the [re2] extra",
+}

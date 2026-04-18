@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from flyql.core.exceptions import FlyqlError
-from flyql.core.key import Transformer as KeyTransformer
+from flyql.core.key import KeyTransformer
 from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
 

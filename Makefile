@@ -47,4 +47,11 @@ generate-errors:
 e2e-errno-parity:
 	$(MAKE) -C e2e errno-parity
 
-.PHONY: generate-errors e2e-errno-parity
+check-package-metadata:
+	@diff -q LICENSE javascript/packages/flyql/LICENSE >/dev/null || { echo "LICENSE drift: javascript/packages/flyql/LICENSE differs from root"; exit 1; }
+	@diff -q LICENSE javascript/packages/flyql-vue/LICENSE >/dev/null || { echo "LICENSE drift: javascript/packages/flyql-vue/LICENSE differs from root"; exit 1; }
+	@test -f javascript/packages/flyql/README.md || { echo "missing javascript/packages/flyql/README.md"; exit 1; }
+	@test -f javascript/packages/flyql-vue/README.md || { echo "missing javascript/packages/flyql-vue/README.md"; exit 1; }
+	@echo "package metadata OK"
+
+.PHONY: generate-errors e2e-errno-parity check-package-metadata

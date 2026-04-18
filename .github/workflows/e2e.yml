@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "Installing FlyQL v${FLYQL_VERSION} from package managers"
 
-          cd python && python3 -m venv .venv && .venv/bin/pip install "flyql==${FLYQL_VERSION}" && .venv/bin/pip install pytest && cd ..
+          cd python && python3 -m venv .venv && .venv/bin/pip install "flyql[re2]==${FLYQL_VERSION}" && .venv/bin/pip install pytest && cd ..
           for f in python/e2e/test_*.py; do
             sed -i '/sys.path.insert/d' "$f"
           done
@@ -97,7 +97,7 @@ jobs:
       - name: Install FlyQL from local source
         if: ${{ inputs.flyql_version == '' }}
         run: |
-          cd python && python3 -m venv .venv && .venv/bin/pip install -e . && .venv/bin/pip install pytest
+          cd python && python3 -m venv .venv && .venv/bin/pip install -e '.[re2]' && .venv/bin/pip install pytest
           cd ../javascript && pnpm install --frozen-lockfile
 
       - name: Install E2E dependencies
@@ -118,8 +118,33 @@ jobs:
       - name: Run E2E tests
         run: cd e2e && VERSION_FILE=versions/ci.env make run
 
+      - name: Dump failed e2e results
+        if: failure()
+        run: |
+          set -euo pipefail
+          REPORT=e2e/output/report.json
+          if [ ! -f "$REPORT" ]; then
+            echo "::warning::no e2e report at $REPORT"
+            exit 0
+          fi
+          echo "::group::e2e summary"
+          python3 -c "import json; r=json.load(open('$REPORT')); import pprint; pprint.pp(r.get('summary', {}))"
+          echo "::endgroup::"
+          echo "::group::failed results"
+          python3 -c "
+          import json
+          r = json.load(open('$REPORT'))
+          fails = [x for x in r.get('results', []) if not x.get('passed', True)]
+          print(f'total failures: {len(fails)}')
+          for f in fails:
+              print('---')
+              print(json.dumps(f, indent=2))
+          "
+          echo "::endgroup::"
+
       - name: Upload report artifact
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: e2e-report
           path: e2e/output/report.json

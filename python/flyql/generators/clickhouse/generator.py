@@ -9,7 +9,7 @@ from flyql.core.expression import Expression, FunctionCall, Parameter
 from flyql.core.range import Range
 from flyql.flyql_type import Type
 from flyql.literal import LiteralKind
-from flyql.core.key import Key, Transformer, parse_key
+from flyql.core.key import Key, KeyTransformer, parse_key
 from flyql.core.constants import (
     Operator,
     VALID_KEY_VALUE_OPERATORS,
@@ -1135,14 +1135,14 @@ class SelectResult:
     sql: str = ""
 
 
-def _to_key_transformers(ts: List[Dict[str, Any]]) -> List[Transformer]:
-    """Convert columns-parser transformer dicts into Key-dataclass Transformer
+def _to_key_transformers(ts: List[Dict[str, Any]]) -> List[KeyTransformer]:
+    """Convert columns-parser transformer dicts into Key-dataclass KeyTransformer
     instances. Ranges are zero-valued; downstream consumers read only ``name``
     and ``arguments``. Arguments are copied (not aliased) so downstream
     mutation cannot leak back into the source ParsedColumn.
     """
     return [
-        Transformer(
+        KeyTransformer(
             name=t["name"],
             arguments=list(t["arguments"]),
             range=Range(0, 0),

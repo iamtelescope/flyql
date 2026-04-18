@@ -1,7 +1,6 @@
 import { convertUnquotedValue } from './utils.js'
 import { FlyqlError } from './exceptions.js'
 import { VALID_KEY_VALUE_OPERATORS, Operator } from './constants.js'
-import { Key } from './key.js'
 import { LiteralKind } from '../literal/literal_kind.js'
 
 export class Duration {

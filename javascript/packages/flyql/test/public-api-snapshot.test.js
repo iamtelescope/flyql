@@ -1,74 +1,38 @@
-// Snapshot test: the top-level barrel exports exactly this set of names.
-//
-// This freezes the package's public API surface. Any PR that adds, removes,
-// or renames a top-level export must update this inline array — making the
-// public-API change explicit and reviewable.
-//
-// Background: shared-error-registry migration (PR 3) shuffles some export
-// sources from constants.js to errors_generated.js. The surface must remain
-// byte-identical across that change; this test catches accidental drift.
+// Surface contract: every public submodule's exports must match the canonical
+// manifest at `errors/public_api_surface.json`. Any PR that adds, removes, or
+// renames an export must update the JSON — making the public-API change
+// explicit and reviewable across all three language implementations.
 
-import { describe, expect, it } from 'vitest'
-import * as barrel from '../src/index.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, it, expect } from 'vitest'
 
-const EXPECTED_EXPORTS = [
-    'ArgSpec',
-    'BoolOperator',
-    'CODE_ARG_COUNT',
-    'CODE_ARG_TYPE',
-    'CODE_CHAIN_TYPE',
-    'CODE_INVALID_AST',
-    'CODE_UNKNOWN_COLUMN',
-    'CODE_UNKNOWN_COLUMN_VALUE',
-    'CODE_UNKNOWN_TRANSFORMER',
-    'Char',
-    'CharType',
-    'Column',
-    'ColumnSchema',
-    'Diagnostic',
-    'Duration',
-    'ERR_MAX_DEPTH_EXCEEDED',
-    'Expression',
-    'FlyqlError',
-    'FunctionCall',
-    'Key',
-    'KeyParser',
-    'LenTransformer',
-    'LiteralKind',
-    'LowerTransformer',
-    'Node',
-    'Operator',
-    'Parameter',
-    'ParseResult',
-    'Parser',
-    'ParserError',
-    'Range',
-    'Renderer',
-    'RendererRegistry',
-    'SplitTransformer',
-    'State',
-    'Transformer',
-    'TransformerRegistry',
-    'Type',
-    'UpperTransformer',
-    'VALID_BOOL_OPERATORS',
-    'VALID_BOOL_OPERATORS_CHARS',
-    'VALID_KEY_VALUE_OPERATORS',
-    'bindParams',
-    'convertUnquotedValue',
-    'defaultRegistry',
-    'defaultRendererRegistry',
-    'diagnose',
-    'isNumeric',
-    'parse',
-    'parseFlyQLType',
-    'parseKey',
-    'tokenize',
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const surfacePath = path.resolve(__dirname, '..', '..', '..', '..', 'errors', 'public_api_surface.json')
+const SURFACE = JSON.parse(fs.readFileSync(surfacePath, 'utf-8')).javascript
+
+const SUBPATHS = [
+    { name: 'flyql', mod: '../src/index.js' },
+    { name: 'flyql/core', mod: '../src/core/index.js' },
+    { name: 'flyql/matcher', mod: '../src/matcher/index.js' },
+    { name: 'flyql/transformers', mod: '../src/transformers/index.js' },
+    { name: 'flyql/generators/clickhouse', mod: '../src/generators/clickhouse/index.js' },
+    { name: 'flyql/generators/postgresql', mod: '../src/generators/postgresql/index.js' },
+    { name: 'flyql/generators/starrocks', mod: '../src/generators/starrocks/index.js' },
+    { name: 'flyql/columns', mod: '../src/columns/index.js' },
+    { name: 'flyql/renderers', mod: '../src/renderers/index.js' },
+    { name: 'flyql/highlight', mod: '../src/highlight.js' },
+    { name: 'flyql/tokenize', mod: '../src/tokenize.js' },
 ]
 
-describe('public API snapshot', () => {
-    it('top-level barrel exports exactly the expected set', () => {
-        const actual = Object.keys(barrel).sort()
-        expect(actual).toEqual(EXPECTED_EXPORTS)
-    })
+describe('public API surface', () => {
+    for (const { name, mod } of SUBPATHS) {
+        it(`${name} matches the surface contract`, async () => {
+            const imported = await import(mod)
+            const actual = Object.keys(imported).sort()
+            const expected = [...SURFACE[name]].sort()
+            expect(actual).toEqual(expected)
+        })
+    }
 })

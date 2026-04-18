@@ -77,6 +77,7 @@ class Registry:
     core_parser: list[ErrorEntry] = field(default_factory=list)
     columns_parser: list[ErrorEntry] = field(default_factory=list)
     validator: list[ErrorEntry] = field(default_factory=list)
+    matcher: list[ErrorEntry] = field(default_factory=list)
 
 
 def _fail(msg: str) -> None:
@@ -101,6 +102,7 @@ def _load_registry(path: Path) -> Registry:
         "core_parser": ("int", reg.core_parser),
         "columns_parser": ("int", reg.columns_parser),
         "validator": ("string", reg.validator),
+        "matcher": ("string", reg.matcher),
     }
     for cat_name, (expected_type, bucket) in expected.items():
         cat = categories.get(cat_name)
@@ -247,6 +249,15 @@ def _render_python(reg: Registry) -> str:
     parts.append("\nVALIDATOR_MESSAGES: dict[str, str] = {\n")
     for e in _sorted_by_name(reg.validator):
         parts.append(f"    {e.name}: {_py_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    # matcher
+    parts.append("# matcher diagnostic codes (string)\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"{e.name} = {_py_str(e.key)}\n")
+    parts.append("\nMATCHER_MESSAGES: dict[str, str] = {\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"    {e.name}: {_py_str(e.message)},\n")
     parts.append("}\n")
 
     return "".join(parts)
@@ -276,6 +287,14 @@ def _render_js(reg: Registry) -> str:
         parts.append(f"export const {e.name} = {_js_str(e.key)}\n")
     parts.append("\nexport const VALIDATOR_MESSAGES = Object.freeze({\n")
     for e in _sorted_by_name(reg.validator):
+        parts.append(f"    [{e.name}]: {_js_str(e.message)},\n")
+    parts.append("})\n\n")
+
+    parts.append("// matcher diagnostic codes (string)\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"export const {e.name} = {_js_str(e.key)}\n")
+    parts.append("\nexport const MATCHER_MESSAGES = Object.freeze({\n")
+    for e in _sorted_by_name(reg.matcher):
         parts.append(f"    [{e.name}]: {_js_str(e.message)},\n")
     parts.append("})\n")
 
@@ -311,6 +330,18 @@ def _render_go_top(reg: Registry) -> str:
     parts.append("var validatorMessages = map[string]string{\n")
     for e in _sorted_by_name(non_renderer):
         parts.append(f"    {_go_code_ident(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("// matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.\n")
+    parts.append("const (\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"    {_go_ident(e.name)} = {_go_str(e.key)}\n")
+    parts.append(")\n\n")
+
+    parts.append("// matcherMessages maps matcher codes to canonical messages.\n")
+    parts.append("var matcherMessages = map[string]string{\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"    {_go_ident(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n")
 
     return "".join(parts)
@@ -340,6 +371,16 @@ def _render_go_top_test(reg: Registry) -> str:
 
     parts.append("var generatedValidatorMessages = map[string]string{\n")
     for e in _sorted_by_name(non_renderer):
+        parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("var generatedMatcherConstants = map[string]string{\n")
+    for e in _sorted_by_name(reg.matcher):
+        parts.append(f"    {_go_str(e.name)}: {_go_ident(e.name)},\n")
+    parts.append("}\n\n")
+
+    parts.append("var generatedMatcherMessages = map[string]string{\n")
+    for e in _sorted_by_name(reg.matcher):
         parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n")
 

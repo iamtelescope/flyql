@@ -146,3 +146,10 @@ export const VALIDATOR_MESSAGES = Object.freeze({
     [CODE_UNKNOWN_RENDERER]: 'unknown renderer',
     [CODE_UNKNOWN_TRANSFORMER]: 'unknown transformer',
 })
+
+// matcher diagnostic codes (string)
+export const ERR_RE2_MISSING = 're2_missing'
+
+export const MATCHER_MESSAGES = Object.freeze({
+    [ERR_RE2_MISSING]: 'regex matching requires the [re2] extra',
+})

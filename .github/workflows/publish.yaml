@@ -115,6 +115,17 @@ jobs:
         working-directory: javascript
         run: pnpm install
 
+      - name: Pack and inspect tarball before publish
+        working-directory: javascript/packages/flyql
+        run: |
+          set -euo pipefail
+          pnpm pack --pack-destination /tmp
+          TARBALL=$(ls /tmp/flyql-*.tgz | head -1)
+          LIST=$(tar -tzf "$TARBALL")
+          grep -qE '^package/README\.md$' <<<"$LIST" || { echo "::error::README.md missing from flyql tarball"; exit 1; }
+          grep -qE '^package/LICENSE$'    <<<"$LIST" || { echo "::error::LICENSE missing from flyql tarball"; exit 1; }
+          echo "flyql tarball OK: $(echo "$LIST" | wc -l) entries"
+
       - name: Publish flyql to npm
         working-directory: javascript/packages/flyql
         run: pnpm publish --access public --no-git-checks
@@ -145,6 +156,17 @@ jobs:
       - name: Install dependencies
         working-directory: javascript
         run: pnpm install
+
+      - name: Pack and inspect tarball before publish
+        working-directory: javascript/packages/flyql-vue
+        run: |
+          set -euo pipefail
+          pnpm pack --pack-destination /tmp
+          TARBALL=$(ls /tmp/flyql-vue-*.tgz | head -1)
+          LIST=$(tar -tzf "$TARBALL")
+          grep -qE '^package/README\.md$' <<<"$LIST" || { echo "::error::README.md missing from flyql-vue tarball"; exit 1; }
+          grep -qE '^package/LICENSE$'    <<<"$LIST" || { echo "::error::LICENSE missing from flyql-vue tarball"; exit 1; }
+          echo "flyql-vue tarball OK: $(echo "$LIST" | wc -l) entries"
 
       - name: Publish flyql-vue to npm
         working-directory: javascript/packages/flyql-vue

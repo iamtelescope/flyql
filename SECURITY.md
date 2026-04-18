@@ -41,6 +41,8 @@ The following are considered in-scope:
 - Denial of service via crafted expressions (e.g., catastrophic backtracking in regex handling)
 - Vulnerabilities in any of the language implementations (Go, Python, JavaScript)
 
+*Note on matcher regex safety (Python).* The Python matcher's RE2-backed regex/LIKE evaluation is provided by the `[re2]` extra (`pip install flyql[re2]`). Without the extra, all regex and LIKE evaluations raise `ERR_RE2_MISSING` — there is **no** silent fallback to `re` (which accepts backreferences and lookahead) by design. Downstream integrators relying on RE2's catastrophic-backtracking guarantees must install the extra and pin `google-re2>=1.1`. Go uses stdlib `regexp` (RE2 semantics, always available); JavaScript uses native `RegExp` (PCRE-ish, not RE2-safe — documented in the matcher docs).
+
 Out of scope:
 
 - Bugs in third-party dependencies (report these upstream, but let us know if they affect FlyQL)

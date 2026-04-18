@@ -1,6 +1,6 @@
-# FlyQL
+# flyql
 
-A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, evaluates in-memory, and ships with a Vue 3 editor.
+A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, and evaluates in-memory.
 
 ## Installation
 
@@ -94,9 +94,7 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
-### Vue 3 Editor
-
-> The Vue 3 editor ships as a separate package: `flyql-vue`. See the root README or docs.flyql.dev for details.
+> The Vue 3 editor ships as a separate package: [`flyql-vue`](https://www.npmjs.com/package/flyql-vue). See docs.flyql.dev for details.
 
 ## Package Exports
 
@@ -112,40 +110,11 @@ console.log(json)
 | `flyql/generators/starrocks` | StarRocks SQL generation |
 | `flyql/highlight` | Syntax highlighting |
 
-## Query Syntax
+## Links
 
-Queries consist of conditions connected by boolean operators (`and`, `or`, `not`):
-
-```
-status=200 and active and not archived
-service!=api or user="john doe"
-message~"error.*" and not debug
-(a=1 or b=2) and not (c=3 and d=4)
-status in [200, 201] and method not in ['DELETE', 'PUT']
-```
-
-### Operators
-
-| Operator | Syntax |
-|---|---|
-| Equals | `=` |
-| Not equals | `!=` |
-| Regex match | `~` |
-| Not regex match | `!~` |
-| Greater than | `>` |
-| Less than | `<` |
-| Greater or equals | `>=` |
-| Less or equals | `<=` |
-| In list | `in` |
-| Not in list | `not in` |
-| Like | `like` |
-| Not like | `not like` |
-| Case-insensitive like | `ilike` |
-| Case-insensitive not like | `not ilike` |
-
-## Documentation
-
-Full documentation: [docs.flyql.dev](https://docs.flyql.dev)
+- Documentation: [docs.flyql.dev](https://docs.flyql.dev)
+- Source: [github.com/iamtelescope/flyql](https://github.com/iamtelescope/flyql)
+- Issues: [github.com/iamtelescope/flyql/issues](https://github.com/iamtelescope/flyql/issues)
 
 ## License
 

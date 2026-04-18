@@ -1,13 +1,38 @@
+"""Matcher evaluator with lazy optional re2 dependency.
+
+Regex (``~`` / ``!~``) and LIKE-family operators require the ``google-re2``
+package, which is shipped as the optional ``[re2]`` extra:
+
+    pip install flyql[re2]
+
+Without the extra, non-regex evaluations (equality, comparison, ``in``,
+``has``, ...) work unchanged; invoking a regex or LIKE operator raises
+``FlyqlError(ERR_RE2_MISSING)``. RE2-safety (no catastrophic backtracking,
+no backreferences/lookahead) is documented in ``SECURITY.md``; there is
+no silent fallback to ``re`` by design.
+
+Pattern for future optional deps: import with a try/except at module top,
+bind both the module and a boolean flag, then guard once at each
+public entry point that uses the dependency (not per call).
+"""
+
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List, Final
 from zoneinfo import ZoneInfo
 
-import re2  # type: ignore[import-untyped]
+try:
+    import re2  # type: ignore[import-untyped]
+
+    _HAVE_RE2 = True
+except ImportError:
+    re2 = None
+    _HAVE_RE2 = False
 
 from flyql.core.constants import Operator, BoolOperator
 from flyql.core.expression import Expression, FunctionCall, Duration, Parameter
 from flyql.core.exceptions import FlyqlError
 from flyql.core.tree import Node
+from flyql.errors_generated import ERR_RE2_MISSING, MATCHER_MESSAGES
 from flyql.literal import LiteralKind
 
 from flyql.matcher.key import Key
@@ -114,6 +139,8 @@ _REGEX_META = frozenset(r".[{()*+?^$|\\")
 
 def _like_to_regex(pattern: str) -> str:
     """Convert a SQL LIKE pattern to an anchored Python regex string."""
+    if not _HAVE_RE2:
+        raise FlyqlError(MATCHER_MESSAGES[ERR_RE2_MISSING])
     parts: list[str] = []
     i = 0
     n = len(pattern)
@@ -213,6 +240,8 @@ class Evaluator:
         self,
         value: str,
     ) -> Any:
+        if not _HAVE_RE2:
+            raise FlyqlError(MATCHER_MESSAGES[ERR_RE2_MISSING])
         regex = self.cache.get(value)
         if regex is None:
             try:

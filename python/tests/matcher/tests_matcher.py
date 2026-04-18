@@ -8,6 +8,13 @@ from flyql.core.exceptions import FlyqlError
 from flyql.matcher.evaluator import Evaluator
 from flyql.matcher.record import Record
 
+try:
+    import re2  # type: ignore[import-untyped]
+
+    HAVE_RE2 = True
+except ImportError:
+    HAVE_RE2 = False
+
 
 def load_matcher_test_data(filename: str) -> list:
     test_data_path = (
@@ -136,6 +143,7 @@ def test_matcher_with_comparison_operators():
     assert result is True
 
 
+@pytest.mark.skipif(not HAVE_RE2, reason="requires flyql[re2]")
 def test_regex_re2():
     """Test that RE2 regex matching works"""
     query = "message~^hello"
@@ -147,6 +155,7 @@ def test_regex_re2():
     assert result is True
 
 
+@pytest.mark.skipif(not HAVE_RE2, reason="requires flyql[re2]")
 def test_regex_re2_backreference_rejected():
     """Test that RE2 rejects backreferences (safety guarantee)"""
     query = r'message~"(\w+)\s+\1"'  # Backreference not supported in RE2

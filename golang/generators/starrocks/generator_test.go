@@ -207,3 +207,8 @@ func TestColumnRef(t *testing.T) {
 	columns := loadColumns(t)
 	runWhereTestSuite(t, columns, "column_ref.json")
 }
+
+func TestFunctionsFixtures(t *testing.T) {
+	columns := loadColumns(t)
+	runWhereTestSuite(t, columns, "functions.json")
+}

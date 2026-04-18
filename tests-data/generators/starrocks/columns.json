@@ -27,6 +27,11 @@
       "type": "datetime",
       "values": null
     },
+    "ts": {
+      "name": "ts",
+      "type": "datetime",
+      "values": null
+    },
     "json_column": {
       "name": "json_column",
       "type": "jsonstring",

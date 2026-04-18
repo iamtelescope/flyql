@@ -353,6 +353,16 @@
           "description": ""
         }
       }
+    },
+    "matcher": {
+      "code_type": "string",
+      "errors": {
+        "re2_missing": {
+          "name": "ERR_RE2_MISSING",
+          "message": "regex matching requires the [re2] extra",
+          "description": "Raised by flyql.matcher.Evaluator when evaluating a regex (~) or LIKE pattern without the optional google-re2 dependency. Install with `pip install flyql[re2]`. Python-only: JS uses native RegExp and Go uses stdlib regexp, both of which are always available in their runtime."
+        }
+      }
     }
   }
 }

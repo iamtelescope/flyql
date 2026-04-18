@@ -7,55 +7,55 @@
       "name": "ago_single_duration",
       "input": "ts>ago(1h)",
       "expected_result": "success",
-      "expected_sql": "ts > (NOW() - INTERVAL 1 HOUR)"
+      "expected_sql": "`ts` > (NOW() - INTERVAL 1 HOUR)"
     },
     {
       "name": "ago_compound_duration",
       "input": "ts>ago(1h30m)",
       "expected_result": "success",
-      "expected_sql": "ts > (NOW() - INTERVAL 1 HOUR - INTERVAL 30 MINUTE)"
+      "expected_sql": "`ts` > (NOW() - INTERVAL 1 HOUR - INTERVAL 30 MINUTE)"
     },
     {
       "name": "ago_weeks",
       "input": "ts>ago(2w)",
       "expected_result": "success",
-      "expected_sql": "ts > (NOW() - INTERVAL 14 DAY)"
+      "expected_sql": "`ts` > (NOW() - INTERVAL 14 DAY)"
     },
     {
       "name": "now",
       "input": "ts>now()",
       "expected_result": "success",
-      "expected_sql": "ts > NOW()"
+      "expected_sql": "`ts` > NOW()"
     },
     {
       "name": "today_default_timezone",
       "input": "ts>today()",
       "expected_result": "success",
-      "expected_sql": "ts > DATE(CONVERT_TZ(NOW(), 'UTC', 'UTC'))"
+      "expected_sql": "`ts` > DATE(CONVERT_TZ(NOW(), 'UTC', 'UTC'))"
     },
     {
       "name": "today_explicit_timezone",
       "input": "ts>today('Europe/Berlin')",
       "expected_result": "success",
-      "expected_sql": "ts > DATE(CONVERT_TZ(NOW(), 'UTC', 'Europe/Berlin'))"
+      "expected_sql": "`ts` > DATE(CONVERT_TZ(NOW(), 'UTC', 'Europe/Berlin'))"
     },
     {
       "name": "startof_day",
       "input": "ts>startOf('day')",
       "expected_result": "success",
-      "expected_sql": "ts > DATE_FORMAT(CONVERT_TZ(NOW(), 'UTC', 'UTC'), '%Y-%m-%d 00:00:00')"
+      "expected_sql": "`ts` > DATE_FORMAT(CONVERT_TZ(NOW(), 'UTC', 'UTC'), '%Y-%m-%d 00:00:00')"
     },
     {
       "name": "startof_week",
       "input": "ts>startOf('week')",
       "expected_result": "success",
-      "expected_sql": "ts > DATE_TRUNC('WEEK', CONVERT_TZ(NOW(), 'UTC', 'UTC'))"
+      "expected_sql": "`ts` > DATE_TRUNC('WEEK', CONVERT_TZ(NOW(), 'UTC', 'UTC'))"
     },
     {
       "name": "startof_month_with_timezone",
       "input": "ts>startOf('month', 'Asia/Tokyo')",
       "expected_result": "success",
-      "expected_sql": "ts > DATE_TRUNC('MONTH', CONVERT_TZ(NOW(), 'UTC', 'Asia/Tokyo'))"
+      "expected_sql": "`ts` > DATE_TRUNC('MONTH', CONVERT_TZ(NOW(), 'UTC', 'Asia/Tokyo'))"
     }
   ]
 }

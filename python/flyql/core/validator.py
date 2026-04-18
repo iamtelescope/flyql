@@ -1,12 +1,15 @@
 """AST validator producing positioned diagnostics for editor integration.
 
-Two unrelated ``Transformer`` types coexist in this project:
+Two unrelated transformer-like types coexist in this project after the
+``flyql.core.key.Transformer`` → ``KeyTransformer`` rename:
 
-- ``flyql.core.key.Transformer`` — AST dataclass (parsed transformer invocation
-  with ranges). Accessed via ``expression.key.transformers`` and never imported
-  directly in this module.
+- ``flyql.core.key.KeyTransformer`` — AST dataclass (parsed transformer
+  invocation with ranges). Accessed via ``expression.key.transformers`` and
+  never imported directly in this module.
 - ``flyql.transformers.base.Transformer`` — ABC (functional transformer with
-  ``.apply()``, ``.sql()``, ``arg_schema``). Imported here as ``TransformerDef``.
+  ``.apply()``, ``.sql()``, ``arg_schema``). Imported here as ``TransformerDef``
+  purely for stylistic clarity — the former collision with the AST class is
+  resolved.
 
 Range semantics per diagnostic code (highlight the smallest span the user must
 edit to fix the error):

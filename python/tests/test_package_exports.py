@@ -1,109 +1,40 @@
-"""Verify that all public symbols are importable from the documented package paths."""
+"""Verify that each public submodule's ``__all__`` matches the canonical surface manifest at ``errors/public_api_surface.json``.
 
-import pytest
+The manifest is the cross-language source of truth; every language test
+(this one, plus the JS and Go equivalents) asserts against the same JSON.
+"""
 
+import importlib
+import json
+from pathlib import Path
 
-def test_top_level_imports() -> None:
-    """AC #1: All core symbols importable from flyql root."""
-    from flyql import (
-        parse,
-        Parser,
-        ParserError,
-        Node,
-        Expression,
-        Key,
-        parse_key,
-        Column,
-        Operator,
-        BoolOperator,
-        Range,
-        Diagnostic,
-        diagnose,
-        LiteralKind,
-        Type,
-        TransformerRegistry,
-        default_registry,
-    )
-
-    assert callable(parse)
-    assert callable(parse_key)
-    assert callable(diagnose)
-    assert callable(default_registry)
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+SURFACE_PATH = REPO_ROOT / "errors" / "public_api_surface.json"
+SURFACE = json.loads(SURFACE_PATH.read_text(encoding="utf-8"))["python"]
 
 
-def test_core_subpackage_imports() -> None:
-    """AC #2: Core types importable from flyql.core."""
-    from flyql.core import (
-        Node,
-        Expression,
-        Key,
-        Column,
-        ColumnSchema,
-        Operator,
-        BoolOperator,
-        Range,
-        parse,
-        Parser,
-        ParserError,
-        Diagnostic,
-        diagnose,
-    )
-
-    assert callable(parse)
-    assert callable(diagnose)
+def _check(module_name: str) -> None:
+    mod = importlib.import_module(module_name)
+    actual = sorted(getattr(mod, "__all__", []))
+    expected = sorted(SURFACE[module_name])
+    missing = sorted(set(expected) - set(actual))
+    unexpected = sorted(set(actual) - set(expected))
+    assert (
+        actual == expected
+    ), f"{module_name}.__all__ drift\n  missing: {missing}\n  unexpected: {unexpected}"
 
 
-def test_matcher_subpackage_imports() -> None:
-    """AC #3: Matcher types importable from flyql.matcher."""
-    from flyql.matcher import Evaluator, Record
-
-    assert Evaluator is not None
-    assert Record is not None
+def test_flyql_surface() -> None:
+    _check("flyql")
 
 
-def test_generator_dialect_imports() -> None:
-    """AC #4: Generator dialect imports remain separate and work."""
-    from flyql.generators.clickhouse.generator import to_sql_where as ch_to_sql_where
-    from flyql.generators.postgresql.generator import to_sql_where as pg_to_sql_where
-    from flyql.generators.starrocks.generator import to_sql_where as sr_to_sql_where
-
-    assert callable(ch_to_sql_where)
-    assert callable(pg_to_sql_where)
-    assert callable(sr_to_sql_where)
+def test_flyql_core_surface() -> None:
+    _check("flyql.core")
 
 
-def test_columns_subpackage_imports() -> None:
-    """Columns subpackage exports remain intact."""
-    from flyql.columns import parse, Parser, ParsedColumn, ParserError, diagnose
-
-    assert callable(parse)
-    assert callable(diagnose)
+def test_flyql_matcher_surface() -> None:
+    _check("flyql.matcher")
 
 
-def test_transformers_subpackage_imports() -> None:
-    """Transformers subpackage exports remain intact."""
-    from flyql.transformers import (
-        Transformer,
-        TransformerRegistry,
-        default_registry,
-        ArgSpec,
-    )
-    from flyql.flyql_type import Type
-
-    assert callable(default_registry)
-    assert Type is not None
-
-
-def test_all_lists_defined() -> None:
-    """All __init__.py files define __all__."""
-    import flyql
-    import flyql.core
-    import flyql.matcher
-    import flyql.transformers
-    import flyql.columns
-
-    assert hasattr(flyql, "__all__")
-    assert hasattr(flyql.core, "__all__")
-    assert hasattr(flyql.matcher, "__all__")
-    assert hasattr(flyql.transformers, "__all__")
-    assert hasattr(flyql.columns, "__all__")
+def test_flyql_transformers_surface() -> None:
+    _check("flyql.transformers")

@@ -27,6 +27,11 @@
       "type": "date",
       "values": null
     },
+    "ts": {
+      "name": "ts",
+      "type": "timestamptz",
+      "values": null
+    },
     "jsonb_column": {
       "name": "jsonb_column",
       "type": "jsonb",

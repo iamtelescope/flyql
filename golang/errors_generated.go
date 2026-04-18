@@ -111,3 +111,13 @@ var validatorMessages = map[string]string{
 	CodeUnknownColumnValue: "unknown column value",
 	CodeUnknownTransformer: "unknown transformer",
 }
+
+// matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.
+const (
+	errRe2Missing = "re2_missing"
+)
+
+// matcherMessages maps matcher codes to canonical messages.
+var matcherMessages = map[string]string{
+	errRe2Missing: "regex matching requires the [re2] extra",
+}

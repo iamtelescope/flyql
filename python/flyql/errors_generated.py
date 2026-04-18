@@ -148,3 +148,10 @@ VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_UNKNOWN_RENDERER: "unknown renderer",
     CODE_UNKNOWN_TRANSFORMER: "unknown transformer",
 }
+
+# matcher diagnostic codes (string)
+ERR_RE2_MISSING = "re2_missing"
+
+MATCHER_MESSAGES: dict[str, str] = {
+    ERR_RE2_MISSING: "regex matching requires the [re2] extra",
+}

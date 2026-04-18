@@ -175,6 +175,10 @@ func TestColumnRef(t *testing.T) {
 	runTestCases(t, "column_ref.json")
 }
 
+func TestFunctionsFixtures(t *testing.T) {
+	runTestCases(t, "functions.json")
+}
+
 func TestEscapeParam(t *testing.T) {
 	tests := []struct {
 		name      string

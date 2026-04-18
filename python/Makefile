@@ -6,8 +6,8 @@ PYTHON ?= $(if $(VENV),$(VENV)/bin/python,python)
 VBIN := $(if $(VENV),$(VENV)/bin/,)
 
 install:
-	pip install -e .
-	pip install pytest black==26.3.1 mypy
+	pip install -e '.[re2]'
+	pip install pytest black==26.3.1 mypy pylint
 fmt:
 	$(VBIN)black .
 fmt-test:
@@ -28,7 +28,7 @@ snippets:
 		echo "  run $$f"; \
 		$(PYTHON) "$$f" > /dev/null || { echo "FAIL: $$f"; exit 1; }; \
 	done
-test: fmt-test pytest type-test snippets
+test: fmt-test lint pytest type-test snippets
 coverage:
 	pytest --cov=flyql --cov-report=html --cov-report=term-missing
 cleanup:

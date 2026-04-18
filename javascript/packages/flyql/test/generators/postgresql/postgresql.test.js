@@ -113,6 +113,7 @@ describe('PostgreSQL Generator', () => {
     runTestSuite('types.json')
     runTestSuite('like.json')
     runTestSuite('column_ref.json')
+    runTestSuite('functions.json')
 
     // SELECT clause tests
     runSelectTestSuite('select_basic.json')

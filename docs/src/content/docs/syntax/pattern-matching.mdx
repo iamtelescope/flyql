@@ -25,7 +25,12 @@ The regex syntax depends on the target backend:
 - **ClickHouse** — uses `match()` function (RE2 syntax)
 - **PostgreSQL** — uses <FlyqlToken type="operator">{'~'}</FlyqlToken> and <FlyqlToken type="operator">{'!~'}</FlyqlToken> operators (POSIX regex)
 - **StarRocks** — uses `regexp` function
-- **In-memory matcher** — uses the host language's regex engine (Go `regexp`, Python `re2`, JS `RegExp`)
+- **In-memory matcher** — uses the host language's regex engine:
+  - Go: stdlib `regexp` (RE2-based, always available)
+  - Python: `google-re2` via the optional `[re2]` extra (required for `~` and LIKE operators; otherwise raises `ERR_RE2_MISSING`)
+  - JavaScript: native `RegExp` (PCRE-ish — supports backreferences and lookahead, but **not** RE2-safe against catastrophic backtracking)
+
+  Portable patterns should avoid backreferences and lookahead. A pattern using either is accepted in JS but rejected in Python/Go.
 
 Quote the pattern when it contains spaces or special characters:
 

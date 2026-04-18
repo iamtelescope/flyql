@@ -6,7 +6,7 @@ from flyql.core.range import Range
 
 
 @dataclass
-class Transformer:
+class KeyTransformer:
     """Parsed transformer invocation from a key pipeline (e.g., ``upper`` or
     ``format("YYYY")``). Carries the transformer's source ranges so tooling
     can map the AST back to the raw input.
@@ -25,7 +25,7 @@ class Key:
         segments: List[str],
         raw: Optional[str] = None,
         quoted_segments: Optional[List[bool]] = None,
-        transformers: Optional[List[Transformer]] = None,
+        transformers: Optional[List[KeyTransformer]] = None,
         range: Optional[Range] = None,
         segment_ranges: Optional[List[Range]] = None,
     ):
@@ -35,7 +35,7 @@ class Key:
         self.quoted_segments = (
             quoted_segments if quoted_segments is not None else [False] * len(segments)
         )
-        self.transformers: List[Transformer] = (
+        self.transformers: List[KeyTransformer] = (
             transformers if transformers is not None else []
         )
         if range is None:
@@ -281,10 +281,10 @@ def _parse_transformer_arguments(
     return args, ranges
 
 
-def _parse_transformer_spec(spec: str, base_offset: int) -> Transformer:
+def _parse_transformer_spec(spec: str, base_offset: int) -> KeyTransformer:
     paren_index = spec.find("(")
     if paren_index == -1:
-        return Transformer(
+        return KeyTransformer(
             name=spec,
             arguments=[],
             range=Range(base_offset, base_offset + len(spec)),
@@ -299,14 +299,14 @@ def _parse_transformer_spec(spec: str, base_offset: int) -> Transformer:
             arg_values, arg_ranges = _parse_transformer_arguments(
                 partial_args_str, base_offset + paren_index + 1
             )
-            return Transformer(
+            return KeyTransformer(
                 name=name,
                 arguments=arg_values,
                 range=Range(base_offset, base_offset + len(spec)),
                 name_range=Range(base_offset, base_offset + paren_index),
                 argument_ranges=arg_ranges,
             )
-        return Transformer(
+        return KeyTransformer(
             name=name,
             arguments=[],
             range=Range(base_offset, base_offset + len(spec)),
@@ -317,7 +317,7 @@ def _parse_transformer_spec(spec: str, base_offset: int) -> Transformer:
     arg_values, arg_ranges = _parse_transformer_arguments(
         args_str, base_offset + paren_index + 1
     )
-    return Transformer(
+    return KeyTransformer(
         name=name,
         arguments=arg_values,
         range=Range(base_offset, base_offset + len(spec)),
@@ -335,7 +335,7 @@ def parse_key(key_string: str, base_offset: int = 0) -> Key:
     key = parser.parse(base_key_string, base_offset)
 
     if transformer_specs:
-        transformers: List[Transformer] = []
+        transformers: List[KeyTransformer] = []
         # First transformer spec starts after base key + '|' char.
         running_offset = base_offset + len(base_key_string) + 1
         for spec in transformer_specs:
@@ -353,3 +353,17 @@ def parse_key(key_string: str, base_offset: int = 0) -> Key:
         key.range = Range(base_offset, base_offset + len(key_string))
 
     return key
+
+
+def __getattr__(name: str) -> Any:
+    if name == "Transformer":
+        import warnings
+
+        warnings.warn(
+            "flyql.core.key.Transformer is renamed to KeyTransformer and will be removed in 1.1.0. "
+            "Update imports to `from flyql.core.key import KeyTransformer`.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return KeyTransformer
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

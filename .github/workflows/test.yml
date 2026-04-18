@@ -49,6 +49,8 @@ jobs:
             golang/columns/errors_generated.go \
             golang/columns/errors_generated_test.go \
             || { echo "::error::Error registry is out of date. Run \`make generate-errors\` and commit the result."; exit 1; }
+      - name: Check package metadata drift
+        run: make check-package-metadata
 
   python:
     name: Python tests
@@ -93,10 +95,24 @@ jobs:
         working-directory: golang
         run: make install test
 
+  golangci-lint:
+    name: Go lint (golangci-lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: false
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: golang
+
   errno-parity:
     name: Cross-language errno parity
     runs-on: ubuntu-latest
-    needs: [python, javascript, golang, error-registry]
+    needs: [python, javascript, golang, error-registry, golangci-lint]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -120,3 +136,106 @@ jobs:
         with:
           name: errno-parity-report
           path: e2e/output/errno_parity.json
+
+  smoke:
+    name: Install-smoke (pip / pnpm pack / go build)
+    runs-on: ubuntu-latest
+    needs: [python, javascript, golang]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Python — build wheel, install from wheel in fresh venv, exercise
+        working-directory: python
+        run: |
+          set -euo pipefail
+          python -m venv /tmp/py-smoke
+          /tmp/py-smoke/bin/pip install build
+          /tmp/py-smoke/bin/python -m build --wheel --outdir /tmp/py-dist
+          /tmp/py-smoke/bin/pip install /tmp/py-dist/flyql-*.whl
+          /tmp/py-smoke/bin/python -c "from flyql import parse; r = parse('a=1'); assert r.root is not None"
+          /tmp/py-smoke/bin/python -c "from flyql.generators.clickhouse.generator import to_sql_where; from flyql.generators.clickhouse.column import Column; from flyql import parse; r = parse('a=1'); print(to_sql_where(r.root, {'a': Column('a', 'UInt32')}))"
+
+      - name: Python — import matcher WITHOUT re2, expect ImportWarning
+        run: |
+          set -euo pipefail
+          /tmp/py-smoke/bin/python -W error::ImportWarning -c "
+          try:
+              import flyql.matcher
+          except ImportWarning as e:
+              print('expected ImportWarning:', e)
+          else:
+              raise SystemExit('ImportWarning was not raised')
+          "
+
+      - name: Python — install with [re2], exercise regex, no ImportWarning
+        run: |
+          set -euo pipefail
+          /tmp/py-smoke/bin/pip install 'flyql[re2]' --find-links /tmp/py-dist
+          /tmp/py-smoke/bin/python -W error::ImportWarning -c "
+          import flyql.matcher
+          from flyql import parse
+          from flyql.matcher import Evaluator, Record
+          root = parse('msg~\"^hi\"').root
+          assert Evaluator().evaluate(root, Record({'msg': 'hi there'})) is True
+          "
+
+      - name: JS — pack from subdir, install tarball in fresh project, import, assert tarball contents
+        working-directory: javascript/packages/flyql
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm pack --pack-destination /tmp
+          TARBALL=$(ls /tmp/flyql-*.tgz | head -1)
+          LIST=$(tar -tzf "$TARBALL")
+          grep -qE '^package/README\.md$' <<<"$LIST" || { echo "::error::README.md missing from flyql tarball"; exit 1; }
+          grep -qE '^package/LICENSE$'    <<<"$LIST" || { echo "::error::LICENSE missing from flyql tarball"; exit 1; }
+          mkdir /tmp/js-smoke
+          cd /tmp/js-smoke
+          npm init -y
+          npm install "$TARBALL"
+          node --input-type=module -e "
+          const m = await import('flyql');
+          if (!m.parse) { console.error('missing parse'); process.exit(1); }
+          if (!m.parse('a=1').root) { console.error('parse broken'); process.exit(1); }
+          console.log('ok');
+          "
+          test -f node_modules/flyql/README.md
+          test -f node_modules/flyql/LICENSE
+
+      - name: Go — downstream consumer with module path sourced from go list
+        run: |
+          set -euo pipefail
+          MODULE_PATH=$(cd "$GITHUB_WORKSPACE/golang" && go list -m)
+          mkdir /tmp/go-smoke
+          cd /tmp/go-smoke
+          cat > main.go <<EOF
+          package main
+          import (
+            "fmt"
+            flyql "$MODULE_PATH"
+          )
+          func main() {
+            r, err := flyql.Parse("a=1")
+            if err != nil || r.Root == nil { panic("fail") }
+            fmt.Println("ok")
+          }
+          EOF
+          go mod init smoke
+          go mod edit -require="$MODULE_PATH@v0.0.0-smoke"
+          go mod edit -replace="$MODULE_PATH=$GITHUB_WORKSPACE/golang"
+          go mod tidy
+          go build ./...
+          go run ./...

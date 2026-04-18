@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 import pytest
 
 from flyql.core.exceptions import FlyqlError
-from flyql.core.key import Transformer
+from flyql.core.key import KeyTransformer
 from flyql.core.range import Range
 from flyql.generators.starrocks import Column, to_sql_select
 from flyql.generators.starrocks.generator import _to_key_transformers
@@ -43,7 +43,7 @@ def test_to_key_transformers_round_trip(
     assert isinstance(result, list)
     assert len(result) == len(expected)
     for got, (want_name, want_args) in zip(result, expected):
-        assert isinstance(got, Transformer)
+        assert isinstance(got, KeyTransformer)
         assert got.name == want_name
         assert got.arguments == want_args
         assert got.range == Range(0, 0)

@@ -1,0 +1,45 @@
+package flyql
+
+// PublicSymbols is the canonical manifest of names this package exports for
+// downstream consumers. The shared-surface test in public_api_test.go asserts
+// that this slice exactly matches errors/public_api_surface.json's `golang.flyql`
+// entry; any change here must land alongside the JSON update in the same commit.
+var PublicSymbols = []string{
+	"BindParams",
+	"Column",
+	"ColumnSchema",
+	"Diagnose",
+	"Diagnostic",
+	"Duration",
+	"Expression",
+	"FromColumns",
+	"FromPlainObject",
+	"FunctionCall",
+	"Key",
+	"KeyParseError",
+	"NewBranchNode",
+	"NewColumn",
+	"NewColumnSchema",
+	"NewExpression",
+	"NewExpressionNode",
+	"NewFunctionCallExpression",
+	"NewInExpression",
+	"NewNestedColumn",
+	"NewNode",
+	"NewParameterExpression",
+	"NewParser",
+	"Node",
+	"Parameter",
+	"Parse",
+	"ParseError",
+	"ParseKey",
+	"ParseResult",
+	"ParseType",
+	"Parser",
+	"Range",
+	"Token",
+	"Tokenize",
+	"Transformer",
+	"Type",
+	"TypedChar",
+}

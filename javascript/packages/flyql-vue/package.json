@@ -13,7 +13,9 @@
     "files": [
         "src/**/*.js",
         "src/**/*.vue",
-        "src/**/*.css"
+        "src/**/*.css",
+        "README.md",
+        "LICENSE"
     ],
     "sideEffects": [
         "*.css"

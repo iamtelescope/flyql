@@ -4,6 +4,8 @@
 [![E2E](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml/badge.svg)](https://github.com/iamtelescope/flyql/actions/workflows/e2e.yml)
 [![npm](https://img.shields.io/npm/v/flyql)](https://www.npmjs.com/package/flyql)
 [![PyPI](https://img.shields.io/pypi/v/flyql)](https://pypi.org/project/flyql/)
+[![Go](https://img.shields.io/github/v/tag/iamtelescope/flyql?filter=golang*)](https://pkg.go.dev/github.com/iamtelescope/flyql/golang)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A lightweight, injection-proof query language that parses human-readable filter expressions into a portable AST, transpiles to SQL across ClickHouse, PostgreSQL, and StarRocks, evaluates in-memory, and ships with a Vue 3 editor — with full cross-language parity in Go, Python, and JavaScript.
 

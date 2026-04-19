@@ -1,6 +1,5 @@
 import { LiteralKind } from '../literal/literal_kind.js'
 import { Type } from '../flyql_type.js'
-import { ColumnSchema } from './column.js'
 import { Range } from './range.js'
 import { defaultRegistry } from '../transformers/registry.js'
 

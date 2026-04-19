@@ -55,6 +55,50 @@ Cada elemento lleva su propio tipo en el array `valuesTypes` de la expresión pa
 
 Cuando un generador SQL procesa una lista, valida que los tipos de los valores de la lista sean compatibles con el tipo de la columna de destino. Por ejemplo, pasar valores de tipo string a una columna numérica lanzará un error de validación durante la generación de SQL.
 
+## Consistencia de tipos en listas IN
+
+El parser **siempre** acepta listas heterogéneas — la validación de tipos vive en los generadores SQL, no en el parser. Cada generador (ClickHouse, PostgreSQL, StarRocks) aplica la misma lógica de salto de dos capas antes de lanzar un error.
+
+### Capa 1 — control en el sitio de llamada
+
+Antes de invocar al validador, el generador comprueba tres condiciones:
+
+1. La columna tiene un **tipo declarado** (`column.flyqlType()` no está vacío y no es `Unknown`).
+2. La clave **no es segmentada** (un único segmento como `category`, no `meta.category`).
+3. La lista es **homogénea** — todos los elementos tienen el mismo tipo de valor (`len(set(values_types)) == 1` en Python; `new Set(valuesTypes).size === 1` en JavaScript; equivalente en Go).
+
+Si **alguna** de estas condiciones es falsa, el validador se omite por completo y el SQL se genera tal cual. Las listas heterogéneas pasan. Las listas contra columnas sin tipo pasan. Las listas contra claves segmentadas (rutas JSON, índices de array) pasan.
+
+### Capa 2 — comprobación de elementos
+
+Cuando el control en el sitio de llamada se cumple, el validador itera por cada elemento y lanza error en el primer valor incompatible, según este mapa de compatibilidad:
+
+| Tipo de columna | Tipos de elemento permitidos |
+|-----------------|------------------------------|
+| `String`        | `string`                     |
+| `Int`           | `int`, `float`               |
+| `Float`         | `int`, `float`               |
+| `Bool`          | `bool`, `int`                |
+| `Date`          | `string`                     |
+
+Otros tipos de columna (`Array`, `Map`, `JSON`, `JSONString`, `Struct`, `Duration`, `Unknown`) no están en el mapa y omiten silenciosamente la comprobación de elementos.
+
+### El texto del error
+
+Cuando la validación falla, las tres implementaciones lanzan el mensaje de error **idéntico**:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+Concretamente:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+El subtexto `type mismatch in IN list:` es estable en los tres lenguajes y los tres dialectos SQL, así que es seguro hacer grep por él.
+
+Para una demostración ejecutable end-to-end de los tres casos (coincidencia homogénea, bypass heterogéneo, error de tipo incorrecto homogéneo), ver [Recetas — Consistencia de tipos en listas IN](/es/syntax/recipes/#consistencia-de-tipos-en-listas-in).
+
 ## Parámetros en listas
 
 Los marcadores de parámetros pueden aparecer dentro de listas IN, mezclados libremente con valores literales:

@@ -38,6 +38,18 @@ Zahlen mit Dezimalpunkt:
 
 AST: `value_type: "float"`
 
+:::caution[Strings müssen in Anführungszeichen]
+Ein häufiger Fehler: <FlyqlCode code={`level = 'error'`} inline /> matcht den **String** `error`, aber <FlyqlCode code={`level = error`} inline /> matcht die **Spaltenreferenz** `error` (also "die Spalte mit dem Namen `error`"). FlyQL wandelt einen unquotierten Bezeichner niemals stillschweigend in einen String um.
+
+| FlyQL | Bedeutung |
+|-------|-----------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` ist gleich dem String `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` ist gleich dem String `error` (einfache und doppelte Anführungszeichen sind äquivalent) |
+| <FlyqlCode code={`level = error`} inline /> | `level` ist gleich dem Wert der Spalte mit dem Namen `error` (Spalte-zu-Spalte-Vergleich) |
+
+Wenn eine Query stillschweigend null Ergebnisse liefert oder unerwartetes SQL wie `level = error_column_name` erzeugt, ist dies das Erste, was zu prüfen ist. Siehe [Spaltenreferenz](#spaltenreferenz) für die Spalte-zu-Spalte-Vergleichsform.
+:::
+
 ### String
 
 Textwerte **müssen in Anführungszeichen** gesetzt werden, entweder einfach oder doppelt. Werte ohne Anführungszeichen werden als Spaltenreferenzen und nicht als Strings interpretiert.

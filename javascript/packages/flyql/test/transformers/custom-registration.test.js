@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parse } from '../../src/core/parser.js'
-import { Transformer, TransformerRegistry, defaultRegistry, SplitTransformer } from '../../src/transformers/index.js'
+import { Transformer, defaultRegistry, SplitTransformer } from '../../src/transformers/index.js'
 import { Type } from '../../src/flyql_type.js'
 import { generateWhere as chGenerateWhere, newColumn as chNewColumn } from '../../src/generators/clickhouse/index.js'
 import { generateWhere as pgGenerateWhere, newColumn as pgNewColumn } from '../../src/generators/postgresql/index.js'
@@ -8,7 +8,6 @@ import { generateWhere as srGenerateWhere, newColumn as srNewColumn } from '../.
 import { match } from '../../src/matcher/index.js'
 import { Evaluator } from '../../src/matcher/evaluator.js'
 import { Record } from '../../src/matcher/record.js'
-import { ColumnSchema } from '../../src/core/column.js'
 
 class FirstOctetTransformer extends Transformer {
     get name() {

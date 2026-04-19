@@ -178,7 +178,7 @@ function _columnFromPlainObject(name, raw) {
     if (typeStr) {
         try {
             flyqlType = parseFlyQLType(typeStr)
-        } catch (_) {
+        } catch {
             flyqlType = typeStr // preserve raw string for the editor normalizer
         }
     }

@@ -15,7 +15,6 @@ import {
     VALID_BOOL_OPERATORS_CHARS,
     Operator,
     NOT_KEYWORD,
-    IN_KEYWORD,
     HAS_KEYWORD,
     LIKE_KEYWORD,
     ILIKE_KEYWORD,

@@ -1,0 +1,53 @@
+---
+title: 日付
+description: FlyQL における日付・日時の比較 — 文字列リテラルと時間関数。
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL では日付・日時を比較する方法が 2 種類あります。絶対日付には**文字列リテラル**、相対時間ウィンドウには**時間関数**を使います。クエリの目的に合わせて使い分けてください。
+
+## 文字列リテラルとしての日付
+
+日付カラムを ISO-8601 形式の文字列リテラルと比較します。ClickHouse・PostgreSQL・StarRocks はいずれも ISO-8601 文字列を DB 側の境界で `DATE` / `DATETIME` 値に変換するため、FlyQL レイヤで特別な日付コンストラクタを使う必要はありません。
+
+<FlyqlCode code={`due_date < '2023-12-31'`} />
+<FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
+<FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
+
+| カラム型 | 受け付ける値 | 生成される比較 |
+|----------|--------------|----------------|
+| ClickHouse `Date` / `DateTime` / `DateTime64` | ISO-8601 文字列 | 直接比較 — ClickHouse が実行時にリテラルを parse |
+| PostgreSQL `date` / `timestamp` / `timestamptz` | ISO-8601 文字列 | 直接比較 — PostgreSQL が実行時にリテラルをキャスト |
+| StarRocks `DATE` / `DATETIME` | ISO-8601 文字列 | 直接比較 — StarRocks が実行時にリテラルを parse |
+
+時刻、タイムゾーンオフセット、日付のみの形式はいずれもサポートされます。リテラルの parse は DB 自身が行うためです。
+
+:::note[文字列はクォートが必須]
+日付リテラルは文字列なので、**必ず**クォートで囲んでください。クォートが無い場合、FlyQL はその値をカラム参照として解釈します。<FlyqlCode code={`due_date < 2023-12-31`} inline /> は `2023` という名前のカラムに対する算術として parse され、日付リテラルにはなりません。[値と型 — String](/ja/syntax/values/#string) を参照してください。
+:::
+
+## 時間関数
+
+「直近 1 時間」「今週の始めから」「今日から」のような相対時間クエリには、組み込みの時間関数 <FlyqlCode code={`ago(...)`} inline />、<FlyqlCode code={`now()`} inline />、<FlyqlCode code={`today()`} inline />、<FlyqlCode code={`startOf(...)`} inline /> を使います。
+
+<FlyqlCode code={`created_at > ago(1h)`} />
+<FlyqlCode code={`updated_at >= ago(7d)`} />
+<FlyqlCode code={`expires_at < now()`} />
+<FlyqlCode code={`event_time > startOf('day')`} />
+<FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
+
+完全な文法（単位、順序ルール、タイムゾーン引数）は [値と型 — 時間関数](/ja/syntax/values/) を参照してください。
+
+## どちらを使うか
+
+| 目的 | 使うもの | 例 |
+|------|---------|------|
+| 固定の暦日付やタイムスタンプとの比較 | 文字列リテラル | <FlyqlCode code={`due_date < '2023-12-31'`} inline /> |
+| スライドする時間ウィンドウとの比較 | <FlyqlCode code={`ago()`} inline /> | <FlyqlCode code={`created_at > ago(1h)`} inline /> |
+| 現在時刻との比較 | <FlyqlCode code={`now()`} inline /> | <FlyqlCode code={`expires_at < now()`} inline /> |
+| 今日との比較（タイムゾーン対応） | <FlyqlCode code={`today()`} inline /> | <FlyqlCode code={`scheduled_for = today('UTC')`} inline /> |
+| 日・週・月の始まりとの比較 | <FlyqlCode code={`startOf()`} inline /> | <FlyqlCode code={`event_time > startOf('week')`} inline /> |
+
+文字列リテラルは不変で、同じクエリ文字列は毎日同じ SQL を返します。時間関数は実行時に評価されるため、同じ FlyQL クエリでも実行ごとに異なる時間ウィンドウを生成します。

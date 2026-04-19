@@ -38,9 +38,21 @@ Números con punto decimal:
 
 AST: `value_type: "float"`
 
+:::caution[Los strings deben ir entre comillas]
+Un error frecuente: <FlyqlCode code={`level = 'error'`} inline /> coincide con el **string** `error`, pero <FlyqlCode code={`level = error`} inline /> coincide con la **referencia a columna** `error` (es decir, "la columna llamada `error`"). FlyQL nunca convierte silenciosamente un identificador sin comillas en un string.
+
+| FlyQL | Significado |
+|-------|-------------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` es igual al string `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` es igual al string `error` (las comillas simples y dobles son equivalentes) |
+| <FlyqlCode code={`level = error`} inline /> | `level` es igual al valor de la columna llamada `error` (comparación columna-a-columna) |
+
+Si una consulta devuelve silenciosamente cero resultados o produce SQL inesperado como `level = error_column_name`, esto es lo primero que hay que comprobar. Ver [Referencia a columna](#referencia-a-columna) para la forma de comparación columna-a-columna.
+:::
+
 ### String
 
-Valores de texto, con o sin comillas:
+Los valores de texto **deben** ir entre comillas, simples o dobles. Los valores sin comillas se interpretan como referencias a columna, no como strings.
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />

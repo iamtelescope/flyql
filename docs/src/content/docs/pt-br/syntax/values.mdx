@@ -38,9 +38,21 @@ Números com ponto decimal:
 
 AST: `value_type: "float"`
 
+:::caution[Strings devem estar entre aspas]
+Um erro comum: <FlyqlCode code={`level = 'error'`} inline /> corresponde à **string** `error`, mas <FlyqlCode code={`level = error`} inline /> corresponde à **referência de coluna** `error` (ou seja, "a coluna chamada `error`"). FlyQL nunca converte silenciosamente um identificador sem aspas em string.
+
+| FlyQL | Significado |
+|-------|-------------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` é igual à string `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` é igual à string `error` (aspas simples e duplas são equivalentes) |
+| <FlyqlCode code={`level = error`} inline /> | `level` é igual ao valor da coluna chamada `error` (comparação coluna-com-coluna) |
+
+Se uma consulta retorna silenciosamente zero resultados ou produz SQL inesperado como `level = error_column_name`, isso é a primeira coisa a verificar. Veja [Referência de Coluna](#referencia-de-coluna) para a forma de comparação coluna-com-coluna.
+:::
+
 ### String
 
-Valores de texto, com ou sem aspas:
+Os valores de texto **devem** estar entre aspas, simples ou duplas. Os valores sem aspas são interpretados como referências de coluna, não como strings.
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />

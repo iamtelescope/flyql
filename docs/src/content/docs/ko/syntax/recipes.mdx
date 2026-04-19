@@ -1,0 +1,252 @@
+---
+title: 쿼리 레시피
+description: 모든 연산자 조합에 대한 parse → generate → run 예제가 포함된 일반적인 FlyQL 쿼리 패턴.
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components'
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+import eqStatusPy from '@snippets/python/recipes/eq_status.py?raw'
+import eqStatusGo from '@snippets/go/recipes/eq_status/main.go?raw'
+import eqStatusJs from '@snippets/javascript/recipes/eq-status.mjs?raw'
+
+import activePriorityPy from '@snippets/python/recipes/active_priority_or_severity.py?raw'
+import activePriorityGo from '@snippets/go/recipes/active_priority_or_severity/main.go?raw'
+import activePriorityJs from '@snippets/javascript/recipes/active-priority-or-severity.mjs?raw'
+
+import priceQuantityPy from '@snippets/python/recipes/price_quantity.py?raw'
+import priceQuantityGo from '@snippets/go/recipes/price_quantity/main.go?raw'
+import priceQuantityJs from '@snippets/javascript/recipes/price-quantity.mjs?raw'
+
+import eventTypePy from '@snippets/python/recipes/event_type_in_or.py?raw'
+import eventTypeGo from '@snippets/go/recipes/event_type_in_or/main.go?raw'
+import eventTypeJs from '@snippets/javascript/recipes/event-type-in-or.mjs?raw'
+
+import enabledPy from '@snippets/python/recipes/enabled_not_suspended_last_login.py?raw'
+import enabledGo from '@snippets/go/recipes/enabled_not_suspended_last_login/main.go?raw'
+import enabledJs from '@snippets/javascript/recipes/enabled-not-suspended-last-login.mjs?raw'
+
+import errorRegexPy from '@snippets/python/recipes/error_not_warning_regex.py?raw'
+import errorRegexGo from '@snippets/go/recipes/error_not_warning_regex/main.go?raw'
+import errorRegexJs from '@snippets/javascript/recipes/error-not-warning-regex.mjs?raw'
+
+import pendingDuePy from '@snippets/python/recipes/pending_due_date_or_urgent.py?raw'
+import pendingDueGo from '@snippets/go/recipes/pending_due_date_or_urgent/main.go?raw'
+import pendingDueJs from '@snippets/javascript/recipes/pending-due-date-or-urgent.mjs?raw'
+
+import inStockPy from '@snippets/python/recipes/in_stock_category_rating.py?raw'
+import inStockGo from '@snippets/go/recipes/in_stock_category_rating/main.go?raw'
+import inStockJs from '@snippets/javascript/recipes/in-stock-category-rating.mjs?raw'
+
+import astPy from '@snippets/python/recipes/ast_custom_generator.py?raw'
+import astGo from '@snippets/go/recipes/ast_custom_generator/main.go?raw'
+import astJs from '@snippets/javascript/recipes/ast-custom-generator.mjs?raw'
+
+import listTypePy from '@snippets/python/recipes/list_type_consistency.py?raw'
+import listTypeGo from '@snippets/go/recipes/list_type_consistency/main.go?raw'
+import listTypeJs from '@snippets/javascript/recipes/list-type-consistency.mjs?raw'
+
+이 페이지는 일반적인 FlyQL 쿼리 패턴 10가지를 모았습니다. 각 레시피는 FlyQL 쿼리와 Python, Go, JavaScript의 완전한 **parse → generate → run** 코드를 보여주고, 관련 참조 페이지로 가는 "참고" 링크를 제공합니다. 각 스니펫은 각 언어의 `snippets/recipes/` 디렉터리에 있는 실제 파일이며 단독으로 실행할 수 있습니다.
+
+## `status` 필드가 정확히 `200`인 레코드 필터링
+
+단순한 동등 필터입니다. <FlyqlToken type="operator">=</FlyqlToken>의 양쪽이 모두 필요합니다 — 왼쪽에 <FlyqlToken type="key">키</FlyqlToken>, 오른쪽에 <FlyqlToken type="value">값</FlyqlToken>.
+
+<FlyqlCode code={`status = 200`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eqStatusPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eqStatusGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eqStatusJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [비교 연산자](/ko/syntax/operators/) — 전체 연산자 목록.
+
+## 우선순위 또는 심각도가 높은 활성 레코드 필터링
+
+truthy 검사(<FlyqlCode code={`active`} inline />)와 괄호로 묶인 <FlyqlToken type="operator">or</FlyqlToken> 그룹의 조합입니다. 괄호는 필수입니다: 괄호가 없으면 기본 우선순위(<FlyqlToken type="operator">and</FlyqlToken>가 <FlyqlToken type="operator">or</FlyqlToken>보다 더 강하게 결합)로 인해 의미가 달라집니다.
+
+<FlyqlCode code={`active and (priority = 'high' or severity = 'critical')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={activePriorityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={activePriorityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={activePriorityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [불리언 로직](/ko/syntax/boolean-logic/) — 우선순위 규칙과 그룹화.
+
+## 가격 `50.00` 초과, 수량 최대 `10`인 레코드 필터링
+
+<FlyqlToken type="operator">and</FlyqlToken>로 결합된 두 개의 숫자 범위 비교입니다. <FlyqlCode code={`50.00`} inline />과 같은 소수 리터럴은 float로, <FlyqlCode code={`10`} inline />과 같은 정수 리터럴은 int로 파싱됩니다.
+
+<FlyqlCode code={`price > 50.00 and quantity <= 10`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={priceQuantityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={priceQuantityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={priceQuantityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [비교 연산자](/ko/syntax/operators/)와 [값과 타입](/ko/syntax/values/) — 리터럴 타입 규칙.
+
+## `event_type`이 `'login'` 또는 `'logout'`인 레코드
+
+같은 컬럼에 대한 두 개의 동등 검사를 <FlyqlToken type="operator">or</FlyqlToken>로 결합합니다. <FlyqlCode code={`'login'`} inline />과 <FlyqlCode code={`'logout'`} inline /> 주변의 **작은따옴표는 필수**입니다: 따옴표가 없으면 FlyQL은 <FlyqlCode code={`login`} inline />을 컬럼 참조로 해석하며, 문자열 리터럴로 해석하지 않습니다.
+
+<FlyqlCode code={`event_type = 'login' or event_type = 'logout'`} />
+
+값 목록의 경우 <FlyqlToken type="operator">in</FlyqlToken> 형식이 더 좋습니다: <FlyqlCode code={`event_type in ['login', 'logout']`} inline />.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eventTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eventTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eventTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [값과 타입 — String](/ko/syntax/values/#string) — 문자열 따옴표 규칙.
+
+## 활성화되어 있고 정지되지 않았으며 마지막 로그인이 있는 계정
+
+<FlyqlToken type="operator">and</FlyqlToken>로 연결된 세 개의 truthy/falsy 조건. 단일 키(연산자도 값도 없는)는 [truthy 검사](/ko/syntax/values/)입니다; <FlyqlCode code={`not suspended`} inline />는 truthy 검사를 falsy 검사로 뒤집습니다.
+
+<FlyqlCode code={`enabled and not suspended and last_login`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={enabledPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={enabledGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={enabledJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [값과 타입 — Truthy/Falsy](/ko/syntax/values/).
+
+## `(?i)error`에 일치하지만 `(?i)warning`에는 일치하지 않는 메시지
+
+정규식 일치(<FlyqlToken type="operator">{'~'}</FlyqlToken>)와 정규식 비일치(<FlyqlToken type="operator">{'!~'}</FlyqlToken>). 인라인 플래그 `(?i)`는 일치를 대소문자 구분 없이 만듭니다.
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={errorRegexPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={errorRegexGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={errorRegexJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [패턴 매칭](/ko/syntax/pattern-matching/) — 정규식 플래그, 이스케이프, 방언 메모.
+
+## 만료되었거나 긴급한 보류 작업
+
+<FlyqlCode code={`pending`} inline />에 대한 truthy 검사와 괄호로 묶인 <FlyqlToken type="operator">or</FlyqlToken> 그룹의 조합. 날짜 비교 <FlyqlCode code={`due_date < '2023-12-31'`} inline />는 ISO-8601 문자열 리터럴을 사용합니다; ClickHouse, PostgreSQL, StarRocks 모두 데이터베이스 경계에서 `DATE` 값으로 변환합니다.
+
+<FlyqlCode code={`pending and (due_date < '2023-12-31' or priority = 'urgent')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={pendingDuePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={pendingDueGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={pendingDueJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [날짜](/ko/syntax/dates/) — 문자열 리터럴 vs. 시간 함수 의미론.
+
+## 재고가 있고 선택된 카테고리에 있으며 평점이 높은 제품 필터링
+
+하나의 쿼리에 세 가지 연산자 유형을 결합합니다: truthy 검사(<FlyqlCode code={`in_stock`} inline />), 리스트 멤버십(<FlyqlToken type="operator">in</FlyqlToken>), 숫자 비교(<FlyqlToken type="operator">{'>'}</FlyqlToken>).
+
+<FlyqlCode code={`in_stock and category in ['electronics', 'appliances'] and rating > 4.5`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={inStockPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={inStockGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={inStockJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [리스트](/ko/syntax/lists/) — `in` / `not in` 의미론.
+
+## 사용자 정의(비-SQL) 생성기를 만들기 위한 AST 순회
+
+SQL 생성기를 구동하는 동일한 파싱된 AST를 순회하여 어떤 대상도 생성할 수 있습니다 — JSON, Elasticsearch DSL, MongoDB 필터, 로그용 grep 명령 등. 이 레시피는 <FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} inline />를 순회하여 Elasticsearch Query DSL 객체를 생성합니다.
+
+<FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={astPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={astGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={astJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [AST 및 사용자 정의 생성기](/ko/advanced/ast/) — 전체 노드 타입 참조와 더 긴 워크스루.
+
+## IN 리스트 타입 일관성
+
+파서는 <FlyqlCode code={`[200, 'ok', 404]`} inline />와 같은 이종 리스트를 **항상** 받아들입니다. SQL 생성기는 (a) 컬럼이 선언된 타입을 가지고, (b) 키가 분할되지 않았으며, (c) 리스트가 동질일 때(`len(set(values_types)) == 1`)에만 타입 일관성 검사를 실행합니다. 이종 리스트, 분할된 키, 타입이 없는 컬럼은 모두 호출 지점에서 검사를 우회합니다.
+
+이 레시피는 타입이 지정된 컬럼에 대해 세 가지 경우를 보여줍니다: 동질 일치, 이종 우회, 그리고 표준 오류 `type mismatch in IN list: ...`를 발생시키는 동질 잘못된 타입 경우. 오류 텍스트는 Python, Go, JavaScript에서 동일합니다.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={listTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={listTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={listTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**참고:** [리스트 — IN 리스트 타입 일관성](/ko/syntax/lists/#in-리스트-타입-일관성) — 전체 호환성 맵과 검증기 의미론.

@@ -167,15 +167,6 @@ function functionCallToSQL(fc, tz) {
     }
 }
 
-function isNumber(value) {
-    if (typeof value === 'number') return true
-    if (typeof value === 'bigint') return true
-    if (typeof value === 'string') {
-        return !isNaN(parseFloat(value)) || !isNaN(parseInt(value, 10))
-    }
-    return false
-}
-
 function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
     const columnName = expr.key.segments[0]
     const column = columns[columnName]
@@ -900,30 +891,6 @@ export function generateWhere(root, columns, registry = null, options = {}) {
 }
 
 // SELECT clause generation
-
-function parseRawSelectColumns(text) {
-    const result = []
-    for (let part of text.split(',')) {
-        part = part.trim()
-        if (!part) continue
-        const idx = part.toLowerCase().indexOf(' as ')
-        let name, alias
-        if (idx >= 0) {
-            name = part.substring(0, idx).trim()
-            const aliasRaw = part.substring(idx + 4).trim()
-            // Strip trailing renderer chain (`|renderer(args)...`) — renderers
-            // are UI-level metadata and have no effect on the emitted SQL.
-            const pipeIdx = aliasRaw.indexOf('|')
-            alias = pipeIdx >= 0 ? aliasRaw.substring(0, pipeIdx).trim() : aliasRaw
-        } else {
-            name = part
-            alias = ''
-        }
-        if (!name) throw new Error('empty column name')
-        result.push({ name, alias })
-    }
-    return result
-}
 
 function resolveColumn(key, columns) {
     for (let i = key.segments.length; i > 0; i--) {

@@ -24,11 +24,11 @@ export class Transformer {
         return []
     }
 
-    sql(dialect, columnRef, args = []) {
+    sql(dialect, columnRef, _args = []) {
         throw new Error('not implemented')
     }
 
-    apply(value, args = []) {
+    apply(value, _args = []) {
         throw new Error('not implemented')
     }
 }

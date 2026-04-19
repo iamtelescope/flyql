@@ -16,9 +16,10 @@ export default [
             },
         },
         rules: {
-            // Existing codebase predates enforcement; downgrade to warn so CI
-            // doesn't block on the initial lint wire-up. Follow-up to clean up.
-            'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            'no-unused-vars': [
+                'warn',
+                { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+            ],
             'no-console': 'off',
             'no-control-regex': 'warn',
             'no-useless-escape': 'warn',

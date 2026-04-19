@@ -13,7 +13,7 @@ export class Renderer {
         return {}
     }
 
-    diagnose(args, parsedColumn) {
+    diagnose(_args, _parsedColumn) {
         return []
     }
 }

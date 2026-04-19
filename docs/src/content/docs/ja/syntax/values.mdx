@@ -38,9 +38,21 @@ AST: `value_type: "bigint"`
 
 AST: `value_type: "float"`
 
+:::caution[文字列はクォートが必須]
+よくある間違い: <FlyqlCode code={`level = 'error'`} inline /> は**文字列** `error` にマッチしますが、<FlyqlCode code={`level = error`} inline /> は**カラム参照** `error`（つまり「`error` という名前のカラム」）にマッチします。FlyQL はクォート無しの識別子を黙って文字列に変換することはありません。
+
+| FlyQL | 意味 |
+|-------|------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` が文字列 `error` と等しい |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` が文字列 `error` と等しい（シングルクォートとダブルクォートは等価） |
+| <FlyqlCode code={`level = error`} inline /> | `level` が `error` という名前のカラムの値と等しい（カラム同士の比較） |
+
+クエリが無音で 0 件しか返さない、または `level = error_column_name` のような予期しない SQL が出ている場合、まず最初に確認すべき点です。カラム同士の比較形式については [カラム参照](#カラム参照) を参照してください。
+:::
+
 ### String
 
-クォート付きまたはクォートなしのテキスト値です。
+テキスト値はシングルクォートまたはダブルクォートで**必ずクォート**してください。クォートのない値はカラム参照として解釈され、文字列にはなりません。
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />

@@ -3,13 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { parse } from '../../../src/core/parser.js'
-import {
-    generateWhere,
-    generateSelect,
-    Column,
-    newColumn,
-    escapeParam,
-} from '../../../src/generators/starrocks/index.js'
+import { generateWhere, generateSelect, Column, newColumn } from '../../../src/generators/starrocks/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

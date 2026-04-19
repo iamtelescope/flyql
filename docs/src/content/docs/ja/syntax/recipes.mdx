@@ -1,0 +1,252 @@
+---
+title: クエリレシピ
+description: 演算子の組み合わせごとに parse → generate → run 例を備えた、よくある FlyQL クエリパターン。
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components'
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+import eqStatusPy from '@snippets/python/recipes/eq_status.py?raw'
+import eqStatusGo from '@snippets/go/recipes/eq_status/main.go?raw'
+import eqStatusJs from '@snippets/javascript/recipes/eq-status.mjs?raw'
+
+import activePriorityPy from '@snippets/python/recipes/active_priority_or_severity.py?raw'
+import activePriorityGo from '@snippets/go/recipes/active_priority_or_severity/main.go?raw'
+import activePriorityJs from '@snippets/javascript/recipes/active-priority-or-severity.mjs?raw'
+
+import priceQuantityPy from '@snippets/python/recipes/price_quantity.py?raw'
+import priceQuantityGo from '@snippets/go/recipes/price_quantity/main.go?raw'
+import priceQuantityJs from '@snippets/javascript/recipes/price-quantity.mjs?raw'
+
+import eventTypePy from '@snippets/python/recipes/event_type_in_or.py?raw'
+import eventTypeGo from '@snippets/go/recipes/event_type_in_or/main.go?raw'
+import eventTypeJs from '@snippets/javascript/recipes/event-type-in-or.mjs?raw'
+
+import enabledPy from '@snippets/python/recipes/enabled_not_suspended_last_login.py?raw'
+import enabledGo from '@snippets/go/recipes/enabled_not_suspended_last_login/main.go?raw'
+import enabledJs from '@snippets/javascript/recipes/enabled-not-suspended-last-login.mjs?raw'
+
+import errorRegexPy from '@snippets/python/recipes/error_not_warning_regex.py?raw'
+import errorRegexGo from '@snippets/go/recipes/error_not_warning_regex/main.go?raw'
+import errorRegexJs from '@snippets/javascript/recipes/error-not-warning-regex.mjs?raw'
+
+import pendingDuePy from '@snippets/python/recipes/pending_due_date_or_urgent.py?raw'
+import pendingDueGo from '@snippets/go/recipes/pending_due_date_or_urgent/main.go?raw'
+import pendingDueJs from '@snippets/javascript/recipes/pending-due-date-or-urgent.mjs?raw'
+
+import inStockPy from '@snippets/python/recipes/in_stock_category_rating.py?raw'
+import inStockGo from '@snippets/go/recipes/in_stock_category_rating/main.go?raw'
+import inStockJs from '@snippets/javascript/recipes/in-stock-category-rating.mjs?raw'
+
+import astPy from '@snippets/python/recipes/ast_custom_generator.py?raw'
+import astGo from '@snippets/go/recipes/ast_custom_generator/main.go?raw'
+import astJs from '@snippets/javascript/recipes/ast-custom-generator.mjs?raw'
+
+import listTypePy from '@snippets/python/recipes/list_type_consistency.py?raw'
+import listTypeGo from '@snippets/go/recipes/list_type_consistency/main.go?raw'
+import listTypeJs from '@snippets/javascript/recipes/list-type-consistency.mjs?raw'
+
+このページでは、よく使う 10 種類の FlyQL クエリパターンを紹介します。各レシピでは FlyQL クエリと、Python・Go・JavaScript 各言語の完全な **parse → generate → run** コード、そして関連リファレンスへの「関連項目」リンクを提示します。各スニペットは各言語の `snippets/recipes/` ディレクトリ配下の実ファイルで、単独で実行できます。
+
+## `status` フィールドが厳密に `200` のレコードを絞り込む
+
+シンプルな等価フィルタです。<FlyqlToken type="operator">=</FlyqlToken> の両辺は必須で、左に <FlyqlToken type="key">key</FlyqlToken>、右に <FlyqlToken type="value">value</FlyqlToken> を置きます。
+
+<FlyqlCode code={`status = 200`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eqStatusPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eqStatusGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eqStatusJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [比較演算子](/ja/syntax/operators/) — 全演算子のリスト。
+
+## アクティブで高優先度または重大度クリティカルなレコードを絞り込む
+
+truthy チェック（<FlyqlCode code={`active`} inline />）と括弧でくくった <FlyqlToken type="operator">or</FlyqlToken> グループの組み合わせです。括弧は必須で、付けないと既定の優先順位（<FlyqlToken type="operator">and</FlyqlToken> のほうが <FlyqlToken type="operator">or</FlyqlToken> より強く結合する）により意味が変わります。
+
+<FlyqlCode code={`active and (priority = 'high' or severity = 'critical')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={activePriorityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={activePriorityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={activePriorityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [真偽論理](/ja/syntax/boolean-logic/) — 優先順位ルールとグルーピング。
+
+## 価格が `50.00` 超かつ数量が `10` 以下のレコードを絞り込む
+
+`and` で結ばれた 2 つの数値範囲比較です。<FlyqlCode code={`50.00`} inline /> のような小数リテラルは float、<FlyqlCode code={`10`} inline /> のような整数リテラルは int として parse されます。
+
+<FlyqlCode code={`price > 50.00 and quantity <= 10`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={priceQuantityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={priceQuantityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={priceQuantityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [比較演算子](/ja/syntax/operators/) と [値と型](/ja/syntax/values/) — リテラル型のルール。
+
+## `event_type` が `'login'` または `'logout'` のレコード
+
+同じカラムに対する 2 つの等価チェックを <FlyqlToken type="operator">or</FlyqlToken> で結合します。<FlyqlCode code={`'login'`} inline /> と <FlyqlCode code={`'logout'`} inline /> を囲む**シングルクォートは必須**です。クォートが無いと FlyQL は <FlyqlCode code={`login`} inline /> をカラム参照として扱い、文字列リテラルとは見なしません。
+
+<FlyqlCode code={`event_type = 'login' or event_type = 'logout'`} />
+
+複数値のリストの場合は <FlyqlToken type="operator">in</FlyqlToken> 形式の方が好ましいです: <FlyqlCode code={`event_type in ['login', 'logout']`} inline />。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eventTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eventTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eventTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [値と型 — String](/ja/syntax/values/#string) — 文字列のクォートに関するルール。
+
+## 有効化済み・停止されておらず・最終ログインがあるアカウント
+
+`and` でつないだ 3 つの truthy/falsy 条件です。単独の key（演算子も値も無い）は [truthy チェック](/ja/syntax/values/) になります。<FlyqlCode code={`not suspended`} inline /> は truthy チェックを falsy チェックに反転します。
+
+<FlyqlCode code={`enabled and not suspended and last_login`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={enabledPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={enabledGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={enabledJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [値と型 — Truthy/Falsy](/ja/syntax/values/)。
+
+## `(?i)error` にマッチして `(?i)warning` にはマッチしないメッセージ
+
+正規表現マッチ（<FlyqlToken type="operator">{'~'}</FlyqlToken>）と非マッチ（<FlyqlToken type="operator">{'!~'}</FlyqlToken>）です。インラインフラグ `(?i)` で大文字小文字を区別しないマッチになります。
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={errorRegexPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={errorRegexGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={errorRegexJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [パターンマッチ](/ja/syntax/pattern-matching/) — 正規表現フラグ、エスケープ、方言ごとの注意点。
+
+## 期限切れまたは緊急の保留タスク
+
+<FlyqlCode code={`pending`} inline /> の truthy チェックと括弧でくくった <FlyqlToken type="operator">or</FlyqlToken> グループの組み合わせ。日付比較 <FlyqlCode code={`due_date < '2023-12-31'`} inline /> は ISO-8601 文字列リテラルを使います。ClickHouse・PostgreSQL・StarRocks はいずれも DB 側の境界で `DATE` 値に変換します。
+
+<FlyqlCode code={`pending and (due_date < '2023-12-31' or priority = 'urgent')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={pendingDuePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={pendingDueGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={pendingDueJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [日付](/ja/syntax/dates/) — 文字列リテラルと時間関数の使い分け。
+
+## 在庫があり、指定カテゴリで、評価が高い商品
+
+1 つのクエリに 3 種類の演算子を組み合わせた例: truthy チェック（<FlyqlCode code={`in_stock`} inline />）、リストメンバーシップ（<FlyqlToken type="operator">in</FlyqlToken>）、数値比較（<FlyqlToken type="operator">{'>'}</FlyqlToken>）。
+
+<FlyqlCode code={`in_stock and category in ['electronics', 'appliances'] and rating > 4.5`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={inStockPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={inStockGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={inStockJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [リスト](/ja/syntax/lists/) — `in` / `not in` のセマンティクス。
+
+## AST を辿ってカスタム（非 SQL）ジェネレータを実装する
+
+SQL ジェネレータが利用するのと同じ parse 済み AST を辿って、JSON、Elasticsearch DSL、MongoDB フィルタ、ログ用 grep コマンドなど、任意のターゲットを生成できます。このレシピは <FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} inline /> を辿って Elasticsearch Query DSL オブジェクトを生成します。
+
+<FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={astPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={astGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={astJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [AST とカスタムジェネレータ](/ja/advanced/ast/) — ノード型のフルリファレンスと詳細なウォークスルー。
+
+## IN リストの型整合性
+
+parser は <FlyqlCode code={`[200, 'ok', 404]`} inline /> のような異種型リストを **常に** 受け付けます。SQL ジェネレータが型整合性チェックを実行するのは (a) カラムに型が宣言されており、(b) key が分割されておらず、(c) リストが同質（`len(set(values_types)) == 1`）の場合 **のみ** です。異種型リスト、分割 key、型のないカラムはすべて呼び出し側でチェックをバイパスします。
+
+このレシピは型付きカラムに対して 3 つのケースを示します: 同質マッチ、異種型バイパス、そして同質だが型が誤っているケース（標準エラー `type mismatch in IN list: ...` をスローする）。エラー文字列は Python・Go・JavaScript で同一です。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={listTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={listTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={listTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**関連項目:** [リスト — IN リストの型整合性](/ja/syntax/lists/#in-リストの型整合性) — 互換性マップとバリデータの完全なセマンティクス。

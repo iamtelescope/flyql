@@ -11,6 +11,23 @@ A lightweight, injection-proof query language that parses human-readable filter 
 
 > **Pre-1.0 notice** — FlyQL is actively preparing for a stable 1.0.0 release. Until then, minor versions may contain breaking changes to the public API.
 
+## Common Query Patterns
+
+| Intent | FlyQL Query |
+|--------|-------------|
+| Filter by exact status | `status = 200` |
+| Active records, high priority or critical severity | `active and (priority = 'high' or severity = 'critical')` |
+| Numeric range filter | `price > 50.00 and quantity <= 10` |
+| String equality, either of two values | `event_type = 'login' or event_type = 'logout'` |
+| Truthy + negated truthy + truthy chain | `enabled and not suspended and last_login` |
+| Case-insensitive regex match, exclude another | `message ~ "(?i)error" and message !~ "(?i)warning"` |
+| Pending tasks past due or urgent | `pending and (due_date < '2023-12-31' or priority = 'urgent')` |
+| Truthy + IN-list + numeric | `in_stock and category in ['electronics', 'appliances'] and rating > 4.5` |
+| Walk the AST to emit a custom (non-SQL) generator | see [AST & Custom Generators](https://docs.flyql.dev/advanced/ast/) |
+| IN-list type consistency (homogeneous + heterogeneous) | `status in [200, 'ok', 404]` (validator is skipped — heterogeneous) |
+
+Full examples with parse → generate → run for each pattern: [Query Recipes](https://docs.flyql.dev/syntax/recipes/).
+
 ## Installation
 
 **Go:**

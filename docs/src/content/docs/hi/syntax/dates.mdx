@@ -1,0 +1,53 @@
+---
+title: दिनांक
+description: FlyQL में दिनांक और datetime तुलनाएँ — स्ट्रिंग लिटरल और टेम्पोरल फ़ंक्शन।
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL में दिनांक और datetime की तुलना के दो तरीके हैं: निरपेक्ष दिनांक के लिए **स्ट्रिंग लिटरल** और सापेक्ष समय विंडो के लिए **टेम्पोरल फ़ंक्शन**। क्वेरी के उद्देश्य से मेल खाने वाला चुनें।
+
+## स्ट्रिंग लिटरल के रूप में दिनांक
+
+एक दिनांक कॉलम की तुलना ISO-8601 स्ट्रिंग लिटरल से करें। ClickHouse, PostgreSQL और StarRocks सभी ISO-8601 स्ट्रिंग्स को डेटाबेस सीमा पर `DATE` / `DATETIME` मान में परिवर्तित करते हैं, इसलिए FlyQL स्तर पर किसी विशेष दिनांक कन्स्ट्रक्टर की आवश्यकता नहीं है।
+
+<FlyqlCode code={`due_date < '2023-12-31'`} />
+<FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
+<FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
+
+| कॉलम प्रकार | स्वीकार करता है | उत्पन्न तुलना |
+|-------------|-----------------|---------------|
+| ClickHouse `Date` / `DateTime` / `DateTime64` | ISO-8601 स्ट्रिंग | प्रत्यक्ष तुलना — ClickHouse निष्पादन समय पर लिटरल पार्स करता है |
+| PostgreSQL `date` / `timestamp` / `timestamptz` | ISO-8601 स्ट्रिंग | प्रत्यक्ष तुलना — PostgreSQL निष्पादन समय पर लिटरल कास्ट करता है |
+| StarRocks `DATE` / `DATETIME` | ISO-8601 स्ट्रिंग | प्रत्यक्ष तुलना — StarRocks निष्पादन समय पर लिटरल पार्स करता है |
+
+दिन का समय, समय-क्षेत्र ऑफसेट, और केवल-दिनांक रूप — ये सभी समर्थित हैं क्योंकि लिटरल को डेटाबेस स्वयं पार्स करता है।
+
+:::note[स्ट्रिंग्स को कोट किया जाना चाहिए]
+दिनांक लिटरल स्ट्रिंग्स हैं और उन्हें **अनिवार्य रूप से** कोट किया जाना चाहिए। बिना कोट के, FlyQL मान को कॉलम संदर्भ के रूप में व्याख्या करता है। <FlyqlCode code={`due_date < 2023-12-31`} inline /> को `2023` नामक कॉलम पर अंकगणित के रूप में पार्स किया जाएगा, दिनांक लिटरल के रूप में नहीं। देखें [मान और प्रकार — String](/hi/syntax/values/#string)।
+:::
+
+## टेम्पोरल फ़ंक्शन
+
+सापेक्ष समय क्वेरीज़ के लिए — "पिछले एक घंटे में", "इस सप्ताह की शुरुआत से", "आज से" — FlyQL अंतर्निहित टेम्पोरल फ़ंक्शन प्रदान करता है: <FlyqlCode code={`ago(...)`} inline />, <FlyqlCode code={`now()`} inline />, <FlyqlCode code={`today()`} inline /> और <FlyqlCode code={`startOf(...)`} inline />।
+
+<FlyqlCode code={`created_at > ago(1h)`} />
+<FlyqlCode code={`updated_at >= ago(7d)`} />
+<FlyqlCode code={`expires_at < now()`} />
+<FlyqlCode code={`event_time > startOf('day')`} />
+<FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
+
+पूरी व्याकरण (इकाइयाँ, क्रम नियम, समय-क्षेत्र तर्क) [मान और प्रकार — टेम्पोरल फ़ंक्शन](/hi/syntax/values/) में शामिल है।
+
+## कब क्या उपयोग करें
+
+| उद्देश्य | उपयोग करें | उदाहरण |
+|---------|-----------|--------|
+| एक निश्चित कैलेंडर तिथि या टाइमस्टैम्प से तुलना | स्ट्रिंग लिटरल | <FlyqlCode code={`due_date < '2023-12-31'`} inline /> |
+| एक स्लाइडिंग समय विंडो से तुलना | <FlyqlCode code={`ago()`} inline /> | <FlyqlCode code={`created_at > ago(1h)`} inline /> |
+| वर्तमान क्षण से तुलना | <FlyqlCode code={`now()`} inline /> | <FlyqlCode code={`expires_at < now()`} inline /> |
+| आज से तुलना (समय-क्षेत्र-जागरूक) | <FlyqlCode code={`today()`} inline /> | <FlyqlCode code={`scheduled_for = today('UTC')`} inline /> |
+| दिन/सप्ताह/महीने की शुरुआत से तुलना | <FlyqlCode code={`startOf()`} inline /> | <FlyqlCode code={`event_time > startOf('week')`} inline /> |
+
+स्ट्रिंग लिटरल स्थिर रहते हैं — एक ही क्वेरी स्ट्रिंग दिन-प्रतिदिन समान SQL देती है। टेम्पोरल फ़ंक्शन निष्पादन समय पर मूल्यांकित होते हैं, इसलिए वही FlyQL क्वेरी हर बार चलने पर अलग समय विंडो उत्पन्न करती है।

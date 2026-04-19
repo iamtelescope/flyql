@@ -1,0 +1,53 @@
+---
+title: Fechas
+description: Comparaciones de fecha y datetime en FlyQL — literales string y funciones temporales.
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL ofrece dos formas de comparar contra fechas y datetimes: **literales string** para fechas absolutas y **funciones temporales** para ventanas de tiempo relativas. Elige la que coincida con la intención de la consulta.
+
+## Fecha como literal string
+
+Compara una columna de fecha con un literal string en formato ISO-8601. ClickHouse, PostgreSQL y StarRocks convierten todos los strings ISO-8601 en valores `DATE` / `DATETIME` en el límite de la base de datos, así que no se necesita ningún constructor de fecha especial a nivel FlyQL.
+
+<FlyqlCode code={`due_date < '2023-12-31'`} />
+<FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
+<FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
+
+| Tipo de columna | Acepta | Comparación generada |
+|-----------------|--------|----------------------|
+| ClickHouse `Date` / `DateTime` / `DateTime64` | String ISO-8601 | Comparación directa — ClickHouse parsea el literal en tiempo de ejecución |
+| PostgreSQL `date` / `timestamp` / `timestamptz` | String ISO-8601 | Comparación directa — PostgreSQL convierte el literal en tiempo de ejecución |
+| StarRocks `DATE` / `DATETIME` | String ISO-8601 | Comparación directa — StarRocks parsea el literal en tiempo de ejecución |
+
+La hora del día, los offsets de zona horaria y las formas de solo fecha están todos soportados porque la base de datos es la que parsea el literal.
+
+:::note[Los strings deben ir entre comillas]
+Los literales de fecha son strings y **deben** ir entre comillas. Sin comillas, FlyQL interpreta el valor como una referencia a columna. <FlyqlCode code={`due_date < 2023-12-31`} inline /> se parsearía como aritmética sobre una columna llamada `2023`, no como un literal de fecha. Ver [Valores y tipos — String](/es/syntax/values/#string).
+:::
+
+## Funciones temporales
+
+Para consultas de tiempo relativo — "en la última hora", "desde el inicio de esta semana", "desde hoy" — FlyQL provee funciones temporales integradas: <FlyqlCode code={`ago(...)`} inline />, <FlyqlCode code={`now()`} inline />, <FlyqlCode code={`today()`} inline /> y <FlyqlCode code={`startOf(...)`} inline />.
+
+<FlyqlCode code={`created_at > ago(1h)`} />
+<FlyqlCode code={`updated_at >= ago(7d)`} />
+<FlyqlCode code={`expires_at < now()`} />
+<FlyqlCode code={`event_time > startOf('day')`} />
+<FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
+
+La gramática completa (unidades, reglas de orden, argumentos de zona horaria) está cubierta en [Valores y tipos — Funciones temporales](/es/syntax/values/).
+
+## Cuándo usar cada una
+
+| Intención | Usa | Ejemplo |
+|-----------|-----|---------|
+| Comparar con una fecha o timestamp fijo | Literal string | <FlyqlCode code={`due_date < '2023-12-31'`} inline /> |
+| Comparar con una ventana de tiempo deslizante | <FlyqlCode code={`ago()`} inline /> | <FlyqlCode code={`created_at > ago(1h)`} inline /> |
+| Comparar con el momento actual | <FlyqlCode code={`now()`} inline /> | <FlyqlCode code={`expires_at < now()`} inline /> |
+| Comparar con hoy (con zona horaria) | <FlyqlCode code={`today()`} inline /> | <FlyqlCode code={`scheduled_for = today('UTC')`} inline /> |
+| Comparar con el inicio del día/semana/mes | <FlyqlCode code={`startOf()`} inline /> | <FlyqlCode code={`event_time > startOf('week')`} inline /> |
+
+Los literales string permanecen constantes — la misma cadena de consulta devuelve el mismo SQL día tras día. Las funciones temporales se evalúan en tiempo de ejecución, así que la misma consulta FlyQL produce una ventana de tiempo diferente cada vez que se ejecuta.

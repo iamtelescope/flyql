@@ -1,0 +1,252 @@
+---
+title: Recettes de requêtes
+description: Modèles courants de requêtes FlyQL avec exemples parse → generate → run pour chaque combinaison d'opérateurs.
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components'
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+import eqStatusPy from '@snippets/python/recipes/eq_status.py?raw'
+import eqStatusGo from '@snippets/go/recipes/eq_status/main.go?raw'
+import eqStatusJs from '@snippets/javascript/recipes/eq-status.mjs?raw'
+
+import activePriorityPy from '@snippets/python/recipes/active_priority_or_severity.py?raw'
+import activePriorityGo from '@snippets/go/recipes/active_priority_or_severity/main.go?raw'
+import activePriorityJs from '@snippets/javascript/recipes/active-priority-or-severity.mjs?raw'
+
+import priceQuantityPy from '@snippets/python/recipes/price_quantity.py?raw'
+import priceQuantityGo from '@snippets/go/recipes/price_quantity/main.go?raw'
+import priceQuantityJs from '@snippets/javascript/recipes/price-quantity.mjs?raw'
+
+import eventTypePy from '@snippets/python/recipes/event_type_in_or.py?raw'
+import eventTypeGo from '@snippets/go/recipes/event_type_in_or/main.go?raw'
+import eventTypeJs from '@snippets/javascript/recipes/event-type-in-or.mjs?raw'
+
+import enabledPy from '@snippets/python/recipes/enabled_not_suspended_last_login.py?raw'
+import enabledGo from '@snippets/go/recipes/enabled_not_suspended_last_login/main.go?raw'
+import enabledJs from '@snippets/javascript/recipes/enabled-not-suspended-last-login.mjs?raw'
+
+import errorRegexPy from '@snippets/python/recipes/error_not_warning_regex.py?raw'
+import errorRegexGo from '@snippets/go/recipes/error_not_warning_regex/main.go?raw'
+import errorRegexJs from '@snippets/javascript/recipes/error-not-warning-regex.mjs?raw'
+
+import pendingDuePy from '@snippets/python/recipes/pending_due_date_or_urgent.py?raw'
+import pendingDueGo from '@snippets/go/recipes/pending_due_date_or_urgent/main.go?raw'
+import pendingDueJs from '@snippets/javascript/recipes/pending-due-date-or-urgent.mjs?raw'
+
+import inStockPy from '@snippets/python/recipes/in_stock_category_rating.py?raw'
+import inStockGo from '@snippets/go/recipes/in_stock_category_rating/main.go?raw'
+import inStockJs from '@snippets/javascript/recipes/in-stock-category-rating.mjs?raw'
+
+import astPy from '@snippets/python/recipes/ast_custom_generator.py?raw'
+import astGo from '@snippets/go/recipes/ast_custom_generator/main.go?raw'
+import astJs from '@snippets/javascript/recipes/ast-custom-generator.mjs?raw'
+
+import listTypePy from '@snippets/python/recipes/list_type_consistency.py?raw'
+import listTypeGo from '@snippets/go/recipes/list_type_consistency/main.go?raw'
+import listTypeJs from '@snippets/javascript/recipes/list-type-consistency.mjs?raw'
+
+Cette page rassemble dix modèles courants de requêtes FlyQL. Chaque recette montre la requête FlyQL, puis le code complet **parse → generate → run** en Python, Go et JavaScript, avec un lien « Voir aussi » vers la page de référence pertinente. Chaque snippet est un fichier réel dans le répertoire `snippets/recipes/` de chaque langage et peut être exécuté en autonomie.
+
+## Filtrer les enregistrements où `status` vaut exactement `200`
+
+Un simple filtre d'égalité. Les deux côtés de <FlyqlToken type="operator">=</FlyqlToken> sont obligatoires — la <FlyqlToken type="key">clé</FlyqlToken> à gauche et la <FlyqlToken type="value">valeur</FlyqlToken> à droite.
+
+<FlyqlCode code={`status = 200`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eqStatusPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eqStatusGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eqStatusJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Opérateurs de comparaison](/fr/syntax/operators/) pour la liste complète des opérateurs.
+
+## Filtrer les enregistrements actifs avec une priorité élevée ou une gravité critique
+
+Une vérification de truthy (<FlyqlCode code={`active`} inline />) combinée à un groupe <FlyqlToken type="operator">or</FlyqlToken> entre parenthèses. Les parenthèses sont obligatoires : sans elles, la précédence par défaut (<FlyqlToken type="operator">and</FlyqlToken> se lie plus fort que <FlyqlToken type="operator">or</FlyqlToken>) changerait le sens.
+
+<FlyqlCode code={`active and (priority = 'high' or severity = 'critical')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={activePriorityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={activePriorityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={activePriorityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Logique booléenne](/fr/syntax/boolean-logic/) pour les règles de précédence et le regroupement.
+
+## Filtrer les enregistrements avec un prix supérieur à `50.00` et une quantité d'au plus `10`
+
+Deux comparaisons numériques de plage reliées par <FlyqlToken type="operator">and</FlyqlToken>. Les littéraux décimaux comme <FlyqlCode code={`50.00`} inline /> sont parsés comme des float ; les littéraux entiers comme <FlyqlCode code={`10`} inline /> comme des int.
+
+<FlyqlCode code={`price > 50.00 and quantity <= 10`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={priceQuantityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={priceQuantityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={priceQuantityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Opérateurs de comparaison](/fr/syntax/operators/) et [Valeurs et types](/fr/syntax/values/) pour les règles de typage des littéraux.
+
+## Filtrer les enregistrements où `event_type` est `'login'` ou `'logout'`
+
+Deux vérifications d'égalité contre la même colonne reliées par <FlyqlToken type="operator">or</FlyqlToken>. Notez les **guillemets simples obligatoires** autour de <FlyqlCode code={`'login'`} inline /> et <FlyqlCode code={`'logout'`} inline /> : sans guillemets, FlyQL interpréterait <FlyqlCode code={`login`} inline /> comme une référence de colonne, et non comme un littéral chaîne.
+
+<FlyqlCode code={`event_type = 'login' or event_type = 'logout'`} />
+
+Pour les listes de valeurs, préférez la forme <FlyqlToken type="operator">in</FlyqlToken> : <FlyqlCode code={`event_type in ['login', 'logout']`} inline />.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eventTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eventTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eventTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Valeurs et types — String](/fr/syntax/values/#string) pour la règle de mise entre guillemets des chaînes.
+
+## Filtrer les comptes activés, non suspendus, avec une dernière connexion
+
+Trois conditions truthy/falsy chaînées avec <FlyqlToken type="operator">and</FlyqlToken>. Une clé seule (sans opérateur ni valeur) est une [vérification de truthy](/fr/syntax/values/) ; <FlyqlCode code={`not suspended`} inline /> retourne la vérification de truthy en vérification de falsy.
+
+<FlyqlCode code={`enabled and not suspended and last_login`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={enabledPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={enabledGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={enabledJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Valeurs et types — Truthy/Falsy](/fr/syntax/values/).
+
+## Messages qui correspondent à `(?i)error` mais pas à `(?i)warning`
+
+Correspondance regex (<FlyqlToken type="operator">{'~'}</FlyqlToken>) et non-correspondance regex (<FlyqlToken type="operator">{'!~'}</FlyqlToken>). Le drapeau inline `(?i)` rend la correspondance insensible à la casse.
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={errorRegexPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={errorRegexGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={errorRegexJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Correspondance de motifs](/fr/syntax/pattern-matching/) pour les drapeaux regex, l'échappement et les notes de dialecte.
+
+## Tâches en attente, en retard ou urgentes
+
+Une vérification truthy sur <FlyqlCode code={`pending`} inline /> combinée à un groupe <FlyqlToken type="operator">or</FlyqlToken> entre parenthèses. La comparaison de date <FlyqlCode code={`due_date < '2023-12-31'`} inline /> utilise un littéral chaîne ISO-8601 ; ClickHouse, PostgreSQL et StarRocks le convertissent tous en valeur `DATE` à la frontière de la base de données.
+
+<FlyqlCode code={`pending and (due_date < '2023-12-31' or priority = 'urgent')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={pendingDuePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={pendingDueGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={pendingDueJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Dates](/fr/syntax/dates/) pour la sémantique des littéraux chaîne vs. fonctions temporelles.
+
+## Filtrer les produits en stock, dans les catégories sélectionnées, avec une note élevée
+
+Combine trois types d'opérateurs dans une seule requête : une vérification truthy (<FlyqlCode code={`in_stock`} inline />), l'appartenance à une liste (<FlyqlToken type="operator">in</FlyqlToken>) et une comparaison numérique (<FlyqlToken type="operator">{'>'}</FlyqlToken>).
+
+<FlyqlCode code={`in_stock and category in ['electronics', 'appliances'] and rating > 4.5`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={inStockPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={inStockGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={inStockJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Listes](/fr/syntax/lists/) pour la sémantique de `in` / `not in`.
+
+## Parcourir l'AST pour émettre un générateur personnalisé (non SQL)
+
+Le même AST analysé qui alimente les générateurs SQL peut être parcouru pour produire n'importe quelle cible — JSON, Elasticsearch DSL, filtres MongoDB, commandes grep pour les logs, et ainsi de suite. Cette recette parcourt <FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} inline /> et émet un objet Elasticsearch Query DSL.
+
+<FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={astPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={astGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={astJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [AST et générateurs personnalisés](/fr/advanced/ast/) pour la référence complète des types de nœuds et un parcours plus détaillé.
+
+## Cohérence des types dans les listes IN
+
+Le parser accepte **toujours** les listes hétérogènes comme <FlyqlCode code={`[200, 'ok', 404]`} inline />. Les générateurs SQL exécutent la vérification de cohérence des types **uniquement** lorsque (a) la colonne a un type déclaré, (b) la clé n'est pas segmentée et (c) la liste est homogène (`len(set(values_types)) == 1`). Les listes hétérogènes, les clés segmentées et les colonnes sans type contournent toutes la vérification au site d'appel.
+
+La recette démontre trois cas contre des colonnes typées : une correspondance homogène, un contournement hétérogène et un cas homogène avec un mauvais type qui lance l'erreur canonique `type mismatch in IN list: ...`. Le texte de l'erreur est identique en Python, Go et JavaScript.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={listTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={listTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={listTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**Voir aussi :** [Listes — Cohérence des types dans les listes IN](/fr/syntax/lists/#cohérence-des-types-dans-les-listes-in) pour la carte complète de compatibilité et la sémantique du validateur.

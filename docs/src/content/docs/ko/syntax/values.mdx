@@ -38,6 +38,18 @@ AST: `value_type: "bigint"`
 
 AST: `value_type: "float"`
 
+:::caution[문자열은 따옴표가 필수]
+흔한 실수: <FlyqlCode code={`level = 'error'`} inline />는 **문자열** `error`와 일치하지만, <FlyqlCode code={`level = error`} inline />는 **컬럼 참조** `error`(즉, "`error`라는 이름의 컬럼")와 일치합니다. FlyQL은 따옴표 없는 식별자를 절대 조용히 문자열로 변환하지 않습니다.
+
+| FlyQL | 의미 |
+|-------|------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level`이 문자열 `error`와 같음 |
+| <FlyqlCode code={`level = "error"`} inline /> | `level`이 문자열 `error`와 같음 (작은따옴표와 큰따옴표는 동일) |
+| <FlyqlCode code={`level = error`} inline /> | `level`이 `error`라는 이름의 컬럼 값과 같음 (컬럼-컬럼 비교) |
+
+쿼리가 조용히 결과 0을 반환하거나 `level = error_column_name` 같은 예상치 못한 SQL을 생성한다면, 가장 먼저 확인해야 할 점입니다. 컬럼-컬럼 비교 형태에 대해서는 [컬럼 참조](#컬럼-참조)를 참조하세요.
+:::
+
 ### String
 
 텍스트 값은 작은따옴표나 큰따옴표로 **반드시 감싸야 합니다**. 따옴표 없는 값은 문자열이 아니라 컬럼 참조로 해석됩니다.

@@ -38,6 +38,18 @@ Nombres avec un point decimal :
 
 AST : `value_type: "float"`
 
+:::caution[Les chaînes doivent être entre guillemets]
+Une erreur fréquente : <FlyqlCode code={`level = 'error'`} inline /> correspond à la **chaîne** `error`, mais <FlyqlCode code={`level = error`} inline /> correspond à la **référence de colonne** `error` (c'est-à-dire « la colonne nommée `error` »). FlyQL ne convertit jamais silencieusement un identifiant non quoté en chaîne.
+
+| FlyQL | Signification |
+|-------|---------------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` égale la chaîne `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` égale la chaîne `error` (les guillemets simples et doubles sont équivalents) |
+| <FlyqlCode code={`level = error`} inline /> | `level` égale la valeur de la colonne nommée `error` (comparaison colonne-à-colonne) |
+
+Si une requête renvoie silencieusement zéro résultat ou produit du SQL inattendu comme `level = error_column_name`, c'est la première chose à vérifier. Voir [Référence de colonne](#référence-de-colonne) pour la forme de comparaison colonne-à-colonne.
+:::
+
 ### String
 
 Les valeurs textuelles **doivent etre entre guillemets** simples ou doubles. Les valeurs sans guillemets sont interpretees comme des references de colonne, pas comme des chaines.

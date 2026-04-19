@@ -2,24 +2,9 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import {
-    parse,
-    Key,
-    Expression,
-    Node,
-    Column,
-    diagnose,
-    Diagnostic,
-    CODE_UNKNOWN_COLUMN,
-    CODE_UNKNOWN_TRANSFORMER,
-    CODE_ARG_COUNT,
-    CODE_ARG_TYPE,
-    CODE_CHAIN_TYPE,
-    CODE_INVALID_AST,
-    Range,
-} from '../../src/index.js'
+import { parse, Key, Expression, Node, Column, diagnose, CODE_INVALID_AST, Range } from '../../src/index.js'
 import { ColumnSchema } from '../../src/core/column.js'
-import { ArgSpec, Transformer, TransformerRegistry, defaultRegistry } from '../../src/transformers/index.js'
+import { ArgSpec, Transformer, defaultRegistry } from '../../src/transformers/index.js'
 import { Type } from '../../src/flyql_type.js'
 import { Column as CHColumn } from '../../src/generators/clickhouse/column.js'
 

@@ -38,6 +38,18 @@ Numbers with a decimal point:
 
 AST: `value_type: "float"`
 
+:::caution[Strings must be quoted]
+A common mistake: <FlyqlCode code={`level = 'error'`} inline /> matches the **string** `error`, but <FlyqlCode code={`level = error`} inline /> matches the **column reference** `error` (i.e. "the column named `error`"). FlyQL never silently coerces an unquoted identifier into a string.
+
+| FlyQL | What it means |
+|-------|---------------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` equals the string `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` equals the string `error` (single and double quotes are equivalent) |
+| <FlyqlCode code={`level = error`} inline /> | `level` equals the value of the column named `error` (column-to-column comparison) |
+
+If a query is silently producing zero results or unexpected SQL like `level = error_column_name`, this is the first thing to check. See [Column Reference](#column-reference) for the column-to-column comparison form.
+:::
+
 ### String
 
 Text values **must be quoted** using single or double quotes. Unquoted values are interpreted as column references, not strings.

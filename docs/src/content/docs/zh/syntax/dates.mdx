@@ -1,0 +1,53 @@
+---
+title: 日期
+description: FlyQL 中的日期与日期时间比较——字符串字面量与时间函数。
+---
+
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+FlyQL 提供两种比较日期/日期时间的方式：用于绝对日期的**字符串字面量**，以及用于相对时间窗口的**时间函数**。根据查询的语义选择合适的方式。
+
+## 字符串字面量形式的日期
+
+把日期列与 ISO-8601 格式的字符串字面量做比较。ClickHouse、PostgreSQL 与 StarRocks 都会在数据库端把 ISO-8601 字符串强制转换为 `DATE` / `DATETIME` 值，因此 FlyQL 层不需要任何专门的日期构造函数。
+
+<FlyqlCode code={`due_date < '2023-12-31'`} />
+<FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
+<FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
+
+| 列类型 | 接受 | 生成的比较 |
+|--------|------|------------|
+| ClickHouse `Date` / `DateTime` / `DateTime64` | ISO-8601 字符串 | 直接比较——ClickHouse 在执行时解析字面量 |
+| PostgreSQL `date` / `timestamp` / `timestamptz` | ISO-8601 字符串 | 直接比较——PostgreSQL 在执行时强制转换字面量 |
+| StarRocks `DATE` / `DATETIME` | ISO-8601 字符串 | 直接比较——StarRocks 在执行时解析字面量 |
+
+时间部分、时区偏移、纯日期形式都受支持，因为字面量是由数据库本身解析的。
+
+:::note[字符串必须加引号]
+日期字面量本质上是字符串，**必须**加引号。如果不加引号，FlyQL 会把它当作列引用。<FlyqlCode code={`due_date < 2023-12-31`} inline /> 会被解析为对名为 `2023` 的列做算术运算，而不是日期字面量。参见[值与类型 — String](/zh/syntax/values/#string)。
+:::
+
+## 时间函数
+
+对于相对时间查询——"过去一小时"、"本周开始至今"、"自今天起"——FlyQL 提供内置的时间函数：<FlyqlCode code={`ago(...)`} inline />、<FlyqlCode code={`now()`} inline />、<FlyqlCode code={`today()`} inline /> 与 <FlyqlCode code={`startOf(...)`} inline />。
+
+<FlyqlCode code={`created_at > ago(1h)`} />
+<FlyqlCode code={`updated_at >= ago(7d)`} />
+<FlyqlCode code={`expires_at < now()`} />
+<FlyqlCode code={`event_time > startOf('day')`} />
+<FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
+
+完整的语法（单位、顺序规则、时区参数）请参见[值与类型 — 时间函数](/zh/syntax/values/#时间函数)。
+
+## 何时选择哪种方式
+
+| 意图 | 使用 | 示例 |
+|------|------|------|
+| 与固定的日历日期或时间戳比较 | 字符串字面量 | <FlyqlCode code={`due_date < '2023-12-31'`} inline /> |
+| 与滑动时间窗口比较 | <FlyqlCode code={`ago()`} inline /> | <FlyqlCode code={`created_at > ago(1h)`} inline /> |
+| 与当前时刻比较 | <FlyqlCode code={`now()`} inline /> | <FlyqlCode code={`expires_at < now()`} inline /> |
+| 与今天比较（带时区） | <FlyqlCode code={`today()`} inline /> | <FlyqlCode code={`scheduled_for = today('UTC')`} inline /> |
+| 与某天/某周/某月的开始比较 | <FlyqlCode code={`startOf()`} inline /> | <FlyqlCode code={`event_time > startOf('week')`} inline /> |
+
+字符串字面量保持不变——同一条查询语句日复一日返回同样的 SQL。时间函数在执行时计算，因此同一条 FlyQL 查询每次运行都会得到不同的时间窗口。

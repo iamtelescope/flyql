@@ -16,7 +16,7 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 ## 语法规则
 
 - 值必须写在方括号 <FlyqlToken type="operator">[ ]</FlyqlToken> 中，并使用逗号分隔
-- 同一个列表中的值必须类型一致
+- 同一个列表中的值可以是不同类型：<FlyqlCode code={`[200, 'ok', true, null]`} inline />
 - 字符串值必须带引号：<FlyqlCode code={`['a', 'b', 'c']`} inline />
 - 数字值不带引号：<FlyqlCode code={`[1, 2, 3]`} inline />
 - 逗号和括号两侧允许空格
@@ -45,20 +45,59 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 空的 <FlyqlToken type="operator">not in</FlyqlToken> 列表恒为 true -- 所有值都"not in"空列表。
 
-## 类型一致性
+## 混合类型
 
-列表中的值必须保持统一类型。混用字符串和数字会触发解析错误：
+列表支持异构值——可以混合字符串、数字、布尔值与 null：
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-以下是无效的（混合类型 -- 解析错误）：
+解析后的表达式中，每个元素都在 `valuesTypes` 数组里携带自己的类型（例如 `["int", "string", "bool", "null"]`）。空列表的 `valuesTypes` 为 `null`。
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+SQL 生成器在处理列表时会校验列表值类型是否与目标列类型兼容。例如，把字符串值传给数值列会在 SQL 生成阶段抛出验证错误。
 
-解析器会记录列表第一个值的类型，并拒绝后续不一致的值。这个约束在解析阶段就会生效。
+## IN 列表类型一致性
 
-SQL 生成器还会进一步校验列表值是否与目标列类型兼容。例如，把字符串列表传给数值列时，会在 SQL 生成阶段抛出验证错误。
+解析器**始终**接受异构列表——类型校验只发生在 SQL 生成器中，而不是解析器。每个生成器（ClickHouse、PostgreSQL、StarRocks）在抛出错误之前都会应用同一套两层跳过逻辑。
+
+### 第 1 层 — 调用点门禁
+
+调用验证器之前，生成器会检查三个条件：
+
+1. 列**声明了类型**（`column.flyqlType()` 非空且不是 `Unknown`）。
+2. 键**不是分段的**（单段键如 `category`，而不是 `meta.category`）。
+3. 列表是**同质的**——所有元素具有相同的值类型（Python 中 `len(set(values_types)) == 1`；JavaScript 中 `new Set(valuesTypes).size === 1`；Go 中等价）。
+
+如果**任何一个**条件不满足，验证器会被完全跳过，SQL 按原样生成。异构列表会通过；针对无类型列的列表会通过；针对分段键（JSON 路径、数组索引）的列表也会通过。
+
+### 第 2 层 — 元素检查
+
+当调用点门禁通过后，验证器会遍历每个元素，并在第一个不兼容的值上抛出错误，依据如下兼容性表：
+
+| 列类型 | 允许的元素类型 |
+|--------|----------------|
+| `String` | `string` |
+| `Int` | `int`、`float` |
+| `Float` | `int`、`float` |
+| `Bool` | `bool`、`int` |
+| `Date` | `string` |
+
+其他列类型（`Array`、`Map`、`JSON`、`JSONString`、`Struct`、`Duration`、`Unknown`）不在表中，会静默跳过元素检查。
+
+### 错误文本
+
+验证失败时，三种实现都会抛出**完全相同**的错误消息：
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+具体地：
+
+- Python：`FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go：`errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript：`new Error("type mismatch in IN list: int column cannot contain string values")`
+
+子串 `type mismatch in IN list:` 在三种语言与三种 SQL 方言中都是稳定的，因此可以安全地用 grep 搜索。
+
+要查看完整的端到端示例（同质匹配、异构绕过、同质类型不匹配），请参见[配方 — IN 列表类型一致性](/zh/syntax/recipes/#in-列表类型一致性)。
 
 ## 列表中的参数
 

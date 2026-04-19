@@ -55,6 +55,50 @@ Jedes Element trägt seinen eigenen Typ im `valuesTypes`-Array des geparsten Aus
 
 Wenn ein SQL-Generator eine Liste verarbeitet, prüft er, ob die Werttypen der Liste mit dem Typ der Zielspalte kompatibel sind. Werden beispielsweise String-Werte an eine numerische Spalte übergeben, führt das bei der SQL-Generierung zu einem Validierungsfehler.
 
+## Typkonsistenz in IN-Listen
+
+Der Parser akzeptiert **immer** heterogene Listen — die Typvalidierung lebt in den SQL-Generatoren, nicht im Parser. Jeder Generator (ClickHouse, PostgreSQL, StarRocks) wendet dieselbe zweistufige Skip-Logik an, bevor er einen Fehler auslöst.
+
+### Stufe 1 — Aufrufstellen-Gate
+
+Vor dem Aufruf des Validators prüft der Generator drei Bedingungen:
+
+1. Die Spalte hat einen **deklarierten Typ** (`column.flyqlType()` ist nicht leer und nicht `Unknown`).
+2. Der Schlüssel ist **nicht segmentiert** (ein einzelnes Segment wie `category`, nicht `meta.category`).
+3. Die Liste ist **homogen** — jedes Element hat denselben Werttyp (`len(set(values_types)) == 1` in Python; `new Set(valuesTypes).size === 1` in JavaScript; analog in Go).
+
+Wenn **eine** dieser Bedingungen nicht erfüllt ist, wird der Validator vollständig übersprungen, und SQL wird unverändert generiert. Heterogene Listen passieren. Listen gegen untypisierte Spalten passieren. Listen gegen segmentierte Schlüssel (JSON-Pfade, Array-Indizes) passieren.
+
+### Stufe 2 — Element-Prüfung
+
+Wenn das Aufrufstellen-Gate passiert ist, iteriert der Validator über jedes Element und löst beim ersten inkompatiblen Wert aus, gemäß dieser Kompatibilitätsmatrix:
+
+| Spaltentyp | Erlaubte Elementtypen |
+|------------|-----------------------|
+| `String`   | `string`              |
+| `Int`      | `int`, `float`        |
+| `Float`    | `int`, `float`        |
+| `Bool`     | `bool`, `int`         |
+| `Date`     | `string`              |
+
+Andere Spaltentypen (`Array`, `Map`, `JSON`, `JSONString`, `Struct`, `Duration`, `Unknown`) sind nicht in der Matrix und überspringen die Element-Prüfung stillschweigend.
+
+### Der Fehlertext
+
+Bei fehlgeschlagener Validierung lösen alle drei Implementierungen die **identische** Fehlermeldung aus:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+Konkret:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+Der Teilstring `type mismatch in IN list:` ist über alle drei Sprachen und alle drei SQL-Dialekte stabil und kann sicher gegrept werden.
+
+Eine ausführbare End-zu-End-Demonstration aller drei Fälle (homogener Match, heterogener Bypass, homogener Falsch-Typ-Fehler) findest du unter [Rezepte — Typkonsistenz in IN-Listen](/de/syntax/recipes/#typkonsistenz-in-in-listen).
+
 ## Parameter in Listen
 
 Parameter-Platzhalter können innerhalb von IN-Listen auftreten und frei mit Literalwerten gemischt werden:

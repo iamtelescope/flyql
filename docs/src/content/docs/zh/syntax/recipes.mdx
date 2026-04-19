@@ -1,0 +1,252 @@
+---
+title: 查询配方
+description: 常见的 FlyQL 查询模式，每个模式都附有 parse → generate → run 示例。
+---
+
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components'
+import FlyqlCode from '../../../../components/FlyqlCode.astro'
+import FlyqlToken from '../../../../components/FlyqlToken.astro'
+
+import eqStatusPy from '@snippets/python/recipes/eq_status.py?raw'
+import eqStatusGo from '@snippets/go/recipes/eq_status/main.go?raw'
+import eqStatusJs from '@snippets/javascript/recipes/eq-status.mjs?raw'
+
+import activePriorityPy from '@snippets/python/recipes/active_priority_or_severity.py?raw'
+import activePriorityGo from '@snippets/go/recipes/active_priority_or_severity/main.go?raw'
+import activePriorityJs from '@snippets/javascript/recipes/active-priority-or-severity.mjs?raw'
+
+import priceQuantityPy from '@snippets/python/recipes/price_quantity.py?raw'
+import priceQuantityGo from '@snippets/go/recipes/price_quantity/main.go?raw'
+import priceQuantityJs from '@snippets/javascript/recipes/price-quantity.mjs?raw'
+
+import eventTypePy from '@snippets/python/recipes/event_type_in_or.py?raw'
+import eventTypeGo from '@snippets/go/recipes/event_type_in_or/main.go?raw'
+import eventTypeJs from '@snippets/javascript/recipes/event-type-in-or.mjs?raw'
+
+import enabledPy from '@snippets/python/recipes/enabled_not_suspended_last_login.py?raw'
+import enabledGo from '@snippets/go/recipes/enabled_not_suspended_last_login/main.go?raw'
+import enabledJs from '@snippets/javascript/recipes/enabled-not-suspended-last-login.mjs?raw'
+
+import errorRegexPy from '@snippets/python/recipes/error_not_warning_regex.py?raw'
+import errorRegexGo from '@snippets/go/recipes/error_not_warning_regex/main.go?raw'
+import errorRegexJs from '@snippets/javascript/recipes/error-not-warning-regex.mjs?raw'
+
+import pendingDuePy from '@snippets/python/recipes/pending_due_date_or_urgent.py?raw'
+import pendingDueGo from '@snippets/go/recipes/pending_due_date_or_urgent/main.go?raw'
+import pendingDueJs from '@snippets/javascript/recipes/pending-due-date-or-urgent.mjs?raw'
+
+import inStockPy from '@snippets/python/recipes/in_stock_category_rating.py?raw'
+import inStockGo from '@snippets/go/recipes/in_stock_category_rating/main.go?raw'
+import inStockJs from '@snippets/javascript/recipes/in-stock-category-rating.mjs?raw'
+
+import astPy from '@snippets/python/recipes/ast_custom_generator.py?raw'
+import astGo from '@snippets/go/recipes/ast_custom_generator/main.go?raw'
+import astJs from '@snippets/javascript/recipes/ast-custom-generator.mjs?raw'
+
+import listTypePy from '@snippets/python/recipes/list_type_consistency.py?raw'
+import listTypeGo from '@snippets/go/recipes/list_type_consistency/main.go?raw'
+import listTypeJs from '@snippets/javascript/recipes/list-type-consistency.mjs?raw'
+
+本页面汇集了十个常见的 FlyQL 查询模式。每个配方都展示 FlyQL 查询语句，以及 Python、Go 和 JavaScript 的完整 **parse → generate → run** 代码，并提供指向相关参考页的"参见"链接。每段代码都是各语言 `snippets/recipes/` 目录下的真实文件，可以独立运行。
+
+## 过滤 `status` 字段恰好为 `200` 的记录
+
+简单的等值过滤。<FlyqlToken type="operator">=</FlyqlToken> 两侧都是必需的：左边是<FlyqlToken type="key">键</FlyqlToken>，右边是<FlyqlToken type="value">值</FlyqlToken>。
+
+<FlyqlCode code={`status = 200`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eqStatusPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eqStatusGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eqStatusJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [比较操作符](/zh/syntax/operators/) — 完整的操作符列表。
+
+## 活跃且高优先级或严重程度紧急的记录
+
+真值检查（<FlyqlCode code={`active`} inline />）与带括号的 <FlyqlToken type="operator">or</FlyqlToken> 组合。括号是必需的：没有括号，默认优先级（<FlyqlToken type="operator">and</FlyqlToken> 比 <FlyqlToken type="operator">or</FlyqlToken> 结合得更紧）会改变语义。
+
+<FlyqlCode code={`active and (priority = 'high' or severity = 'critical')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={activePriorityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={activePriorityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={activePriorityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [布尔逻辑](/zh/syntax/boolean-logic/) — 优先级规则与分组。
+
+## 价格大于 `50.00` 且数量不超过 `10` 的记录
+
+两个数值范围比较通过 <FlyqlToken type="operator">and</FlyqlToken> 连接。带小数点的字面量如 <FlyqlCode code={`50.00`} inline /> 会被解析为浮点数；整数字面量如 <FlyqlCode code={`10`} inline /> 会被解析为整数。
+
+<FlyqlCode code={`price > 50.00 and quantity <= 10`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={priceQuantityPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={priceQuantityGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={priceQuantityJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [比较操作符](/zh/syntax/operators/#数值比较) 与[值与类型](/zh/syntax/values/) — 字面量类型规则。
+
+## `event_type` 等于 `'login'` 或 `'logout'` 的记录
+
+对同一列做两次等值比较，通过 <FlyqlToken type="operator">or</FlyqlToken> 连接。注意 <FlyqlCode code={`'login'`} inline /> 和 <FlyqlCode code={`'logout'`} inline /> 周围的**单引号是必需的**：没有引号，FlyQL 会把 <FlyqlCode code={`login`} inline /> 当作列引用，而不是字符串字面量。
+
+<FlyqlCode code={`event_type = 'login' or event_type = 'logout'`} />
+
+对于多值列表，更推荐 <FlyqlToken type="operator">in</FlyqlToken> 形式：<FlyqlCode code={`event_type in ['login', 'logout']`} inline />。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={eventTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={eventTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={eventTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [值与类型 — String](/zh/syntax/values/#string) — 字符串引号规则。
+
+## 启用、未被暂停且设置了上次登录的账户
+
+三个真值/假值条件通过 <FlyqlToken type="operator">and</FlyqlToken> 连接。单独的键（没有操作符与值）就是[真值检查](/zh/syntax/values/#真值假值表达式)；<FlyqlCode code={`not suspended`} inline /> 把真值检查反转为假值检查。
+
+<FlyqlCode code={`enabled and not suspended and last_login`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={enabledPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={enabledGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={enabledJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [值与类型 — 真值/假值](/zh/syntax/values/#真值假值表达式)。
+
+## 匹配 `(?i)error` 但不匹配 `(?i)warning` 的消息
+
+正则匹配（<FlyqlToken type="operator">{'~'}</FlyqlToken>）与正则不匹配（<FlyqlToken type="operator">{'!~'}</FlyqlToken>）。内嵌标志 `(?i)` 让匹配不区分大小写。
+
+<FlyqlCode code={`message ~ "(?i)error" and message !~ "(?i)warning"`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={errorRegexPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={errorRegexGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={errorRegexJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [模式匹配](/zh/syntax/pattern-matching/) — 正则标志、转义与方言细节。
+
+## 已逾期或紧急的待办任务
+
+对 <FlyqlCode code={`pending`} inline /> 的真值检查与带括号的 <FlyqlToken type="operator">or</FlyqlToken> 组合。日期比较 <FlyqlCode code={`due_date < '2023-12-31'`} inline /> 使用 ISO-8601 格式的字符串字面量；ClickHouse、PostgreSQL 与 StarRocks 都会在数据库端把它强制转换为 `DATE` 值。
+
+<FlyqlCode code={`pending and (due_date < '2023-12-31' or priority = 'urgent')`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={pendingDuePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={pendingDueGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={pendingDueJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [日期](/zh/syntax/dates/) — 字符串字面量与时间函数的语义对比。
+
+## 有库存、属于指定类别且评分较高的商品
+
+在一个查询里组合三种操作符：真值检查（<FlyqlCode code={`in_stock`} inline />）、列表成员（<FlyqlToken type="operator">in</FlyqlToken>）与数值比较（<FlyqlToken type="operator">{'>'}</FlyqlToken>）。
+
+<FlyqlCode code={`in_stock and category in ['electronics', 'appliances'] and rating > 4.5`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={inStockPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={inStockGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={inStockJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [列表](/zh/syntax/lists/) — `in` / `not in` 语义。
+
+## 遍历 AST 实现自定义（非 SQL）生成器
+
+驱动 SQL 生成器的同一棵 AST，也可以遍历后输出任何目标——JSON、Elasticsearch DSL、MongoDB 过滤器、日志 grep 命令等等。本配方遍历 <FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} inline />，输出一个 Elasticsearch Query DSL 对象。
+
+<FlyqlCode code={`status = 200 and env in ['prod', 'staging']`} />
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={astPy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={astGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={astJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [AST 与自定义生成器](/zh/advanced/ast/) — 完整的节点类型参考与更详细的演练。
+
+## IN 列表的类型一致性
+
+解析器**始终**接受异构列表，例如 <FlyqlCode code={`[200, 'ok', 404]`} inline />。SQL 生成器**仅**在以下三个条件全部满足时才进行类型一致性检查：(a) 列声明了类型，(b) 键不是分段的，(c) 列表是同质的（`len(set(values_types)) == 1`）。异构列表、分段键以及无类型列都会在调用点直接绕过检查。
+
+本配方在带类型的列上演示三种情况：同质匹配、异构绕过，以及同质类型不匹配——后者会抛出标准错误 `type mismatch in IN list: ...`。Python、Go 与 JavaScript 中的错误文本完全相同。
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+<Code code={listTypePy.trim()} lang="python" />
+</TabItem>
+<TabItem label="Go">
+<Code code={listTypeGo.trim()} lang="go" />
+</TabItem>
+<TabItem label="JavaScript">
+<Code code={listTypeJs.trim()} lang="javascript" />
+</TabItem>
+</Tabs>
+
+**参见：** [列表 — IN 列表类型一致性](/zh/syntax/lists/#in-列表类型一致性) — 完整的兼容性表与验证器语义。

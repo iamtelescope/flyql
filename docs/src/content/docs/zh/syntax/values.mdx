@@ -38,9 +38,21 @@ AST：`value_type: "bigint"`
 
 AST：`value_type: "float"`
 
+:::caution[字符串必须加引号]
+一个常见错误：<FlyqlCode code={`level = 'error'`} inline /> 匹配**字符串** `error`，而 <FlyqlCode code={`level = error`} inline /> 匹配**列引用** `error`（即"名为 `error` 的那一列"）。FlyQL 不会悄悄把不带引号的标识符转成字符串。
+
+| FlyQL | 含义 |
+|-------|------|
+| <FlyqlCode code={`level = 'error'`} inline /> | `level` 等于字符串 `error` |
+| <FlyqlCode code={`level = "error"`} inline /> | `level` 等于字符串 `error`（单引号与双引号等价） |
+| <FlyqlCode code={`level = error`} inline /> | `level` 等于名为 `error` 的列的值（列与列的比较） |
+
+如果一条查询悄悄返回零结果，或者生成了形如 `level = error_column_name` 的奇怪 SQL，这是首先应当检查的地方。列与列的比较形式见[列引用](#列引用)。
+:::
+
 ### String
 
-文本值，可加引号也可不加：
+文本值**必须**用单引号或双引号包裹。不加引号的值会被解析为列引用，而不是字符串。
 
 <FlyqlCode code={`level = 'error'`} />
 <FlyqlCode code={`user = "John Doe"`} />

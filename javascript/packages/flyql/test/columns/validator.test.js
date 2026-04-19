@@ -7,15 +7,12 @@ import { Column, ColumnSchema } from '../../src/core/column.js'
 import {
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
-    CODE_ARG_COUNT,
-    CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
     CODE_UNKNOWN_RENDERER,
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     Diagnostic,
 } from '../../src/core/validator.js'
-import { defaultRegistry } from '../../src/transformers/registry.js'
 import { Range } from '../../src/core/range.js'
 import { Renderer, RendererRegistry, ArgSpec } from '../../src/renderers/index.js'
 import { Type, parseFlyQLType } from '../../src/flyql_type.js'
@@ -209,7 +206,7 @@ describe('Columns Validator', () => {
                 get argSchema() {
                     return [new ArgSpec(Type.String, true)]
                 }
-                diagnose(args, col) {
+                diagnose(args, _col) {
                     if (args && args[0] && !args[0].includes('{{value}}')) {
                         return [new Diagnostic(new Range(0, 1), 'href missing placeholder', 'warning', 'custom_href')]
                     }

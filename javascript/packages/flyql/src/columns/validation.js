@@ -3,8 +3,6 @@ export function validateColumns(columns, schema, options = {}) {
     const warnings = []
     const validatedColumns = []
 
-    const schemaColumnNames = Object.keys(schema || {})
-
     for (const column of columns) {
         const columnName = column.name.split('.')[0]
 

@@ -45,22 +45,59 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 空の <FlyqlToken type="operator">not in</FlyqlToken> リストは常に true です。すべてが空リストに「not in」です。
 
-## 型の整合性
+## 混在型
 
-リストには **同一型の値だけ** を含める必要があります。1 つのリストに型の異なる値を混在させると parse error になります。
+リストは異種値をサポートします。文字列・数値・真偽値・null を混在させることができます。
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-以下は無効です（型の混在 — parse error）:
+parse 済み expression の `valuesTypes` 配列に各要素の型が記録されます（例: `["int", "string", "bool", "null"]`）。空リストの場合、`valuesTypes` は `null` です。
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+SQL generator はリストを処理する際、リスト値の型が対象カラムの型と互換性があるかを検証します。たとえば数値カラムに文字列値を渡すと、SQL 生成時に validation error になります。
 
-parser はリストの先頭要素の型を記録し、以降に異なる型の値が現れた場合は拒否します。この検証は parse 時点で行われ、generator や matcher に到達する前にチェックされます。
+## IN リストの型整合性
 
-さらに SQL generator は、リスト内の値型が対象カラムの型と互換性があるかも検証します。たとえば数値カラムに文字列値を渡すと、SQL 生成時に validation error になります。
+parser は **常に** 異種型リストを受け付けます — 型検証は parser ではなく SQL generator に存在します。各 generator（ClickHouse、PostgreSQL、StarRocks）はエラーをスローする前に同じ二段階のスキップロジックを適用します。
 
-parse 済み expression の `valuesType` フィールドは、そのリストが `"string"` または `"number"` のどちらの値を含むかを示します。空リストの場合、`valuesType` は `null` です。
+### 第 1 層 — 呼び出し側ゲート
+
+validator を呼び出す前に、generator は次の 3 つの条件をチェックします:
+
+1. カラムに**宣言された型**がある（`column.flyqlType()` が空でも `Unknown` でもない）。
+2. key が**分割されていない**（`category` のような単一セグメント。`meta.category` ではない）。
+3. リストが**同質**である — 全要素が同じ値型を持つ（Python では `len(set(values_types)) == 1`、JavaScript では `new Set(valuesTypes).size === 1`、Go でも同様）。
+
+これらのうち**いずれか**が偽であれば、validator は完全にスキップされ、SQL はそのまま生成されます。異種型リスト、型のないカラムに対するリスト、分割 key（JSON パス、配列インデックス）に対するリストはすべて通過します。
+
+### 第 2 層 — 要素チェック
+
+呼び出し側ゲートを通過した場合、validator は各要素を反復して、次の互換性マップに従って最初の非互換値でエラーをスローします:
+
+| カラム型 | 許容される要素型 |
+|----------|------------------|
+| `String` | `string`         |
+| `Int`    | `int`、`float`   |
+| `Float`  | `int`、`float`   |
+| `Bool`   | `bool`、`int`    |
+| `Date`   | `string`         |
+
+その他のカラム型（`Array`、`Map`、`JSON`、`JSONString`、`Struct`、`Duration`、`Unknown`）はマップに無く、要素チェックを暗黙的にバイパスします。
+
+### エラー文字列
+
+検証に失敗した場合、3 つの実装すべてが**同一の**エラーメッセージをスローします:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+具体的には:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+サブストリング `type mismatch in IN list:` は 3 言語・3 SQL 方言で安定しているため、grep で安全に検索できます。
+
+3 ケース（同質マッチ、異種型バイパス、同質型違いエラー）の実行可能なエンドツーエンドのデモは、[レシピ — IN リストの型整合性](/ja/syntax/recipes/#in-リストの型整合性) を参照してください。
 
 ## リスト内のパラメータ
 

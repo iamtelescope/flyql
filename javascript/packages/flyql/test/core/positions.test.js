@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const FIXTURES_DIR = path.join(__dirname, '..', '..', '..', '..', '..', 'tests-data', 'core', 'parser', 'positions')
 
-const INDEX_RE = /^([^\[\]]+)(?:\[(\d+)\])?$/
+const INDEX_RE = /^([^[\]]+)(?:\[(\d+)\])?$/
 
 function snakeToCamel(s) {
     return s.replace(/_([a-z])/g, (_, c) => c.toUpperCase())

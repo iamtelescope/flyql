@@ -55,6 +55,50 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 SQL generator가 리스트를 처리할 때는, 리스트 값 타입이 대상 컬럼 타입과 호환되는지 검증합니다. 예를 들어 숫자 컬럼에 문자열 값을 넘기면 SQL 생성 중 validation error가 발생합니다.
 
+## IN 리스트 타입 일관성
+
+파서는 **항상** 이종 리스트를 받아들입니다 — 타입 검증은 파서가 아니라 SQL 생성기에 있습니다. 각 생성기(ClickHouse, PostgreSQL, StarRocks)는 오류를 발생시키기 전에 동일한 두 단계 스킵 로직을 적용합니다.
+
+### 1단계 — 호출 지점 게이트
+
+검증기를 호출하기 전에 생성기는 세 가지 조건을 확인합니다:
+
+1. 컬럼이 **선언된 타입**을 가짐 (`column.flyqlType()`이 비어 있지 않고 `Unknown`이 아님).
+2. 키가 **분할되지 않음** (`category` 같은 단일 세그먼트, `meta.category`가 아님).
+3. 리스트가 **동질**임 — 모든 요소가 같은 값 타입을 가짐 (Python에서 `len(set(values_types)) == 1`; JavaScript에서 `new Set(valuesTypes).size === 1`; Go에서 동등).
+
+이 조건들 중 **어느 하나라도** 거짓이면 검증기는 완전히 스킵되고 SQL은 그대로 생성됩니다. 이종 리스트는 통과합니다. 타입이 없는 컬럼에 대한 리스트는 통과합니다. 분할된 키(JSON 경로, 배열 인덱스)에 대한 리스트도 통과합니다.
+
+### 2단계 — 요소 검사
+
+호출 지점 게이트를 통과한 경우, 검증기는 각 요소를 반복하면서 다음 호환성 맵에 따라 첫 번째 비호환 값에서 오류를 발생시킵니다:
+
+| 컬럼 타입 | 허용되는 요소 타입 |
+|----------|------------------|
+| `String` | `string`         |
+| `Int`    | `int`, `float`   |
+| `Float`  | `int`, `float`   |
+| `Bool`   | `bool`, `int`    |
+| `Date`   | `string`         |
+
+다른 컬럼 타입(`Array`, `Map`, `JSON`, `JSONString`, `Struct`, `Duration`, `Unknown`)은 맵에 없으며 요소 검사를 조용히 건너뜁니다.
+
+### 오류 텍스트
+
+검증이 실패하면 세 구현 모두 **동일한** 오류 메시지를 발생시킵니다:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+구체적으로:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+부분 문자열 `type mismatch in IN list:`는 세 언어와 세 SQL 방언에서 안정적이므로 grep으로 안전하게 검색할 수 있습니다.
+
+세 가지 경우(동질 일치, 이종 우회, 동질 잘못된 타입 오류)에 대한 실행 가능한 엔드투엔드 데모는 [레시피 — IN 리스트 타입 일관성](/ko/syntax/recipes/#in-리스트-타입-일관성)을 참조하세요.
+
 ## 리스트 안의 파라미터
 
 파라미터 placeholder는 IN 리스트 안에서도 사용할 수 있으며, 리터럴 값과 자유롭게 섞어서 쓸 수 있습니다.

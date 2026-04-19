@@ -55,6 +55,50 @@ Each element carries its own type in the `valuesTypes` array on the parsed expre
 
 When a SQL generator processes a list, it validates that the list value types are compatible with the target column type. For example, passing string values to a numeric column will raise a validation error during SQL generation.
 
+## In-List Type Consistency
+
+The parser **always** accepts heterogeneous lists — type validation lives in the SQL generators, not the parser. Each generator (ClickHouse, PostgreSQL, StarRocks) applies the same two-layer skip logic before raising an error.
+
+### Layer 1 — call-site gate
+
+Before invoking the validator, the generator checks three conditions:
+
+1. The column has a **declared type** (`column.flyqlType()` is non-empty and not `Unknown`).
+2. The key is **not segmented** (a single-segment key like `category`, not `meta.category`).
+3. The list is **homogeneous** — every element has the same value type (`len(set(values_types)) == 1` in Python; `new Set(valuesTypes).size === 1` in JavaScript; equivalent in Go).
+
+If **any** of these is false, the validator is skipped entirely and SQL is generated as-is. Heterogeneous lists pass through. Lists against untyped columns pass through. Lists against segmented keys (JSON paths, array indices) pass through.
+
+### Layer 2 — element check
+
+When the call-site gate is satisfied, the validator iterates each element and raises on the first incompatible value, per this compatibility map:
+
+| Column type | Allowed element types |
+|-------------|-----------------------|
+| `String`    | `string`              |
+| `Int`       | `int`, `float`        |
+| `Float`     | `int`, `float`        |
+| `Bool`      | `bool`, `int`         |
+| `Date`      | `string`              |
+
+Other column types (`Array`, `Map`, `JSON`, `JSONString`, `Struct`, `Duration`, `Unknown`) are not in the map and silently bypass the element check.
+
+### The error string
+
+When validation fails, all three implementations raise the **identical** error message:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+Concretely:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+The substring `type mismatch in IN list:` is stable across all three languages and all three SQL dialects, so it is safe to grep for.
+
+For a runnable end-to-end demonstration of all three cases (homogeneous match, heterogeneous bypass, homogeneous wrong-type error), see [Recipes — IN-list Type Consistency](/syntax/recipes/#in-list-type-consistency).
+
 ## Parameters in Lists
 
 Parameter placeholders can appear inside IN-lists, mixed freely with literal values:

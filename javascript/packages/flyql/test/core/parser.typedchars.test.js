@@ -269,6 +269,7 @@ describe('Parser typedChars functionality', () => {
         // while names are ASCII. Any future multi-byte / surrogate-pair
         // name would silently mis-align the window. Fail loudly instead.
         for (const name of KNOWN_FUNCTIONS) {
+            // eslint-disable-next-line no-control-regex -- the test asserts ASCII-only via the literal \x00-\x7F range
             expect(/^[\x00-\x7F]+$/.test(name), `${name} must be ASCII-only`).toBe(true)
         }
     })

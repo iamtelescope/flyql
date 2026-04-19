@@ -150,10 +150,12 @@ export default defineConfig({
             "syntax/pattern-matching",
             "syntax/lists",
             "syntax/values",
+            "syntax/dates",
             "syntax/nested-keys",
             "syntax/transformers",
             "syntax/renderers",
             "syntax/parameters",
+            "syntax/recipes",
           ],
         },
         {

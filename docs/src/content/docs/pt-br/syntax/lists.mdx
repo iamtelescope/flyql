@@ -45,22 +45,59 @@ Uma lista <FlyqlToken type="operator">in</FlyqlToken> vazia é sempre falsa — 
 
 Uma lista <FlyqlToken type="operator">not in</FlyqlToken> vazia é sempre verdadeira — tudo está "fora" de uma lista vazia.
 
-## Consistência de Tipos
+## Tipos Mistos
 
-As listas **devem** conter valores de um tipo uniforme — todos strings ou todos números. Misturar tipos em uma única lista causa um erro de análise:
+As listas suportam valores heterogêneos — você pode misturar strings, números, booleanos e null:
 
-<FlyqlCode code={`status in [200, 201, 204]`} />
-<FlyqlCode code={`env in ['prod', 'staging']`} />
+<FlyqlCode code={`field in [200, 'ok', true, null]`} />
 
-O seguinte é inválido (tipos misturados — erro de análise):
+Cada elemento carrega seu próprio tipo no array `valuesTypes` da expressão analisada (por exemplo, `["int", "string", "bool", "null"]`). Para listas vazias, `valuesTypes` é `null`.
 
-<FlyqlCode code={`values in [200, 'ok']`} />
+Quando um gerador SQL processa uma lista, ele valida que os tipos dos valores da lista são compatíveis com o tipo da coluna de destino. Por exemplo, passar valores de string para uma coluna numérica gerará um erro de validação durante a geração do SQL.
 
-O analisador rastreia o tipo do primeiro valor na lista e rejeita qualquer valor subsequente de um tipo diferente. Isso é aplicado em tempo de análise, antes que a consulta chegue a qualquer gerador ou matcher.
+## Consistência de Tipos em Listas IN
 
-Quando um gerador SQL processa uma lista, ele também valida que os tipos dos valores da lista são compatíveis com o tipo da coluna de destino. Por exemplo, passar valores de string para uma coluna numérica gerará um erro de validação durante a geração do SQL.
+O parser **sempre** aceita listas heterogêneas — a validação de tipos vive nos geradores SQL, não no parser. Cada gerador (ClickHouse, PostgreSQL, StarRocks) aplica a mesma lógica de salto em duas camadas antes de lançar um erro.
 
-O campo `valuesType` na expressão analisada indica se a lista contém valores `"string"` ou `"number"`. Para listas vazias, `valuesType` é `null`.
+### Camada 1 — verificação no local da chamada
+
+Antes de invocar o validador, o gerador verifica três condições:
+
+1. A coluna tem um **tipo declarado** (`column.flyqlType()` não está vazio e não é `Unknown`).
+2. A chave **não é segmentada** (um único segmento como `category`, não `meta.category`).
+3. A lista é **homogênea** — todos os elementos têm o mesmo tipo de valor (`len(set(values_types)) == 1` em Python; `new Set(valuesTypes).size === 1` em JavaScript; equivalente em Go).
+
+Se **alguma** dessas condições for falsa, o validador é completamente ignorado e o SQL é gerado tal qual. Listas heterogêneas passam. Listas contra colunas sem tipo passam. Listas contra chaves segmentadas (caminhos JSON, índices de array) passam.
+
+### Camada 2 — verificação de elementos
+
+Quando a verificação no local da chamada é satisfeita, o validador itera sobre cada elemento e lança no primeiro valor incompatível, segundo este mapa de compatibilidade:
+
+| Tipo de coluna | Tipos de elemento permitidos |
+|----------------|------------------------------|
+| `String`       | `string`                     |
+| `Int`          | `int`, `float`               |
+| `Float`        | `int`, `float`               |
+| `Bool`         | `bool`, `int`                |
+| `Date`         | `string`                     |
+
+Outros tipos de coluna (`Array`, `Map`, `JSON`, `JSONString`, `Struct`, `Duration`, `Unknown`) não estão no mapa e contornam silenciosamente a verificação de elementos.
+
+### O texto do erro
+
+Quando a validação falha, as três implementações lançam a mensagem de erro **idêntica**:
+
+<FlyqlCode code={`type mismatch in IN list: {column_type} column cannot contain {value_type} values`} />
+
+Concretamente:
+
+- Python: `FlyqlError("type mismatch in IN list: int column cannot contain string values")`
+- Go: `errors.New("type mismatch in IN list: int column cannot contain string values")`
+- JavaScript: `new Error("type mismatch in IN list: int column cannot contain string values")`
+
+A subcadeia `type mismatch in IN list:` é estável nas três linguagens e nos três dialetos SQL, sendo seguro fazer grep por ela.
+
+Para uma demonstração end-to-end executável dos três casos (correspondência homogênea, bypass heterogêneo, erro de tipo errado homogêneo), veja [Receitas — Consistência de Tipos em Listas IN](/pt-br/syntax/recipes/#consistência-de-tipos-em-listas-in).
 
 ## Parâmetros em Listas
 

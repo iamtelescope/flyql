@@ -943,34 +943,6 @@ export function generateWhere(root, columns, registry = null, options = {}) {
 
 // SELECT clause generation
 
-function parseRawSelectColumns(text) {
-    const parts = text.split(',')
-    const result = []
-    for (let part of parts) {
-        part = part.trim()
-        if (!part) continue
-        const lower = part.toLowerCase()
-        const idx = lower.indexOf(' as ')
-        let name, alias
-        if (idx >= 0) {
-            name = part.substring(0, idx).trim()
-            const aliasRaw = part.substring(idx + 4).trim()
-            // Strip trailing renderer chain (`|renderer(args)...`) — renderers
-            // are UI-level metadata and have no effect on the emitted SQL.
-            const pipeIdx = aliasRaw.indexOf('|')
-            alias = pipeIdx >= 0 ? aliasRaw.substring(0, pipeIdx).trim() : aliasRaw
-        } else {
-            name = part
-            alias = ''
-        }
-        if (!name) {
-            throw new Error('empty column name')
-        }
-        result.push({ name, alias })
-    }
-    return result
-}
-
 function resolveColumn(key, columns) {
     const segments = key.segments
     for (let i = segments.length; i > 0; i--) {

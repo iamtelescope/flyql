@@ -97,7 +97,7 @@
       "name": "int_equals_and_greater",
       "input": "status = 1 and status > 2",
       "expected_result": "success",
-      "expected_sql": "(`status` = 1 AND `status` > 2)"
+      "expected_sql": "`status` = 1 AND `status` > 2"
     }
   ]
 }

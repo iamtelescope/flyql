@@ -17,6 +17,7 @@ from flyql.core.constants import (
 )
 from flyql.core.tree import Node
 
+from flyql.generators._paren import wrap_child
 from flyql.generators.starrocks.column import Column
 from flyql.generators.starrocks.helpers import (
     validate_operation,
@@ -1032,18 +1033,24 @@ def _find_single_leaf_expression(node: Optional[Node]) -> Optional[Expression]:
     return None
 
 
-def to_sql_where(
+def _walk_where(
     root: Node,
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
     default_timezone: str = "UTC",
-) -> str:
+) -> Tuple[str, str]:
+    """Recursive WHERE-tree walker returning ``(sql_text, effective_op)``.
+
+    ``effective_op`` is ``""`` for leaves and NOT-wrapped subtrees (atoms);
+    otherwise it is the node's bool operator, or the propagated child op in
+    a degenerate single-branch wrapper.
     """
-    Returns Starrocks WHERE clause for given tree and columns
-    """
-    left = ""
-    right = ""
+    left_text = ""
+    left_op = ""
+    right_text = ""
+    right_op = ""
     text = ""
+    effective_op = ""
     is_negated = getattr(root, "negated", False)
 
     if root.expression is not None:
@@ -1068,10 +1075,13 @@ def to_sql_where(
         child = root.left if root.left is not None else root.right
         leaf_expr = _find_single_leaf_expression(child)
         if leaf_expr is not None and leaf_expr.operator == Operator.TRUTHY.value:
-            return falsy_expression_to_sql_where(expression=leaf_expr, columns=columns)
+            return (
+                falsy_expression_to_sql_where(expression=leaf_expr, columns=columns),
+                "",
+            )
 
     if root.left is not None:
-        left = to_sql_where(
+        left_text, left_op = _walk_where(
             root=root.left,
             columns=columns,
             registry=registry,
@@ -1079,24 +1089,42 @@ def to_sql_where(
         )
 
     if root.right is not None:
-        right = to_sql_where(
+        right_text, right_op = _walk_where(
             root=root.right,
             columns=columns,
             registry=registry,
             default_timezone=default_timezone,
         )
 
-    if len(left) > 0 and len(right) > 0:
+    if left_text and right_text:
         validate_bool_operator(root.bool_operator)
-        text = f"({left} {BOOL_OP_TO_SQL[root.bool_operator]} {right})"
-    elif len(left) > 0:
-        text = left
-    elif len(right) > 0:
-        text = right
+        parent_op = root.bool_operator
+        left_sql = wrap_child(left_text, left_op, parent_op)
+        right_sql = wrap_child(right_text, right_op, parent_op)
+        text = f"{left_sql} {BOOL_OP_TO_SQL[parent_op]} {right_sql}"
+        effective_op = parent_op
+    elif left_text:
+        text, effective_op = left_text, left_op
+    elif right_text:
+        text, effective_op = right_text, right_op
 
     if is_negated and text:
         text = f"NOT ({text})"
+        effective_op = ""
 
+    return text, effective_op
+
+
+def to_sql_where(
+    root: Node,
+    columns: Mapping[str, Column],
+    registry: Optional[TransformerRegistry] = None,
+    default_timezone: str = "UTC",
+) -> str:
+    """
+    Returns Starrocks WHERE clause for given tree and columns
+    """
+    text, _ = _walk_where(root, columns, registry, default_timezone)
     return text
 
 

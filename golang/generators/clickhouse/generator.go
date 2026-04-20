@@ -9,6 +9,7 @@ import (
 
 	flyql "github.com/iamtelescope/flyql/golang"
 	"github.com/iamtelescope/flyql/golang/flyqltype"
+	"github.com/iamtelescope/flyql/golang/generators/common"
 	"github.com/iamtelescope/flyql/golang/literal"
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
@@ -1553,19 +1554,27 @@ func findSingleLeafExpression(node *flyql.Node) *flyql.Expression {
 }
 
 func ToSQLWhereWithOptions(root *flyql.Node, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
-	return toSQLWhereInternal(root, columns, options, registry...)
+	text, _, err := toSQLWhereInternal(root, columns, options, registry...)
+	return text, err
 }
 
 func ToSQLWhere(root *flyql.Node, columns map[string]*Column, registry ...*transformers.TransformerRegistry) (string, error) {
-	return toSQLWhereInternal(root, columns, nil, registry...)
+	text, _, err := toSQLWhereInternal(root, columns, nil, registry...)
+	return text, err
 }
 
-func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, error) {
+// toSQLWhereInternal walks the WHERE tree and returns (text, effectiveOp, err).
+// effectiveOp is "" for leaves and NOT-wrapped subtrees (atoms); otherwise it
+// is the node's bool operator, or the propagated child op in a degenerate
+// single-branch wrapper. Used by common.WrapChild at the parent combine step
+// to decide whether to add parens.
+func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (string, string, error) {
 	if root == nil {
-		return "", nil
+		return "", "", nil
 	}
 
 	var text string
+	var effectiveOp string
 	isNegated := root.Negated
 
 	if root.Expression != nil {
@@ -1573,14 +1582,14 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 		if isNegated && root.Expression.Operator == flyql.OpTruthy {
 			sql, err := falsyExpressionToSQLWhere(root.Expression, columns)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			text = sql
 			isNegated = false // Already handled
 		} else {
 			sql, err := ExpressionToSQLWhereWithOptions(root.Expression, columns, options, registry...)
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
 			text = sql
 		}
@@ -1590,41 +1599,52 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 			child = root.Right
 		}
 		if leafExpr := findSingleLeafExpression(child); leafExpr != nil && leafExpr.Operator == flyql.OpTruthy {
-			return falsyExpressionToSQLWhere(leafExpr, columns)
+			sql, err := falsyExpressionToSQLWhere(leafExpr, columns)
+			if err != nil {
+				return "", "", err
+			}
+			return sql, "", nil
 		}
 	}
 
-	var left, right string
+	var left, right, leftOp, rightOp string
 	var err error
 
 	if root.Left != nil {
-		left, err = toSQLWhereInternal(root.Left, columns, options, registry...)
+		left, leftOp, err = toSQLWhereInternal(root.Left, columns, options, registry...)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
 	if root.Right != nil {
-		right, err = toSQLWhereInternal(root.Right, columns, options, registry...)
+		right, rightOp, err = toSQLWhereInternal(root.Right, columns, options, registry...)
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
 	}
 
 	if left != "" && right != "" {
 		if err := validateBoolOperator(root.BoolOperator); err != nil {
-			return "", err
+			return "", "", err
 		}
-		text = fmt.Sprintf("(%s %s %s)", left, boolOpToSQL[root.BoolOperator], right)
+		parentOp := root.BoolOperator
+		leftSQL := common.WrapChild(left, leftOp, parentOp)
+		rightSQL := common.WrapChild(right, rightOp, parentOp)
+		text = fmt.Sprintf("%s %s %s", leftSQL, boolOpToSQL[parentOp], rightSQL)
+		effectiveOp = parentOp
 	} else if left != "" {
 		text = left
+		effectiveOp = leftOp
 	} else if right != "" {
 		text = right
+		effectiveOp = rightOp
 	}
 
 	if isNegated && text != "" {
 		text = fmt.Sprintf("NOT (%s)", text)
+		effectiveOp = ""
 	}
 
-	return text, nil
+	return text, effectiveOp, nil
 }

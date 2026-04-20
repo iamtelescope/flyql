@@ -55,19 +55,22 @@
       "name": "in_with_and",
       "input": "status in [200, 201] and name='john'",
       "expected_result": "success",
-      "expected_sql": "(\"status\" IN (200, 201) AND \"name\" = 'john')"
+      "expected_sql": "\"status\" IN (200, 201) AND \"name\" = 'john'"
     },
     {
       "name": "in_with_or",
       "input": "status in [200, 201] or error",
       "expected_result": "success",
-      "expected_sql": "(\"status\" IN (200, 201) OR (\"error\" IS NOT NULL AND \"error\" != ''))"
+      "expected_sql": "\"status\" IN (200, 201) OR (\"error\" IS NOT NULL AND \"error\" != '')"
     },
     {
       "name": "in_jsonb_column",
       "input": "jsonb_column.status in [200, 201]",
       "expected_result": "success",
-      "expected_sql_contains": ["->>", "IN (200, 201)"]
+      "expected_sql_contains": [
+        "->>",
+        "IN (200, 201)"
+      ]
     },
     {
       "name": "in_type_mismatch_string_with_int",

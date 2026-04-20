@@ -55,7 +55,7 @@
       "name": "has_with_and",
       "input": "message has 'hello' and tags has 'important'",
       "expected_result": "success",
-      "expected_sql": "(position('hello' in \"message\") > 0 AND 'important' = ANY(\"tags\"))"
+      "expected_sql": "position('hello' in \"message\") > 0 AND 'important' = ANY(\"tags\")"
     },
     {
       "name": "has_unknown_column",

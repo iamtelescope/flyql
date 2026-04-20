@@ -37,25 +37,25 @@
       "name": "truthy_and_truthy",
       "input": "active and enabled",
       "expected_result": "success",
-      "expected_sql": "(\"active\" AND \"enabled\")"
+      "expected_sql": "\"active\" AND \"enabled\""
     },
     {
       "name": "truthy_or_truthy",
       "input": "active or enabled",
       "expected_result": "success",
-      "expected_sql": "(\"active\" OR \"enabled\")"
+      "expected_sql": "\"active\" OR \"enabled\""
     },
     {
       "name": "truthy_and_comparison",
       "input": "active and status=200",
       "expected_result": "success",
-      "expected_sql": "(\"active\" AND \"status\" = 200)"
+      "expected_sql": "\"active\" AND \"status\" = 200"
     },
     {
       "name": "comparison_and_truthy",
       "input": "status=200 and active",
       "expected_result": "success",
-      "expected_sql": "(\"status\" = 200 AND \"active\")"
+      "expected_sql": "\"status\" = 200 AND \"active\""
     },
     {
       "name": "truthy_grouped",
@@ -67,13 +67,13 @@
       "name": "truthy_grouped_and",
       "input": "(active and enabled)",
       "expected_result": "success",
-      "expected_sql": "(\"active\" AND \"enabled\")"
+      "expected_sql": "\"active\" AND \"enabled\""
     },
     {
       "name": "mixed_type_truthy",
       "input": "active and message and status",
       "expected_result": "success",
-      "expected_sql": "((\"active\" AND (\"message\" IS NOT NULL AND \"message\" != '')) AND (\"status\" IS NOT NULL AND \"status\" != 0))"
+      "expected_sql": "\"active\" AND (\"message\" IS NOT NULL AND \"message\" != '') AND (\"status\" IS NOT NULL AND \"status\" != 0)"
     }
   ]
 }

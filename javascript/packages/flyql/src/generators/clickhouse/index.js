@@ -7,6 +7,7 @@ import { parseKey } from '../../core/key.js'
 import { parse as parseColumns } from '../../columns/index.js'
 import { validateOperation, validateInListTypes } from './helpers.js'
 import { applyTransformerSQL, validateTransformerChain } from '../transformerHelpers.js'
+import { wrapChild } from '../paren.js'
 import { defaultRegistry } from '../../transformers/index.js'
 import { Column, newColumn, normalizeClickHouseType } from './column.js'
 import { Column as FCol, ColumnSchema } from '../../core/column.js'
@@ -1032,12 +1033,14 @@ function findSingleLeafExpression(node) {
     return null
 }
 
-export function generateWhere(root, columns, registry = null, options = {}) {
-    if (!root) {
-        return ''
-    }
-
+// Recursive WHERE-tree walker that returns [text, effectiveOp].
+// effectiveOp is '' for leaves and NOT-wrapped subtrees (atoms); otherwise
+// it is the node's bool operator, or the propagated child op in a
+// degenerate single-branch wrapper. Used by wrapChild at the parent
+// combine step to decide whether to add parens.
+function walkWhere(root, columns, registry, options) {
     let text = ''
+    let effectiveOp = ''
     let isNegated = root.negated
 
     if (root.expression) {
@@ -1051,34 +1054,52 @@ export function generateWhere(root, columns, registry = null, options = {}) {
         const child = root.left || root.right
         const leafExpr = findSingleLeafExpression(child)
         if (leafExpr && leafExpr.operator === Operator.TRUTHY) {
-            return falsyExpressionToSQL(leafExpr, columns)
+            return [falsyExpressionToSQL(leafExpr, columns), '']
         }
     }
 
-    let left = ''
-    let right = ''
+    let leftText = ''
+    let leftOp = ''
+    let rightText = ''
+    let rightOp = ''
 
     if (root.left) {
-        left = generateWhere(root.left, columns, registry, options)
+        ;[leftText, leftOp] = walkWhere(root.left, columns, registry, options)
     }
 
     if (root.right) {
-        right = generateWhere(root.right, columns, registry, options)
+        ;[rightText, rightOp] = walkWhere(root.right, columns, registry, options)
     }
 
-    if (left && right) {
+    if (leftText && rightText) {
         validateBoolOperator(root.boolOperator)
-        text = `(${left} ${boolOpToSQL[root.boolOperator]} ${right})`
-    } else if (left) {
-        text = left
-    } else if (right) {
-        text = right
+        const parentOp = root.boolOperator
+        const leftSQL = wrapChild(leftText, leftOp, parentOp)
+        const rightSQL = wrapChild(rightText, rightOp, parentOp)
+        text = `${leftSQL} ${boolOpToSQL[parentOp]} ${rightSQL}`
+        effectiveOp = parentOp
+    } else if (leftText) {
+        // Degenerate single-branch wrapper: propagate child op upward.
+        text = leftText
+        effectiveOp = leftOp
+    } else if (rightText) {
+        text = rightText
+        effectiveOp = rightOp
     }
 
     if (isNegated && text) {
         text = `NOT (${text})`
+        effectiveOp = ''
     }
 
+    return [text, effectiveOp]
+}
+
+export function generateWhere(root, columns, registry = null, options = {}) {
+    if (!root) {
+        return ''
+    }
+    const [text] = walkWhere(root, columns, registry, options)
     return text
 }
 

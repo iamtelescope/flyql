@@ -55,7 +55,7 @@
       "name": "has_with_and",
       "input": "message has 'hello' and tags has 'important'",
       "expected_result": "success",
-      "expected_sql": "(INSTR(`message`, 'hello') > 0 AND array_contains(`tags`, 'important'))"
+      "expected_sql": "INSTR(`message`, 'hello') > 0 AND array_contains(`tags`, 'important')"
     },
     {
       "name": "has_unknown_column",

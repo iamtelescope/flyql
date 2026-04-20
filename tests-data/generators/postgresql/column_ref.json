@@ -79,7 +79,9 @@
       "name": "segmented_jsonb_column_rhs",
       "input": "jsonb_column.field=message",
       "expected_result": "success",
-      "expected_sql_contains": ["\"jsonb_column\"->>'field' = \"message\""]
+      "expected_sql_contains": [
+        "\"jsonb_column\"->>'field' = \"message\""
+      ]
     },
     {
       "name": "segmented_hstore_column_rhs",

@@ -1,0 +1,166 @@
+---
+title: फ़ॉर्मैटेड आउटपुट
+description: ClickHouse, PostgreSQL, और StarRocks में WHERE व SELECT क्लॉज़ के लिए वैकल्पिक व्हाइटस्पेस फ़ॉर्मैटिंग
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+डिफ़ॉल्ट रूप से जनरेटर एकल-पंक्ति SQL आउटपुट देते हैं। मानव-पठनीय पूर्वावलोकन और डीबग लॉग के लिए, `format: true` WHERE क्लॉज़ को बूलियन ऑपरेटरों पर तोड़ता है और SELECT में प्रति कॉलम एक पंक्ति रखता है। आउटपुट का अंतर केवल व्हाइटस्पेस में है — वही कोष्ठक, वही शब्दार्थ, वही निष्पादन परिणाम।
+
+## विकल्प
+
+तीन विकल्प, Python / Go / JS में समान (प्रत्येक भाषा के नामकरण परंपरा के अनुसार):
+
+| फ़ील्ड | डिफ़ॉल्ट | विवरण |
+| --- | --- | --- |
+| `format` / `Format` | `false` | फ़ॉर्मैटिंग चालू करें। |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | एक इंडेंट इकाई के लिए उपयोग किया जाने वाला वर्ण। |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | कितने `indent_char` मिलकर एक इकाई बनाते हैं। |
+
+हर पोर्ट में ऋणात्मक `indent_count` को `0` तक सीमित (clamp) कर दिया जाता है; शून्य होने पर आउटपुट बहु-पंक्ति होता है लेकिन कोई इंडेंट नहीं।
+
+## फ़ॉर्मैटेड जनरेटरों को कॉल करना
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## WHERE कैसे टूटता है
+
+पत्ते कभी नहीं टूटते। परमाणविक जोड़े (`a AND b`) एक पंक्ति में ही रहते हैं। जिस भी कम्पोज़िशन में नेस्टेड ऑपरेटर या बहु-पंक्ति चाइल्ड मौजूद हों, वहाँ ब्रेक सक्रिय होता है।
+
+### परमाणविक जोड़ा — इनलाइन रहता है
+
+**इनपुट:** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### मिश्रित प्राथमिकता — कम प्राथमिकता वाले ऑपरेटर पर ब्रेक
+
+**इनपुट:** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### बाध्यकारी कोष्ठक, एकल-पंक्ति बॉडी — कोष्ठक इनलाइन रहता है
+
+**इनपुट:** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### बाध्यकारी कोष्ठक, बहु-पंक्ति बॉडी — कोष्ठक कई पंक्तियों में फैल जाता है
+
+**इनपुट:** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### बहु-पंक्ति बॉडी वाला NOT
+
+**इनपुट:** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## SELECT कैसे टूटता है
+
+SELECT पहली कॉलम को बाईं ओर रखता है (कॉलर `SELECT ` लगाता है) और बाकी को एक इकाई इंडेंट करता है। ट्रेलिंग-कॉमा शैली, अंतिम कॉलम के बाद कोई कॉमा नहीं।
+
+**इनपुट:** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## अर्थगत (शब्दार्थ) गारंटी
+
+फ़ॉर्मैटेड आउटपुट और अनफ़ॉर्मैटेड आउटपुट के बीच फ़र्क सिर्फ़ व्हाइटस्पेस का है — कोष्ठक संरचना समान, ऑपरेटर समान, मान समान। फ़ॉर्मैटर कभी भी कोष्ठक जोड़ता या हटाता नहीं है। आंतरिक SQL टुकड़े (`multiIf(...)`, `ago(...)`, ट्रांसफ़ॉर्मर-उत्पन्न अभिव्यक्तियाँ, JSON / Map पाथ एक्सेस) बिना परिवर्तन के गुज़ारे जाते हैं।
+
+वृक्ष का आकार ही दृश्य लेआउट तय करता है, मूल स्रोत फ़ॉर्मैटिंग नहीं। `a AND b AND c` जैसी समान-प्राथमिकता चेन को चपटा (flatten) कर दिया जाता है, क्योंकि पार्सर संयोजकता (associativity) के समतुल्य समूहों के चारों ओर उपयोगकर्ता-कोष्ठकों को संरक्षित नहीं करता।

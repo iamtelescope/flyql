@@ -1,4 +1,17 @@
 from flyql.generators.postgresql.column import Column
-from flyql.generators.postgresql.generator import to_sql_where, to_sql_select
+from flyql.generators.postgresql.generator import (
+    GeneratorOptions,
+    to_sql_where,
+    to_sql_where_with_options,
+    to_sql_select,
+    to_sql_select_with_options,
+)
 
-__all__ = ["Column", "to_sql_where", "to_sql_select"]
+__all__ = [
+    "Column",
+    "GeneratorOptions",
+    "to_sql_where",
+    "to_sql_where_with_options",
+    "to_sql_select",
+    "to_sql_select_with_options",
+]

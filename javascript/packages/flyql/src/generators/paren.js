@@ -13,12 +13,16 @@ const BOOL_OP_PRECEDENCE = { and: 2, or: 1 }
 
 const precedence = (op) => BOOL_OP_PRECEDENCE[op] ?? 0
 
-export function wrapChild(childText, childOp, parentOp) {
+export function wrapChild(childText, childOp, parentOp, { format = false, indentUnit = '' } = {}) {
     if (!childOp) {
         return childText
     }
-    if (precedence(childOp) < precedence(parentOp)) {
-        return `(${childText})`
+    if (precedence(childOp) >= precedence(parentOp)) {
+        return childText
     }
-    return childText
+    if (format && childText.includes('\n')) {
+        const reindented = childText.replaceAll('\n', '\n' + indentUnit)
+        return `(\n${indentUnit}${reindented}\n)`
+    }
+    return `(${childText})`
 }

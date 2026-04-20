@@ -1,0 +1,166 @@
+---
+title: Форматированный вывод
+description: Опциональное форматирование пробелов для WHERE и SELECT в ClickHouse, PostgreSQL и StarRocks
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+По умолчанию генераторы выдают SQL в одну строку. Для человекочитаемых превью и отладочных логов флаг `format: true` разбивает WHERE по булевым операторам и помещает каждый столбец SELECT на отдельную строку. Вывод отличается только пробелами — те же скобки, та же семантика, тот же результат выполнения.
+
+## Опции
+
+Три опции, одинаковые в Python, Go и JS (в соответствующих конвенциях именования):
+
+| Поле | По умолчанию | Описание |
+| --- | --- | --- |
+| `format` / `Format` | `false` | Включить форматирование. |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | Символ, из которого составляется одна единица отступа. |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | Сколько `indent_char` входят в одну единицу. |
+
+Отрицательное значение `indent_count` во всех портах ограничивается до `0`; ноль даёт многострочный вывод без отступа.
+
+## Вызов форматирующих генераторов
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## Как разбивается WHERE
+
+Листья никогда не разбиваются. Атомарные пары (`a AND b`) остаются на одной строке. Разрыв происходит на любой композиции, содержащей вложенные операторы или многострочных потомков.
+
+### Атомарная пара — остаётся в одну строку
+
+**Вход:** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### Смешанная приоритетность — разрыв на операторе с меньшим приоритетом
+
+**Вход:** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### Принудительные скобки, однострочное тело — скобки остаются inline
+
+**Вход:** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### Принудительные скобки, многострочное тело — скобки разворачиваются на несколько строк
+
+**Вход:** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### NOT с многострочным телом
+
+**Вход:** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## Как разбивается SELECT
+
+SELECT выравнивает первый столбец по левому краю (вызывающая сторона добавляет `SELECT` сама) и отступает остальные на одну единицу. Стиль с запятой в конце строки, после последнего столбца запятой нет.
+
+**Вход:** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## Семантическая гарантия
+
+Форматированный вывод отличается от неформатированного только пробелами — структура скобок идентична, операторы идентичны, значения идентичны. Форматтер никогда не добавляет и не убирает скобки. Внутренние SQL-фрагменты (`multiIf(...)`, `ago(...)`, выражения, порождённые трансформерами, доступ по JSON/map-пути) проходят без изменений.
+
+Форма дерева задаёт визуальный макет, а не исходное форматирование текста. Цепочки с одинаковым приоритетом, например `a AND b AND c`, уплощаются, потому что парсер не сохраняет пользовательские скобки вокруг ассоциативно-эквивалентных групп.

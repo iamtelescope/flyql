@@ -1,0 +1,166 @@
+---
+title: 서식 지정 출력
+description: ClickHouse, PostgreSQL, StarRocks 의 WHERE 및 SELECT 구문에 대한 선택적 공백 서식
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+기본적으로 생성기는 한 줄 SQL 을 출력합니다. 사람이 읽기 쉬운 미리보기나 디버그 로그를 위해서는 `format: true` 를 사용하면 WHERE 절은 불리언 연산자에서 줄바꿈되고 SELECT 는 컬럼당 한 줄로 배치됩니다. 출력 차이는 공백뿐 — 괄호, 의미론, 실행 결과는 동일합니다.
+
+## 옵션
+
+세 가지 옵션, Python / Go / JS 에서 동일 (각 언어의 네이밍 관례 적용):
+
+| 필드 | 기본값 | 설명 |
+| --- | --- | --- |
+| `format` / `Format` | `false` | 서식을 활성화합니다. |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | 한 들여쓰기 단위에 사용되는 문자. |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | `indent_char` 몇 개가 한 단위를 구성하는지. |
+
+음수 `indent_count` 는 모든 포트에서 `0` 으로 클램프됩니다. 0 이면 줄바꿈은 있지만 들여쓰기 없는 출력이 됩니다.
+
+## 서식 지정 생성기 호출
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## WHERE 는 어떻게 끊어지는가
+
+잎 노드는 절대 끊어지지 않습니다. 원자 쌍 (`a AND b`) 도 한 줄에 남습니다. 중첩된 연산자 또는 여러 줄 자식을 포함하는 합성에서는 항상 끊어집니다.
+
+### 원자 쌍 — 인라인 유지
+
+**입력:** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### 혼합 우선순위 — 우선순위가 낮은 연산자에서 줄바꿈
+
+**입력:** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### 강제 괄호, 단일 줄 본문 — 괄호 인라인 유지
+
+**입력:** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### 강제 괄호, 여러 줄 본문 — 괄호가 여러 줄로 펼쳐짐
+
+**입력:** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### 여러 줄 본문을 가진 NOT
+
+**입력:** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## SELECT 는 어떻게 끊어지는가
+
+SELECT 는 첫 컬럼을 왼쪽 정렬하고 (호출자가 `SELECT` 를 앞에 붙임) 나머지를 한 단위 들여씁니다. 후행 쉼표 스타일이며 마지막 컬럼 뒤에는 쉼표를 붙이지 않습니다.
+
+**입력:** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## 의미 보장
+
+서식 지정 출력은 서식 없는 출력과 공백만 다릅니다 — 괄호 구조가 동일하고, 연산자가 동일하며, 값도 동일합니다. 포매터는 절대로 괄호를 추가하거나 제거하지 않습니다. 내부 SQL 조각 (`multiIf(...)`, `ago(...)`, 트랜스포머 출력, JSON / Map 경로 접근) 은 수정 없이 그대로 전달됩니다.
+
+시각적 레이아웃은 원본 소스 형식이 아니라 트리의 형태에 의해 결정됩니다. `a AND b AND c` 처럼 동일 우선순위 체인은 평탄화되는데, 파서가 결합 동등한 그룹 주변의 사용자 괄호를 보존하지 않기 때문입니다.

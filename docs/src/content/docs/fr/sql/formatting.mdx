@@ -1,0 +1,166 @@
+---
+title: Sortie formatée
+description: Formatage optionnel des espaces pour les clauses WHERE et SELECT sur ClickHouse, PostgreSQL et StarRocks
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+Par défaut, les générateurs produisent du SQL sur une seule ligne. Pour des aperçus lisibles et des journaux de débogage, `format: true` coupe les clauses WHERE aux opérateurs booléens et place une colonne par ligne dans SELECT. La sortie ne diffère que par les espaces — mêmes parenthèses, même sémantique, même résultat d'exécution.
+
+## Options
+
+Trois options, identiques en Python, Go et JS (selon la convention de nommage de chaque langage) :
+
+| Champ | Par défaut | Description |
+| --- | --- | --- |
+| `format` / `Format` | `false` | Activer le formatage. |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | Caractère utilisé pour une unité d'indentation. |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | Nombre de `indent_char` composant une unité. |
+
+Une valeur négative de `indent_count` est ramenée à `0` dans chaque port ; zéro produit une sortie multilignes sans indentation.
+
+## Appel des générateurs formatés
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## Comment WHERE est découpé
+
+Les feuilles ne sont jamais coupées. Les paires atomiques (`a AND b`) restent sur une ligne. Les sauts surviennent à chaque composition contenant des opérateurs imbriqués ou des enfants multilignes.
+
+### Paire atomique — reste sur une ligne
+
+**Entrée :** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### Précédence mixte — saut à l'opérateur de moindre précédence
+
+**Entrée :** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### Parenthèses forcées, corps d'une ligne — parenthèse reste inline
+
+**Entrée :** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### Parenthèses forcées, corps multilignes — parenthèse explose sur plusieurs lignes
+
+**Entrée :** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### NOT avec un corps multilignes
+
+**Entrée :** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## Comment SELECT est découpé
+
+SELECT place la première colonne alignée à gauche (l'appelant préfixe `SELECT`) et indente les suivantes d'une unité. Style virgule de fin, pas de virgule après la dernière colonne.
+
+**Entrée :** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## Garantie sémantique
+
+La sortie formatée ne diffère de la sortie non formatée que par les espaces — structure des parenthèses identique, opérateurs identiques, valeurs identiques. Le formateur n'ajoute ni ne supprime jamais de parenthèses. Les fragments SQL internes (`multiIf(...)`, `ago(...)`, expressions émises par les transformateurs, accès par chemin JSON/map) sont transmis sans modification.
+
+La forme de l'arbre dicte la mise en page visuelle, pas le formatage source d'origine. Les chaînes de même précédence comme `a AND b AND c` s'aplatissent, car le parser ne conserve pas les parenthèses utilisateur autour de groupes équivalents par associativité.

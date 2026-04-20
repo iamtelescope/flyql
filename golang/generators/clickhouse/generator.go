@@ -116,10 +116,20 @@ func escapeLikeParam(value string) string {
 
 type GeneratorOptions struct {
 	DefaultTimezone string
+	Format          bool
+	IndentChar      string
+	IndentCount     int
 }
 
 func NewGeneratorOptions() *GeneratorOptions {
-	return &GeneratorOptions{DefaultTimezone: "UTC"}
+	return &GeneratorOptions{DefaultTimezone: "UTC", IndentChar: " ", IndentCount: 2}
+}
+
+func (o *GeneratorOptions) indentUnit() string {
+	if o.IndentChar == "" || o.IndentCount <= 0 {
+		return ""
+	}
+	return strings.Repeat(o.IndentChar, o.IndentCount)
 }
 
 func escapeStringValue(s string) string {
@@ -1573,6 +1583,11 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 		return "", "", nil
 	}
 
+	opts := options
+	if opts == nil {
+		opts = NewGeneratorOptions()
+	}
+
 	var text string
 	var effectiveOp string
 	isNegated := root.Negated
@@ -1587,7 +1602,7 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 			text = sql
 			isNegated = false // Already handled
 		} else {
-			sql, err := ExpressionToSQLWhereWithOptions(root.Expression, columns, options, registry...)
+			sql, err := ExpressionToSQLWhereWithOptions(root.Expression, columns, opts, registry...)
 			if err != nil {
 				return "", "", err
 			}
@@ -1611,14 +1626,14 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 	var err error
 
 	if root.Left != nil {
-		left, leftOp, err = toSQLWhereInternal(root.Left, columns, options, registry...)
+		left, leftOp, err = toSQLWhereInternal(root.Left, columns, opts, registry...)
 		if err != nil {
 			return "", "", err
 		}
 	}
 
 	if root.Right != nil {
-		right, rightOp, err = toSQLWhereInternal(root.Right, columns, options, registry...)
+		right, rightOp, err = toSQLWhereInternal(root.Right, columns, opts, registry...)
 		if err != nil {
 			return "", "", err
 		}
@@ -1629,9 +1644,15 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 			return "", "", err
 		}
 		parentOp := root.BoolOperator
-		leftSQL := common.WrapChild(left, leftOp, parentOp)
-		rightSQL := common.WrapChild(right, rightOp, parentOp)
-		text = fmt.Sprintf("%s %s %s", leftSQL, boolOpToSQL[parentOp], rightSQL)
+		indentUnit := opts.indentUnit()
+		leftSQL := common.WrapChildWithFormat(left, leftOp, parentOp, indentUnit, opts.Format)
+		rightSQL := common.WrapChildWithFormat(right, rightOp, parentOp, indentUnit, opts.Format)
+		sqlOp := boolOpToSQL[parentOp]
+		if opts.Format && (strings.Contains(leftSQL, "\n") || strings.Contains(rightSQL, "\n") || leftOp != "" || rightOp != "") {
+			text = leftSQL + "\n" + sqlOp + " " + rightSQL
+		} else {
+			text = leftSQL + " " + sqlOp + " " + rightSQL
+		}
 		effectiveOp = parentOp
 	} else if left != "" {
 		text = left
@@ -1642,7 +1663,13 @@ func toSQLWhereInternal(root *flyql.Node, columns map[string]*Column, options *G
 	}
 
 	if isNegated && text != "" {
-		text = fmt.Sprintf("NOT (%s)", text)
+		if opts.Format && strings.Contains(text, "\n") {
+			indentUnit := opts.indentUnit()
+			reindented := strings.ReplaceAll(text, "\n", "\n"+indentUnit)
+			text = "NOT (\n" + indentUnit + reindented + "\n)"
+		} else {
+			text = "NOT (" + text + ")"
+		}
 		effectiveOp = ""
 	}
 

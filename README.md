@@ -337,6 +337,10 @@ Built-in transformers:
 
 **SQL Dialects:** ClickHouse, PostgreSQL, StarRocks
 
+## Formatted SQL Output
+
+Generators accept an opt-in `format: true` option that breaks WHERE at boolean operators and puts one SELECT column per line. Output is whitespace-only different from the default. See [Formatted output](https://docs.flyql.dev/sql/formatting/).
+
 ## Editor
 
 FlyQL ships with a Vue 3 editor component that provides syntax highlighting, autocomplete, and schema-driven value suggestions:

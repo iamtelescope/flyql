@@ -31,6 +31,18 @@ from flyql.transformers.registry import TransformerRegistry
 
 BOOL_OP_TO_SQL = {"and": "AND", "or": "OR"}
 
+
+@dataclass
+class GeneratorOptions:
+    default_timezone: str = "UTC"
+    format: bool = False
+    indent_char: str = " "
+    indent_count: int = 2
+
+    def indent_unit(self) -> str:
+        return self.indent_char * max(self.indent_count, 0)
+
+
 OPERATOR_TO_CLICKHOUSE_FUNC = {
     Operator.EQUALS.value: "equals",
     Operator.NOT_EQUALS.value: "notEquals",
@@ -1054,6 +1066,7 @@ def _walk_where(
     columns: Mapping[str, Column],
     registry: Optional[TransformerRegistry] = None,
     default_timezone: str = "UTC",
+    options: Optional[GeneratorOptions] = None,
 ) -> Tuple[str, str]:
     """Recursive WHERE-tree walker returning ``(sql_text, effective_op)``.
 
@@ -1062,6 +1075,11 @@ def _walk_where(
     a degenerate single-branch wrapper. Used by ``wrap_child`` in the parent
     combine step to decide whether to add parens.
     """
+    opts = (
+        options
+        if options is not None
+        else GeneratorOptions(default_timezone=default_timezone)
+    )
     left_text = ""
     left_op = ""
     right_text = ""
@@ -1082,7 +1100,7 @@ def _walk_where(
                 expression=root.expression,
                 columns=columns,
                 registry=registry,
-                default_timezone=default_timezone,
+                default_timezone=opts.default_timezone,
             )
     elif (
         is_negated
@@ -1102,7 +1120,8 @@ def _walk_where(
             root=root.left,
             columns=columns,
             registry=registry,
-            default_timezone=default_timezone,
+            default_timezone=opts.default_timezone,
+            options=opts,
         )
 
     if root.right is not None:
@@ -1110,15 +1129,27 @@ def _walk_where(
             root=root.right,
             columns=columns,
             registry=registry,
-            default_timezone=default_timezone,
+            default_timezone=opts.default_timezone,
+            options=opts,
         )
 
     if left_text and right_text:
         validate_bool_operator(root.bool_operator)
         parent_op = root.bool_operator
-        left_sql = wrap_child(left_text, left_op, parent_op)
-        right_sql = wrap_child(right_text, right_op, parent_op)
-        text = f"{left_sql} {BOOL_OP_TO_SQL[parent_op]} {right_sql}"
+        indent_unit = opts.indent_unit()
+        left_sql = wrap_child(
+            left_text, left_op, parent_op, format=opts.format, indent_unit=indent_unit
+        )
+        right_sql = wrap_child(
+            right_text, right_op, parent_op, format=opts.format, indent_unit=indent_unit
+        )
+        sql_op = BOOL_OP_TO_SQL[parent_op]
+        if opts.format and (
+            "\n" in left_sql or "\n" in right_sql or left_op or right_op
+        ):
+            text = f"{left_sql}\n{sql_op} {right_sql}"
+        else:
+            text = f"{left_sql} {sql_op} {right_sql}"
         effective_op = parent_op
     elif left_text:
         # Degenerate single-branch wrapper: propagate child's effective_op
@@ -1128,7 +1159,12 @@ def _walk_where(
         text, effective_op = right_text, right_op
 
     if is_negated and text:
-        text = f"NOT ({text})"
+        if opts.format and "\n" in text:
+            indent_unit = opts.indent_unit()
+            reindented = text.replace("\n", "\n" + indent_unit)
+            text = f"NOT (\n{indent_unit}{reindented}\n)"
+        else:
+            text = f"NOT ({text})"
         effective_op = ""  # NOT-wrapped output is atomic
 
     return text, effective_op
@@ -1143,7 +1179,29 @@ def to_sql_where(
     """
     Returns ClickHouse WHERE clause for given tree and columns
     """
-    text, _ = _walk_where(root, columns, registry, default_timezone)
+    return to_sql_where_with_options(
+        root,
+        columns,
+        GeneratorOptions(default_timezone=default_timezone),
+        registry=registry,
+    )
+
+
+def to_sql_where_with_options(
+    root: Node,
+    columns: Mapping[str, Column],
+    options: GeneratorOptions,
+    *,
+    registry: Optional[TransformerRegistry] = None,
+) -> str:
+    """Returns ClickHouse WHERE clause honoring ``options`` (formatting + tz)."""
+    text, _ = _walk_where(
+        root,
+        columns,
+        registry=registry,
+        default_timezone=options.default_timezone,
+        options=options,
+    )
     return text
 
 
@@ -1248,6 +1306,19 @@ def to_sql_select(
     registry: Optional[TransformerRegistry] = None,
 ) -> SelectResult:
     """Generate a ClickHouse SELECT clause from a column expression string."""
+    return to_sql_select_with_options(
+        text, columns, GeneratorOptions(), registry=registry
+    )
+
+
+def to_sql_select_with_options(
+    text: str,
+    columns: Mapping[str, Column],
+    options: GeneratorOptions,
+    *,
+    registry: Optional[TransformerRegistry] = None,
+) -> SelectResult:
+    """Generate a ClickHouse SELECT clause honoring ``options`` (formatting)."""
     parsed_cols = parse_columns(
         text, capabilities={"transformers": True, "renderers": True}
     )
@@ -1284,4 +1355,10 @@ def to_sql_select(
         )
         exprs.append(sql_expr)
 
-    return SelectResult(columns=select_columns, sql=", ".join(exprs))
+    if options.format and exprs:
+        indent = options.indent_unit()
+        sql = exprs[0] + "".join(",\n" + indent + e for e in exprs[1:])
+    else:
+        sql = ", ".join(exprs)
+
+    return SelectResult(columns=select_columns, sql=sql)

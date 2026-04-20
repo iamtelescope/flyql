@@ -1,0 +1,166 @@
+---
+title: フォーマット出力
+description: ClickHouse、PostgreSQL、StarRocks の WHERE / SELECT 句に対する任意の空白フォーマット
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+デフォルトではジェネレーターは 1 行の SQL を出力します。人間が読みやすいプレビューやデバッグログ向けに、`format: true` を指定すると WHERE 句をブール演算子で改行し、SELECT のカラムを 1 行 1 カラムに整列します。出力の差分は空白だけ — 括弧、意味、実行結果はまったく同じです。
+
+## オプション
+
+3 つのオプション。Python / Go / JS で同一の意味（命名規則は各言語の慣例に従う）：
+
+| フィールド | 既定値 | 説明 |
+| --- | --- | --- |
+| `format` / `Format` | `false` | フォーマットを有効化します。 |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | インデント 1 単位を構成する文字。 |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | `indent_char` を 1 単位にいくつ連ねるか。 |
+
+`indent_count` が負の場合、どのポートでも `0` にクランプされます。`0` の場合は改行するがインデントなしの出力になります。
+
+## フォーマット付きジェネレーターの呼び出し
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## WHERE の改行ルール
+
+葉は絶対に改行されません。原子対（`a AND b`）も 1 行のまま。改行は、ネストされた演算子や複数行の子を含む合成のすべてで発生します。
+
+### 原子対 — インライン維持
+
+**入力:** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### 優先度の混在 — 低い優先度の演算子で改行
+
+**入力:** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### 括弧による強制ネスト、本体が 1 行 — 括弧はインライン
+
+**入力:** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### 括弧による強制ネスト、本体が複数行 — 括弧を複数行に展開
+
+**入力:** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### 本体が複数行の NOT
+
+**入力:** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## SELECT の改行ルール
+
+SELECT は最初のカラムを左詰め（呼び出し側が `SELECT ` を前置）し、残りを 1 単位インデントします。末尾カンマスタイルで、最後のカラムの後ろにカンマは付きません。
+
+**入力:** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## 意味論的保証
+
+フォーマット済み出力は非フォーマット出力と空白だけが異なります — 括弧構造は同一、演算子は同一、値も同一です。フォーマッタは括弧を追加したり削除したりしません。内部 SQL 断片（`multiIf(...)`、`ago(...)`、トランスフォーマ出力、JSON / Map パスアクセス）は加工せずそのまま通します。
+
+ビジュアルレイアウトは木の形状によって決まり、ソースの元の整形ではありません。`a AND b AND c` のような同一優先度のチェーンは平坦化されます。結合律的に等価なグループを囲むユーザー括弧をパーサーが保持しないためです。

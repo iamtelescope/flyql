@@ -1,0 +1,166 @@
+---
+title: Formatted Output
+description: Opt-in whitespace formatting for WHERE and SELECT clauses across ClickHouse, PostgreSQL, and StarRocks
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+Generators emit single-line SQL by default. For human-readable previews and debug logs, `format: true` breaks WHERE clauses at boolean operators and puts one column per line in SELECT. Output is whitespace-only different from unformatted — same parens, same semantics, same execution result.
+
+## Options
+
+Three options, identical across Python, Go, and JS (with each language's naming convention):
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `format` / `Format` | `false` | Turn formatting on. |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | The character used for one unit of indent. |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | How many `indent_char`s make one unit. |
+
+Negative `indent_count` is clamped to `0` in every port; zero gives no-indent multi-line output.
+
+## Calling the formatted generators
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## How WHERE breaks
+
+Leaves never break. Atomic-leaf pairs (`a AND b`) stay on one line. Breaks fire at any composition that contains nested operators or multi-line children.
+
+### Atomic pair — stays inline
+
+**Input:** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### Mixed precedence — break at the lower-precedence operator
+
+**Input:** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### Paren-forced, single-line body — paren stays inline
+
+**Input:** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### Paren-forced, multi-line body — paren explodes across lines
+
+**Input:** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### NOT with a multi-line body
+
+**Input:** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## How SELECT breaks
+
+SELECT puts the first column flush-left (caller prepends `SELECT`) and indents the rest by one unit. Trailing-comma style, no comma after the last column.
+
+**Input:** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## Semantic guarantee
+
+Formatted output differs from unformatted output only in whitespace — paren structure is identical, operators are identical, values are identical. The formatter never adds or removes parens. Internal SQL fragments (`multiIf(...)`, `ago(...)`, transformer-emitted expressions, JSON/map path access) pass through untouched.
+
+The tree shape dictates the visual layout, not the original source formatting. Same-precedence chains like `a AND b AND c` flatten, because the parser does not preserve user parens around associativity-equivalent groups.

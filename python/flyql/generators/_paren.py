@@ -17,15 +17,31 @@ def _precedence(op: str) -> int:
     return _PRECEDENCE.get(op, 0)
 
 
-def wrap_child(child_text: str, child_op: str, parent_op: str) -> str:
+def wrap_child(
+    child_text: str,
+    child_op: str,
+    parent_op: str,
+    *,
+    format: bool = False,
+    indent_unit: str = "  ",
+) -> str:
     """Wrap child_text in parens iff child_op has strictly lower SQL
     precedence than parent_op. Atoms (empty child_op) are never wrapped.
+
+    When ``format`` is on and the wrapped child already spans multiple lines,
+    emit the paren block across lines and re-indent every internal line by
+    one ``indent_unit``. Depth accumulates naturally across nested wraps
+    (each outer wrap prepends another ``indent_unit`` to the already-indented
+    inner newlines).
     """
     if not child_op:
         return child_text
-    if _precedence(child_op) < _precedence(parent_op):
-        return f"({child_text})"
-    return child_text
+    if _precedence(child_op) >= _precedence(parent_op):
+        return child_text
+    if format and "\n" in child_text:
+        reindented = child_text.replace("\n", "\n" + indent_unit)
+        return f"(\n{indent_unit}{reindented}\n)"
+    return f"({child_text})"
 
 
 __all__ = ["wrap_child"]

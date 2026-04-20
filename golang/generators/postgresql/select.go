@@ -120,6 +120,15 @@ func buildSelectExpr(identifier string, column *Column, path []string, pathQuote
 //
 // No implicit aliases are added; use "col as alias" explicitly.
 func ToSQLSelect(text string, cols map[string]*Column, registry ...*transformers.TransformerRegistry) (*SelectResult, error) {
+	return ToSQLSelectWithOptions(text, cols, nil, registry...)
+}
+
+func ToSQLSelectWithOptions(text string, cols map[string]*Column, options *GeneratorOptions, registry ...*transformers.TransformerRegistry) (*SelectResult, error) {
+	opts := options
+	if opts == nil {
+		opts = NewGeneratorOptions()
+	}
+
 	parsedCols, err := columns.Parse(text, columns.Capabilities{Transformers: true, Renderers: true})
 	if err != nil {
 		return nil, err
@@ -190,6 +199,18 @@ func ToSQLSelect(text string, cols map[string]*Column, registry ...*transformers
 		exprs = append(exprs, sqlExpr)
 	}
 
-	result.SQL = strings.Join(exprs, ", ")
+	if opts.Format && len(exprs) > 0 {
+		indent := opts.indentUnit()
+		var sb strings.Builder
+		sb.WriteString(exprs[0])
+		for _, e := range exprs[1:] {
+			sb.WriteString(",\n")
+			sb.WriteString(indent)
+			sb.WriteString(e)
+		}
+		result.SQL = sb.String()
+	} else {
+		result.SQL = strings.Join(exprs, ", ")
+	}
 	return result, nil
 }

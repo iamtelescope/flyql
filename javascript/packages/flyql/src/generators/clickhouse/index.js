@@ -1039,6 +1039,7 @@ function findSingleLeafExpression(node) {
 // degenerate single-branch wrapper. Used by wrapChild at the parent
 // combine step to decide whether to add parens.
 function walkWhere(root, columns, registry, options) {
+    const { format, indentUnit } = options
     let text = ''
     let effectiveOp = ''
     let isNegated = root.negated
@@ -1074,9 +1075,14 @@ function walkWhere(root, columns, registry, options) {
     if (leftText && rightText) {
         validateBoolOperator(root.boolOperator)
         const parentOp = root.boolOperator
-        const leftSQL = wrapChild(leftText, leftOp, parentOp)
-        const rightSQL = wrapChild(rightText, rightOp, parentOp)
-        text = `${leftSQL} ${boolOpToSQL[parentOp]} ${rightSQL}`
+        const leftSQL = wrapChild(leftText, leftOp, parentOp, { format, indentUnit })
+        const rightSQL = wrapChild(rightText, rightOp, parentOp, { format, indentUnit })
+        const sqlOp = boolOpToSQL[parentOp]
+        if (format && (leftSQL.includes('\n') || rightSQL.includes('\n') || leftOp || rightOp)) {
+            text = `${leftSQL}\n${sqlOp} ${rightSQL}`
+        } else {
+            text = `${leftSQL} ${sqlOp} ${rightSQL}`
+        }
         effectiveOp = parentOp
     } else if (leftText) {
         // Degenerate single-branch wrapper: propagate child op upward.
@@ -1088,18 +1094,32 @@ function walkWhere(root, columns, registry, options) {
     }
 
     if (isNegated && text) {
-        text = `NOT (${text})`
+        if (format && text.includes('\n')) {
+            const reindented = text.replaceAll('\n', '\n' + indentUnit)
+            text = `NOT (\n${indentUnit}${reindented}\n)`
+        } else {
+            text = `NOT (${text})`
+        }
         effectiveOp = ''
     }
 
     return [text, effectiveOp]
 }
 
+function normalizeOptions(options) {
+    const opts = options ?? {}
+    const format = !!opts.format
+    const indentCount = Math.max(0, opts.indentCount ?? 2)
+    const indentChar = opts.indentChar ?? ' '
+    const indentUnit = indentChar.repeat(indentCount)
+    return { ...opts, format, indentUnit }
+}
+
 export function generateWhere(root, columns, registry = null, options = {}) {
     if (!root) {
         return ''
     }
-    const [text] = walkWhere(root, columns, registry, options)
+    const [text] = walkWhere(root, columns, registry, normalizeOptions(options))
     return text
 }
 
@@ -1156,10 +1176,11 @@ function buildSelectExpr(column, path) {
     throw new Error(`path access on non-composite column type: ${column.name}`)
 }
 
-export function generateSelect(text, columns, registry = null) {
+export function generateSelect(text, columns, registry = null, options = {}) {
     // Use the canonical columns parser — it understands transformers, renderers,
     // and quoted identifiers. Renderers are UI-layer metadata; SQL emission
     // ignores them entirely and only consumes `key`, `transformers`, `alias`.
+    const { format, indentUnit } = normalizeOptions(options)
     const parsedCols = parseColumns(text, { transformers: true, renderers: true })
     const selectColumns = []
     const exprs = []
@@ -1200,8 +1221,13 @@ export function generateSelect(text, columns, registry = null) {
         exprs.push(sqlExpr)
     }
 
+    const sql =
+        format && exprs.length
+            ? exprs.reduce((acc, e, i) => (i === 0 ? e : `${acc},\n${indentUnit}${e}`), '')
+            : exprs.join(', ')
+
     return {
         columns: selectColumns,
-        sql: exprs.join(', '),
+        sql,
     }
 }

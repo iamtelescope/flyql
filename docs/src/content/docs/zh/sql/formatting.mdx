@@ -1,0 +1,166 @@
+---
+title: 格式化输出
+description: 为 ClickHouse、PostgreSQL 和 StarRocks 的 WHERE 与 SELECT 子句提供可选的空白格式化
+---
+
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+
+生成器默认输出单行 SQL。在需要人类可读预览或调试日志的场景下，`format: true` 会在布尔运算符处拆分 WHERE 子句，并将 SELECT 每列单独一行。输出差异仅在空白 — 括号结构、语义和执行结果都完全相同。
+
+## 选项
+
+三项选项，在 Python / Go / JS 中完全等价（按各自语言的命名约定）：
+
+| 字段 | 默认值 | 说明 |
+| --- | --- | --- |
+| `format` / `Format` | `false` | 启用格式化。 |
+| `indent_char` / `IndentChar` / `indentChar` | `" "` | 组成一单位缩进的字符。 |
+| `indent_count` / `IndentCount` / `indentCount` | `2` | 使用多少个 `indent_char` 组成一单位。 |
+
+若 `indent_count` 为负，各个端口都会截断为 `0`；为 `0` 时会换行但不缩进。
+
+## 调用格式化生成器
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.core.parser import parse
+from flyql.generators.clickhouse import (
+    Column,
+    GeneratorOptions,
+    to_sql_where_with_options,
+    to_sql_select_with_options,
+)
+
+columns = {"a": Column("a", "Int32"), "b": Column("b", "Int32"), "count": Column("count", "Int64")}
+root = parse("a = 1 and (b = 2 or count = 3)").root
+opts = GeneratorOptions(format=True, indent_count=2)
+
+print(to_sql_where_with_options(root, columns, opts))
+print(to_sql_select_with_options("a, b, count", columns, opts).sql)
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+package main
+
+import (
+    "fmt"
+
+    flyql "github.com/iamtelescope/flyql/golang"
+    "github.com/iamtelescope/flyql/golang/generators/clickhouse"
+)
+
+func main() {
+    cols := map[string]*clickhouse.Column{
+        "a":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "a", Type: "Int32"}),
+        "b":     clickhouse.NewColumn(clickhouse.ColumnDef{Name: "b", Type: "Int32"}),
+        "count": clickhouse.NewColumn(clickhouse.ColumnDef{Name: "count", Type: "Int64"}),
+    }
+    res, _ := flyql.Parse("a = 1 and (b = 2 or count = 3)")
+    opts := &clickhouse.GeneratorOptions{DefaultTimezone: "UTC", Format: true, IndentChar: " ", IndentCount: 2}
+
+    where, _ := clickhouse.ToSQLWhereWithOptions(res.Root, cols, opts)
+    sel, _ := clickhouse.ToSQLSelectWithOptions("a, b, count", cols, opts)
+    fmt.Println(where)
+    fmt.Println(sel.SQL)
+}
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse } from '@iamtelescope/flyql'
+import { generateWhere, generateSelect, newColumn } from '@iamtelescope/flyql/generators/clickhouse'
+
+const columns = {
+    a: newColumn({ name: 'a', type: 'Int32' }),
+    b: newColumn({ name: 'b', type: 'Int32' }),
+    count: newColumn({ name: 'count', type: 'Int64' }),
+}
+const { root } = parse('a = 1 and (b = 2 or count = 3)')
+const options = { format: true, indentChar: ' ', indentCount: 2 }
+
+console.log(generateWhere(root, columns, null, options))
+console.log(generateSelect('a, b, count', columns, null, options).sql)
+```
+
+</TabItem>
+</Tabs>
+
+## WHERE 的换行规则
+
+叶子节点永远不换行。原子对 (`a AND b`) 保持在同一行。只要合成节点包含嵌套的运算符或多行子节点，就会触发换行。
+
+### 原子对 — 保持在一行
+
+**输入：** `a = 1 and b = 2`
+
+```
+a = 1 AND b = 2
+```
+
+### 优先级混合 — 在较低优先级的运算符处换行
+
+**输入：** `a = 1 and b = 2 or count = 3`
+
+```
+a = 1 AND b = 2
+OR count = 3
+```
+
+### 强制括号，单行主体 — 括号保持内联
+
+**输入：** `a = 1 and (b = 2 or count = 3)`
+
+```
+a = 1
+AND (b = 2 OR count = 3)
+```
+
+### 强制括号，多行主体 — 括号展开为多行
+
+**输入：** `a = 1 and (b = 2 or (count = 3 and status = 4))`
+
+```
+a = 1
+AND (
+  b = 2
+  OR count = 3 AND status = 4
+)
+```
+
+### NOT 带多行主体
+
+**输入：** `not (a = 1 and b = 2 or count = 3)`
+
+```
+NOT (
+  a = 1 AND b = 2
+  OR count = 3
+)
+```
+
+## SELECT 的换行规则
+
+SELECT 第一列左对齐（调用方自己拼上 `SELECT`），其余列统一缩进一个单位。尾逗号风格，最后一列后面不加逗号。
+
+**输入：** `message, count, price, active, created_at`
+
+```
+message,
+  count,
+  price,
+  active,
+  created_at
+```
+
+## 语义保证
+
+格式化输出与未格式化输出的差异仅在空白 — 括号结构一致、运算符一致、取值一致。格式化器绝不会添加或删除任何括号。内部 SQL 片段 (`multiIf(...)`、`ago(...)`、转换器输出、JSON / Map 路径访问) 原样透传。
+
+可视化布局取决于语法树的形状，而不是源代码的原始格式。`a AND b AND c` 这类同优先级链会被扁平化，因为解析器不会保留用户在结合律等价分组周围写的括号。

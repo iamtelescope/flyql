@@ -241,6 +241,7 @@ export default defineConfig({
             "sql/clickhouse",
             "sql/postgresql",
             "sql/starrocks",
+            "sql/formatting",
           ],
         },
         {

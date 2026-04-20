@@ -1,0 +1,235 @@
+{
+  "version": "1.0",
+  "description": "Formatted WHERE and SELECT output tests for StarRocks",
+  "test_suite": "formatting",
+  "tests": [
+    {
+      "name": "leaf_eq",
+      "kind": "where",
+      "input": "a = 1",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1",
+      "expected_formatted_sql": "`a` = 1"
+    },
+    {
+      "name": "and_leaves",
+      "kind": "where",
+      "input": "a = 1 and b = 2",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND `b` = 2",
+      "expected_formatted_sql": "`a` = 1 AND `b` = 2"
+    },
+    {
+      "name": "or_leaves",
+      "kind": "where",
+      "input": "a = 1 or b = 2",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 OR `b` = 2",
+      "expected_formatted_sql": "`a` = 1 OR `b` = 2"
+    },
+    {
+      "name": "and_or_precedence",
+      "kind": "where",
+      "input": "a = 1 and b = 2 or count = 3",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND `b` = 2 OR `count` = 3",
+      "expected_formatted_sql": "`a` = 1 AND `b` = 2\nOR `count` = 3"
+    },
+    {
+      "name": "paren_forced_or_under_and_single_line_body",
+      "kind": "where",
+      "input": "a = 1 and (b = 2 or count = 3)",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`b` = 2 OR `count` = 3)",
+      "expected_formatted_sql": "`a` = 1\nAND (`b` = 2 OR `count` = 3)"
+    },
+    {
+      "name": "paren_forced_or_under_and_multi_line_body",
+      "kind": "where",
+      "input": "a = 1 and (b = 2 or (count = 3 and status = 4))",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`b` = 2 OR `count` = 3 AND `status` = 4)",
+      "expected_formatted_sql": "`a` = 1\nAND (\n  `b` = 2\n  OR `count` = 3 AND `status` = 4\n)"
+    },
+    {
+      "name": "negated_truthy_leaf",
+      "kind": "where",
+      "input": "not message",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "(`message` IS NULL OR `message` = '')",
+      "expected_formatted_sql": "(`message` IS NULL OR `message` = '')"
+    },
+    {
+      "name": "not_single_line_body",
+      "kind": "where",
+      "input": "not (a = 1 and b = 2)",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "NOT (`a` = 1 AND `b` = 2)",
+      "expected_formatted_sql": "NOT (`a` = 1 AND `b` = 2)"
+    },
+    {
+      "name": "not_multi_line_body",
+      "kind": "where",
+      "input": "not (a = 1 and b = 2 or count = 3)",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "NOT (`a` = 1 AND `b` = 2 OR `count` = 3)",
+      "expected_formatted_sql": "NOT (\n  `a` = 1 AND `b` = 2\n  OR `count` = 3\n)"
+    },
+    {
+      "name": "motivating_example",
+      "kind": "where",
+      "input": "a = 1 and b = 2 or (count = 3 and (status = 4 and price = 5)) and not message",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND `b` = 2 OR `count` = 3 AND `status` = 4 AND `price` = 5 AND (`message` IS NULL OR `message` = '')",
+      "expected_formatted_sql": "`a` = 1 AND `b` = 2\nOR `count` = 3\nAND `status` = 4 AND `price` = 5\nAND (`message` IS NULL OR `message` = '')"
+    },
+    {
+      "name": "deep_nesting",
+      "kind": "where",
+      "input": "a = 1 and (b = 2 or (count = 3 and (status = 4 or price = 5)))",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`b` = 2 OR `count` = 3 AND (`status` = 4 OR `price` = 5))",
+      "expected_formatted_sql": "`a` = 1\nAND (\n  `b` = 2\n  OR `count` = 3\n  AND (`status` = 4 OR `price` = 5)\n)"
+    },
+    {
+      "name": "nested_indent_depth_2",
+      "kind": "where",
+      "input": "a = 1 and (status = 2 or not (count = 3 and price = 4 or active = true))",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`status` = 2 OR NOT (`count` = 3 AND `price` = 4 OR `active` = true))",
+      "expected_formatted_sql": "`a` = 1\nAND (\n  `status` = 2\n  OR NOT (\n    `count` = 3 AND `price` = 4\n    OR `active` = true\n  )\n)"
+    },
+    {
+      "name": "nested_indent_depth_2_tabs",
+      "kind": "where",
+      "input": "a = 1 and (status = 2 or not (count = 3 and price = 4 or active = true))",
+      "options": {
+        "format": true,
+        "indent_char": "\t",
+        "indent_count": 1
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`status` = 2 OR NOT (`count` = 3 AND `price` = 4 OR `active` = true))",
+      "expected_formatted_sql": "`a` = 1\nAND (\n\t`status` = 2\n\tOR NOT (\n\t\t`count` = 3 AND `price` = 4\n\t\tOR `active` = true\n\t)\n)"
+    },
+    {
+      "name": "custom_indent_spaces_four",
+      "kind": "where",
+      "input": "a = 1 and (b = 2 or (count = 3 and status = 4))",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 4
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`b` = 2 OR `count` = 3 AND `status` = 4)",
+      "expected_formatted_sql": "`a` = 1\nAND (\n    `b` = 2\n    OR `count` = 3 AND `status` = 4\n)"
+    },
+    {
+      "name": "indent_negative_clamps_to_zero",
+      "kind": "where",
+      "input": "a = 1 and (b = 2 or (count = 3 and status = 4))",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": -1
+      },
+      "expected_unformatted_sql": "`a` = 1 AND (`b` = 2 OR `count` = 3 AND `status` = 4)",
+      "expected_formatted_sql": "`a` = 1\nAND (\n`b` = 2\nOR `count` = 3 AND `status` = 4\n)"
+    },
+    {
+      "name": "select_single_column",
+      "kind": "select",
+      "input": "message",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`message`",
+      "expected_formatted_sql": "`message`"
+    },
+    {
+      "name": "select_many_columns",
+      "kind": "select",
+      "input": "message, count, price, active, created_at",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`message`, `count`, `price`, `active`, `created_at`",
+      "expected_formatted_sql": "`message`,\n  `count`,\n  `price`,\n  `active`,\n  `created_at`"
+    },
+    {
+      "name": "select_with_aliases",
+      "kind": "select",
+      "input": "message as msg, count as total",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`message` AS `msg`, `count` AS `total`",
+      "expected_formatted_sql": "`message` AS `msg`,\n  `count` AS `total`"
+    },
+    {
+      "name": "select_with_segmented_keys",
+      "kind": "select",
+      "input": "metadata.key1, new_json.field1",
+      "options": {
+        "format": true,
+        "indent_char": " ",
+        "indent_count": 2
+      },
+      "expected_unformatted_sql": "`metadata`['key1'] AS `metadata.key1`, `new_json`->'\"field1\"' AS `new_json.field1`",
+      "expected_formatted_sql": "`metadata`['key1'] AS `metadata.key1`,\n  `new_json`->'\"field1\"' AS `new_json.field1`"
+    }
+  ]
+}

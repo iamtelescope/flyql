@@ -2,7 +2,7 @@
 title: Changelog
 ---
 
-## 2026.04.19
-Version: **0.0.48**
+## 2026.04.20
+Version: **0.0.49**
 
 Initial public release.

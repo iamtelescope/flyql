@@ -3,53 +3,41 @@ title: StarRocks
 description: Примеры генерируемого SQL для StarRocks
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/starrocks/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/starrocks/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/starrocks/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/starrocks/containment.js'
+import { rows as jsonNative } from '../../../../snippets/sql/starrocks/json-native.js'
+import { rows as jsonString } from '../../../../snippets/sql/starrocks/json-string.js'
+import { rows as mapColumns } from '../../../../snippets/sql/starrocks/map-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/starrocks/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/starrocks/transformers.js'
 
 StarRocks использует идентификаторы в обратных кавычках, `regexp()` для регулярных выражений и `->` с JSON-ключами в строковом виде для доступа к JSON.
 
 ## Базовые примеры
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `` `message` = 'hello' `` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `` `message` != 'hello' `` |
-| <FlyqlCode code={`count > 10`} inline /> | `` `count` > 10 `` |
-| <FlyqlCode code={`count <= 100`} inline /> | `` `count` <= 100 `` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `` regexp(`message`, 'error.*') `` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `` not regexp(`message`, 'test.*') `` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `` `host` = 'prod' `` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## Логические операторы
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `` (`a` = '1' and `b` > 10) `` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `` (`a` = '1' or `b` = '2') `` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `` not (`a` = '1') `` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## Принадлежность к списку
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `` `status` IN (200, 201) `` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `` `env` NOT IN ('dev', 'test') `` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## Вхождение (`has` / `not has`)
 
 Оператор <FlyqlToken type="operator">has</FlyqlToken> генерирует разный SQL в зависимости от типа столбца:
 
-| Тип столбца | FlyQL | Генерируемый SQL |
-|-------------|-------|------------------|
-| Строка | <FlyqlCode code={`message has 'error'`} inline /> | `` INSTR(`message`, 'error') > 0 `` |
-| Строка (отрицание) | <FlyqlCode code={`message not has 'error'`} inline /> | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `` array_contains(`tags`, 'web') `` |
-| Array (отрицание) | <FlyqlCode code={`tags not has 'web'`} inline /> | `` NOT array_contains(`tags`, 'web') `` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `` array_contains(map_keys(`metadata`), 'key') `` |
-| Map (отрицание) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
-| Нативный JSON | <FlyqlCode code={`data has 'key'`} inline /> | `` json_exists(`data`, concat('$.', 'key')) `` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="Тип столбца"
+    metaLabels={["Строка", "Строка (отрицание)", "Array", "Array (отрицание)", "Map", "Map (отрицание)", "Нативный JSON"]}
+/>
 
 ## JSON-столбцы
 
@@ -59,19 +47,13 @@ StarRocks поддерживает два типа JSON-столбцов с ра
 
 Нативные JSON-столбцы используют оператор `->` с JSON-ключами в строковом виде:
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` `data`->'\"name\"' = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### JSON в виде строки
 
 Столбцы, хранящие JSON как строку, требуют `parse_json()` перед обходом:
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Вложенные сложные типы
 
@@ -81,25 +63,18 @@ StarRocks поддерживает два типа JSON-столбцов с ра
 
 Map-столбцы используют скобочную нотацию с прямым сравнением:
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `` `metadata`['key1'] = 'value1' `` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `` `metadata`['key1'] != 'value1' `` |
-| <FlyqlCode code={`metadata.nested.key = 'value'`} inline /> | `` `metadata`['nested']['key'] = 'value' `` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `` `metadata`['pattern'] regexp 'test.*' `` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## Array-столбцы
 
 Индексы массивов в FlyQL — 0-индексные; генератор StarRocks прибавляет 1 при выводе SQL, поскольку массивы в StarRocks на уровне SQL индексируются с единицы:
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### Настройка столбцов
 
-Параметр `jsonString` определяет используемый режим (аналогично ClickHouse):
+{/* TODO: native-speaker review */}
+Колонки text/varchar с содержимым JSON объявляются с синтетическим сырым типом `jsonstring` (аналогично ClickHouse):
 
 ```go
 // Go
@@ -123,10 +98,4 @@ const columns = {
 
 Трансформеры генерируют стандартные вызовы функций StarRocks с именами столбцов в обратных кавычках:
 
-| FlyQL | Генерируемый SQL |
-|-------|------------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `` UPPER(`status`) = 'ERROR' `` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `` LOWER(`status`) = 'info' `` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `` LENGTH(`message`) > 100 `` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `` LENGTH(LOWER(`message`)) > 100 `` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |
+<SqlExamplesTable rows={transformers} />

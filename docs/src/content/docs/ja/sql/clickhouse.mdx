@@ -3,54 +3,41 @@ title: ClickHouse
 description: ClickHouse 向けに生成される SQL の例
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/clickhouse/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/clickhouse/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/clickhouse/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/clickhouse/containment.js'
+import { rows as jsonNative } from '../../../../snippets/sql/clickhouse/json-native.js'
+import { rows as jsonString } from '../../../../snippets/sql/clickhouse/json-string.js'
+import { rows as mapColumns } from '../../../../snippets/sql/clickhouse/map-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/clickhouse/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/clickhouse/transformers.js'
 
 ClickHouse の SQL では、カラム名はクォートされず、regex には `match()`、ワイルドカードには `LIKE` を使います。
 
 ## 基本例
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## ブール演算子
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## リスト所属
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## 包含（`has` / `not has`）
 
 <FlyqlToken type="operator">has</FlyqlToken> 演算子は、カラム型によって異なる SQL を生成します。
 
-| カラム型 | FlyQL | 生成される SQL |
-|----------|-------|-----------------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
-| String（否定） | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
-| Array（否定） | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
-| Map（否定） | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
-| ネイティブ JSON | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON String | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="カラム型"
+    metaLabels={["String", "String（否定）", "Array", "Array（否定）", "Map", "Map（否定）", "ネイティブ JSON", "JSON String"]}
+/>
 
 ## JSON カラム
 
@@ -60,44 +47,30 @@ ClickHouse は 2 種類の JSON カラム型をサポートし、それぞれ異
 
 `JSON` 型として宣言されたカラムは、バッククォート付きセグメントのドット記法を使います。
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
-| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### JSON String 型
 
 JSON を文字列として保持するカラム（例: JSON 内容を持つ `String` 型）は、型チェックのために `multiIf` でラップした `JSONExtract` 関数を使います。
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Map カラム
 
 Map カラムでは、角括弧記法と `equals()` / `notEquals()` 関数を使います。
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## Array カラム
 
 FlyQL の配列インデックスは 0 始まりです。ClickHouse 配列は SQL レイヤーで 1 始まりであるため、ClickHouse ジェネレーターは SQL を生成する際にインデックスに 1 を加算します。
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### カラム設定
 
-どちらのモードを使うかは `jsonString` パラメータで制御します。
+{/* TODO: native-speaker review */}
+JSON 内容を持つ text/varchar カラムは、合成的な生型 `jsonstring` として宣言します。
 
 ```go
 // Go
@@ -121,10 +94,4 @@ const columns = {
 
 transformer は、ClickHouse 固有の関数呼び出しを生成します。
 
-| FlyQL | 生成される SQL |
-|-------|-----------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |
+<SqlExamplesTable rows={transformers} />

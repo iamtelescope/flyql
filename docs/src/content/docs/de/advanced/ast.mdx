@@ -572,7 +572,7 @@ print(es_query)
 Die eingebauten SQL-Generatoren folgen demselben rekursiven Muster wie oben gezeigt. Jeder Generator:
 
 1. **Erhält den Root-`Node`** und eine Schema-Map der Spalten.
-2. **Traversiert den Baum rekursiv:** Branch-Knoten werden zu `(left AND right)` oder `(left OR right)`, Leaf-Knoten zu SQL-Bedingungen.
+2. {/* TODO: native-speaker review */} **Traversiert den Baum rekursiv:** Branch-Knoten kombinieren `left OP right`; Klammern werden nur gesetzt, wenn die SQL-Präzedenz es verlangt (z. B. bleibt ein `OR`-Teilbaum unter einem `AND`-Elternknoten als `a AND (b OR c)` geklammert, während gleichpräzedente Ketten wie `a AND b AND c` flach bleiben). `NOT (...)` umschließt seinen Operanden stets gemäß SQL-Konvention. Leaf-Knoten werden zu SQL-Bedingungen.
 3. **Verarbeitet jeden Operator**, indem `expression.operator` ausgewertet und dialektspezifisches SQL ausgegeben wird.
 4. **Verpackt negierte Knoten** in `NOT (...)`.
 

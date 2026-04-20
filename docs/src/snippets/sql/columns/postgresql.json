@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "description": "Docs-example columns for PostgreSQL",
+  "columns": {
+    "message": { "name": "message", "type": "text", "values": null },
+    "host": { "name": "host", "type": "text", "values": null },
+    "a": { "name": "a", "type": "integer", "values": null },
+    "b": { "name": "b", "type": "integer", "values": null },
+    "env": { "name": "env", "type": "text", "values": null },
+    "field": { "name": "field", "type": "text", "values": null },
+    "count": { "name": "count", "type": "integer", "values": null },
+    "status": { "name": "status", "type": "integer", "values": null },
+    "active": { "name": "active", "type": "boolean", "values": null },
+    "created_at": { "name": "created_at", "type": "date", "values": null },
+    "tags": { "name": "tags", "type": "text[]", "values": null },
+    "metadata": { "name": "metadata", "type": "hstore", "values": null },
+    "data": { "name": "data", "type": "jsonb", "values": null },
+    "log": { "name": "log", "type": "jsonstring", "values": null }
+  }
+}

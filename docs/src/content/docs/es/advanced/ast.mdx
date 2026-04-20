@@ -572,7 +572,7 @@ print(es_query)
 Los generadores SQL integrados siguen el mismo patrón recursivo mostrado arriba. Cada generador:
 
 1. **Recibe el `Node` raíz** y un mapa con el esquema de columnas.
-2. **Recorre el árbol**: los nodos rama se convierten en `(left AND right)` o `(left OR right)` y los nodos hoja en condiciones SQL.
+2. {/* TODO: native-speaker review */} **Recorre el árbol:** los nodos rama combinan `left OP right`; los paréntesis se añaden solo cuando la precedencia SQL lo exige (por ejemplo, un subárbol `OR` bajo un padre `AND` permanece envuelto como `a AND (b OR c)`, mientras que las cadenas de igual precedencia como `a AND b AND c` se emiten planas). `NOT (...)` siempre envuelve su operando según la convención SQL. Los nodos hoja se convierten en condiciones SQL.
 3. **Procesa cada operador** consultando `expression.operator` y generando SQL específico del dialecto.
 4. **Envuelve los nodos negados** en `NOT (...)`.
 

@@ -3,65 +3,60 @@ title: StarRocks
 description: Generated SQL examples for StarRocks
 ---
 
-import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../snippets/sql/starrocks/basic-examples.js'
+import { rows as booleanOperators } from '../../../snippets/sql/starrocks/boolean-operators.js'
+import { rows as listMembership } from '../../../snippets/sql/starrocks/list-membership.js'
+import { rows as truthyChecks } from '../../../snippets/sql/starrocks/truthy-checks.js'
+import { rows as containment } from '../../../snippets/sql/starrocks/containment.js'
+import { rows as jsonNative } from '../../../snippets/sql/starrocks/json-native.js'
+import { rows as jsonString } from '../../../snippets/sql/starrocks/json-string.js'
+import { rows as mapColumns } from '../../../snippets/sql/starrocks/map-columns.js'
+import { rows as arrayColumns } from '../../../snippets/sql/starrocks/array-columns.js'
+import { rows as transformers } from '../../../snippets/sql/starrocks/transformers.js'
 
 StarRocks SQL uses backtick-quoted identifiers, `regexp()` for regex, and `->` with JSON-stringified keys for JSON access.
 
 ## Basic Examples
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `` `message` = 'hello' `` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `` `message` != 'hello' `` |
-| <FlyqlCode code={`count > 10`} inline /> | `` `count` > 10 `` |
-| <FlyqlCode code={`count <= 100`} inline /> | `` `count` <= 100 `` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `` regexp(`message`, 'error.*') `` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `` not regexp(`message`, 'test.*') `` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `` `host` = 'prod' `` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## Boolean Operators
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `` (`a` = '1' and `b` > 10) `` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `` (`a` = '1' or `b` = '2') `` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `` not (`a` = '1') `` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## List Membership
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `` `status` IN (200, 201) `` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `` `env` NOT IN ('dev', 'test') `` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## Truthy Checks
 
 A bare column reference (`active`, `not active`) generates type-aware SQL — there is no single "is truthy" expression, because what counts as falsy differs by column type.
 
-| Column Type | FlyQL | Generated SQL |
-|-------------|-------|--------------|
-| String | <FlyqlCode code={`message`} inline /> | `` (`message` IS NOT NULL AND `message` != '') `` |
-| Int / Float | <FlyqlCode code={`count`} inline /> | `` (`count` IS NOT NULL AND `count` != 0) `` |
-| Bool | <FlyqlCode code={`active`} inline /> | `` `active` `` |
-| Date | <FlyqlCode code={`created_at`} inline /> | `` (`created_at` IS NOT NULL) `` |
-| Negated String | <FlyqlCode code={`not message`} inline /> | `` (`message` IS NULL OR `message` = '') `` |
+<SqlExamplesTable
+    rows={truthyChecks}
+    metaHeader="Column Type"
+    metaLabels={['String', 'Int / Float', 'Bool', 'Date', 'Negated String']}
+/>
 
 ## Containment (`has` / `not has`)
 
 The <FlyqlToken type="operator">has</FlyqlToken> operator generates different SQL depending on the column type:
 
-| Column Type | FlyQL | Generated SQL |
-|-------------|-------|--------------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `` INSTR(`message`, 'error') > 0 `` |
-| String (negated) | <FlyqlCode code={`message not has 'error'`} inline /> | `` (`message` IS NULL OR INSTR(`message`, 'error') = 0) `` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `` array_contains(`tags`, 'web') `` |
-| Array (negated) | <FlyqlCode code={`tags not has 'web'`} inline /> | `` NOT array_contains(`tags`, 'web') `` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `` array_contains(map_keys(`metadata`), 'key') `` |
-| Map (negated) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `` NOT array_contains(map_keys(`metadata`), 'key') `` |
-| Native JSON | <FlyqlCode code={`data has 'key'`} inline /> | `` json_exists(`data`, concat('$.', 'key')) `` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="Column Type"
+    metaLabels={[
+        'String',
+        'String (negated)',
+        'Array',
+        'Array (negated)',
+        'Map',
+        'Map (negated)',
+        'Native JSON',
+    ]}
+/>
 
 ## JSON Columns
 
@@ -71,19 +66,13 @@ StarRocks supports two JSON column types with different SQL output.
 
 Native JSON columns use the `->` operator with JSON-stringified keys:
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` `data`->'\"name\"' = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` `data`->'\"user\"'->'\"name\"' = 'john' `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### JSON String Type
 
-Columns storing JSON as a string require `parse_json()` before traversal:
+Columns storing JSON as a string (declared with the synthetic `jsonstring` raw type) require `parse_json()` before traversal:
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` parse_json(`data`)->'\"name\"' = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` parse_json(`data`)->'\"user\"'->'\"name\"' = 'john' `` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Nested Complex Types
 
@@ -93,21 +82,13 @@ The StarRocks generator treats a segmented path as belonging to a single contain
 
 Map columns use bracket notation with direct comparison:
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `` `metadata`['key1'] = 'value1' `` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `` `metadata`['key1'] != 'value1' `` |
-| <FlyqlCode code={`metadata.nested.key = 'value'`} inline /> | `` `metadata`['nested']['key'] = 'value' `` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `` `metadata`['pattern'] regexp 'test.*' `` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## Array Columns
 
 FlyQL array indices are 0-based; the StarRocks generator adds 1 when emitting SQL because StarRocks arrays are 1-indexed at the SQL layer:
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `` `tags`[1] = 'first' `` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `` `tags`[2] = 'second' `` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### Column Setup
 
@@ -135,10 +116,4 @@ const columns = {
 
 Transformers generate StarRocks-standard function calls with backtick-quoted column names:
 
-| FlyQL | Generated SQL |
-|-------|--------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `` UPPER(`status`) = 'ERROR' `` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `` LOWER(`status`) = 'info' `` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `` LENGTH(`message`) > 100 `` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `` LENGTH(LOWER(`message`)) > 100 `` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `` array_contains(SPLIT(`tags`, ','), 'urgent') `` |
+<SqlExamplesTable rows={transformers} />

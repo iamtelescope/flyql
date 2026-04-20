@@ -573,7 +573,7 @@ print(es_query)
 組み込み SQL generator も、上で示したのと同じ再帰パターンに従います。各 generator は次の処理を行います。
 
 1. **ルート `Node`** とカラム schema マップを受け取る
-2. **木を再帰的に走査する**。branch ノードは `(left AND right)` や `(left OR right)` に、leaf ノードは SQL 条件に変換する
+2. {/* TODO: native-speaker review */} **木を再帰的に走査する：** branch ノードは `left OP right` として結合され、SQL の優先順位が要求する場合にのみ括弧を付けます（例: `AND` の親の下にある `OR` サブツリーは `a AND (b OR c)` として保持され、`a AND b AND c` のような同一優先度のチェーンはフラットに出力されます）。`NOT (...)` は SQL の慣習に従い、常にそのオペランドを包みます。leaf ノードは SQL 条件になります。
 3. **各演算子を処理する**。`expression.operator` に応じて分岐し、方言ごとの SQL を出力する
 4. **否定されたノードを** `NOT (...)` で包む
 

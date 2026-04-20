@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "description": "Docs-example columns for ClickHouse",
+  "columns": {
+    "message": { "name": "message", "type": "String", "values": null },
+    "host": { "name": "host", "type": "String", "values": null },
+    "a": { "name": "a", "type": "Int32", "values": null },
+    "b": { "name": "b", "type": "Int32", "values": null },
+    "env": { "name": "env", "type": "String", "values": null },
+    "field": { "name": "field", "type": "String", "values": null },
+    "count": { "name": "count", "type": "Int64", "values": null },
+    "status": { "name": "status", "type": "Int32", "values": null },
+    "active": { "name": "active", "type": "Bool", "values": null },
+    "created_at": { "name": "created_at", "type": "Date", "values": null },
+    "tags": { "name": "tags", "type": "Array(String)", "values": null },
+    "metadata": { "name": "metadata", "type": "Map(String, String)", "values": null },
+    "data": { "name": "data", "type": "JSON", "values": null },
+    "log": { "name": "log", "type": "jsonstring", "values": null }
+  }
+}

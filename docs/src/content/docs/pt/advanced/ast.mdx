@@ -572,7 +572,7 @@ print(es_query)
 Os geradores SQL integrados seguem o mesmo padrão recursivo mostrado acima. Cada gerador:
 
 1. **Recebe o `Node` raiz** e um mapa de esquema de colunas.
-2. **Recurse pela árvore:** nós ramo tornam-se `(left AND right)` ou `(left OR right)`, nós folha tornam-se condições SQL.
+2. {/* TODO: native-speaker review */} **Percorre a árvore recursivamente:** nós ramo combinam `left OP right`; parênteses são adicionados apenas quando a precedência SQL exige (por exemplo, uma sub-árvore `OR` sob um pai `AND` permanece envolvida como `a AND (b OR c)`, enquanto cadeias de mesma precedência como `a AND b AND c` saem planas). `NOT (...)` envolve sempre o seu operando segundo a convenção SQL. Nós folha tornam-se condições SQL.
 3. **Trata cada operador** com um switch em `expression.operator` e emite SQL específico do dialeto.
 4. **Envolve nós negados** em `NOT (...)`.
 

@@ -5,6 +5,9 @@ description: Cómo genera FlyQL SQL para ClickHouse, PostgreSQL y StarRocks
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as mapAccess } from '../../../../snippets/sql/shared/map-access.js'
+import { rows as arrayAccess } from '../../../../snippets/sql/shared/array-access.js'
 
 Los generadores de FlyQL producen un fragmento de cláusula WHERE como una cadena SQL plana con todos los valores embebidos y escapados. La misma consulta FlyQL genera SQL distinto según el dialecto de destino.
 
@@ -20,15 +23,15 @@ Los generadores de FlyQL producen un fragmento de cláusula WHERE como una caden
 |----------------|-----------|------------|-----------|
 | Comillas en columnas | Ninguna | `"name"` | `` `name` `` |
 | Regex | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
-| Regex negada | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| Regex negada | `NOT match(col, 'pat')` | `"col" !~ 'pat'` | `` NOT regexp(`col`, 'pat') `` |
 | Comodín | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
-| Operadores booleanos | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| Operadores booleanos | `AND` / `OR` | `AND` / `OR` | `AND` / `OR` |
 | `IN []` vacío | `0` | `FALSE` | `0` |
 | `NOT IN []` vacío | `1` | `TRUE` | `1` |
 | <FlyqlToken type="operator">has</FlyqlToken> sobre string | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
 | <FlyqlToken type="operator">has</FlyqlToken> sobre array | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
 | <FlyqlToken type="operator">has</FlyqlToken> sobre map | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
-| <FlyqlToken type="operator">has</FlyqlToken> sobre JSON | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+| <FlyqlToken type="operator">has</FlyqlToken> sobre JSON | `JSONHas(toJSONString(col), 'k')` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## Acceso a JSON: la mayor diferencia
 
@@ -64,11 +67,11 @@ Consulta la página de cada dialecto para ver ejemplos completos.
 
 **Entrada FlyQL:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
 
-| Dialecto | SQL generado |
-|----------|--------------|
-| ClickHouse | `equals(metadata['key1'], 'value1')` |
-| PostgreSQL | `"metadata"->'key1' = 'value1'` |
-| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+<SqlExamplesTable
+    rows={mapAccess}
+    metaHeader="Dialect"
+    metaLabels={['ClickHouse', 'PostgreSQL', 'StarRocks']}
+/>
 
 ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. PostgreSQL usa el operador `->` de hstore. StarRocks usa la notación con corchetes directamente.
 
@@ -76,11 +79,11 @@ ClickHouse usa las funciones `equals()` y `notEquals()` para acceso a Map. Postg
 
 **Entrada FlyQL:** <FlyqlCode code={`tags.0 = 'first'`} inline /> con índice base 0 en FlyQL
 
-| Dialecto | SQL generado | Indexación |
-|----------|--------------|------------|
-| ClickHouse | `equals(tags[1], 'first')` | Base 1 (se convierte automáticamente) |
-| PostgreSQL | `"tags"[1] = 'first'` | Base 1 (se convierte automáticamente) |
-| StarRocks | `` `tags`[1] = 'first' `` | Base 1 (se convierte automáticamente) |
+<SqlExamplesTable
+    rows={arrayAccess}
+    metaHeader="Dialect"
+    metaLabels={['ClickHouse', 'PostgreSQL', 'StarRocks']}
+/>
 
 Los índices de matriz de FlyQL son uniformemente base 0. Los tres dialectos usan matrices base 1 a nivel de SQL, por lo que los generadores suman 1 al índice de flyql antes de emitir. La misma expresión FlyQL produce distintas cadenas SQL por dialecto (debido al entrecomillado de identificadores y a la sintaxis de las funciones), pero se evalúa al mismo resultado sobre los mismos datos subyacentes.
 

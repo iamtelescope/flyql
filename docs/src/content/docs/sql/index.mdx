@@ -5,6 +5,9 @@ description: How FlyQL generates SQL for ClickHouse, PostgreSQL, and StarRocks
 
 import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../components/SqlExamplesTable.astro'
+import { rows as mapAccess } from '../../../snippets/sql/shared/map-access.js'
+import { rows as arrayAccess } from '../../../snippets/sql/shared/array-access.js'
 
 FlyQL generators produce a WHERE clause fragment as a plain SQL string with all values embedded (escaped). The same FlyQL query generates different SQL depending on the target dialect.
 
@@ -20,15 +23,15 @@ FlyQL generators produce a WHERE clause fragment as a plain SQL string with all 
 |---------|-----------|-----------|-----------|
 | Column quoting | None | `"name"` | `` `name` `` |
 | Regex | `match(col, 'pat')` | `"col" ~ 'pat'` | `` regexp(`col`, 'pat') `` |
-| Negated regex | `not match(col, 'pat')` | `"col" !~ 'pat'` | `` not regexp(`col`, 'pat') `` |
+| Negated regex | `NOT match(col, 'pat')` | `"col" !~ 'pat'` | `` NOT regexp(`col`, 'pat') `` |
 | Wildcard | `col LIKE 'val%'` | `"col" LIKE 'val%'` | `` `col` LIKE 'val%' `` |
-| Boolean ops | `and` / `or` | `AND` / `OR` | `and` / `or` |
+| Boolean ops | `AND` / `OR` | `AND` / `OR` | `AND` / `OR` |
 | Empty `IN []` | `0` | `FALSE` | `0` |
 | Empty `NOT IN []` | `1` | `TRUE` | `1` |
 | String <FlyqlToken type="operator">has</FlyqlToken> | `position(col, 'v') > 0` | `position('v' in "col") > 0` | `` INSTR(`col`, 'v') > 0 `` |
 | Array <FlyqlToken type="operator">has</FlyqlToken> | `has(col, 'v')` | `'v' = ANY("col")` | `` array_contains(`col`, 'v') `` |
 | Map <FlyqlToken type="operator">has</FlyqlToken> | `mapContains(col, 'k')` | `"col" ? 'k'` | `` array_contains(map_keys(`col`), 'k') `` |
-| JSON <FlyqlToken type="operator">has</FlyqlToken> | `JSON_EXISTS(col, ...)` | `"col" ? 'k'` | `json_exists(...)` |
+| JSON <FlyqlToken type="operator">has</FlyqlToken> | `JSONHas(toJSONString(col), 'k')` | `"col" ? 'k'` | `json_exists(...)` |
 
 ## JSON Access — The Biggest Difference
 
@@ -62,34 +65,32 @@ See each dialect page for complete examples.
 
 ## Map Access
 
-**FlyQL input:** <FlyqlCode code={`metadata.key1 = 'value1'`} inline />
-
-| Dialect | Generated SQL |
-|---------|--------------|
-| ClickHouse | `equals(metadata['key1'], 'value1')` |
-| PostgreSQL | `"metadata"->'key1' = 'value1'` |
-| StarRocks | `` `metadata`['key1'] = 'value1' `` |
+<SqlExamplesTable
+    rows={mapAccess}
+    metaHeader="Dialect"
+    metaLabels={['ClickHouse', 'PostgreSQL', 'StarRocks']}
+/>
 
 ClickHouse uses `equals()`/`notEquals()` functions for Map access. PostgreSQL uses hstore `->` operator. StarRocks uses bracket notation directly.
 
 ## Array Access
 
-**FlyQL input:** <FlyqlCode code={`tags.0 = 'first'`} inline /> (0-based index in FlyQL)
+FlyQL array indices are uniformly 0-based. All three dialects use 1-based arrays at the SQL layer, so the generators add 1 to the flyql index before emitting.
 
-| Dialect | Generated SQL | Indexing |
-|---------|--------------|----------|
-| ClickHouse | `equals(tags[1], 'first')` | 1-based (converted) |
-| PostgreSQL | `"tags"[1] = 'first'` | 1-based (converted) |
-| StarRocks | `` `tags`[1] = 'first' `` | 1-based (converted) |
+<SqlExamplesTable
+    rows={arrayAccess}
+    metaHeader="Dialect"
+    metaLabels={['ClickHouse', 'PostgreSQL', 'StarRocks']}
+/>
 
-FlyQL array indices are uniformly 0-based. All three dialects use 1-based arrays at the SQL layer, so the generators add 1 to the flyql index before emitting. The same FlyQL expression produces different SQL strings per dialect (due to identifier quoting and function syntax) but evaluates to the same result against the same underlying data.
+The same FlyQL expression produces different SQL strings per dialect (due to identifier quoting and function syntax) but evaluates to the same result against the same underlying data.
 
 ## Output Format
 
 Generators return a WHERE clause fragment — no `WHERE` keyword, no parameterized placeholders. All values are escaped and embedded directly:
 
 ```
-message = 'hello' and count > 10
+message = 'hello' AND count > 10
 ```
 
 Not:

@@ -3,55 +3,43 @@ title: PostgreSQL
 description: PostgreSQL 的 SQL 生成示例
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/postgresql/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/postgresql/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/postgresql/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/postgresql/containment.js'
+import { rows as jsonbString } from '../../../../snippets/sql/postgresql/jsonb-string.js'
+import { rows as jsonbNumeric } from '../../../../snippets/sql/postgresql/jsonb-numeric.js'
+import { rows as hstoreColumns } from '../../../../snippets/sql/postgresql/hstore-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/postgresql/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/postgresql/transformers.js'
 
 PostgreSQL 生成的 SQL 使用双引号包裹标识符，正则使用 <FlyqlToken type="operator">{'~'}</FlyqlToken>，布尔操作符通常输出为大写 <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken>。
 
 ## 基础示例
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `"message" = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `"message" != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `"count" > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `"count" <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `"message" ~ 'error.*'` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `"message" !~ 'test.*'` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `"host" = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## 布尔操作符
 
 PostgreSQL 使用大写 <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken>（与 ClickHouse 和 StarRocks 不同）：
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `("a" = '1' AND "b" > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `("a" = '1' OR "b" = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `NOT ("a" = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## 列表成员
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `"status" IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `"env" NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `FALSE` |
-| <FlyqlCode code={`status not in []`} inline /> | `TRUE` |
+<SqlExamplesTable rows={listMembership} />
 
 ## 包含检查 (`has` / `not has`)
 
 <FlyqlToken type="operator">has</FlyqlToken> 操作符根据列类型生成不同 SQL：
 
-| 列类型 | FlyQL | 生成 SQL |
-|--------|-------|----------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position('error' in "message") > 0` |
-| String（取反） | <FlyqlCode code={`message not has 'error'`} inline /> | `("message" IS NULL OR position('error' in "message") = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `'web' = ANY("tags")` |
-| Array（取反） | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT ('web' = ANY("tags"))` |
-| JSONB | <FlyqlCode code={`data has 'key'`} inline /> | `"data" ? 'key'` |
-| JSONB（取反） | <FlyqlCode code={`data not has 'key'`} inline /> | `NOT ("data" ? 'key')` |
-| Hstore | <FlyqlCode code={`metadata has 'key'`} inline /> | `"metadata" ? 'key'` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="列类型"
+    metaLabels={["String", "String（取反）", "Array", "Array（取反）", "JSONB", "JSONB（取反）", "Hstore"]}
+/>
 
 ## JSONB 列
 
@@ -59,16 +47,11 @@ PostgreSQL 通过 `jsonb_typeof()` 配合 JSONB 操作符访问嵌套 JSON。
 
 ### 字符串比较
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+<SqlExamplesTable rows={jsonbString} />
 
 ### 数值比较
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`data.age > 25`} inline /> | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+<SqlExamplesTable rows={jsonbNumeric} />
 
 ### JSONB 操作符说明
 
@@ -78,21 +61,13 @@ PostgreSQL 通过 `jsonb_typeof()` 配合 JSONB 操作符访问嵌套 JSON。
 
 ## Hstore / Map 列
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `"metadata"->'key1' = 'value1'` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `"metadata"->'key1' != 'value1'` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `"metadata"->'pattern' ~ 'test.*'` |
+<SqlExamplesTable rows={hstoreColumns} />
 
 ## 数组列
 
 PostgreSQL 数组是 1-based，FlyQL 会自动把 0-based 下标转换过去：
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `"tags"[1] = 'first'` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `"tags"[2] = 'second'` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `"tags"[1] ~ 'tag.*'` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ## 列定义示例
 
@@ -114,10 +89,4 @@ const columns = {
 
 ## 转换器
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `UPPER(status) = 'ERROR'` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `LOWER(status) = 'info'` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `LENGTH(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `LENGTH(LOWER(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |
+<SqlExamplesTable rows={transformers} />

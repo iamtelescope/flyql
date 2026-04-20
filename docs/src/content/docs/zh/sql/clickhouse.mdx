@@ -3,54 +3,41 @@ title: ClickHouse
 description: ClickHouse 的 SQL 生成示例
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/clickhouse/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/clickhouse/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/clickhouse/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/clickhouse/containment.js'
+import { rows as jsonNative } from '../../../../snippets/sql/clickhouse/json-native.js'
+import { rows as jsonString } from '../../../../snippets/sql/clickhouse/json-string.js'
+import { rows as mapColumns } from '../../../../snippets/sql/clickhouse/map-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/clickhouse/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/clickhouse/transformers.js'
 
 ClickHouse 生成的 SQL 通常不对列名加引号，正则使用 `match()`，通配匹配使用 `LIKE`。
 
 ## 基础示例
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## 布尔操作符
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## 列表成员
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## 包含检查
 
 <FlyqlToken type="operator">has</FlyqlToken> 操作符根据列类型生成不同 SQL：
 
-| 列类型 | FlyQL | 生成 SQL |
-|--------|-------|----------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
-| String（取反） | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
-| Array（取反） | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
-| Map（取反） | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
-| Native JSON | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON String | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="列类型"
+    metaLabels={["String", "String（取反）", "Array", "Array（取反）", "Map", "Map（取反）", "Native JSON", "JSON String"]}
+/>
 
 ## JSON 列
 
@@ -58,40 +45,26 @@ ClickHouse 支持两种 JSON 形式。
 
 ### 原生 JSON 类型
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
-| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### 字符串形式 JSON
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Map 列
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## 数组列
 
 FlyQL 数组索引为 0 起始；ClickHouse 生成器在生成 SQL 时会加 1，因为 ClickHouse 数组在 SQL 层为 1 起始：
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ## 列定义示例
 
-`jsonString` 参数决定 JSON 走哪种模式：
+{/* TODO: native-speaker review */}
+内容为 JSON 的 text/varchar 列用合成原始类型 `jsonstring` 声明：
 
 ```go
 columns := map[string]*clickhouse.Column{
@@ -111,10 +84,4 @@ const columns = {
 
 ## 转换器
 
-| FlyQL | 生成 SQL |
-|-------|----------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |
+<SqlExamplesTable rows={transformers} />

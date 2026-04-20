@@ -1,0 +1,69 @@
+---
+import FlyqlCode from './FlyqlCode.astro'
+
+interface Props {
+  rows: { flyql: string; sql: string }[]
+  flyqlHeader?: string
+  sqlHeader?: string
+  metaHeader?: string
+  metaLabels?: string[]
+  caption?: string
+}
+
+const { rows, flyqlHeader = 'FlyQL', sqlHeader = 'Generated SQL', metaHeader, metaLabels, caption } = Astro.props
+
+if (metaHeader !== undefined || metaLabels !== undefined) {
+  if (metaHeader === undefined || metaLabels === undefined) {
+    throw new Error(
+      'SqlExamplesTable: metaHeader and metaLabels must be set together',
+    )
+  }
+  if (!Array.isArray(metaLabels) || metaLabels.length !== rows.length) {
+    throw new Error(
+      `SqlExamplesTable: metaHeader set but metaLabels.length (${metaLabels?.length ?? 'undefined'}) !== rows.length (${rows.length})`,
+    )
+  }
+}
+---
+
+<div class="sql-examples-scroll">
+  <table>
+    {caption && <caption class="sr-only">{caption}</caption>}
+    <thead>
+      <tr>
+        {metaHeader && <th scope="col">{metaHeader}</th>}
+        <th scope="col">{flyqlHeader}</th>
+        <th scope="col">{sqlHeader}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row, i) => (
+        <tr>
+          {metaHeader && <td>{metaLabels![i]}</td>}
+          <td class="flyql-example-cell"><FlyqlCode inline code={row.flyql} /></td>
+          <td><code>{row.sql}</code></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .sql-examples-scroll { overflow-x: auto; }
+  .flyql-example-cell,
+  .flyql-example-cell * {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  }
+  .flyql-example-cell { font-size: 0.84em; }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

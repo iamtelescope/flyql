@@ -3,55 +3,43 @@ title: PostgreSQL
 description: Ejemplos de SQL generado para PostgreSQL
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/postgresql/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/postgresql/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/postgresql/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/postgresql/containment.js'
+import { rows as jsonbString } from '../../../../snippets/sql/postgresql/jsonb-string.js'
+import { rows as jsonbNumeric } from '../../../../snippets/sql/postgresql/jsonb-numeric.js'
+import { rows as hstoreColumns } from '../../../../snippets/sql/postgresql/hstore-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/postgresql/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/postgresql/transformers.js'
 
 El SQL de PostgreSQL usa identificadores entre comillas dobles, <FlyqlToken type="operator">{'~'}</FlyqlToken> para regex, <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken> en mayúsculas y operadores JSONB para acceso anidado.
 
 ## Ejemplos básicos
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `"message" = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `"message" != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `"count" > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `"count" <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `"message" ~ 'error.*'` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `"message" !~ 'test.*'` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `"host" = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## Operadores booleanos
 
 PostgreSQL usa <FlyqlToken type="operator">and</FlyqlToken>/<FlyqlToken type="operator">or</FlyqlToken> en mayúsculas, a diferencia de ClickHouse y StarRocks:
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `("a" = '1' AND "b" > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `("a" = '1' OR "b" = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `NOT ("a" = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## Pertenencia a listas
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `"status" IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `"env" NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `FALSE` |
-| <FlyqlCode code={`status not in []`} inline /> | `TRUE` |
+<SqlExamplesTable rows={listMembership} />
 
 ## Contención (`has` / `not has`)
 
 El operador <FlyqlToken type="operator">has</FlyqlToken> genera SQL distinto según el tipo de columna:
 
-| Tipo de columna | FlyQL | SQL generado |
-|-----------------|-------|--------------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position('error' in "message") > 0` |
-| String con negación | <FlyqlCode code={`message not has 'error'`} inline /> | `("message" IS NULL OR position('error' in "message") = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `'web' = ANY("tags")` |
-| Array con negación | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT ('web' = ANY("tags"))` |
-| JSONB | <FlyqlCode code={`data has 'key'`} inline /> | `"data" ? 'key'` |
-| JSONB con negación | <FlyqlCode code={`data not has 'key'`} inline /> | `NOT ("data" ? 'key')` |
-| Hstore | <FlyqlCode code={`metadata has 'key'`} inline /> | `"metadata" ? 'key'` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="Tipo de columna"
+    metaLabels={["String", "String con negación", "Array", "Array con negación", "JSONB", "JSONB con negación", "Hstore"]}
+/>
 
 ## Columnas JSONB
 
@@ -59,18 +47,13 @@ PostgreSQL usa operadores JSONB con comprobación de tipo mediante `jsonb_typeof
 
 ### Comparación de strings
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `(jsonb_typeof("data"->'name') = 'string' AND "data"->>'name' = 'test')` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `(jsonb_typeof("data"->'user'->'name') = 'string' AND "data"->'user'->>'name' = 'john')` |
+<SqlExamplesTable rows={jsonbString} />
 
 ### Comparación numérica
 
 Las comparaciones numéricas convierten el valor extraído:
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`data.age > 25`} inline /> | `(jsonb_typeof("data"->'age') = 'number' AND ("data"->>'age')::numeric > 25)` |
+<SqlExamplesTable rows={jsonbNumeric} />
 
 ### Operadores JSONB
 
@@ -82,21 +65,13 @@ Las comparaciones numéricas convierten el valor extraído:
 
 PostgreSQL usa el tipo hstore con el operador `->` para acceder a claves:
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `"metadata"->'key1' = 'value1'` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `"metadata"->'key1' != 'value1'` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `"metadata"->'pattern' ~ 'test.*'` |
+<SqlExamplesTable rows={hstoreColumns} />
 
 ## Columnas Array
 
 Los arrays de PostgreSQL son de base 1, así que FlyQL convierte automáticamente el índice base 0:
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `"tags"[1] = 'first'` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `"tags"[2] = 'second'` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `"tags"[1] ~ 'tag.*'` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### Configuración de columnas
 
@@ -122,10 +97,4 @@ const columns = {
 
 Los transformers generan llamadas estándar de PostgreSQL:
 
-| FlyQL | SQL generado |
-|-------|--------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `UPPER(status) = 'ERROR'` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `LOWER(status) = 'info'` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `LENGTH(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `LENGTH(LOWER(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `'urgent' = ANY(STRING_TO_ARRAY(tags, ','))` |
+<SqlExamplesTable rows={transformers} />

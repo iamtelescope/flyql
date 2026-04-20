@@ -572,7 +572,7 @@ print(es_query)
 Les generateurs SQL integres suivent le meme modele recursif presente ci-dessus. Chaque generateur :
 
 1. **Recoit le `Node` racine** et une carte de schema de colonnes.
-2. **Recurre a travers l'arbre :** les noeuds branches deviennent `(left AND right)` ou `(left OR right)`, les noeuds feuilles deviennent des conditions SQL.
+2. {/* TODO: native-speaker review */} **Parcourt l'arbre récursivement :** les noeuds branche combinent `left OP right`; des parenthèses ne sont ajoutées que si la précédence SQL l'exige (par exemple, un sous-arbre `OR` sous un parent `AND` reste encapsulé en `a AND (b OR c)`, tandis que les chaînes de même précédence comme `a AND b AND c` sont émises à plat). `NOT (...)` encapsule toujours son opérande selon la convention SQL. Les noeuds feuilles deviennent des conditions SQL.
 3. **Gere chaque operateur** en faisant un switch sur `expression.operator` et en emettant du SQL specifique au dialecte.
 4. **Enveloppe les noeuds nies** dans `NOT (...)`.
 

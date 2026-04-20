@@ -3,54 +3,41 @@ title: ClickHouse
 description: ClickHouse용 생성 SQL 예제
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/clickhouse/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/clickhouse/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/clickhouse/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/clickhouse/containment.js'
+import { rows as jsonNative } from '../../../../snippets/sql/clickhouse/json-native.js'
+import { rows as jsonString } from '../../../../snippets/sql/clickhouse/json-string.js'
+import { rows as mapColumns } from '../../../../snippets/sql/clickhouse/map-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/clickhouse/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/clickhouse/transformers.js'
 
 ClickHouse SQL은 column 이름을 quote하지 않으며, regex에는 `match()`, wildcard에는 `LIKE`를 사용합니다.
 
 ## 기본 예제
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## 불리언 연산자
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## 리스트 멤버십
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## 포함 검사 (`has` / `not has`)
 
 <FlyqlToken type="operator">has</FlyqlToken> operator는 column 타입에 따라 서로 다른 SQL을 생성합니다.
 
-| Column Type | FlyQL | 생성된 SQL |
-|-------------|-------|--------------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
-| String (negated) | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
-| Array (negated) | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
-| Map (negated) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
-| Native JSON | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON String | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="Column Type"
+    metaLabels={["String", "String (negated)", "Array", "Array (negated)", "Map", "Map (negated)", "Native JSON", "JSON String"]}
+/>
 
 ## JSON Columns
 
@@ -60,44 +47,30 @@ ClickHouse는 두 가지 JSON column 타입을 지원하며, 생성되는 SQL도
 
 `JSON`으로 선언된 column은 세그먼트를 backtick으로 감싼 dot 표기를 사용합니다.
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
-| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### JSON String Type
 
 문자열로 JSON을 저장하는 column(예: JSON 내용을 담는 `String` 타입)은 타입 검사를 위해 `multiIf`로 감싼 `JSONExtract` 함수를 사용합니다.
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Map Columns
 
 Map column은 bracket 표기와 `equals()`/`notEquals()` 함수를 사용합니다.
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## Array Columns
 
 FlyQL의 배열 인덱스는 0 기반이며, ClickHouse 배열은 SQL 계층에서 1 기반이므로 ClickHouse 생성기는 SQL을 생성할 때 인덱스에 1을 더합니다.
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### Column Setup
 
-`jsonString` 파라미터가 어떤 모드를 사용할지 결정합니다.
+{/* TODO: native-speaker review */}
+JSON 내용을 가진 text/varchar 컬럼은 합성 원시 타입 `jsonstring`으로 선언합니다.
 
 ```go
 // Go
@@ -121,10 +94,4 @@ const columns = {
 
 Transformer는 ClickHouse 전용 함수 호출을 생성합니다.
 
-| FlyQL | 생성된 SQL |
-|-------|--------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |
+<SqlExamplesTable rows={transformers} />

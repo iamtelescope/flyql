@@ -3,54 +3,41 @@ title: ClickHouse
 description: Exemples de SQL genere pour ClickHouse
 ---
 
-import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
+import SqlExamplesTable from '../../../../components/SqlExamplesTable.astro'
+import { rows as basicExamples } from '../../../../snippets/sql/clickhouse/basic-examples.js'
+import { rows as booleanOperators } from '../../../../snippets/sql/clickhouse/boolean-operators.js'
+import { rows as listMembership } from '../../../../snippets/sql/clickhouse/list-membership.js'
+import { rows as containment } from '../../../../snippets/sql/clickhouse/containment.js'
+import { rows as jsonNative } from '../../../../snippets/sql/clickhouse/json-native.js'
+import { rows as jsonString } from '../../../../snippets/sql/clickhouse/json-string.js'
+import { rows as mapColumns } from '../../../../snippets/sql/clickhouse/map-columns.js'
+import { rows as arrayColumns } from '../../../../snippets/sql/clickhouse/array-columns.js'
+import { rows as transformers } from '../../../../snippets/sql/clickhouse/transformers.js'
 
 Le SQL ClickHouse utilise des noms de colonnes sans guillemets, `match()` pour les regex et `LIKE` pour les jokers.
 
 ## Exemples de base
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`message = 'hello'`} inline /> | `message = 'hello'` |
-| <FlyqlCode code={`message != 'hello'`} inline /> | `message != 'hello'` |
-| <FlyqlCode code={`count > 10`} inline /> | `count > 10` |
-| <FlyqlCode code={`count <= 100`} inline /> | `count <= 100` |
-| <FlyqlCode code={`message ~ 'error.*'`} inline /> | `match(message, 'error.*')` |
-| <FlyqlCode code={`message !~ 'test.*'`} inline /> | `not match(message, 'test.*')` |
-| <FlyqlCode code={`host = 'prod'`} inline /> | `host = 'prod'` |
+<SqlExamplesTable rows={basicExamples} />
 
 ## Operateurs booleens
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`a = '1' and b > 10`} inline /> | `(a = '1' and b > 10)` |
-| <FlyqlCode code={`a = '1' or b = '2'`} inline /> | `(a = '1' or b = '2')` |
-| <FlyqlCode code={`not a = '1'`} inline /> | `not (a = '1')` |
+<SqlExamplesTable rows={booleanOperators} />
 
 ## Appartenance a une liste
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`status in [200, 201]`} inline /> | `status IN (200, 201)` |
-| <FlyqlCode code={`env not in ['dev', 'test']`} inline /> | `env NOT IN ('dev', 'test')` |
-| <FlyqlCode code={`status in []`} inline /> | `0` |
-| <FlyqlCode code={`status not in []`} inline /> | `1` |
+<SqlExamplesTable rows={listMembership} />
 
 ## Inclusion (`has` / `not has`)
 
 L'operateur <FlyqlToken type="operator">has</FlyqlToken> genere un SQL different selon le type de colonne :
 
-| Type de colonne | FlyQL | SQL genere |
-|-------------|-------|--------------|
-| String | <FlyqlCode code={`message has 'error'`} inline /> | `position(message, 'error') > 0` |
-| String (inverse) | <FlyqlCode code={`message not has 'error'`} inline /> | `(message IS NULL OR position(message, 'error') = 0)` |
-| Array | <FlyqlCode code={`tags has 'web'`} inline /> | `has(tags, 'web')` |
-| Array (inverse) | <FlyqlCode code={`tags not has 'web'`} inline /> | `NOT has(tags, 'web')` |
-| Map | <FlyqlCode code={`metadata has 'key'`} inline /> | `mapContains(metadata, 'key')` |
-| Map (inverse) | <FlyqlCode code={`metadata not has 'key'`} inline /> | `NOT mapContains(metadata, 'key')` |
-| JSON natif | <FlyqlCode code={`data has 'key'`} inline /> | `JSON_EXISTS(data, concat('$.', 'key'))` |
-| JSON chaine | <FlyqlCode code={`data has 'key'`} inline /> | `JSONHas(data, 'key')` |
+<SqlExamplesTable
+    rows={containment}
+    metaHeader="Type de colonne"
+    metaLabels={["String", "String (inverse)", "Array", "Array (inverse)", "Map", "Map (inverse)", "JSON natif", "JSON chaine"]}
+/>
 
 ## Colonnes JSON
 
@@ -60,44 +47,30 @@ ClickHouse supporte deux types de colonnes JSON avec des sorties SQL differentes
 
 Les colonnes declarees comme `JSON` utilisent la notation par points avec des segments entre backticks :
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `` data.`name` = 'test' `` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `` data.`user`.`name` = 'john' `` |
-| <FlyqlCode code={`data.age = 25`} inline /> | `` data.`age` = 25 `` |
+<SqlExamplesTable rows={jsonNative} />
 
 ### Type JSON chaine
 
 Les colonnes stockant du JSON sous forme de chaine (par ex. type `String` avec du contenu JSON) utilisent les fonctions `JSONExtract` enveloppees dans `multiIf` pour la verification de type :
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`data.name = 'test'`} inline /> | `multiIf(JSONType(data, 'name') = 'String', equals(JSONExtractString(data, 'name'), 'test'), 0)` |
-| <FlyqlCode code={`data.user.name = 'john'`} inline /> | `multiIf(JSONType(data, 'user', 'name') = 'String', equals(JSONExtractString(data, 'user', 'name'), 'john'), 0)` |
+<SqlExamplesTable rows={jsonString} />
 
 ## Colonnes Map
 
 Les colonnes Map utilisent la notation entre crochets avec les fonctions `equals()`/`notEquals()` :
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`metadata.key1 = 'value1'`} inline /> | `equals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.key1 != 'value1'`} inline /> | `notEquals(metadata['key1'], 'value1')` |
-| <FlyqlCode code={`metadata.pattern ~ 'test.*'`} inline /> | `match(metadata['pattern'], 'test.*')` |
+<SqlExamplesTable rows={mapColumns} />
 
 ## Colonnes Array
 
 Les indices de tableau FlyQL sont en base 0 ; le generateur ClickHouse ajoute 1 lors de l'emission du SQL parce que les tableaux ClickHouse sont indexes a partir de 1 au niveau SQL :
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={`tags.0 = 'first'`} inline /> | `equals(tags[1], 'first')` |
-| <FlyqlCode code={`tags.1 = 'second'`} inline /> | `equals(tags[2], 'second')` |
-| <FlyqlCode code={`tags.0 ~ 'tag.*'`} inline /> | `match(tags[1], 'tag.*')` |
+<SqlExamplesTable rows={arrayColumns} />
 
 ### Configuration des colonnes
 
-Le parametre `jsonString` controle le mode utilise :
+{/* TODO: native-speaker review */}
+Les colonnes text/varchar dont le contenu est du JSON valide sont declarees avec le type brut synthetique `jsonstring` :
 
 ```go
 // Go
@@ -121,10 +94,4 @@ const columns = {
 
 Les transformateurs generent des appels de fonctions specifiques a ClickHouse :
 
-| FlyQL | SQL genere |
-|-------|--------------|
-| <FlyqlCode code={'status\|upper = "ERROR"'} inline /> | `equals(upper(status), 'ERROR')` |
-| <FlyqlCode code={'status\|lower = "info"'} inline /> | `equals(lower(status), 'info')` |
-| <FlyqlCode code={'message\|len > 100'} inline /> | `length(message) > 100` |
-| <FlyqlCode code={'message\|lower\|len > 100'} inline /> | `length(lower(message)) > 100` |
-| <FlyqlCode code={'tags\|split(",") has "urgent"'} inline /> | `has(splitByChar(',', tags), 'urgent')` |
+<SqlExamplesTable rows={transformers} />

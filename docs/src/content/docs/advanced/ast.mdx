@@ -572,7 +572,7 @@ print(es_query)
 The built-in SQL generators follow the same recursive pattern shown above. Each generator:
 
 1. **Receives the root `Node`** and a column schema map.
-2. **Recurses through the tree:** branch nodes become `(left AND right)` or `(left OR right)`, leaf nodes become SQL conditions.
+2. **Recurses through the tree:** branch nodes combine `left OP right`, with parentheses added only when SQL precedence requires them (for example, an `OR` subtree under an `AND` parent stays wrapped as `a AND (b OR c)`, while same-precedence chains like `a AND b AND c` render flat). `NOT (...)` always wraps its operand per SQL convention. Leaf nodes become SQL conditions.
 3. **Handles each operator** by switching on `expression.operator` and emitting dialect-specific SQL.
 4. **Wraps negated nodes** in `NOT (...)`.
 

@@ -301,9 +301,9 @@ function resolveDialectSpec(entry) {
 function resolveDialectDb(entry) {
     return typeof entry === 'string' ? entry : entry?.db || ''
 }
-const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, t]) => [name, chNewColumn(name, resolveDialectSpec(t))]))
-const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, t]) => [name, pgNewColumn(name, resolveDialectSpec(t))]))
-const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, t]) => [name, srNewColumn(name, resolveDialectSpec(t))]))
+const chColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.clickhouse).map(([name, t]) => [name, chNewColumn({ name, type: resolveDialectSpec(t) })]))
+const pgColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.postgresql).map(([name, t]) => [name, pgNewColumn({ name, type: resolveDialectSpec(t) })]))
+const srColumns = Object.fromEntries(Object.entries(otelLogs.dialectTypes.starrocks).map(([name, t]) => [name, srNewColumn({ name, type: resolveDialectSpec(t) })]))
 
 const dialects = [
     { key: 'ch', name: 'ClickHouse', icon: chIconLight, iconDark: chIconDark, dialectTypeKey: 'clickhouse' },

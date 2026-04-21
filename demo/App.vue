@@ -556,8 +556,10 @@ body:where(.dark, .dark *) { background-color: #1c1c1c; color: #ffffff; }
 
 /* Schema sidebar type colors */
 .flyql-schema-type[data-type="string"] { color: var(--flyql-value-color); }
-.flyql-schema-type[data-type="number"] { color: var(--flyql-number-color); }
-.flyql-schema-type[data-type="object"] { color: var(--flyql-operator-color); }
+.flyql-schema-type[data-type="int"],
+.flyql-schema-type[data-type="float"] { color: var(--flyql-number-color); }
+.flyql-schema-type[data-type="map"],
+.flyql-schema-type[data-type="json"] { color: var(--flyql-operator-color); }
 .flyql-schema-type[data-type="jsonstring"] { color: var(--flyql-renderer-color); }
 
 /* Demo-only `|tag` renderer — pill/badge styling for filter-data table cells.

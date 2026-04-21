@@ -6,47 +6,47 @@
         { "name": "SeverityText", "type": "string" },
         { "name": "ServiceName", "type": "string" },
         { "name": "Body", "type": "string" },
-        { "name": "ResourceAttributes", "type": "object" },
-        { "name": "LogAttributes", "type": "object" },
-        { "name": "Metadata", "type": "object" },
+        { "name": "ResourceAttributes", "type": "map" },
+        { "name": "LogAttributes", "type": "map" },
+        { "name": "Metadata", "type": "json" },
         { "name": "Payload", "type": "jsonstring" }
     ],
     "editorColumns": {
         "Timestamp": { "type": "string", "suggest": true },
         "TraceId": { "type": "string", "suggest": true },
         "SpanId": { "type": "string", "suggest": true },
-        "TraceFlags": { "type": "number", "suggest": true },
+        "TraceFlags": { "type": "int", "suggest": true },
         "SeverityText": { "type": "string", "suggest": true, "autocomplete": true, "values": ["TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"], "description": "Textual severity level of the log record (OTel: severityText)." },
-        "SeverityNumber": { "type": "number", "suggest": true },
+        "SeverityNumber": { "type": "int", "suggest": true },
         "ServiceName": { "type": "string", "suggest": true, "autocomplete": true, "values": ["api-gateway", "order-service", "payment-service"], "description": "Logical service name the log originated from (OTel: service.name)." },
         "Body": { "type": "string", "suggest": true, "description": "Free-form log message body." },
         "ResourceSchemaUrl": { "type": "string", "suggest": true },
         "ResourceAttributes": {
-            "type": "object", "suggest": true,
+            "type": "map", "suggest": true,
             "children": {
                 "service": {
-                    "type": "object", "suggest": true,
+                    "type": "map", "suggest": true,
                     "children": {
                         "name": { "type": "string", "suggest": true },
                         "version": { "type": "string", "suggest": true }
                     }
                 },
                 "k8s": {
-                    "type": "object", "suggest": true,
+                    "type": "map", "suggest": true,
                     "children": {
-                        "cluster": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
-                        "namespace": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
-                        "deployment": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
-                        "pod": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true }, "uid": { "type": "string", "suggest": true } } },
-                        "container": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
-                        "node": { "type": "object", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } }
+                        "cluster": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "namespace": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "deployment": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "pod": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true }, "uid": { "type": "string", "suggest": true } } },
+                        "container": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } },
+                        "node": { "type": "map", "suggest": true, "children": { "name": { "type": "string", "suggest": true } } }
                     }
                 },
                 "deployment": {
-                    "type": "object", "suggest": true,
+                    "type": "map", "suggest": true,
                     "children": {
                         "environment": {
-                            "type": "object", "suggest": true,
+                            "type": "map", "suggest": true,
                             "children": {
                                 "name": { "type": "string", "suggest": true, "autocomplete": true, "values": ["production", "staging", "development"] }
                             }
@@ -58,9 +58,9 @@
         "ScopeSchemaUrl": { "type": "string", "suggest": true },
         "ScopeName": { "type": "string", "suggest": true },
         "ScopeVersion": { "type": "string", "suggest": true },
-        "ScopeAttributes": { "type": "object", "suggest": true, "children": { "component": { "type": "string", "suggest": true } } },
+        "ScopeAttributes": { "type": "map", "suggest": true, "children": { "component": { "type": "string", "suggest": true } } },
         "LogAttributes": {
-            "type": "object", "suggest": true, "description": "Per-record attribute map (OTel: LogRecord.Attributes). Flat string-to-string map.",
+            "type": "map", "suggest": true, "description": "Per-record attribute map (OTel: LogRecord.Attributes). Flat string-to-string map.",
             "children": {
                 "http": { "type": "string", "suggest": true, "description": "HTTP request/response attributes container (leaf in flat map)." },
                 "error": { "type": "string", "suggest": true, "description": "Error attributes container (leaf in flat map)." },
@@ -71,56 +71,56 @@
             }
         },
         "Metadata": {
-            "type": "object", "suggest": true, "description": "Per-record JSON blob with nested application metadata.",
+            "type": "json", "suggest": true, "description": "Per-record JSON blob with nested application metadata.",
             "children": {
                 "enterprise": {
-                    "type": "object", "suggest": true,
+                    "type": "json", "suggest": true,
                     "children": {
                         "observability": {
-                            "type": "object", "suggest": true,
+                            "type": "json", "suggest": true,
                             "children": {
                                 "telemetry": {
-                                    "type": "object", "suggest": true,
+                                    "type": "json", "suggest": true,
                                     "children": {
                                         "emission": {
-                                            "type": "object", "suggest": true,
+                                            "type": "json", "suggest": true,
                                             "children": {
                                                 "pipeline": {
-                                                    "type": "object", "suggest": true,
+                                                    "type": "json", "suggest": true,
                                                     "children": {
                                                         "checkpoint": {
-                                                            "type": "object", "suggest": true,
+                                                            "type": "json", "suggest": true,
                                                             "children": {
-                                                                "durationMs": { "type": "number", "suggest": true },
-                                                                "recordsProcessed": { "type": "number", "suggest": true },
-                                                                "backpressureRatio": { "type": "number", "suggest": true }
+                                                                "durationMs": { "type": "int", "suggest": true },
+                                                                "recordsProcessed": { "type": "int", "suggest": true },
+                                                                "backpressureRatio": { "type": "float", "suggest": true }
                                                             }
                                                         },
                                                         "buffer": {
-                                                            "type": "object", "suggest": true,
+                                                            "type": "json", "suggest": true,
                                                             "children": {
-                                                                "sizeBytes": { "type": "number", "suggest": true },
+                                                                "sizeBytes": { "type": "int", "suggest": true },
                                                                 "highWatermarkReachedAt": { "type": "string", "suggest": true }
                                                             }
                                                         }
                                                     }
                                                 },
                                                 "sampler": {
-                                                    "type": "object", "suggest": true,
+                                                    "type": "json", "suggest": true,
                                                     "children": {
-                                                        "rate": { "type": "number", "suggest": true },
+                                                        "rate": { "type": "float", "suggest": true },
                                                         "decisionAlgorithmVersion": { "type": "string", "suggest": true }
                                                     }
                                                 }
                                             }
                                         },
                                         "retention": {
-                                            "type": "object", "suggest": true,
+                                            "type": "json", "suggest": true,
                                             "children": {
                                                 "policy": {
-                                                    "type": "object", "suggest": true,
+                                                    "type": "json", "suggest": true,
                                                     "children": {
-                                                        "windowDays": { "type": "number", "suggest": true },
+                                                        "windowDays": { "type": "int", "suggest": true },
                                                         "tierDefinitionColdStorageAccessTierNameSuffixOverride": { "type": "string", "suggest": true }
                                                     }
                                                 }
@@ -131,22 +131,22 @@
                             }
                         },
                         "governance": {
-                            "type": "object", "suggest": true,
+                            "type": "json", "suggest": true,
                             "children": {
                                 "compliance": {
-                                    "type": "object", "suggest": true,
+                                    "type": "json", "suggest": true,
                                     "children": {
                                         "auditTrail": {
-                                            "type": "object", "suggest": true,
+                                            "type": "json", "suggest": true,
                                             "children": {
                                                 "retention": {
-                                                    "type": "object", "suggest": true,
+                                                    "type": "json", "suggest": true,
                                                     "children": {
                                                         "configurationProfileIdentifierSuffixVerboseNameDecoratedForTestingLongLeafOverflowCase": { "type": "string", "suggest": true }
                                                     }
                                                 },
                                                 "signer": {
-                                                    "type": "object", "suggest": true,
+                                                    "type": "json", "suggest": true,
                                                     "children": {
                                                         "keyId": { "type": "string", "suggest": true },
                                                         "algorithm": { "type": "string", "suggest": true, "autocomplete": true, "values": ["RS256", "ES256", "EdDSA"] }
@@ -167,7 +167,7 @@
             "children": {
                 "userId": { "type": "string", "suggest": true, "description": "Authenticated user identifier." },
                 "action": { "type": "string", "suggest": true, "autocomplete": true, "values": ["view", "click", "submit", "purchase"], "description": "High-level action the event represents." },
-                "latencyMs": { "type": "number", "suggest": true, "description": "End-to-end latency of the event in milliseconds." }
+                "latencyMs": { "type": "int", "suggest": true, "description": "End-to-end latency of the event in milliseconds." }
             }
         }
     },

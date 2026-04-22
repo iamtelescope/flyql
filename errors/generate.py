@@ -221,8 +221,26 @@ def _go_code_ident(name: str) -> str:
     return "".join(out_parts)
 
 
+def _py_entry(e: ErrorEntry, key_expr: str) -> str:
+    return (
+        f"ErrorEntry(code={key_expr}, "
+        f"name={_py_str(e.name)}, "
+        f"message={_py_str(e.message)}, "
+        f"description={_py_str(e.description)}, "
+        f"dynamic_message={e.dynamic_message})"
+    )
+
+
 def _render_python(reg: Registry) -> str:
     parts: list[str] = [_py_header()]
+    parts.append("from dataclasses import dataclass\n\n\n")
+    parts.append("@dataclass(frozen=True)\nclass ErrorEntry:\n")
+    parts.append('    """Registry entry for a single error code."""\n\n')
+    parts.append("    code: int | str\n")
+    parts.append("    name: str\n")
+    parts.append("    message: str\n")
+    parts.append("    description: str\n")
+    parts.append("    dynamic_message: bool\n\n\n")
 
     # core_parser
     parts.append("# core_parser errnos (int)\n")
@@ -231,6 +249,10 @@ def _render_python(reg: Registry) -> str:
     parts.append("\nCORE_PARSER_MESSAGES: dict[int, str] = {\n")
     for e in _sorted_by_int(reg.core_parser):
         parts.append(f"    {e.name}: {_py_str(e.message)},\n")
+    parts.append("}\n\n")
+    parts.append("CORE_PARSER_REGISTRY: dict[int, ErrorEntry] = {\n")
+    for e in _sorted_by_int(reg.core_parser):
+        parts.append(f"    {e.name}: {_py_entry(e, e.name)},\n")
     parts.append("}\n\n")
 
     # columns_parser
@@ -241,6 +263,10 @@ def _render_python(reg: Registry) -> str:
     for e in _sorted_by_int(reg.columns_parser):
         parts.append(f"    {e.name}: {_py_str(e.message)},\n")
     parts.append("}\n\n")
+    parts.append("COLUMNS_PARSER_REGISTRY: dict[int, ErrorEntry] = {\n")
+    for e in _sorted_by_int(reg.columns_parser):
+        parts.append(f"    {e.name}: {_py_entry(e, e.name)},\n")
+    parts.append("}\n\n")
 
     # validator
     parts.append("# validator diagnostic codes (string)\n")
@@ -250,8 +276,12 @@ def _render_python(reg: Registry) -> str:
     for e in _sorted_by_name(reg.validator):
         parts.append(f"    {e.name}: {_py_str(e.message)},\n")
     parts.append("}\n\n")
+    parts.append("VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {\n")
+    for e in _sorted_by_name(reg.validator):
+        parts.append(f"    {e.name}: {_py_entry(e, e.name)},\n")
+    parts.append("}\n\n")
 
-    # matcher
+    # matcher (no REGISTRY emit per Decision 2 — matcher uses FlyqlError, not Diagnostic/ParserError)
     parts.append("# matcher diagnostic codes (string)\n")
     for e in _sorted_by_name(reg.matcher):
         parts.append(f"{e.name} = {_py_str(e.key)}\n")
@@ -263,8 +293,32 @@ def _render_python(reg: Registry) -> str:
     return "".join(parts)
 
 
+def _js_entry(e: ErrorEntry, key_expr: str) -> str:
+    # JSON-string escaping (double-quoted) is a strict subset of valid JS;
+    # prettier normalizes quotes per project style.
+    return (
+        f"new ErrorEntry({key_expr}, "
+        f"{json.dumps(e.name, ensure_ascii=False)}, "
+        f"{json.dumps(e.message, ensure_ascii=False)}, "
+        f"{json.dumps(e.description, ensure_ascii=False)}, "
+        f"{'true' if e.dynamic_message else 'false'})"
+    )
+
+
 def _render_js(reg: Registry) -> str:
     parts: list[str] = [_slash_header()]
+
+    parts.append("// ErrorEntry: registry entry for a single error code.\n")
+    parts.append("export class ErrorEntry {\n")
+    parts.append("    constructor(code, name, message, description, dynamicMessage) {\n")
+    parts.append("        this.code = code\n")
+    parts.append("        this.name = name\n")
+    parts.append("        this.message = message\n")
+    parts.append("        this.description = description\n")
+    parts.append("        this.dynamicMessage = dynamicMessage\n")
+    parts.append("        Object.freeze(this)\n")
+    parts.append("    }\n")
+    parts.append("}\n\n")
 
     parts.append("// core_parser errnos (int)\n")
     for e in _sorted_by_int(reg.core_parser):
@@ -272,6 +326,10 @@ def _render_js(reg: Registry) -> str:
     parts.append("\nexport const CORE_PARSER_MESSAGES = Object.freeze({\n")
     for e in _sorted_by_int(reg.core_parser):
         parts.append(f"    [{e.name}]: {_js_str(e.message)},\n")
+    parts.append("})\n\n")
+    parts.append("export const CORE_PARSER_REGISTRY = Object.freeze({\n")
+    for e in _sorted_by_int(reg.core_parser):
+        parts.append(f"    [{e.name}]: {_js_entry(e, e.name)},\n")
     parts.append("})\n\n")
 
     parts.append("// columns_parser errnos (int)\n")
@@ -281,6 +339,10 @@ def _render_js(reg: Registry) -> str:
     for e in _sorted_by_int(reg.columns_parser):
         parts.append(f"    [{e.name}]: {_js_str(e.message)},\n")
     parts.append("})\n\n")
+    parts.append("export const COLUMNS_PARSER_REGISTRY = Object.freeze({\n")
+    for e in _sorted_by_int(reg.columns_parser):
+        parts.append(f"    [{e.name}]: {_js_entry(e, e.name)},\n")
+    parts.append("})\n\n")
 
     parts.append("// validator diagnostic codes (string)\n")
     for e in _sorted_by_name(reg.validator):
@@ -289,7 +351,12 @@ def _render_js(reg: Registry) -> str:
     for e in _sorted_by_name(reg.validator):
         parts.append(f"    [{e.name}]: {_js_str(e.message)},\n")
     parts.append("})\n\n")
+    parts.append("export const VALIDATOR_REGISTRY = Object.freeze({\n")
+    for e in _sorted_by_name(reg.validator):
+        parts.append(f"    [{e.name}]: {_js_entry(e, e.name)},\n")
+    parts.append("})\n\n")
 
+    # matcher (no REGISTRY emit — see Decision 2)
     parts.append("// matcher diagnostic codes (string)\n")
     for e in _sorted_by_name(reg.matcher):
         parts.append(f"export const {e.name} = {_js_str(e.key)}\n")
@@ -301,11 +368,41 @@ def _render_js(reg: Registry) -> str:
     return "".join(parts)
 
 
+_GO_ERROR_ENTRY_TYPE = (
+    "// ErrorEntry is the registry entry for a single error code. The Code\n"
+    "// field is `any` because validator codes are strings and parser codes\n"
+    "// are ints; consumers type-assert as needed.\n"
+    "type ErrorEntry struct {\n"
+    "    Code           any\n"
+    "    Name           string\n"
+    "    Message        string\n"
+    "    Description    string\n"
+    "    DynamicMessage bool\n"
+    "}\n\n"
+)
+
+
+def _go_entry(e: ErrorEntry, code_expr: str) -> str:
+    return (
+        "{Code: "
+        + code_expr
+        + ", Name: "
+        + _go_str(e.name)
+        + ", Message: "
+        + _go_str(e.message)
+        + ", Description: "
+        + _go_str(e.description)
+        + ", DynamicMessage: "
+        + ("true" if e.dynamic_message else "false")
+        + "}"
+    )
+
+
 def _render_go_top(reg: Registry) -> str:
     """golang/errors_generated.go — package flyql.
     Contains core_parser errnos (lowercase ident) + 8 non-renderer validator Code* (PascalCase).
     """
-    parts: list[str] = [_slash_header(), "package flyql\n\n"]
+    parts: list[str] = [_slash_header(), "package flyql\n\n", _GO_ERROR_ENTRY_TYPE]
 
     parts.append("// core_parser errnos.\n")
     parts.append("const (\n")
@@ -319,6 +416,12 @@ def _render_go_top(reg: Registry) -> str:
         parts.append(f"    {_go_ident(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n\n")
 
+    parts.append("// coreParserRegistry maps core_parser errnos to ErrorEntry records.\n")
+    parts.append("var coreParserRegistry = map[int]ErrorEntry{\n")
+    for e in _sorted_by_int(reg.core_parser):
+        parts.append(f"    {_go_ident(e.name)}: {_go_entry(e, _go_ident(e.name))},\n")
+    parts.append("}\n\n")
+
     non_renderer = [e for e in reg.validator if e.key not in VALIDATOR_RENDERER_KEYS]
     parts.append("// Validator diagnostic codes (excluding renderer codes which live in package columns).\n")
     parts.append("const (\n")
@@ -330,6 +433,12 @@ def _render_go_top(reg: Registry) -> str:
     parts.append("var validatorMessages = map[string]string{\n")
     for e in _sorted_by_name(non_renderer):
         parts.append(f"    {_go_code_ident(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("// validatorRegistry maps non-renderer validator codes to ErrorEntry records.\n")
+    parts.append("var validatorRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_name(non_renderer):
+        parts.append(f"    {_go_code_ident(e.name)}: {_go_entry(e, _go_code_ident(e.name))},\n")
     parts.append("}\n\n")
 
     parts.append("// matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.\n")
@@ -363,6 +472,11 @@ def _render_go_top_test(reg: Registry) -> str:
         parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n\n")
 
+    parts.append("var generatedCoreParserRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_int(reg.core_parser):
+        parts.append(f"    {_go_str(e.name)}: {_go_entry(e, _go_ident(e.name))},\n")
+    parts.append("}\n\n")
+
     non_renderer = [e for e in reg.validator if e.key not in VALIDATOR_RENDERER_KEYS]
     parts.append("var generatedValidatorConstants = map[string]string{\n")
     for e in _sorted_by_name(non_renderer):
@@ -372,6 +486,11 @@ def _render_go_top_test(reg: Registry) -> str:
     parts.append("var generatedValidatorMessages = map[string]string{\n")
     for e in _sorted_by_name(non_renderer):
         parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("var generatedValidatorRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_name(non_renderer):
+        parts.append(f"    {_go_str(e.name)}: {_go_entry(e, _go_code_ident(e.name))},\n")
     parts.append("}\n\n")
 
     parts.append("var generatedMatcherConstants = map[string]string{\n")
@@ -391,7 +510,7 @@ def _render_go_columns(reg: Registry) -> str:
     """golang/columns/errors_generated.go — package columns.
     Contains columns_parser errnos (lowercase) + 3 renderer validator Code* (PascalCase).
     """
-    parts: list[str] = [_slash_header(), "package columns\n\n"]
+    parts: list[str] = [_slash_header(), "package columns\n\n", _GO_ERROR_ENTRY_TYPE]
 
     parts.append("// columns_parser errnos.\n")
     parts.append("const (\n")
@@ -405,6 +524,12 @@ def _render_go_columns(reg: Registry) -> str:
         parts.append(f"    {_go_ident(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n\n")
 
+    parts.append("// columnsParserRegistry maps columns_parser errnos to ErrorEntry records.\n")
+    parts.append("var columnsParserRegistry = map[int]ErrorEntry{\n")
+    for e in _sorted_by_int(reg.columns_parser):
+        parts.append(f"    {_go_ident(e.name)}: {_go_entry(e, _go_ident(e.name))},\n")
+    parts.append("}\n\n")
+
     renderer = [e for e in reg.validator if e.key in VALIDATOR_RENDERER_KEYS]
     parts.append("// Renderer diagnostic codes (moved from package flyql; renderers are a columns feature).\n")
     parts.append("const (\n")
@@ -416,6 +541,12 @@ def _render_go_columns(reg: Registry) -> str:
     parts.append("var rendererValidatorMessages = map[string]string{\n")
     for e in _sorted_by_name(renderer):
         parts.append(f"    {_go_code_ident(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("// rendererValidatorRegistry maps renderer codes to ErrorEntry records.\n")
+    parts.append("var rendererValidatorRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_name(renderer):
+        parts.append(f"    {_go_code_ident(e.name)}: {_go_entry(e, _go_code_ident(e.name))},\n")
     parts.append("}\n")
 
     return "".join(parts)
@@ -434,6 +565,11 @@ def _render_go_columns_test(reg: Registry) -> str:
         parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
     parts.append("}\n\n")
 
+    parts.append("var generatedColumnsParserRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_int(reg.columns_parser):
+        parts.append(f"    {_go_str(e.name)}: {_go_entry(e, _go_ident(e.name))},\n")
+    parts.append("}\n\n")
+
     renderer = [e for e in reg.validator if e.key in VALIDATOR_RENDERER_KEYS]
     parts.append("var generatedRendererValidatorConstants = map[string]string{\n")
     for e in _sorted_by_name(renderer):
@@ -443,6 +579,11 @@ def _render_go_columns_test(reg: Registry) -> str:
     parts.append("var generatedRendererValidatorMessages = map[string]string{\n")
     for e in _sorted_by_name(renderer):
         parts.append(f"    {_go_str(e.name)}: {_go_str(e.message)},\n")
+    parts.append("}\n\n")
+
+    parts.append("var generatedRendererValidatorRegistry = map[string]ErrorEntry{\n")
+    for e in _sorted_by_name(renderer):
+        parts.append(f"    {_go_str(e.name)}: {_go_entry(e, _go_code_ident(e.name))},\n")
     parts.append("}\n")
 
     return "".join(parts)
@@ -497,7 +638,7 @@ def _format_python(path: Path) -> None:
         stderr = (result.stderr or result.stdout).strip()
         _fail(
             "black failed: "
-            f"exit {result.returncode}. Install black==25.1.0 (`pip install black==25.1.0`) or activate the project venv.\n{stderr}"
+            f"exit {result.returncode}. Install black==26.3.1 (`pip install black==26.3.1`) or activate the project venv.\n{stderr}"
         )
 
 

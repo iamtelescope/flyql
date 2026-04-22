@@ -51,6 +51,8 @@ from flyql.errors_generated import (
     CODE_UNKNOWN_COLUMN_VALUE,
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
+    VALIDATOR_REGISTRY,
+    ErrorEntry,
 )
 
 _VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
@@ -100,12 +102,29 @@ class Diagnostic:
     message: str
     severity: DiagnosticSeverity
     code: str
+    error: Optional[ErrorEntry] = None
+
+
+def make_diag(
+    range: Range,
+    code: str,
+    severity: DiagnosticSeverity,
+    message: str,
+) -> Diagnostic:
+    # Drift between code constants and registry is caught at build time by
+    # the parity test; on miss we still return a Diagnostic (error=None).
+    entry = VALIDATOR_REGISTRY.get(code)
+    return Diagnostic(
+        range=range, code=code, severity=severity, message=message, error=entry
+    )
 
 
 __all__ = [
     "Diagnostic",
     "DiagnosticSeverity",
+    "ErrorEntry",
     "diagnose",
+    "make_diag",
     "CODE_UNKNOWN_COLUMN",
     "CODE_UNKNOWN_TRANSFORMER",
     "CODE_ARG_COUNT",
@@ -161,7 +180,7 @@ def _diagnose_expression(
         or len(expression.key.segment_ranges) < 1
     ):
         diags.append(
-            Diagnostic(
+            make_diag(
                 range=Range(0, 0),
                 code=CODE_INVALID_AST,
                 severity="error",
@@ -174,7 +193,7 @@ def _diagnose_expression(
     col = schema.get(expression.key.segments[0])
     if col is None:
         diags.append(
-            Diagnostic(
+            make_diag(
                 range=expression.key.segment_ranges[0],
                 code=CODE_UNKNOWN_COLUMN,
                 severity="error",
@@ -188,7 +207,7 @@ def _diagnose_expression(
                 break  # trailing dot — user still typing
             if col.children is None:
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=expression.key.segment_ranges[i],
                         code=CODE_UNKNOWN_COLUMN,
                         severity="error",
@@ -200,7 +219,7 @@ def _diagnose_expression(
             child = col.children.get(seg.lower())
             if child is None:
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=expression.key.segment_ranges[i],
                         code=CODE_UNKNOWN_COLUMN,
                         severity="error",
@@ -218,7 +237,7 @@ def _diagnose_expression(
 
         if t is None:
             diags.append(
-                Diagnostic(
+                make_diag(
                     range=transformer.name_range,
                     code=CODE_UNKNOWN_TRANSFORMER,
                     severity="error",
@@ -237,7 +256,7 @@ def _diagnose_expression(
             else:
                 expect_str = f"{required_count}..{max_count} arguments"
             diags.append(
-                Diagnostic(
+                make_diag(
                     range=transformer.range,
                     code=CODE_ARG_COUNT,
                     severity="error",
@@ -257,7 +276,7 @@ def _diagnose_expression(
             if actual == Type.Int and expected == Type.Float:
                 continue
             diags.append(
-                Diagnostic(
+                make_diag(
                     range=transformer.argument_ranges[j],
                     code=CODE_ARG_TYPE,
                     severity="error",
@@ -267,7 +286,7 @@ def _diagnose_expression(
 
         if prev_output_type is not None and prev_output_type != t.input_type:
             diags.append(
-                Diagnostic(
+                make_diag(
                     range=transformer.name_range,
                     code=CODE_CHAIN_TYPE,
                     severity="error",
@@ -287,7 +306,7 @@ def _diagnose_expression(
         if not _VALID_COLUMN_NAME_RE.match(expression.value):
             if expression.value_range is not None:
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=expression.value_range,
                         code=CODE_INVALID_COLUMN_VALUE,
                         severity="error",
@@ -300,7 +319,7 @@ def _diagnose_expression(
         elif schema.resolve(expression.value.split(".")) is None:
             if expression.value_range is not None:
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=expression.value_range,
                         code=CODE_UNKNOWN_COLUMN_VALUE,
                         severity="error",
@@ -320,7 +339,7 @@ def _diagnose_expression(
                         expression.value_ranges
                     ):
                         diags.append(
-                            Diagnostic(
+                            make_diag(
                                 range=expression.value_ranges[i],
                                 code=CODE_INVALID_COLUMN_VALUE,
                                 severity="error",
@@ -338,7 +357,7 @@ def _diagnose_expression(
                         expression.value_ranges
                     ):
                         diags.append(
-                            Diagnostic(
+                            make_diag(
                                 range=expression.value_ranges[i],
                                 code=CODE_UNKNOWN_COLUMN_VALUE,
                                 severity="error",
@@ -363,7 +382,7 @@ def _diagnose_expression(
             key = (expression.value_range.start, expression.value_range.end)
             if key not in emitted_ranges and not _is_valid_iso8601(expression.value):
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=expression.value_range,
                         code=CODE_INVALID_DATETIME_LITERAL,
                         severity="warning",
@@ -391,7 +410,7 @@ def _diagnose_expression(
                     continue
                 if not _is_valid_iso8601(v):
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=r,
                             code=CODE_INVALID_DATETIME_LITERAL,
                             severity="warning",

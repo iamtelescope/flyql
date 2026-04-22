@@ -12,7 +12,9 @@ import {
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     Diagnostic,
+    ErrorEntry,
 } from '../../src/core/validator.js'
+import { VALIDATOR_REGISTRY } from '../../src/errors_generated.js'
 import { Range } from '../../src/core/range.js'
 import { Renderer, RendererRegistry, ArgSpec } from '../../src/renderers/index.js'
 import { Type, parseFlyQLType } from '../../src/flyql_type.js'
@@ -241,6 +243,69 @@ describe('Columns Validator', () => {
             const diags = diagnose(cols, makeURLSchema(), null, null)
             expect(diags).toHaveLength(1)
             expect(diags[0].code).toBe(CODE_UNKNOWN_RENDERER)
+        })
+    })
+
+    describe('Diagnostic.error population', () => {
+        function _hrefRegistry() {
+            const reg = new RendererRegistry()
+            class _Href extends Renderer {
+                get name() {
+                    return 'href'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            reg.register(new _Href())
+            return reg
+        }
+
+        const baseSchema = ColumnSchema.fromColumns([makeColumn('url', 'string')])
+        const baseCaps = { transformers: true, renderers: true }
+
+        const cases = [
+            {
+                query: 'foo',
+                schema: ColumnSchema.fromColumns([makeColumn('level', 'string')]),
+                code: CODE_UNKNOWN_COLUMN,
+                withRenderer: false,
+            },
+            {
+                query: 'level|zzzz',
+                schema: ColumnSchema.fromColumns([makeColumn('level', 'string')]),
+                code: CODE_UNKNOWN_TRANSFORMER,
+                withRenderer: false,
+            },
+            {
+                query: 'level|len|upper',
+                schema: ColumnSchema.fromColumns([makeColumn('level', 'string')]),
+                code: CODE_CHAIN_TYPE,
+                withRenderer: false,
+            },
+            { query: 'url as link|wat("/x")', schema: baseSchema, code: CODE_UNKNOWN_RENDERER, withRenderer: true },
+            { query: 'url as link|href', schema: baseSchema, code: CODE_RENDERER_ARG_COUNT, withRenderer: true },
+            { query: 'url as link|href(123)', schema: baseSchema, code: CODE_RENDERER_ARG_TYPE, withRenderer: true },
+        ]
+
+        it.each(cases)('populates error for $code', ({ query, schema, code, withRenderer }) => {
+            const caps = withRenderer ? baseCaps : { transformers: true }
+            const cols = parse(query, caps)
+            const reg = withRenderer ? _hrefRegistry() : null
+            const diags = diagnose(cols, schema, null, reg)
+            const matching = diags.filter((d) => d.code === code)
+            expect(matching.length, `no diag with code ${code}`).toBeGreaterThan(0)
+            for (const d of matching) {
+                expect(d.error).not.toBeNull()
+                expect(d.error).toBeInstanceOf(ErrorEntry)
+                expect(d.error.code).toBe(d.code)
+                expect(d.error.name).toBe(VALIDATOR_REGISTRY[d.code].name)
+            }
+        })
+
+        it('user-extension Diagnostic with custom code has error=null', () => {
+            const d = new Diagnostic(new Range(0, 1), 'msg', 'warning', 'custom_href_no_placeholder')
+            expect(d.error).toBeNull()
         })
     })
 })

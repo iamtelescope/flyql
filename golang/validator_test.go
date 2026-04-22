@@ -290,3 +290,107 @@ func TestDiagnoseNilAST(t *testing.T) {
 		t.Errorf("expected nil for nil AST, got %+v", diags)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Diagnostic.Entry population (rich error objects)
+// ---------------------------------------------------------------------------
+
+func TestDiagnosticEntryPopulated(t *testing.T) {
+	reg := testRegistry()
+
+	type tc struct {
+		query string
+		cols  []Column
+		code  string
+	}
+	cases := []tc{
+		{"unknown_col=1", []Column{makeColumn("known", "string")}, CodeUnknownColumn},
+		{"host|wat", []Column{makeColumn("host", "string")}, CodeUnknownTransformer},
+		{"host|takes_int(1, 2)", []Column{makeColumn("host", "string")}, CodeArgCount},
+		{"host|takes_int('not-an-int')", []Column{makeColumn("host", "string")}, CodeArgType},
+		{"n|string_to_int|takes_int(1)", []Column{makeColumn("n", "string")}, CodeChainType},
+		{"field=nonexistent", []Column{makeColumn("field", "string")}, CodeUnknownColumnValue},
+		{"event_day > foo+bar", []Column{makeColumn("event_day", "date")}, CodeInvalidColumnValue},
+		{"ts > 'not-a-date'", []Column{makeColumn("ts", "datetime")}, CodeInvalidDatetimeLiteral},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.code, func(t *testing.T) {
+			ast := parseAST(t, c.query)
+			diags := Diagnose(ast, FromColumns(c.cols), reg)
+			matched := false
+			for _, d := range diags {
+				if d.Code != c.code {
+					continue
+				}
+				matched = true
+				codeStr, _ := d.Entry.Code.(string)
+				if codeStr != d.Code {
+					t.Errorf("Entry.Code = %v; want %q", d.Entry.Code, d.Code)
+				}
+				if d.Entry.Name == "" {
+					t.Errorf("Entry.Name is empty for %s", d.Code)
+				}
+				if d.Entry.Name != validatorRegistry[d.Code].Name {
+					t.Errorf("Entry.Name mismatch: got %q, want %q", d.Entry.Name, validatorRegistry[d.Code].Name)
+				}
+			}
+			if !matched {
+				t.Fatalf("no diagnostic with code %q from %q (got %+v)", c.code, c.query, diags)
+			}
+		})
+	}
+}
+
+func TestMakeDiagUnknownCodeReturnsZeroEntry(t *testing.T) {
+	d := MakeDiag(Range{Start: 0, End: 1}, "totally_made_up", SeverityError, "fake")
+	if d.Entry.Name != "" {
+		t.Errorf("Entry.Name should be empty for unknown code; got %q", d.Entry.Name)
+	}
+	if d.Code != "totally_made_up" {
+		t.Errorf("Code should be preserved; got %q", d.Code)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ParseError.Entry population
+// ---------------------------------------------------------------------------
+
+func TestParseErrorEntryPopulated(t *testing.T) {
+	type tc struct {
+		query string
+		errno int
+	}
+	cases := []tc{
+		{"", errEmptyInput},
+		{"a='unclosed", errUnclosedString},
+		{"(a=1", errUnmatchedParenAtEof},
+		{"a= ", errUnexpectedEof},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run("", func(t *testing.T) {
+			_, err := Parse(c.query)
+			if err == nil {
+				t.Fatalf("Parse(%q): expected error, got nil", c.query)
+			}
+			pe, ok := err.(*ParseError)
+			if !ok {
+				t.Fatalf("Parse(%q): expected *ParseError, got %T", c.query, err)
+			}
+			if pe.Code != c.errno {
+				t.Errorf("Code = %d; want %d", pe.Code, c.errno)
+			}
+			codeInt, _ := pe.Entry.Code.(int)
+			if codeInt != c.errno {
+				t.Errorf("Entry.Code = %v; want %d", pe.Entry.Code, c.errno)
+			}
+			if pe.Entry.Name == "" {
+				t.Errorf("Entry.Name empty for errno=%d", c.errno)
+			}
+			if pe.Entry.Name != coreParserRegistry[c.errno].Name {
+				t.Errorf("Entry.Name mismatch: got %q, want %q", pe.Entry.Name, coreParserRegistry[c.errno].Name)
+			}
+		})
+	}
+}

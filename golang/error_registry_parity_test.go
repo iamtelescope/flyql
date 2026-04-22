@@ -55,6 +55,25 @@ func rendererKey(key string) bool {
 	return false
 }
 
+func checkRegistryEntry(t *testing.T, category, name string, expected any, entry registryEntry, got ErrorEntry) {
+	t.Helper()
+	if got.Code != expected {
+		t.Errorf("%s: %s.Code = %v; want %v", category, name, got.Code, expected)
+	}
+	if got.Name != entry.Name {
+		t.Errorf("%s: %s.Name = %q; want %q", category, name, got.Name, entry.Name)
+	}
+	if got.Message != entry.Message {
+		t.Errorf("%s: %s.Message = %q; want %q", category, name, got.Message, entry.Message)
+	}
+	if got.Description != entry.Description {
+		t.Errorf("%s: %s.Description = %q; want %q", category, name, got.Description, entry.Description)
+	}
+	if got.DynamicMessage != entry.DynamicMessage {
+		t.Errorf("%s: %s.DynamicMessage = %v; want %v", category, name, got.DynamicMessage, entry.DynamicMessage)
+	}
+}
+
 func TestErrorRegistryParity_CoreParser(t *testing.T) {
 	reg := loadRegistryFile(t)
 	cat, ok := reg.Categories["core_parser"]
@@ -93,6 +112,12 @@ func TestErrorRegistryParity_CoreParser(t *testing.T) {
 		} else if mapMsg != entry.Message {
 			t.Errorf("core_parser: %s message = %q; want %q", entry.Name, mapMsg, entry.Message)
 		}
+		regEntry, present := generatedCoreParserRegistry[entry.Name]
+		if !present {
+			t.Errorf("core_parser: REGISTRY missing %s", entry.Name)
+			continue
+		}
+		checkRegistryEntry(t, "core_parser", entry.Name, expected, entry, regEntry)
 	}
 }
 
@@ -133,5 +158,49 @@ func TestErrorRegistryParity_Validator(t *testing.T) {
 		} else if mapMsg != entry.Message {
 			t.Errorf("validator: %s message = %q; want %q", entry.Name, mapMsg, entry.Message)
 		}
+		regEntry, present := generatedValidatorRegistry[entry.Name]
+		if !present {
+			t.Errorf("validator: REGISTRY missing %s", entry.Name)
+			continue
+		}
+		checkRegistryEntry(t, "validator", entry.Name, any(key), entry, regEntry)
+	}
+}
+
+func TestErrorRegistryParity_Matcher(t *testing.T) {
+	reg := loadRegistryFile(t)
+	cat, ok := reg.Categories["matcher"]
+	if !ok {
+		t.Fatal("registry missing matcher category")
+	}
+	if cat.CodeType != "string" {
+		t.Fatalf("matcher code_type = %q; want string", cat.CodeType)
+	}
+	for key, raw := range cat.Errors {
+		var entry registryEntry
+		if err := json.Unmarshal(raw, &entry); err != nil {
+			t.Fatalf("decoding matcher entry %s: %v", key, err)
+		}
+		got, present := generatedMatcherConstants[entry.Name]
+		if !present {
+			t.Errorf("matcher: generated constant %s missing", entry.Name)
+			continue
+		}
+		if got != key {
+			t.Errorf("matcher: %s = %q; want %q", entry.Name, got, key)
+		}
+		mapMsg, ok := generatedMatcherMessages[entry.Name]
+		if !ok {
+			t.Errorf("matcher: message map missing %s", entry.Name)
+			continue
+		}
+		if entry.DynamicMessage {
+			if mapMsg == "" {
+				t.Errorf("matcher: dynamic entry %s has empty message", entry.Name)
+			}
+		} else if mapMsg != entry.Message {
+			t.Errorf("matcher: %s message = %q; want %q", entry.Name, mapMsg, entry.Message)
+		}
+		// matcher excluded from REGISTRY emit per Decision 2; no map check here.
 	}
 }

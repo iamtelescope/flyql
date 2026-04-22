@@ -61,6 +61,7 @@ import {
     ERR_UNMATCHED_PAREN_IN_BOOL_DELIM,
     ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL,
     ERR_UNMATCHED_PAREN_IN_EXPR,
+    CORE_PARSER_REGISTRY,
 } from '../errors_generated.js'
 
 const _BOOL_OP_PRECEDENCE_TABLE = Object.freeze({ and: 2, or: 1 })
@@ -2444,7 +2445,8 @@ export class Parser {
 
         if (this.state === State.ERROR) {
             if (raiseError) {
-                throw new ParserError(this.errorText, this.errno, this._errorRange)
+                const entry = CORE_PARSER_REGISTRY[this.errno] ?? null
+                throw new ParserError(this.errorText, this.errno, this._errorRange, entry)
             } else {
                 return
             }
@@ -2456,7 +2458,8 @@ export class Parser {
 
         if (this.state === State.ERROR) {
             if (raiseError) {
-                throw new ParserError(this.errorText, this.errno, this._errorRange)
+                const entry = CORE_PARSER_REGISTRY[this.errno] ?? null
+                throw new ParserError(this.errorText, this.errno, this._errorRange, entry)
             } else {
                 return
             }

@@ -54,6 +54,25 @@ func isRendererKey(key string) bool {
 	return false
 }
 
+func checkRegistryEntry(t *testing.T, category, name string, expected any, entry registryEntry, got ErrorEntry) {
+	t.Helper()
+	if got.Code != expected {
+		t.Errorf("%s: %s.Code = %v; want %v", category, name, got.Code, expected)
+	}
+	if got.Name != entry.Name {
+		t.Errorf("%s: %s.Name = %q; want %q", category, name, got.Name, entry.Name)
+	}
+	if got.Message != entry.Message {
+		t.Errorf("%s: %s.Message = %q; want %q", category, name, got.Message, entry.Message)
+	}
+	if got.Description != entry.Description {
+		t.Errorf("%s: %s.Description = %q; want %q", category, name, got.Description, entry.Description)
+	}
+	if got.DynamicMessage != entry.DynamicMessage {
+		t.Errorf("%s: %s.DynamicMessage = %v; want %v", category, name, got.DynamicMessage, entry.DynamicMessage)
+	}
+}
+
 func TestErrorRegistryParity_ColumnsParser(t *testing.T) {
 	reg := loadRegistryFile(t)
 	cat, ok := reg.Categories["columns_parser"]
@@ -92,6 +111,12 @@ func TestErrorRegistryParity_ColumnsParser(t *testing.T) {
 		} else if mapMsg != entry.Message {
 			t.Errorf("columns_parser: %s message = %q; want %q", entry.Name, mapMsg, entry.Message)
 		}
+		regEntry, present := generatedColumnsParserRegistry[entry.Name]
+		if !present {
+			t.Errorf("columns_parser: REGISTRY missing %s", entry.Name)
+			continue
+		}
+		checkRegistryEntry(t, "columns_parser", entry.Name, expected, entry, regEntry)
 	}
 }
 
@@ -132,5 +157,11 @@ func TestErrorRegistryParity_RendererValidator(t *testing.T) {
 		} else if mapMsg != entry.Message {
 			t.Errorf("renderer validator: %s message = %q; want %q", entry.Name, mapMsg, entry.Message)
 		}
+		regEntry, present := generatedRendererValidatorRegistry[entry.Name]
+		if !present {
+			t.Errorf("renderer validator: REGISTRY missing %s", entry.Name)
+			continue
+		}
+		checkRegistryEntry(t, "renderer_validator", entry.Name, any(key), entry, regEntry)
 	}
 }

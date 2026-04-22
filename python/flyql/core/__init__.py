@@ -7,9 +7,9 @@ from flyql.core.key import Key, KeyTransformer, parse_key
 from flyql.core.column import Column, ColumnSchema
 from flyql.core.constants import BoolOperator, Operator
 from flyql.core.range import Range
-from flyql.core.validator import Diagnostic, diagnose
+from flyql.core.validator import Diagnostic, diagnose, make_diag
 from flyql.core.exceptions import FlyqlError, KeyParseError
-from flyql.errors_generated import ERR_MAX_DEPTH_EXCEEDED
+from flyql.errors_generated import ERR_MAX_DEPTH_EXCEEDED, ErrorEntry
 
 __all__ = [
     "parse",
@@ -28,9 +28,11 @@ __all__ = [
     "Range",
     "Diagnostic",
     "diagnose",
+    "make_diag",
     "FlyqlError",
     "KeyParseError",
     "ERR_MAX_DEPTH_EXCEEDED",
+    "ErrorEntry",
 ]
 
 

@@ -20,6 +20,7 @@ import {
     COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
     COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
     COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+    COLUMNS_PARSER_REGISTRY,
 } from '../errors_generated.js'
 
 export class Parser {
@@ -379,7 +380,8 @@ export class Parser {
         }
 
         if (this.state === State.ERROR && this.raiseError) {
-            throw new ParserError(this.errorText, this.errno)
+            const entry = COLUMNS_PARSER_REGISTRY[this.errno] ?? null
+            throw new ParserError(this.errorText, this.errno, entry)
         }
 
         if (!this.ignoreLastChar) {
@@ -387,7 +389,8 @@ export class Parser {
         }
 
         if (this.state === State.ERROR && this.raiseError) {
-            throw new ParserError(this.errorText, this.errno)
+            const entry = COLUMNS_PARSER_REGISTRY[this.errno] ?? null
+            throw new ParserError(this.errorText, this.errno, entry)
         }
     }
 

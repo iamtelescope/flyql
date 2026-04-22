@@ -15,7 +15,9 @@ from flyql.core.validator import (
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
     Diagnostic,
+    ErrorEntry,
 )
+from flyql.errors_generated import VALIDATOR_REGISTRY
 from flyql.core.range import Range
 from flyql.flyql_type import Type, parse_flyql_type
 from flyql.renderers import ArgSpec, Renderer, RendererRegistry
@@ -250,3 +252,94 @@ class TestRendererValidation:
         diags = diagnose(cols, self._schema(), renderer_registry=None)
         assert len(diags) == 1
         assert diags[0].code == CODE_UNKNOWN_RENDERER
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic.error population (rich error objects)
+# ---------------------------------------------------------------------------
+
+
+def _href_registry() -> RendererRegistry:
+    reg = RendererRegistry()
+
+    class _Href(Renderer):
+        arg_schema = (ArgSpec(type=Type.String, required=True),)
+
+        @property
+        def name(self) -> str:
+            return "href"
+
+    reg.register(_Href())
+    return reg
+
+
+_COLUMNS_PAYLOAD_CASES = [
+    ("foo", _schema_from_column("level", "string"), CODE_UNKNOWN_COLUMN, False),
+    (
+        "level|zzzz",
+        _schema_from_column("level", "string"),
+        CODE_UNKNOWN_TRANSFORMER,
+        False,
+    ),
+    (
+        "level|len|upper",
+        _schema_from_column("level", "string"),
+        CODE_CHAIN_TYPE,
+        False,
+    ),
+    (
+        'url as link|wat("/x")',
+        _schema_from_column("url", "string"),
+        CODE_UNKNOWN_RENDERER,
+        True,
+    ),
+    (
+        "url as link|href",
+        _schema_from_column("url", "string"),
+        CODE_RENDERER_ARG_COUNT,
+        True,
+    ),
+    (
+        "url as link|href(123)",
+        _schema_from_column("url", "string"),
+        CODE_RENDERER_ARG_TYPE,
+        True,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "query,schema,expected_code,with_renderer", _COLUMNS_PAYLOAD_CASES
+)
+def test_columns_diagnostic_error_populated(
+    query: str, schema: ColumnSchema, expected_code: str, with_renderer: bool
+) -> None:
+    caps = (
+        {"transformers": True, "renderers": True}
+        if with_renderer
+        else {"transformers": True}
+    )
+    cols = parse(query, capabilities=caps)
+    rreg = _href_registry() if with_renderer else None
+    diags = diagnose(cols, schema, renderer_registry=rreg)
+    matching = [d for d in diags if d.code == expected_code]
+    assert (
+        matching
+    ), f"no diagnostic with code {expected_code!r} from {query!r}; got {[d.code for d in diags]}"
+    for d in matching:
+        assert d.error is not None, f"{d.code}: error is None"
+        assert isinstance(d.error, ErrorEntry)
+        assert d.error.code == d.code
+        assert d.error.name == VALIDATOR_REGISTRY[d.code].name
+
+
+def test_user_extension_diagnostic_has_no_registry_entry():
+    # Decision 7: user-supplied codes (e.g. "custom_href_no_placeholder")
+    # produce Diagnostics with error=None — no crash.
+    d = Diagnostic(
+        range=Range(0, 1),
+        message="x",
+        severity="warning",
+        code="custom_href_no_placeholder",
+    )
+    assert d.error is None

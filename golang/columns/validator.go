@@ -9,6 +9,29 @@ import (
 	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
+// makeDiagRenderer constructs a flyql.Diagnostic for a renderer-category
+// code. Looks up the local rendererValidatorRegistry (renderer codes live
+// in package columns, not in package flyql.validatorRegistry), converts
+// the package-local columns.ErrorEntry to flyql.ErrorEntry by field copy,
+// and returns the Diagnostic. On miss returns Diagnostic with zero-value
+// Entry — no panic.
+func makeDiagRenderer(rng flyql.Range, code string, severity flyql.DiagnosticSeverity, message string) flyql.Diagnostic {
+	src := rendererValidatorRegistry[code] // zero-value if not present
+	return flyql.Diagnostic{
+		Range:    rng,
+		Code:     code,
+		Severity: severity,
+		Message:  message,
+		Entry: flyql.ErrorEntry{
+			Code:           src.Code,
+			Name:           src.Name,
+			Message:        src.Message,
+			Description:    src.Description,
+			DynamicMessage: src.DynamicMessage,
+		},
+	}
+}
+
 // goToFlyQLType maps a Go runtime value to its flyql.Type.
 func goToFlyQLType(v any) (flyqltype.Type, bool) {
 	switch v.(type) {
@@ -77,12 +100,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 			// Find the first unresolvable segment for precise error reporting
 			if col.NameRange.End > 0 {
 				failSegment, failRange := findFailingSegment(col, schema, segments)
-				diags = append(diags, flyql.Diagnostic{
-					Range:    failRange,
-					Message:  fmt.Sprintf("column '%s' is not defined", failSegment),
-					Severity: flyql.SeverityError,
-					Code:     flyql.CodeUnknownColumn,
-				})
+				diags = append(diags, flyql.MakeDiag(failRange, flyql.CodeUnknownColumn, flyql.SeverityError, fmt.Sprintf("column '%s' is not defined", failSegment)))
 			}
 			hasPrevType = false
 		} else {
@@ -101,12 +119,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 			t := registry.Get(transformer.Name)
 			if t == nil {
 				if nameRange.End > 0 {
-					diags = append(diags, flyql.Diagnostic{
-						Range:    nameRange,
-						Message:  fmt.Sprintf("unknown transformer: '%s'", transformer.Name),
-						Severity: flyql.SeverityError,
-						Code:     flyql.CodeUnknownTransformer,
-					})
+					diags = append(diags, flyql.MakeDiag(nameRange, flyql.CodeUnknownTransformer, flyql.SeverityError, fmt.Sprintf("unknown transformer: '%s'", transformer.Name)))
 				}
 				hasPrevType = false
 				continue
@@ -133,12 +146,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 				if len(argRanges) > 0 {
 					fullRange = flyql.Range{Start: nameRange.Start, End: argRanges[len(argRanges)-1].End + 1}
 				}
-				diags = append(diags, flyql.Diagnostic{
-					Range:    fullRange,
-					Message:  fmt.Sprintf("%s expects %s, got %d", transformer.Name, expectStr, got),
-					Severity: flyql.SeverityError,
-					Code:     flyql.CodeArgCount,
-				})
+				diags = append(diags, flyql.MakeDiag(fullRange, flyql.CodeArgCount, flyql.SeverityError, fmt.Sprintf("%s expects %s, got %d", transformer.Name, expectStr, got)))
 			}
 
 			// Per-argument type check
@@ -156,23 +164,13 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 					continue
 				}
 				if j < len(argRanges) {
-					diags = append(diags, flyql.Diagnostic{
-						Range:    argRanges[j],
-						Message:  fmt.Sprintf("argument %d of %s: expected %s, got %s", j+1, transformer.Name, expected, actual),
-						Severity: flyql.SeverityError,
-						Code:     flyql.CodeArgType,
-					})
+					diags = append(diags, flyql.MakeDiag(argRanges[j], flyql.CodeArgType, flyql.SeverityError, fmt.Sprintf("argument %d of %s: expected %s, got %s", j+1, transformer.Name, expected, actual)))
 				}
 			}
 
 			// Chain type check
 			if hasPrevType && prevOutputType != t.InputType() {
-				diags = append(diags, flyql.Diagnostic{
-					Range:    nameRange,
-					Message:  fmt.Sprintf("%s expects %s input, got %s", transformer.Name, t.InputType(), prevOutputType),
-					Severity: flyql.SeverityError,
-					Code:     flyql.CodeChainType,
-				})
+				diags = append(diags, flyql.MakeDiag(nameRange, flyql.CodeChainType, flyql.SeverityError, fmt.Sprintf("%s expects %s input, got %s", transformer.Name, t.InputType(), prevOutputType)))
 			}
 
 			prevOutputType = t.OutputType()
@@ -190,12 +188,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 			r := rendererRegistry.Get(renderer.Name)
 			if r == nil {
 				if nameRange.End > 0 {
-					diags = append(diags, flyql.Diagnostic{
-						Range:    nameRange,
-						Message:  fmt.Sprintf("unknown renderer: '%s'", renderer.Name),
-						Severity: flyql.SeverityError,
-						Code:     CodeUnknownRenderer,
-					})
+					diags = append(diags, makeDiagRenderer(nameRange, CodeUnknownRenderer, flyql.SeverityError, fmt.Sprintf("unknown renderer: '%s'", renderer.Name)))
 				}
 				continue
 			}
@@ -220,12 +213,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 				if len(argRanges) > 0 {
 					fullRange = flyql.Range{Start: nameRange.Start, End: argRanges[len(argRanges)-1].End + 1}
 				}
-				diags = append(diags, flyql.Diagnostic{
-					Range:    fullRange,
-					Message:  fmt.Sprintf("%s expects %s, got %d", renderer.Name, expectStr, got),
-					Severity: flyql.SeverityError,
-					Code:     CodeRendererArgCount,
-				})
+				diags = append(diags, makeDiagRenderer(fullRange, CodeRendererArgCount, flyql.SeverityError, fmt.Sprintf("%s expects %s, got %d", renderer.Name, expectStr, got)))
 			}
 
 			for j := 0; j < len(renderer.Arguments) && j < len(rSchema); j++ {
@@ -241,12 +229,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 					continue
 				}
 				if j < len(argRanges) {
-					diags = append(diags, flyql.Diagnostic{
-						Range:    argRanges[j],
-						Message:  fmt.Sprintf("argument %d of %s: expected %s, got %s", j+1, renderer.Name, expected, actual),
-						Severity: flyql.SeverityError,
-						Code:     CodeRendererArgType,
-					})
+					diags = append(diags, makeDiagRenderer(argRanges[j], CodeRendererArgType, flyql.SeverityError, fmt.Sprintf("argument %d of %s: expected %s, got %s", j+1, renderer.Name, expected, actual)))
 				}
 			}
 

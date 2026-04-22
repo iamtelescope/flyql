@@ -18,6 +18,7 @@ from flyql.core.validator import (
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
     Diagnostic,
+    make_diag,
 )
 from flyql.flyql_type import Type
 from flyql.renderers.registry import (
@@ -72,7 +73,7 @@ def diagnose(
                     col, schema, col.name_range, segments
                 )
                 diags.append(
-                    Diagnostic(
+                    make_diag(
                         range=fail_range,
                         message=f"column '{fail_seg}' is not defined",
                         severity="error",
@@ -93,7 +94,7 @@ def diagnose(
             if t is None:
                 if name_range is not None:
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=name_range,
                             message=f"unknown transformer: '{transformer['name']}'",
                             severity="error",
@@ -121,7 +122,7 @@ def diagnose(
                             arg_ranges[-1].end + 1,
                         )
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=full_range,
                             message=f"{transformer['name']} expects {expect_str}, got {got}",
                             severity="error",
@@ -142,7 +143,7 @@ def diagnose(
                     continue
                 if j < len(arg_ranges):
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=arg_ranges[j],
                             message=f"argument {j + 1} of {transformer['name']}: expected {expected}, got {actual}",
                             severity="error",
@@ -153,7 +154,7 @@ def diagnose(
             if prev_output_type is not None and prev_output_type != t.input_type:
                 if name_range is not None:
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=name_range,
                             message=f"{transformer['name']} expects {t.input_type} input, got {prev_output_type}",
                             severity="error",
@@ -173,7 +174,7 @@ def diagnose(
             if r is None:
                 if r_name_range is not None:
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=r_name_range,
                             message=f"unknown renderer: '{renderer['name']}'",
                             severity="error",
@@ -200,7 +201,7 @@ def diagnose(
                             r_arg_ranges[-1].end + 1,
                         )
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=full_range,
                             message=f"{renderer['name']} expects {expect_str}, got {got}",
                             severity="error",
@@ -221,7 +222,7 @@ def diagnose(
                     continue
                 if j < len(r_arg_ranges):
                     diags.append(
-                        Diagnostic(
+                        make_diag(
                             range=r_arg_ranges[j],
                             message=f"argument {j + 1} of {renderer['name']}: expected {expected}, got {actual}",
                             severity="error",

@@ -86,6 +86,47 @@ var generatedCoreParserMessages = map[string]string{
 	"ERR_MAX_DEPTH_EXCEEDED":                 "maximum nesting depth exceeded",
 }
 
+var generatedCoreParserRegistry = map[string]ErrorEntry{
+	"ERR_INVALID_CHAR_INITIAL":               {Code: errInvalidCharInitial, Name: "ERR_INVALID_CHAR_INITIAL", Message: "invalid character", Description: "Invalid character at the start of input (state INITIAL). Narrowed from the former dual-purpose ERR_UNKNOWN_STATE; the former state-dispatch fallthrough site is now an internal assertion.", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_VALUE":              {Code: errInvalidCharInValue, Name: "ERR_INVALID_CHAR_IN_VALUE", Message: "invalid character", Description: "Invalid character while parsing an unquoted value (in_state_value). Split off from ERR_UNKNOWN_OPERATOR (formerly errno 10).", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_KEY":                {Code: errInvalidCharInKey, Name: "ERR_INVALID_CHAR_IN_KEY", Message: "invalid character", Description: "", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR": {Code: errInvalidCharInKeyValueOperator, Name: "ERR_INVALID_CHAR_IN_KEY_VALUE_OPERATOR", Message: "invalid character", Description: "", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_PARAMETER_NAME":     {Code: errInvalidCharInParameterName, Name: "ERR_INVALID_CHAR_IN_PARAMETER_NAME", Message: "invalid character in parameter name", Description: "Invalid character while parsing a parameter name; covers regular-value, in-list, and function-call contexts. Consolidates sites previously split between ERR_UNKNOWN_OPERATOR (errno 10) and ERR_INVALID_FUNCTION_ARGS (errno 71) that emitted the identical message.", DynamicMessage: false},
+	"ERR_UNCLOSED_STRING":                    {Code: errUnclosedString, Name: "ERR_UNCLOSED_STRING", Message: "unclosed string", Description: "EOF reached inside a single- or double-quoted value. Split off from the former dual-purpose ERR_EXPECTED_OPERATOR_OR_UNCLOSED_STRING (errno 28).", DynamicMessage: false},
+	"ERR_EXPECTED_KEYWORD_AFTER_NOT":         {Code: errExpectedKeywordAfterNot, Name: "ERR_EXPECTED_KEYWORD_AFTER_NOT", Message: "expected keyword after 'not'", Description: "Emitted when a 'not' prefix is followed by a token that is neither 'has' nor 'like'/'ilike'. Dynamic message names the expected keyword ('has' vs 'like or ilike'). Split off from the former ERR_EXPECTED_VALUE_OR_KEYWORD (errno 50).", DynamicMessage: true},
+	"ERR_UNMATCHED_PAREN_IN_EXPR":            {Code: errUnmatchedParenInExpr, Name: "ERR_UNMATCHED_PAREN_IN_EXPR", Message: "unmatched parenthesis", Description: "", DynamicMessage: false},
+	"ERR_UNKNOWN_OPERATOR":                   {Code: errUnknownOperator, Name: "ERR_UNKNOWN_OPERATOR", Message: "unknown operator", Description: "Unknown key-value operator. Emitted from 5 in_state_key_value_operator sites (==, !==, =!, =<, =>-style typos). Narrowed from the former dual-purpose ERR_INVALID_CHAR_OR_UNKNOWN_OPERATOR; invalid-character sites were split off to ERR_INVALID_CHAR_IN_VALUE (errno 2) and ERR_INVALID_CHAR_IN_PARAMETER_NAME (errno 5).", DynamicMessage: false},
+	"ERR_UNMATCHED_PAREN_IN_BOOL_DELIM":      {Code: errUnmatchedParenInBoolDelim, Name: "ERR_UNMATCHED_PAREN_IN_BOOL_DELIM", Message: "unmatched parenthesis", Description: "", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_BOOL_DELIM":         {Code: errInvalidCharInBoolDelim, Name: "ERR_INVALID_CHAR_IN_BOOL_DELIM", Message: "invalid character", Description: "", DynamicMessage: false},
+	"ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL":     {Code: errUnmatchedParenInExpectBool, Name: "ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL", Message: "unmatched parenthesis", Description: "", DynamicMessage: false},
+	"ERR_INVALID_CHAR_IN_EXPECT_BOOL":        {Code: errInvalidCharInExpectBool, Name: "ERR_INVALID_CHAR_IN_EXPECT_BOOL", Message: "invalid character", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_DELIM_AFTER_BOOL_OP":       {Code: errExpectedDelimAfterBoolOp, Name: "ERR_EXPECTED_DELIM_AFTER_BOOL_OP", Message: "expected delimiter after bool operator", Description: "", DynamicMessage: false},
+	"ERR_EMPTY_INPUT":                        {Code: errEmptyInput, Name: "ERR_EMPTY_INPUT", Message: "empty input", Description: "", DynamicMessage: false},
+	"ERR_UNEXPECTED_EOF":                     {Code: errUnexpectedEof, Name: "ERR_UNEXPECTED_EOF", Message: "unexpected EOF", Description: "EOF reached in a state that cannot terminate cleanly; the message may specify context (e.g. \"unexpected EOF after 'not'\").", DynamicMessage: true},
+	"ERR_UNEXPECTED_EOF_IN_KEY":              {Code: errUnexpectedEofInKey, Name: "ERR_UNEXPECTED_EOF_IN_KEY", Message: "unexpected EOF", Description: "", DynamicMessage: false},
+	"ERR_UNMATCHED_PAREN_AT_EOF":             {Code: errUnmatchedParenAtEof, Name: "ERR_UNMATCHED_PAREN_AT_EOF", Message: "unmatched parenthesis", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_VALUE":                     {Code: errExpectedValue, Name: "ERR_EXPECTED_VALUE", Message: "expected value", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_OPERATOR_OR_BOOL_OP":       {Code: errExpectedOperatorOrBoolOp, Name: "ERR_EXPECTED_OPERATOR_OR_BOOL_OP", Message: "expected operator or boolean operator", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT":    {Code: errExpectedKeyOrParenAfterNot, Name: "ERR_EXPECTED_KEY_OR_PAREN_AFTER_NOT", Message: "expected key or ( after 'not'", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_NOT_OR_IN_KEYWORD":         {Code: errExpectedNotOrInKeyword, Name: "ERR_EXPECTED_NOT_OR_IN_KEYWORD", Message: "expected 'not' or 'in' keyword", Description: "Emitted while parsing the 'not' / 'not in' prefix at 3 user-reachable sites — \"expected 'not' or 'in' keyword\", \"expected 'not' keyword\", \"expected space after 'not'\". All three share the same user fix (write a valid 'not in' prefix or drop it); dynamic_message identifies which token was wrong. The former else-branch site in expect_in_keyword is unreachable and is now an internal assertion.", DynamicMessage: true},
+	"ERR_EXPECTED_LIST_START":                {Code: errExpectedListStart, Name: "ERR_EXPECTED_LIST_START", Message: "expected '['", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_VALUE_IN_LIST":             {Code: errExpectedValueInList, Name: "ERR_EXPECTED_VALUE_IN_LIST", Message: "expected value in list", Description: "", DynamicMessage: false},
+	"ERR_UNEXPECTED_CHAR_IN_LIST_VALUE":      {Code: errUnexpectedCharInListValue, Name: "ERR_UNEXPECTED_CHAR_IN_LIST_VALUE", Message: "unexpected character in list value", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_COMMA_OR_LIST_END":         {Code: errExpectedCommaOrListEnd, Name: "ERR_EXPECTED_COMMA_OR_LIST_END", Message: "expected ',' or ']'", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_LIST_START_AFTER_IN":       {Code: errExpectedListStartAfterIn, Name: "ERR_EXPECTED_LIST_START_AFTER_IN", Message: "expected '[' after 'in'", Description: "", DynamicMessage: false},
+	"ERR_EXPECTED_VALUE_AFTER_KEYWORD":       {Code: errExpectedValueAfterKeyword, Name: "ERR_EXPECTED_VALUE_AFTER_KEYWORD", Message: "expected value or keyword", Description: "Emitted for 6 sites — 'expected value after has/like/ilike' (with and without 'not' prefix). All share the same user meaning (value omitted after a keyword operator); the dynamic message identifies which keyword. The 2 former 'expected has/like keyword' sites were split off to ERR_EXPECTED_KEYWORD_AFTER_NOT (errno 7).", DynamicMessage: true},
+	"ERR_NULL_NOT_ALLOWED_WITH_OPERATOR":     {Code: errNullNotAllowedWithOperator, Name: "ERR_NULL_NOT_ALLOWED_WITH_OPERATOR", Message: "null value cannot be used with operator", Description: "", DynamicMessage: true},
+	"ERR_KEY_PARSE_FAILED":                   {Code: errKeyParseFailed, Name: "ERR_KEY_PARSE_FAILED", Message: "key parsing failed", Description: "Wraps a KeyParseError raised by the key parser; the surfaced message is propagated from the wrapped exception.", DynamicMessage: true},
+	"ERR_UNKNOWN_FUNCTION":                   {Code: errUnknownFunction, Name: "ERR_UNKNOWN_FUNCTION", Message: "unknown function", Description: "", DynamicMessage: true},
+	"ERR_INVALID_FUNCTION_ARGS":              {Code: errInvalidFunctionArgs, Name: "ERR_INVALID_FUNCTION_ARGS", Message: "invalid function argument", Description: "Function-call argument syntax error. 4 remaining sites all share 'function call syntax error' semantics with contextual messages. The 'invalid character in parameter name' site was moved to ERR_INVALID_CHAR_IN_PARAMETER_NAME (errno 5) to eliminate a cross-errno message collision.", DynamicMessage: true},
+	"ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR": {Code: errFunctionNotAllowedWithOperator, Name: "ERR_FUNCTION_NOT_ALLOWED_WITH_OPERATOR", Message: "function not allowed with operator", Description: "", DynamicMessage: true},
+	"ERR_INVALID_DURATION":                   {Code: errInvalidDuration, Name: "ERR_INVALID_DURATION", Message: "invalid duration", Description: "", DynamicMessage: true},
+	"ERR_EMPTY_PARAMETER_NAME":               {Code: errEmptyParameterName, Name: "ERR_EMPTY_PARAMETER_NAME", Message: "empty parameter name", Description: "", DynamicMessage: false},
+	"ERR_INVALID_PARAMETER_NAME":             {Code: errInvalidParameterName, Name: "ERR_INVALID_PARAMETER_NAME", Message: "invalid parameter name", Description: "", DynamicMessage: false},
+	"ERR_PARAMETER_ZERO_INDEX":               {Code: errParameterZeroIndex, Name: "ERR_PARAMETER_ZERO_INDEX", Message: "positional parameters are 1-indexed", Description: "", DynamicMessage: false},
+	"ERR_MAX_DEPTH_EXCEEDED":                 {Code: errMaxDepthExceeded, Name: "ERR_MAX_DEPTH_EXCEEDED", Message: "maximum nesting depth exceeded", Description: "", DynamicMessage: true},
+}
+
 var generatedValidatorConstants = map[string]string{
 	"CODE_ARG_COUNT":                CodeArgCount,
 	"CODE_ARG_TYPE":                 CodeArgType,
@@ -108,6 +149,18 @@ var generatedValidatorMessages = map[string]string{
 	"CODE_UNKNOWN_COLUMN":           "unknown column",
 	"CODE_UNKNOWN_COLUMN_VALUE":     "unknown column value",
 	"CODE_UNKNOWN_TRANSFORMER":      "unknown transformer",
+}
+
+var generatedValidatorRegistry = map[string]ErrorEntry{
+	"CODE_ARG_COUNT":                {Code: CodeArgCount, Name: "CODE_ARG_COUNT", Message: "transformer argument count mismatch", Description: "", DynamicMessage: false},
+	"CODE_ARG_TYPE":                 {Code: CodeArgType, Name: "CODE_ARG_TYPE", Message: "transformer argument type mismatch", Description: "", DynamicMessage: false},
+	"CODE_CHAIN_TYPE":               {Code: CodeChainType, Name: "CODE_CHAIN_TYPE", Message: "transformer chain type mismatch", Description: "", DynamicMessage: false},
+	"CODE_INVALID_AST":              {Code: CodeInvalidAST, Name: "CODE_INVALID_AST", Message: "invalid AST", Description: "", DynamicMessage: false},
+	"CODE_INVALID_COLUMN_VALUE":     {Code: CodeInvalidColumnValue, Name: "CODE_INVALID_COLUMN_VALUE", Message: "invalid column value", Description: "", DynamicMessage: false},
+	"CODE_INVALID_DATETIME_LITERAL": {Code: CodeInvalidDatetimeLiteral, Name: "CODE_INVALID_DATETIME_LITERAL", Message: "invalid datetime literal", Description: "Emitted when a string literal compared against a Date or DateTime column cannot be parsed as iso8601. Severity (warning) is decided at the validator emission site (see Decision 8); not a registry field.", DynamicMessage: false},
+	"CODE_UNKNOWN_COLUMN":           {Code: CodeUnknownColumn, Name: "CODE_UNKNOWN_COLUMN", Message: "unknown column", Description: "", DynamicMessage: false},
+	"CODE_UNKNOWN_COLUMN_VALUE":     {Code: CodeUnknownColumnValue, Name: "CODE_UNKNOWN_COLUMN_VALUE", Message: "unknown column value", Description: "", DynamicMessage: false},
+	"CODE_UNKNOWN_TRANSFORMER":      {Code: CodeUnknownTransformer, Name: "CODE_UNKNOWN_TRANSFORMER", Message: "unknown transformer", Description: "", DynamicMessage: false},
 }
 
 var generatedMatcherConstants = map[string]string{

@@ -20,6 +20,7 @@ from flyql.core.constants import (
     DURATION_UNIT_MAGNITUDE,
 )
 from flyql.errors_generated import (
+    CORE_PARSER_REGISTRY,
     ERR_EMPTY_INPUT,
     ERR_EMPTY_PARAMETER_NAME,
     ERR_EXPECTED_COMMA_OR_LIST_END,
@@ -58,6 +59,7 @@ from flyql.errors_generated import (
     ERR_UNMATCHED_PAREN_IN_BOOL_DELIM,
     ERR_UNMATCHED_PAREN_IN_EXPECT_BOOL,
     ERR_UNMATCHED_PAREN_IN_EXPR,
+    ErrorEntry,
 )
 from flyql.core.constants import VALID_BOOL_OPERATORS_CHARS
 from flyql.core.constants import CharType
@@ -84,10 +86,12 @@ class ParserError(FlyqlError):
         message: str,
         errno: int,
         range: Optional[Range] = None,
+        error: Optional[ErrorEntry] = None,
     ) -> None:
         super().__init__(message)
         self.errno = errno
         self.range = range
+        self.error = error
 
     def __str__(self) -> str:
         return self.message
@@ -2403,6 +2407,7 @@ class Parser:
                     message=self.error_text,
                     errno=self.errno,
                     range=self._error_range,
+                    error=CORE_PARSER_REGISTRY.get(self.errno),
                 )
             else:
                 return
@@ -2415,6 +2420,7 @@ class Parser:
                 raise ParserError(
                     message=self.error_text,
                     errno=self.errno,
+                    error=CORE_PARSER_REGISTRY.get(self.errno),
                 )
             else:
                 return

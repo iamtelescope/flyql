@@ -9,6 +9,7 @@ import {
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     jsToFlyQLType,
+    makeDiag,
 } from '../core/validator.js'
 import { Range } from '../core/range.js'
 import { Type } from '../flyql_type.js'
@@ -35,7 +36,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
         if (resolved == null) {
             if (col.nameRange) {
                 const { segment, range } = _findFailingSegment(col, schema, segments)
-                diags.push(new Diagnostic(range, `column '${segment}' is not defined`, 'error', CODE_UNKNOWN_COLUMN))
+                diags.push(makeDiag(range, `column '${segment}' is not defined`, 'error', CODE_UNKNOWN_COLUMN))
             }
             prevOutputType = null
         } else {
@@ -52,7 +53,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
             if (t == null) {
                 if (ranges.nameRange) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             ranges.nameRange,
                             `unknown transformer: '${transformer.name}'`,
                             'error',
@@ -81,7 +82,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                             ? new Range(ranges.nameRange.start, argRangesArr[argRangesArr.length - 1].end + 1)
                             : ranges.nameRange
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             fullRange,
                             `${transformer.name} expects ${expectStr}, got ${got}`,
                             'error',
@@ -101,7 +102,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 if (actual === Type.Int && expected === Type.Float) continue
                 if (j < argRanges.length) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             argRanges[j],
                             `argument ${j + 1} of ${transformer.name}: expected ${expected}, got ${actual}`,
                             'error',
@@ -114,7 +115,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
             if (prevOutputType != null && prevOutputType !== t.inputType) {
                 if (ranges.nameRange) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             ranges.nameRange,
                             `${transformer.name} expects ${t.inputType} input, got ${prevOutputType}`,
                             'error',
@@ -136,7 +137,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
             if (r == null) {
                 if (ranges.nameRange) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             ranges.nameRange,
                             `unknown renderer: '${renderer.name}'`,
                             'error',
@@ -164,7 +165,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                             ? new Range(ranges.nameRange.start, argRangesArr[argRangesArr.length - 1].end + 1)
                             : ranges.nameRange
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             fullRange,
                             `${renderer.name} expects ${expectStr}, got ${got}`,
                             'error',
@@ -184,7 +185,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 if (actual === Type.Int && expected === Type.Float) continue
                 if (j < rArgRanges.length) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             rArgRanges[j],
                             `argument ${j + 1} of ${renderer.name}: expected ${expected}, got ${actual}`,
                             'error',

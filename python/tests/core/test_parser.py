@@ -1,6 +1,14 @@
 import pytest
 from flyql.core.parser import parse, Parser, ParserError
-from flyql.errors_generated import ERR_MAX_DEPTH_EXCEEDED
+from flyql.errors_generated import (
+    CORE_PARSER_REGISTRY,
+    ERR_EMPTY_INPUT,
+    ERR_MAX_DEPTH_EXCEEDED,
+    ERR_UNCLOSED_STRING,
+    ERR_UNEXPECTED_EOF,
+    ERR_UNMATCHED_PAREN_AT_EOF,
+    ErrorEntry,
+)
 from .helpers import (
     load_test_data,
     ast_to_dict,
@@ -314,3 +322,37 @@ def test_capabilities_stub_signature():
     parser_instance_with_caps = Parser(capabilities={"x": 1})
     assert not hasattr(parser_instance_with_caps, "_capabilities")
     assert "capabilities" not in vars(parser_instance_with_caps)
+
+
+# ---------------------------------------------------------------------------
+# ParserError.error population (rich error objects)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "query,expected_errno",
+    [
+        ("", ERR_EMPTY_INPUT),
+        ("a='unclosed", ERR_UNCLOSED_STRING),
+        ("(a=1", ERR_UNMATCHED_PAREN_AT_EOF),
+        ("a= ", ERR_UNEXPECTED_EOF),
+        ("(" * 200 + "a=1" + ")" * 200, ERR_MAX_DEPTH_EXCEEDED),
+    ],
+)
+def test_parser_error_payload(query: str, expected_errno: int) -> None:
+    with pytest.raises(ParserError) as exc:
+        parse(query)
+    err = exc.value
+    assert err.errno == expected_errno
+    assert err.error is not None, f"errno={err.errno}: error is None"
+    assert isinstance(err.error, ErrorEntry)
+    assert err.error.code == err.errno
+    assert err.error.name == CORE_PARSER_REGISTRY[expected_errno].name
+
+
+def test_parser_error_unknown_errno_returns_none_error() -> None:
+    # Decision 7: optional field — direct construction with a fake errno
+    # that's not in the registry yields error=None (no raise).
+    e = ParserError("bogus", 99999)
+    assert e.errno == 99999
+    assert e.error is None

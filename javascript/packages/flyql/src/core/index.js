@@ -13,11 +13,11 @@ export {
     VALID_BOOL_OPERATORS,
     VALID_BOOL_OPERATORS_CHARS,
 } from './constants.js'
-export { ERR_MAX_DEPTH_EXCEEDED } from '../errors_generated.js'
+export { ERR_MAX_DEPTH_EXCEEDED, ErrorEntry } from '../errors_generated.js'
 export { isNumeric, convertUnquotedValue } from './utils.js'
 export { Range } from './range.js'
 export { Column, ColumnSchema } from './column.js'
-export { Diagnostic, diagnose } from './validator.js'
+export { Diagnostic, diagnose, makeDiag } from './validator.js'
 export {
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,

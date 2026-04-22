@@ -14,6 +14,11 @@ import (
 type ParserError struct {
 	Message string
 	Errno   int
+	// Entry is the registry entry corresponding to Errno (zero-value
+	// ErrorEntry{} when Errno is not present in columnsParserRegistry).
+	// Field is named Entry rather than Error to avoid clashing with the
+	// Error() string method on this type.
+	Entry ErrorEntry
 }
 
 func (e *ParserError) Error() string { return e.Message }
@@ -463,13 +468,13 @@ func (p *parser) parse(text string) error {
 	}
 
 	if p.state == stateError {
-		return &ParserError{Message: p.errorText, Errno: p.errno}
+		return &ParserError{Message: p.errorText, Errno: p.errno, Entry: columnsParserRegistry[p.errno]}
 	}
 
 	p.inStateLastChar()
 
 	if p.state == stateError {
-		return &ParserError{Message: p.errorText, Errno: p.errno}
+		return &ParserError{Message: p.errorText, Errno: p.errno, Entry: columnsParserRegistry[p.errno]}
 	}
 
 	return nil

@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { parse, Parser, ParserError } from '../../src/index.js'
-import { ERR_MAX_DEPTH_EXCEEDED } from '../../src/errors_generated.js'
+import { parse, Parser, ParserError, ErrorEntry } from '../../src/index.js'
+import {
+    CORE_PARSER_REGISTRY,
+    ERR_EMPTY_INPUT,
+    ERR_MAX_DEPTH_EXCEEDED,
+    ERR_UNCLOSED_STRING,
+    ERR_UNEXPECTED_EOF,
+    ERR_UNMATCHED_PAREN_AT_EOF,
+} from '../../src/errors_generated.js'
 import { loadTestData, astToDict, compareAst, formatAstMismatchMessage, normalizeAstForComparison } from '../helpers.js'
 
 function buildNestedQuery(depth) {
@@ -454,5 +461,36 @@ describe('capabilities stub', () => {
             expect(Object.getOwnPropertyNames(instance).includes('_capabilities')).toBe(false)
             expect(Object.keys(instance).includes('_capabilities')).toBe(false)
         }
+    })
+})
+
+describe('ParserError.error population', () => {
+    const cases = [
+        { query: '', errno: ERR_EMPTY_INPUT },
+        { query: "a='unclosed", errno: ERR_UNCLOSED_STRING },
+        { query: '(a=1', errno: ERR_UNMATCHED_PAREN_AT_EOF },
+        { query: 'a= ', errno: ERR_UNEXPECTED_EOF },
+        { query: '('.repeat(200) + 'a=1' + ')'.repeat(200), errno: ERR_MAX_DEPTH_EXCEEDED },
+    ]
+
+    it.each(cases)('populates error for errno=$errno', ({ query, errno }) => {
+        let caught
+        try {
+            parse(query)
+        } catch (e) {
+            caught = e
+        }
+        expect(caught).toBeInstanceOf(ParserError)
+        expect(caught.errno).toBe(errno)
+        expect(caught.error).not.toBeNull()
+        expect(caught.error).toBeInstanceOf(ErrorEntry)
+        expect(caught.error.code).toBe(errno)
+        expect(caught.error.name).toBe(CORE_PARSER_REGISTRY[errno].name)
+    })
+
+    it('direct ParserError construction with unknown errno yields error=null', () => {
+        const e = new ParserError('msg', 99999)
+        expect(e.errno).toBe(99999)
+        expect(e.error).toBeNull()
     })
 })

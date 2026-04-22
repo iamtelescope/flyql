@@ -24,8 +24,11 @@ from flyql.core.validator import (
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
     Diagnostic,
+    ErrorEntry,
     diagnose,
+    make_diag,
 )
+from flyql.errors_generated import VALIDATOR_REGISTRY
 from flyql.transformers.base import ArgSpec, Transformer
 from flyql.flyql_type import Type
 from flyql.transformers.registry import TransformerRegistry, default_registry
@@ -303,3 +306,104 @@ class TestBacktickEscapedColumn:
         ast = _parse_ast("host='X'")
         cols = [make_column("host", "string")]
         assert diagnose(ast, ColumnSchema.from_columns(cols), registry) == []
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic.error population (rich error objects)
+# ---------------------------------------------------------------------------
+
+
+from flyql.core.validator import (
+    CODE_INVALID_COLUMN_VALUE,
+    CODE_INVALID_DATETIME_LITERAL,
+    CODE_UNKNOWN_COLUMN_VALUE,
+)
+
+_ERROR_PAYLOAD_CASES = [
+    pytest.param(
+        "unknown_col=1",
+        [make_column("known", "string")],
+        CODE_UNKNOWN_COLUMN,
+        id="unknown_column",
+    ),
+    pytest.param(
+        "host|wat",
+        [make_column("host", "string")],
+        CODE_UNKNOWN_TRANSFORMER,
+        id="unknown_transformer",
+    ),
+    pytest.param(
+        "host|takes_int(1, 2)",
+        [make_column("host", "string")],
+        CODE_ARG_COUNT,
+        id="arg_count",
+    ),
+    pytest.param(
+        "host|takes_int('not-an-int')",
+        [make_column("host", "string")],
+        CODE_ARG_TYPE,
+        id="arg_type",
+    ),
+    pytest.param(
+        "n|string_to_int|takes_int(1)",
+        [make_column("n", "string")],
+        CODE_CHAIN_TYPE,
+        id="chain_type",
+    ),
+    pytest.param(
+        "field=nonexistent",
+        [make_column("field", "string")],
+        CODE_UNKNOWN_COLUMN_VALUE,
+        id="unknown_column_value",
+    ),
+    pytest.param(
+        "event_day > foo+bar",
+        [make_column("event_day", "date")],
+        CODE_INVALID_COLUMN_VALUE,
+        id="invalid_column_value",
+    ),
+    pytest.param(
+        "ts > 'not-a-date'",
+        [make_column("ts", "datetime")],
+        CODE_INVALID_DATETIME_LITERAL,
+        id="invalid_datetime_literal",
+    ),
+]
+
+
+@pytest.mark.parametrize("query,cols,expected_code", _ERROR_PAYLOAD_CASES)
+def test_diagnostic_error_populated(
+    query: str,
+    cols: list,
+    expected_code: str,
+    registry: TransformerRegistry,
+) -> None:
+    ast = _parse_ast(query)
+    diags = diagnose(ast, ColumnSchema.from_columns(cols), registry)
+    matching = [d for d in diags if d.code == expected_code]
+    assert matching, f"no diagnostic emitted with code {expected_code!r} from {query!r}"
+    for d in matching:
+        assert d.error is not None, f"{d.code}: error is None"
+        assert isinstance(d.error, ErrorEntry)
+        assert d.error.code == d.code
+        assert d.error.name == VALIDATOR_REGISTRY[d.code].name
+
+
+def test_invalid_ast_diagnostic_carries_error() -> None:
+    key = Key(segments=["foo"], raw="foo", segment_ranges=[])
+    expr = Expression(key=key, operator="=", value="X", value_is_string=True)
+    node = Node(bool_operator="and", expression=expr, left=None, right=None)
+    cols = [make_column("foo", "string")]
+    diags = diagnose(node, ColumnSchema.from_columns(cols), default_registry())
+    assert len(diags) == 1
+    assert diags[0].code == CODE_INVALID_AST
+    assert diags[0].error is not None
+    assert diags[0].error.name == VALIDATOR_REGISTRY[CODE_INVALID_AST].name
+
+
+def test_make_diag_unknown_code_returns_none_error() -> None:
+    # Decision 7: optional field — no raise on registry miss.
+    d = make_diag(Range(0, 1), "totally_made_up", "error", "fake")
+    assert isinstance(d, Diagnostic)
+    assert d.error is None
+    assert d.code == "totally_made_up"

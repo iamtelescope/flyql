@@ -218,6 +218,7 @@ export default defineConfig({
             "advanced/ast",
             "advanced/custom-transformers",
             "advanced/custom-renderers",
+            "advanced/errors",
             "advanced/tokenize",
             "advanced/api-matrix",
           ],

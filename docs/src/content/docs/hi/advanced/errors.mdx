@@ -1,0 +1,226 @@
+---
+title: त्रुटि संदर्भ
+description: flyql डायग्नोस्टिक्स और पार्सर त्रुटियों को कैसे पढ़ें
+---
+
+{/* generated translation; review pending */}
+
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
+flyql हर डायग्नोस्टिक कोड और पार्सर errno की एकल रजिस्ट्री शिप करता है। रजिस्ट्री सत्य का एकमात्र स्रोत है जो Python, JavaScript और Go को सिंक्रनाइज़ रखता है, और उपयोगकर्ता द्वारा देखा गया प्रत्येक `Diagnostic` या पार्सर त्रुटि उसमें एक वैकल्पिक संदर्भ ले जाती है।
+
+## त्रुटि रजिस्ट्री
+
+The file `errors/registry.json` enumerates every error flyql can raise or report. Each entry has:
+
+- a `name` (symbolic, e.g. `ERR_KEY_PARSE_FAILED`, `CODE_UNKNOWN_COLUMN`)
+- a canonical `message` template
+- an optional `description` (human-readable context)
+- an optional `dynamic_message` flag (true when the runtime message interpolates context the template doesn't show)
+
+A codegen step (`make generate-errors`) produces per-language modules from the registry — constants, message maps, and a `REGISTRY` map of `ErrorEntry` records — so consumers never read the JSON at runtime.
+
+The registry has four categories:
+
+| Category | Code type | Used by |
+|---|---|---|
+| `core_parser` | int | `Parser.parse()` errors |
+| `columns_parser` | int | `columns.Parser.parse()` errors |
+| `validator` | string | `diagnose()` (core + columns validators) |
+| `matcher` | string | `Evaluator` runtime errors (Python only — JS uses native `RegExp`, Go uses stdlib `regexp`) |
+
+The `matcher` category does **not** ship a `REGISTRY` map — matcher raises plain `FlyqlError`, not `Diagnostic` or `ParserError`. Other categories all expose `*_REGISTRY` (Py/JS) or `*Registry` (Go).
+
+## Diagnostic पढ़ना
+
+Validators return `Diagnostic` instances. The shape is identical across languages, with the registry entry on the `error` field (Py/JS) or `Entry` field (Go — the rename avoids a clash with the `Error()` method on Go error types).
+
+| Field | Type | Meaning |
+|---|---|---|
+| `range` | `Range` | source span the user must edit to fix the issue |
+| `message` | `string` | rich, interpolated message (e.g. `"column 'foo' is not defined"`) |
+| `severity` | `"error" \| "warning"` | severity level decided at the emit site |
+| `code` | `string` | short identifier (e.g. `"unknown_column"`) |
+| `error` / `Entry` | `ErrorEntry?` | registry entry for this `code`, or `null`/zero-value if the code isn't in the registry |
+
+The nested `ErrorEntry` shape:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `code` | `int \| string` | same as the parent diagnostic's `code` (parsers use ints) |
+| `name` | `string` | symbolic name for static lookup (e.g. `"CODE_UNKNOWN_COLUMN"`) |
+| `message` | `string` | canonical registry template (un-interpolated) |
+| `description` | `string` | longer human-readable context (often empty until backfilled) |
+| `dynamic_message` / `dynamicMessage` / `DynamicMessage` | `bool` | true when the runtime message carries context the template doesn't |
+
+## ParserError पढ़ना
+
+`ParserError` (Py/JS) and `*ParseError` / `*ParserError` (Go) carry the same registry pointer:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `errno` (Py/JS) / `Code` (Go) | `int` | numeric error code |
+| `message` (Py/JS) / `Message` (Go) | `string` | rich runtime message |
+| `range` (Py/JS) / `Range` (Go) | `Range?` | source span (core parser only — columns parser does not report a range) |
+| `error` (Py/JS) / `Entry` (Go) | `ErrorEntry` (`?` in Py/JS) | registry entry, populated at the terminal raise/return site |
+
+## उपयोगकर्ता उदाहरण
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql import parse, ParserError
+
+try:
+    parse("a=")
+except ParserError as e:
+    print(e.errno, e.message)
+    if e.error is not None:
+        print(e.error.name, e.error.description)
+```
+
+```python
+from flyql import diagnose
+from flyql.core import ColumnSchema, Column
+from flyql.flyql_type import Type
+
+schema = ColumnSchema.from_columns([Column(name="host", column_type=Type.String)])
+for d in diagnose(parse("foo='X'").root, schema):
+    if d.error is not None:
+        print(f"{d.error.name}: {d.message}")
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { parse, ParserError } from 'flyql'
+
+try {
+    parse('a=')
+} catch (e) {
+    if (e instanceof ParserError) {
+        console.log(e.errno, e.message)
+        if (e.error) {
+            console.log(e.error.name, e.error.description)
+        }
+    }
+}
+```
+
+```javascript
+import { diagnose, Column, ColumnSchema, Type } from 'flyql'
+
+const schema = ColumnSchema.fromColumns([new Column('host', Type.String)])
+for (const d of diagnose(parse("foo='X'").root, schema)) {
+    if (d.error) {
+        console.log(`${d.error.name}: ${d.message}`)
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+import (
+    flyql "github.com/iamtelescope/flyql/golang"
+)
+
+result, err := flyql.Parse("a=")
+if err != nil {
+    if pe, ok := err.(*flyql.ParseError); ok {
+        fmt.Println(pe.Code, pe.Message)
+        if pe.Entry.Name != "" {
+            fmt.Println(pe.Entry.Name, pe.Entry.Description)
+        }
+    }
+}
+_ = result
+```
+
+```go
+schema := flyql.FromColumns([]flyql.Column{flyql.NewColumn("host", flyql.TypeString)})
+ast, _ := flyql.Parse("foo='X'")
+for _, d := range flyql.Diagnose(ast.Root, schema, nil) {
+    if d.Entry.Name != "" {
+        fmt.Printf("%s: %s\n", d.Entry.Name, d.Message)
+    }
+}
+```
+
+</TabItem>
+</Tabs>
+
+Note the field-name asymmetry: Go uses `Entry`; Python and JavaScript use `error`. Go convention reserves the field/method name `Error` for the `Error() string` method on error types, so the registry pointer lives under `Entry`.
+
+## डायनेमिक-मैसेज कोड
+
+Some entries carry `dynamic_message: true`. For these, the runtime `message` interpolates context the registry template doesn't capture. Examples:
+
+- `ERR_UNEXPECTED_EOF` template: `"unexpected EOF"`. Runtime: `"unexpected EOF after 'not'"`.
+- `ERR_KEY_PARSE_FAILED` template: `"key parsing failed"`. Runtime: the wrapped key parser's specific message.
+
+Consumer contract:
+
+- **Tooltips and human-facing display**: prefer the runtime `message`. Use `error.description` (when non-empty) as supplementary context.
+- **Aggregation, grouping, structured logging**: use `error.code` as the key. Use `error.message` only when you need the canonical template for log fingerprints.
+- **Static analysis or doc deep-linking**: use `error.name` (symbolic) — the most stable identifier across releases.
+
+## वैकल्पिक `error` फ़ील्ड
+
+The `error` / `Entry` field is **optional** — it can be missing (`null` in Py/JS, zero-value `ErrorEntry{}` in Go) when:
+
+- User code constructs a `Diagnostic` directly with a code that isn't in the registry (e.g. flyql-vue editor wiring with codes like `"syntax"` or `"deprecated"`).
+- Renderer extension hooks return user-supplied diagnostics with custom codes.
+- External callers construct a `ParserError` without passing the new arg.
+
+Internal validators and parsers always populate the field via centralized helpers (`make_diag` Py / `makeDiag` JS / `MakeDiag` Go). On registry miss the helpers return the diagnostic with `error=None` / `error=null` / zero-value `Entry` rather than panicking. Drift between code constants and the registry is caught at build time by the parity tests.
+
+Defensive consumer pattern:
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+if diagnostic.error is not None:
+    label = diagnostic.error.name
+else:
+    label = diagnostic.code
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+const label = d.error != null ? d.error.name : d.code
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+// Use Entry.Name as the miss signal. Entry.Code is `any` and is never
+// untyped-nil for typed-string codes even when the entry is zero-value.
+label := d.Code
+if d.Entry.Name != "" {
+    label = d.Entry.Name
+}
+```
+
+</TabItem>
+</Tabs>
+
+## श्रेणियाँ एक नज़र में
+
+| Category | Code type | Holds | REGISTRY emitted |
+|---|---|---|---|
+| `core_parser` | `int` | parser errnos surfaced by `ParserError` / `*ParseError` | yes |
+| `columns_parser` | `int` | columns parser errnos | yes |
+| `validator` | `string` | validator diagnostic codes (12 entries) | yes |
+| `matcher` | `string` | matcher runtime errors (Python only) | no — matcher raises `FlyqlError` |
+
+## पूरी कोड सूची
+
+The complete list of names, messages, and descriptions lives in [`errors/registry.json`](https://github.com/iamtelescope/flyql/blob/main/errors/registry.json) in the repository. Auto-rendering this list from the registry at docs build time is planned future work.

@@ -26,6 +26,7 @@ from flyql.errors_generated import (
     COLUMNS_ERR_UNEXPECTED_END_OF_ALIAS_OPERATOR,
     COLUMNS_ERR_UNEXPECTED_END_OF_ARGS_LIST,
     COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
+    COLUMNS_PARSER_REGISTRY,
 )
 
 
@@ -356,6 +357,7 @@ class Parser:
             raise ParserError(
                 message=self.error_text,
                 errno=self.errno,
+                error=COLUMNS_PARSER_REGISTRY.get(self.errno),
             )
 
         self.in_state_last_char()
@@ -365,6 +367,7 @@ class Parser:
             raise ParserError(
                 message=self.error_text,
                 errno=self.errno,
+                error=COLUMNS_PARSER_REGISTRY.get(self.errno),
             )
 
     def in_state_last_char(self) -> None:

@@ -168,3 +168,49 @@ func TestDiagnose_DottedColumnHighlightsBase(t *testing.T) {
 		t.Errorf("Range = {%d, %d}, want {0, 8} (just 'resource')", diags[0].Range.Start, diags[0].Range.End)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Diagnostic.Entry population (rich error objects in columns validator)
+// ---------------------------------------------------------------------------
+
+func TestColumnsDiagnoseEntryPopulated(t *testing.T) {
+	parsed, err := Parse("foo", Capabilities{Transformers: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols := []flyql.Column{flyql.NewColumn("level", flyql.TypeString)}
+	diags := Diagnose(parsed, flyql.FromColumns(cols), nil)
+	if len(diags) != 1 {
+		t.Fatalf("Expected 1 diagnostic, got %d", len(diags))
+	}
+	d := diags[0]
+	if d.Entry.Name == "" {
+		t.Errorf("Entry.Name empty for unknown_column")
+	}
+	codeStr, _ := d.Entry.Code.(string)
+	if codeStr != d.Code {
+		t.Errorf("Entry.Code = %v; want %q", d.Entry.Code, d.Code)
+	}
+}
+
+func TestColumnsParserErrorEntryPopulated(t *testing.T) {
+	// Trigger a columns parser error: trailing pipe with no transformer.
+	_, err := Parse("foo|", Capabilities{Transformers: true})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	pe, ok := err.(*ParserError)
+	if !ok {
+		t.Fatalf("expected *ParserError, got %T", err)
+	}
+	if pe.Errno == 0 {
+		t.Fatalf("expected non-zero Errno, got 0")
+	}
+	if pe.Entry.Name == "" {
+		t.Errorf("Entry.Name empty for errno=%d", pe.Errno)
+	}
+	codeInt, _ := pe.Entry.Code.(int)
+	if codeInt != pe.Errno {
+		t.Errorf("Entry.Code = %v; want %d", pe.Entry.Code, pe.Errno)
+	}
+}

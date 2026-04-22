@@ -16,6 +16,8 @@ import {
     CODE_UNKNOWN_COLUMN_VALUE,
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
+    ErrorEntry,
+    VALIDATOR_REGISTRY,
 } from '../errors_generated.js'
 export {
     CODE_ARG_COUNT,
@@ -30,6 +32,7 @@ export {
     CODE_UNKNOWN_COLUMN_VALUE,
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
+    ErrorEntry,
 }
 
 const VALID_COLUMN_NAME_RE = /^[a-zA-Z0-9_.:/@|-]+$/
@@ -71,12 +74,22 @@ function _isCalendarValid(y, m, d) {
 }
 
 export class Diagnostic {
-    constructor(range, message, severity, code) {
+    constructor(range, message, severity, code, error = null) {
         this.range = range
         this.message = message
         this.severity = severity
         this.code = code
+        this.error = error
     }
+}
+
+// Helper: looks up the registry entry and returns a Diagnostic. On miss
+// (code not in registry), returns Diagnostic with error=null — no throw.
+// Drift between code constants and registry is caught at build time by
+// the parity test, not at runtime. Arg order matches Diagnostic constructor.
+export function makeDiag(range, message, severity, code) {
+    const entry = VALIDATOR_REGISTRY[code] ?? null
+    return new Diagnostic(range, message, severity, code, entry)
 }
 
 export function diagnose(ast, schema, registry = null) {
@@ -113,7 +126,7 @@ function _diagnoseExpression(expression, schema, registry) {
 
     if (!expression.key.segments || !expression.key.segmentRanges || expression.key.segmentRanges.length < 1) {
         diags.push(
-            new Diagnostic(
+            makeDiag(
                 new Range(0, 0),
                 'AST missing source ranges \u2014 diagnose() requires a parser-produced AST',
                 'error',
@@ -128,7 +141,7 @@ function _diagnoseExpression(expression, schema, registry) {
 
     if (col == null) {
         diags.push(
-            new Diagnostic(
+            makeDiag(
                 expression.key.segmentRanges[0],
                 `column '${expression.key.segments[0]}' is not defined`,
                 'error',
@@ -142,7 +155,7 @@ function _diagnoseExpression(expression, schema, registry) {
             if (seg === '') break
             if (col.children == null) {
                 diags.push(
-                    new Diagnostic(
+                    makeDiag(
                         expression.key.segmentRanges[i],
                         `column '${seg}' is not defined`,
                         'error',
@@ -155,7 +168,7 @@ function _diagnoseExpression(expression, schema, registry) {
             const child = col.children[seg.toLowerCase()] || null
             if (child == null) {
                 diags.push(
-                    new Diagnostic(
+                    makeDiag(
                         expression.key.segmentRanges[i],
                         `column '${seg}' is not defined`,
                         'error',
@@ -175,7 +188,7 @@ function _diagnoseExpression(expression, schema, registry) {
 
         if (t == null) {
             diags.push(
-                new Diagnostic(
+                makeDiag(
                     transformer.nameRange,
                     `unknown transformer: '${transformer.name}'`,
                     'error',
@@ -197,7 +210,7 @@ function _diagnoseExpression(expression, schema, registry) {
                 expectStr = `${requiredCount}..${maxCount} arguments`
             }
             diags.push(
-                new Diagnostic(
+                makeDiag(
                     transformer.range,
                     `${transformer.name} expects ${expectStr}, got ${got}`,
                     'error',
@@ -214,7 +227,7 @@ function _diagnoseExpression(expression, schema, registry) {
             if (actual === expected) continue
             if (actual === Type.Int && expected === Type.Float) continue
             diags.push(
-                new Diagnostic(
+                makeDiag(
                     transformer.argumentRanges[j],
                     `argument ${j + 1} of ${transformer.name}: expected ${expected}, got ${actual}`,
                     'error',
@@ -225,7 +238,7 @@ function _diagnoseExpression(expression, schema, registry) {
 
         if (prevOutputType != null && prevOutputType !== t.inputType) {
             diags.push(
-                new Diagnostic(
+                makeDiag(
                     transformer.nameRange,
                     `${transformer.name} expects ${t.inputType} input, got ${prevOutputType}`,
                     'error',
@@ -248,7 +261,7 @@ function _diagnoseExpression(expression, schema, registry) {
         if (!VALID_COLUMN_NAME_RE.test(expression.value)) {
             if (expression.valueRange != null) {
                 diags.push(
-                    new Diagnostic(
+                    makeDiag(
                         expression.valueRange,
                         `invalid character in column name '${expression.value}'`,
                         'error',
@@ -260,7 +273,7 @@ function _diagnoseExpression(expression, schema, registry) {
         } else if (schema.resolve(expression.value.split('.')) == null) {
             if (expression.valueRange != null) {
                 diags.push(
-                    new Diagnostic(
+                    makeDiag(
                         expression.valueRange,
                         `column '${expression.value}' is not defined`,
                         'error',
@@ -279,7 +292,7 @@ function _diagnoseExpression(expression, schema, registry) {
                 if (!VALID_COLUMN_NAME_RE.test(val)) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {
                         diags.push(
-                            new Diagnostic(
+                            makeDiag(
                                 expression.valueRanges[i],
                                 `invalid character in column name '${val}'`,
                                 'error',
@@ -291,7 +304,7 @@ function _diagnoseExpression(expression, schema, registry) {
                 } else if (schema.resolve(val.split('.')) == null) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {
                         diags.push(
-                            new Diagnostic(
+                            makeDiag(
                                 expression.valueRanges[i],
                                 `column '${val}' is not defined`,
                                 'error',
@@ -316,7 +329,7 @@ function _diagnoseExpression(expression, schema, registry) {
             const key = rangeKey(expression.valueRange)
             if (!emittedRanges.has(key) && !isValidISO8601(expression.value)) {
                 diags.push(
-                    new Diagnostic(
+                    makeDiag(
                         expression.valueRange,
                         `invalid iso8601 datetime literal '${expression.value}' for ${col.type} column '${col.name}'`,
                         'warning',
@@ -337,7 +350,7 @@ function _diagnoseExpression(expression, schema, registry) {
                 if (emittedRanges.has(key)) continue
                 if (!isValidISO8601(v)) {
                     diags.push(
-                        new Diagnostic(
+                        makeDiag(
                             r,
                             `invalid iso8601 datetime literal '${v}' for ${col.type} column '${col.name}'`,
                             'warning',

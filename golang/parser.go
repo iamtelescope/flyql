@@ -2422,6 +2422,7 @@ func (p *Parser) Parse(text string, opts ...Capabilities) error {
 			Code:    p.errno,
 			Message: p.errorText,
 			Range:   p.errorRange,
+			Entry:   coreParserRegistry[p.errno],
 		}
 	}
 
@@ -2432,6 +2433,7 @@ func (p *Parser) Parse(text string, opts ...Capabilities) error {
 			Code:    p.errno,
 			Message: p.errorText,
 			Range:   p.errorRange,
+			Entry:   coreParserRegistry[p.errno],
 		}
 	}
 

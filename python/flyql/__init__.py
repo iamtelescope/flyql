@@ -6,9 +6,9 @@ from .core.key import Key, parse_key
 from .core.column import Column, ColumnSchema
 from .core.constants import BoolOperator, Operator
 from .core.range import Range
-from .core.validator import Diagnostic, diagnose
+from .core.validator import Diagnostic, diagnose, make_diag
 from .core.exceptions import FlyqlError, KeyParseError
-from .errors_generated import ERR_MAX_DEPTH_EXCEEDED
+from .errors_generated import ERR_MAX_DEPTH_EXCEEDED, ErrorEntry
 from .matcher import match
 from .transformers import (
     ArgSpec,
@@ -37,6 +37,7 @@ __all__ = [
     "Diagnostic",
     "Duration",
     "ERR_MAX_DEPTH_EXCEEDED",
+    "ErrorEntry",
     "Expression",
     "FlyqlError",
     "FunctionCall",
@@ -64,6 +65,7 @@ __all__ = [
     "default_registry",
     "default_renderer_registry",
     "diagnose",
+    "make_diag",
     "match",
     "parse",
     "parse_flyql_type",

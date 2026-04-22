@@ -22,6 +22,13 @@ const MESSAGE_MAPS = {
     matcher: errorsGenerated.MATCHER_MESSAGES,
 }
 
+// Registry maps exclude matcher per Decision 2 (matcher uses FlyqlError, not Diagnostic/ParserError).
+const REGISTRY_MAPS = {
+    core_parser: errorsGenerated.CORE_PARSER_REGISTRY,
+    columns_parser: errorsGenerated.COLUMNS_PARSER_REGISTRY,
+    validator: errorsGenerated.VALIDATOR_REGISTRY,
+}
+
 function expectedKey(codeType, key) {
     return codeType === 'int' ? parseInt(key, 10) : key
 }
@@ -31,6 +38,7 @@ for (const [category, cat] of Object.entries(registry.categories)) {
         for (const [key, entry] of Object.entries(cat.errors)) {
             const expected = expectedKey(cat.code_type, key)
             const dynamic = Boolean(entry.dynamic_message)
+            const description = entry.description || ''
             it(`${entry.name} exports correct value`, () => {
                 expect(errorsGenerated).toHaveProperty(entry.name)
                 expect(errorsGenerated[entry.name]).toBe(expected)
@@ -44,6 +52,20 @@ for (const [category, cat] of Object.entries(registry.categories)) {
                     expect(mmap[expected]).toBe(entry.message)
                 }
             })
+            if (REGISTRY_MAPS[category] !== undefined) {
+                it(`${entry.name} has REGISTRY entry with full fields`, () => {
+                    const rmap = REGISTRY_MAPS[category]
+                    expect(Object.prototype.hasOwnProperty.call(rmap, expected)).toBe(true)
+                    const e = rmap[expected]
+                    expect(e).toBeInstanceOf(errorsGenerated.ErrorEntry)
+                    expect(e.code).toBe(expected)
+                    expect(e.name).toBe(entry.name)
+                    // REGISTRY always carries the canonical message (no dynamic skip).
+                    expect(e.message).toBe(entry.message)
+                    expect(e.description).toBe(description)
+                    expect(e.dynamicMessage).toBe(dynamic)
+                })
+            }
         }
     })
 }

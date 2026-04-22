@@ -6,10 +6,11 @@ export class FlyqlError extends Error {
 }
 
 export class ParserError extends FlyqlError {
-    constructor(message, errno, range = null) {
+    constructor(message, errno, range = null, error = null) {
         super(message)
         this.errno = errno
         this.range = range
+        this.error = error
     }
 
     toString() {

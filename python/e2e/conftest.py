@@ -41,6 +41,13 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
         pass
 
     try:
+        from test_datetime_matcher_e2e import _results as dt_matcher_results
+
+        all_results.extend(dt_matcher_results)
+    except ImportError:
+        pass
+
+    try:
         from test_dialect_parity import _results as parity_results
 
         all_results.extend(parity_results)

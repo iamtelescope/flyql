@@ -73,6 +73,12 @@ AST: `value_type: "string"`
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date 컬럼 타입 vs. DateTime 컬럼 타입]
+컬럼 스키마는 **`Type.Date`**(달력 날짜만 — `YYYYMMDD`)와 **`Type.DateTime`**(밀리초 해상도의 시점)을 구분합니다. 매처는 선언된 타입을 사용해 RHS의 ISO-8601 문자열 리터럴과 네이티브 시간 값을 코어스합니다. DateTime 컬럼은 네이브 문자열과 숫자 값을 명확하게 하기 위해 선택적 `tz`(IANA) 및 `unit`(`ms` / `s` / `ns`) 메타데이터를 선언할 수 있습니다.
+
+전체 iso8601 계약, tz 폴백 규칙, DST 처리 및 지원되는 레코드 값 타입 목록은 [날짜](/ko/syntax/dates)를 참조하세요.
+:::
+
 ### Boolean
 
 소문자이며 대소문자를 구분하는 키워드 <FlyqlToken type="boolean">true</FlyqlToken>, <FlyqlToken type="boolean">false</FlyqlToken>:

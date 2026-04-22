@@ -29,6 +29,8 @@ class Column:
         match_name: Optional[str] = None,
         suggest: bool = True,
         children: Optional[Dict[str, "Column"]] = None,
+        tz: str = "",
+        unit: str = "",
     ) -> None:
         self.name = name
         self.type: Type = column_type
@@ -38,6 +40,8 @@ class Column:
         self.match_name = match_name if match_name is not None else name
         self.suggest = suggest
         self.children = children
+        self.tz = tz
+        self.unit = unit
 
     @property
     def is_nested(self) -> bool:
@@ -46,6 +50,30 @@ class Column:
     def with_raw_identifier(self, identifier: str) -> "Column":
         self.raw_identifier = identifier
         return self
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Serialize this Column to a plain dict for round-trip with
+        :meth:`ColumnSchema.from_plain_object`. Empty-valued optional
+        fields (``tz``, ``unit``, empty ``values``, missing ``children``)
+        are omitted so the output stays minimal."""
+        result: Dict[str, Any] = {"type": self.type.value}
+        if self.values:
+            result["values"] = list(self.values)
+        if self.display_name:
+            result["display_name"] = self.display_name
+        if self.raw_identifier:
+            result["raw_identifier"] = self.raw_identifier
+        if self.match_name and self.match_name != self.name:
+            result["match_name"] = self.match_name
+        if not self.suggest:
+            result["suggest"] = self.suggest
+        if self.children is not None:
+            result["children"] = {k: c.as_dict() for k, c in self.children.items()}
+        if self.tz:
+            result["tz"] = self.tz
+        if self.unit:
+            result["unit"] = self.unit
+        return result
 
 
 class ColumnSchema:
@@ -150,4 +178,6 @@ def _column_from_plain_object(name: str, raw: Any) -> Optional[Column]:
         suggest=raw.get("suggest", True),
         match_name=name,
         children=children,
+        tz=raw.get("tz", ""),
+        unit=raw.get("unit", ""),
     )

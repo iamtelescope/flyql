@@ -127,6 +127,12 @@ date = today('Europe/Berlin')
 
 -- start of week
 created_at > startOf('week')
+
+-- Date (calendar day) vs DateTime (instant) column types drive
+-- schema-aware matcher coercion: ISO-8601 literals auto-parse and the
+-- record value is compared at the declared granularity.
+event_day = '2026-04-06'        -- Type.Date column: Y/M/D compare
+ts > '2026-04-06T21:00:00Z'     -- Type.DateTime column: ms-granularity compare
 ```
 
 For more examples, see the [E2E report](https://flyql.dev/e2e-report/).

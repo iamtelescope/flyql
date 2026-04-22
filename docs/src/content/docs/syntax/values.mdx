@@ -73,6 +73,12 @@ Single and double quotes are interchangeable, so you can pick whichever delimite
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date vs. DateTime column types]
+Column schemas distinguish **`Type.Date`** (calendar day only — `YYYYMMDD`) from **`Type.DateTime`** (instant-in-time at millisecond resolution). The matcher uses the declared type to coerce ISO-8601 string literals and native temporal values on the RHS. DateTime columns may declare optional `tz` (IANA) and `unit` (`ms` / `s` / `ns`) metadata for disambiguating naive strings and numeric values.
+
+See [Dates](/syntax/dates) for the full iso8601 contract, tz fall-back rules, DST handling, and the list of supported record-value types.
+:::
+
 ### Boolean
 
 The keywords <FlyqlToken type="boolean">true</FlyqlToken> and <FlyqlToken type="boolean">false</FlyqlToken> (lowercase, case-sensitive):

@@ -1,28 +1,56 @@
 ---
 title: Dates
-description: Comparaisons de dates et datetimes en FlyQL — littéraux chaîne et fonctions temporelles.
+description: Comparaisons de dates et datetimes en FlyQL — littéraux chaîne, fonctions temporelles et coercion du matcher.
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL propose deux façons de comparer des dates et des datetimes : les **littéraux chaîne** pour les dates absolues, et les **fonctions temporelles** pour les fenêtres temporelles relatives. Choisissez celle qui correspond à l'intention de la requête.
+FlyQL distingue les **jours calendaires** (`Type.Date`) des **instants dans le temps** (`Type.DateTime`) dans les schémas de colonnes, et utilise cette distinction pour piloter la coercion du matcher sur les littéraux chaîne ISO-8601. Les générateurs SQL, eux, transmettent les littéraux chaîne tels quels — la base de données les parse.
+
+## Jour calendaire vs. instant
+
+`Type.Date` — uniquement jour calendaire. Les comparaisons sont tronquées à `YYYYMMDD`. Absorbe les types DB bruts `date` / `date32`.
+
+`Type.DateTime` — point sur la ligne temporelle avec une résolution de la milliseconde. Les comparaisons s'effectuent en millisecondes UTC. Absorbe `datetime`, `datetime64`, `timestamp`, `timestamptz`, `year`.
+
+Déclarer le type sémantique est crucial pour le matcher : une colonne `Date` comparée à `'2026-04-06T15:30:00Z'` tronque la valeur de l'enregistrement à sa composante Y/M/D avant comparaison, alors qu'une colonne `DateTime` compare jusqu'à la milliseconde.
+
+Si une colonne déclarée `Type.Date` reçoit une valeur de forme datetime (instance native `datetime` / `time.Time` / `Date`, ou chaîne ISO portant une composante horaire), FlyQL émet une fois par colonne un `UserWarning` (Python) / une ligne de log (Go) / un `console.warn` (JS) suggérant la migration vers `Type.DateTime`.
 
 ## Date sous forme de littéral chaîne
 
-Comparez une colonne date à un littéral chaîne ISO-8601. ClickHouse, PostgreSQL et StarRocks convertissent tous les chaînes ISO-8601 en valeurs `DATE` / `DATETIME` à la frontière de la base de données, donc aucun constructeur de date spécifique n'est requis au niveau FlyQL.
+Comparez une colonne date/datetime à un littéral chaîne ISO-8601. Les générateurs transmettent le littéral tel quel ; la base de données le parse à l'exécution.
 
 <FlyqlCode code={`due_date < '2023-12-31'`} />
 <FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
 <FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
 
-| Type de colonne | Accepte | Comparaison générée |
-|-----------------|---------|---------------------|
-| ClickHouse `Date` / `DateTime` / `DateTime64` | Chaîne ISO-8601 | Comparaison directe — ClickHouse parse le littéral à l'exécution |
-| PostgreSQL `date` / `timestamp` / `timestamptz` | Chaîne ISO-8601 | Comparaison directe — PostgreSQL convertit le littéral à l'exécution |
-| StarRocks `DATE` / `DATETIME` | Chaîne ISO-8601 | Comparaison directe — StarRocks parse le littéral à l'exécution |
+Dans le matcher, les colonnes `Date` / `DateTime` déclarées via le schéma pilotent le parsing automatique des littéraux ISO-8601 ET des valeurs d'enregistrement. Aucune fonction de conversion explicite n'est requise pour le cas courant.
 
-L'heure du jour, les décalages de fuseau horaire et les formes date-seule sont tous supportés parce que la base de données parse le littéral elle-même.
+### Formes iso8601 acceptées
+
+La famille `iso8601` du matcher est permissive :
+
+- `YYYY-MM-DD` — date calendaire pure (pour les colonnes Date, ou minuit dans la tz de la colonne pour les colonnes DateTime).
+- `YYYY-MM-DDTHH:MM:SS` — datetime naïve.
+- `YYYY-MM-DD HH:MM:SS` — datetime naïve avec séparateur espace (normalisée avant le parsing).
+- `YYYY-MM-DDTHH:MM:SS.ffffff` — sous-seconde optionnelle (résolution ms uniquement — voir « Précision » ci-dessous).
+- Toute forme précédente avec un suffixe de décalage `Z` ou `±HH:MM`.
+
+### Métadonnées de colonne pour littéraux naïfs
+
+Une déclaration de colonne `DateTime` peut porter des métadonnées optionnelles :
+
+- `tz` — nom de fuseau horaire IANA utilisé pour interpréter les chaînes ISO naïves. Retombe sur `default_timezone` de l'Evaluator, puis sur `"UTC"`.
+- `unit` — `"ms"` (défaut), `"s"` ou `"ns"`. Appliqué aux valeurs numériques d'enregistrement ; les valeurs non numériques l'ignorent.
+
+```json
+{
+  "ts":        { "type": "datetime", "tz": "Europe/Moscow", "unit": "s" },
+  "event_day": { "type": "date" }
+}
+```
 
 :::note[Les chaînes doivent être entre guillemets]
 Les littéraux de date sont des chaînes et **doivent** être entre guillemets. Sans guillemets, FlyQL interprète la valeur comme une référence de colonne. <FlyqlCode code={`due_date < 2023-12-31`} inline /> serait parsé comme une arithmétique sur une colonne nommée `2023`, et non comme un littéral de date. Voir [Valeurs et types — String](/fr/syntax/values/#string).
@@ -38,7 +66,48 @@ Pour les requêtes temporelles relatives — « dans la dernière heure », « d
 <FlyqlCode code={`event_time > startOf('day')`} />
 <FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
 
-La grammaire complète (unités, règles d'ordre, arguments de fuseau horaire) est couverte dans [Valeurs et types — Fonctions temporelles](/fr/syntax/values/).
+La grammaire complète (unités, règles d'ordre, arguments de fuseau horaire) est couverte dans [Valeurs et types — Fonctions temporelles](/fr/syntax/values/#temporal-functions).
+
+## Heure d'été (DST)
+
+Lorsqu'un littéral datetime naïf (sans décalage, sans `Z`) est interprété dans une tz observant l'heure d'été, FlyQL choisit la résolution non ambiguë définie par la spécification :
+
+- **Recul (horloge murale ambiguë)** — l'occurrence antérieure est choisie (`fold=0` en sémantique Python). Exemple : `'2026-11-01 01:30:00'` dans `America/New_York` se résout à 05:30 UTC (EDT), pas à 06:30 UTC (EST).
+- **Avance (horloge murale inexistante)** — la valeur est rejetée. Le matcher retourne `false` pour cet enregistrement (sauté). Exemple : `'2026-03-08 02:30:00'` dans `America/New_York` n'existe pas.
+
+Les enregistrements qui tombent dans la lacune de l'avance sont traités comme non parsables plutôt que d'être silencieusement normalisés en avant.
+
+## Types de valeur d'enregistrement supportés (Python)
+
+- `datetime.datetime` — tz-aware ou naïf (le naïf utilise la `tz` de la colonne ou le défaut de l'Evaluator).
+- `datetime.date` — uniquement jour calendaire.
+- `pandas.Timestamp` — fonctionne car c'est une sous-classe de `datetime`.
+- Chaînes ISO-8601 — voir les formes acceptées ci-dessus.
+- `int` / `float` — millisecondes epoch par défaut ; mettre `unit="s"` sur la colonne pour des secondes epoch ou `"ns"` pour des nanosecondes.
+
+Non supportés aujourd'hui :
+
+- `numpy.datetime64` — convertir avant de passer au matcher : `pd.Timestamp(value).to_pydatetime()` ou `value.astype("datetime64[ms]").astype(int)`.
+
+## Précision
+
+Le matcher de FlyQL compare les valeurs temporelles avec une **granularité à la milliseconde**. La précision sous-milliseconde dans les données source est tronquée avant comparaison :
+
+- Python — `int(dt.timestamp() * 1000)` abandonne les microsecondes.
+- Go — `UnixMilli()` abandonne les nanosecondes.
+- JavaScript — `Date` est nativement en ms.
+
+Les utilisateurs ayant besoin de la précision à la nanoseconde doivent prétraiter les enregistrements en nanosecondes bigint et déclarer `unit="ns"`. Le chemin JS utilise `Number`, qui perd en précision au-dessus de `2^53` — le chemin BigInt nanoseconde est réservé à une spécification ultérieure.
+
+## Numériques sans schéma
+
+Les valeurs numériques d'enregistrement sans schéma de colonne sont traitées comme des **millisecondes epoch**. Aucune heuristique d'autodétection — un enregistrement `{"ts": 1712434800}` (secondes epoch par convention) est interprété comme `1970-01-20` et non `2024`. Les utilisateurs avec des données en secondes epoch DOIVENT déclarer `unit="s"` :
+
+```json
+{ "ts": { "type": "datetime", "unit": "s" } }
+```
+
+C'est strict par conception : une heuristique d'autodétection (p. ex. `value < 10^10 → secondes`) échoue à la frontière et sur des valeurs de dates anciennes légitimes, donc nous préférons des déclarations explicites aux suppositions silencieuses.
 
 ## Quand utiliser quoi
 

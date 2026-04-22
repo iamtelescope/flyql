@@ -1,0 +1,153 @@
+{
+  "version": "1.0",
+  "description": "E2E cross-language parity tests for schema-driven Date/DateTime matching. Each language loads the column schema, runs each query against the same row set, and must produce identical matched-id lists.",
+  "test_suite": "datetime_matcher_e2e",
+  "columns": {
+    "id":          { "type": "int" },
+    "ts_utc":      { "type": "datetime" },
+    "ts_moscow":   { "type": "datetime", "tz": "Europe/Moscow" },
+    "ts_ny":       { "type": "datetime", "tz": "America/New_York" },
+    "ts_epoch_s":  { "type": "datetime", "unit": "s" },
+    "ts_epoch_ms": { "type": "datetime" },
+    "event_day":   { "type": "date" }
+  },
+  "rows": [
+    {
+      "id": 1,
+      "ts_utc":      "2026-04-06T10:00:00Z",
+      "ts_moscow":   "2026-04-06 10:00:00",
+      "ts_ny":       "2026-11-01 01:30:00",
+      "ts_epoch_s":  1775469600,
+      "ts_epoch_ms": 1775469600000,
+      "event_day":   "2026-04-06"
+    },
+    {
+      "id": 2,
+      "ts_utc":      "2026-04-06T12:00:00Z",
+      "ts_moscow":   "2026-04-06 15:00:00",
+      "ts_ny":       "2026-03-08 02:30:00",
+      "ts_epoch_s":  1775476800,
+      "ts_epoch_ms": 1775476800000,
+      "event_day":   "2026-04-07"
+    },
+    {
+      "id": 3,
+      "ts_utc":      "2026-04-06T14:00:00Z",
+      "ts_moscow":   "2026-04-06 17:00:00",
+      "ts_ny":       "2026-07-04 12:00:00",
+      "ts_epoch_s":  1775484000,
+      "ts_epoch_ms": 1775484000000,
+      "event_day":   "2026-04-05"
+    },
+    {
+      "id": 4,
+      "ts_utc":      "garbage",
+      "ts_moscow":   null,
+      "ts_ny":       "not-a-date",
+      "ts_epoch_s":  null,
+      "ts_epoch_ms": null,
+      "event_day":   "garbage"
+    },
+    {
+      "id": 5,
+      "ts_utc":      "2026-04-06T21:00:00.000500Z",
+      "ts_moscow":   "2026-04-07 00:00:00",
+      "ts_ny":       "2026-11-01 02:00:00",
+      "ts_epoch_s":  1712102400,
+      "ts_epoch_ms": 1712102400000,
+      "event_day":   "2026-01-01"
+    }
+  ],
+  "tests": [
+    {
+      "name": "datetime_iso_literal_gt",
+      "description": "Basic DateTime column > ISO literal (Z offset).",
+      "query": "ts_utc > '2026-04-06T11:00:00Z'",
+      "expected_ids": [2, 3, 5]
+    },
+    {
+      "name": "datetime_iso_literal_lt",
+      "query": "ts_utc < '2026-04-06T11:00:00Z'",
+      "expected_ids": [1]
+    },
+    {
+      "name": "datetime_moscow_naive_string_with_col_tz",
+      "description": "Naive ISO strings interpreted in column.tz='Europe/Moscow' (UTC+3).",
+      "query": "ts_moscow > '2026-04-06T11:00:00Z'",
+      "expected_ids": [2, 3, 5]
+    },
+    {
+      "name": "datetime_ny_dst_fall_back_earlier",
+      "description": "Decision 19: fall-back '2026-11-01 01:30' NY resolves to EDT (05:30 UTC), earlier of the two occurrences. Narrow the window to late-2026 so only the fall-back value qualifies — if the 'later' (EST, 06:30 UTC) instance were picked the row would not match the < 06:00 UTC bound.",
+      "query": "ts_ny >= '2026-10-01T00:00:00Z' and ts_ny < '2026-11-01T06:00:00Z'",
+      "expected_ids": [1]
+    },
+    {
+      "name": "datetime_ny_dst_spring_forward_skipped",
+      "description": "Decision 19: '2026-03-08 02:30' NY is in the spring-forward gap — matcher returns null/false, row skipped.",
+      "query": "ts_ny > '2020-01-01T00:00:00Z'",
+      "expected_ids": [1, 3, 5]
+    },
+    {
+      "name": "datetime_ny_after_fall_back_unambiguous",
+      "description": "02:00 NY on 2026-11-01 is unambiguously EST (07:00 UTC) — past the fall-back transition.",
+      "query": "ts_ny >= '2026-11-01T07:00:00Z'",
+      "expected_ids": [5]
+    },
+    {
+      "name": "datetime_epoch_seconds_with_unit",
+      "description": "Decision 21 + column.unit='s': int treated as epoch seconds.",
+      "query": "ts_epoch_s > '2026-01-01T00:00:00Z'",
+      "expected_ids": [1, 2, 3]
+    },
+    {
+      "name": "datetime_epoch_ms_default",
+      "description": "Decision 21: numeric default is 'ms'.",
+      "query": "ts_epoch_ms > '2026-01-01T00:00:00Z'",
+      "expected_ids": [1, 2, 3]
+    },
+    {
+      "name": "date_column_equals_day",
+      "query": "event_day = '2026-04-06'",
+      "expected_ids": [1]
+    },
+    {
+      "name": "date_column_range",
+      "query": "event_day >= '2026-04-06' and event_day < '2026-04-08'",
+      "expected_ids": [1, 2]
+    },
+    {
+      "name": "date_column_lt",
+      "query": "event_day < '2026-04-06'",
+      "expected_ids": [3, 5]
+    },
+    {
+      "name": "datetime_in_list",
+      "description": "IN-list with ISO literals; row 5 sub-ms truncates to 21:00:00.000 and matches third item.",
+      "query": "ts_utc in ['2026-04-06T10:00:00Z', '2026-04-06T12:00:00Z', '2026-04-06T21:00:00.000000Z']",
+      "expected_ids": [1, 2, 5]
+    },
+    {
+      "name": "datetime_not_in_list",
+      "query": "event_day not in ['2026-04-06', '2026-04-07']",
+      "expected_ids": [3, 5]
+    },
+    {
+      "name": "datetime_microsecond_truncation_to_ms",
+      "description": "Decision 23: sub-ms precision is truncated. Row 5's .000500Z compares equal to .000Z.",
+      "query": "ts_utc = '2026-04-06T21:00:00Z'",
+      "expected_ids": [5]
+    },
+    {
+      "name": "datetime_unparseable_record_skipped",
+      "description": "Row 4's garbage values fail to coerce; record skipped (not matched).",
+      "query": "ts_utc > '2020-01-01T00:00:00Z'",
+      "expected_ids": [1, 2, 3, 5]
+    },
+    {
+      "name": "date_column_lt_gt_ordering",
+      "query": "event_day > '2026-01-02'",
+      "expected_ids": [1, 2, 3]
+    }
+  ]
+}

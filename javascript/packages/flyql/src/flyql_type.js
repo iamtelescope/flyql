@@ -22,8 +22,18 @@ export const Type = Object.freeze({
     Float: 'float',
     /** Boolean values. Equality and truthy only; ordering operators rejected. */
     Bool: 'bool',
-    /** Point-in-time temporal values. Accepts temporal function calls. */
+    /** Calendar day only (Y/M/D) — no time-of-day component. Comparisons
+     *  truncate to day granularity. Absorbs raw DB types `date` / `date32`.
+     *  Distinct from DateTime — a Date column receiving a datetime-shaped
+     *  value emits a migration warning. */
     Date: 'date',
+    /** Instant-in-time (point on the timeline, ms resolution). Comparisons
+     *  happen at millisecond granularity (sub-ms precision is truncated).
+     *  Accepts temporal function calls and ISO-8601 string literals with
+     *  full time + optional timezone. Absorbs `datetime`, `datetime64`,
+     *  `timestamp`, `timestamptz`, `year`. Schema `tz` and `unit` metadata
+     *  disambiguates naive strings and numeric values. */
+    DateTime: 'datetime',
     /** Interval/duration values. Forward-looking — see Tech Decision #14. */
     Duration: 'duration',
     /** Ordered collection of values. Accepts the `has` operator. */

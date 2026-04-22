@@ -73,6 +73,12 @@ As aspas simples e duplas sao intercambiaveis, por isso pode escolher o delimita
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Tipos de coluna Date vs. DateTime]
+Os esquemas de colunas distinguem **`Type.Date`** (apenas dia de calendário — `YYYYMMDD`) de **`Type.DateTime`** (instante no tempo com resolução de milissegundos). O matcher usa o tipo declarado para converter literais string ISO-8601 e valores temporais nativos no lado direito. Colunas DateTime podem declarar metadados opcionais `tz` (IANA) e `unit` (`ms` / `s` / `ns`) para desambiguar strings naive e valores numéricos.
+
+Consulte [Datas](/pt/syntax/dates) para o contrato iso8601 completo, regras de fallback de tz, tratamento de DST e a lista de tipos de valor de registo suportados.
+:::
+
 ### Boolean
 
 As palavras-chave <FlyqlToken type="boolean">true</FlyqlToken> e <FlyqlToken type="boolean">false</FlyqlToken> (minusculas, sensivel a maiusculas/minusculas):

@@ -3,6 +3,10 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { match } from '../../src/matcher/index.js'
+import { Evaluator } from '../../src/matcher/evaluator.js'
+import { parse } from '../../src/core/parser.js'
+import { ColumnSchema } from '../../src/core/column.js'
+import { Record } from '../../src/matcher/record.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -17,8 +21,15 @@ function runMatcherTestSuite(fixtureName) {
     describe(fixture.test_suite, () => {
         for (const tc of fixture.tests) {
             it(tc.name, () => {
-                const result = match(tc.query, tc.data)
-                expect(result).toBe(tc.expected)
+                if (tc.columns) {
+                    const schema = ColumnSchema.fromPlainObject(tc.columns)
+                    const evaluator = new Evaluator({ columns: schema })
+                    const ast = parse(tc.query).root
+                    const record = new Record(tc.data)
+                    expect(evaluator.evaluate(ast, record)).toBe(tc.expected)
+                } else {
+                    expect(match(tc.query, tc.data)).toBe(tc.expected)
+                }
             })
         }
     })
@@ -33,6 +44,7 @@ describe('Matcher', () => {
     runMatcherTestSuite('types.json')
     runMatcherTestSuite('regex.json')
     runMatcherTestSuite('like.json')
+    runMatcherTestSuite('date_datetime.json')
 
     describe('basic matching', () => {
         it('matches string equals', () => {

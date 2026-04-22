@@ -347,6 +347,102 @@
       "columns": [{ "name": "host", "type": "string" }],
       "expected_diagnostics": [],
       "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "date_column_invalid_string",
+      "query": "event_day > 'not-a-date'",
+      "columns": [{ "name": "event_day", "type": "date" }],
+      "expected_diagnostics": [
+        {
+          "code": "invalid_datetime_literal",
+          "severity": "warning",
+          "message_contains": "not-a-date"
+        }
+      ]
+    },
+    {
+      "name": "date_column_valid_string",
+      "query": "event_day > '2026-04-06'",
+      "columns": [{ "name": "event_day", "type": "date" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "datetime_column_valid_variant_T",
+      "query": "ts > '2026-04-06T21:00:00Z'",
+      "columns": [{ "name": "ts", "type": "datetime" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "datetime_column_valid_variant_space",
+      "query": "ts > '2026-04-06 21:00:00Z'",
+      "columns": [{ "name": "ts", "type": "datetime" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "datetime_column_invalid_string",
+      "query": "ts > 'garbage'",
+      "columns": [{ "name": "ts", "type": "datetime" }],
+      "expected_diagnostics": [
+        {
+          "code": "invalid_datetime_literal",
+          "severity": "warning",
+          "message_contains": "garbage"
+        }
+      ]
+    },
+    {
+      "name": "datetime_column_valid_with_offset",
+      "query": "ts > '2026-04-06T21:00:00+02:00'",
+      "columns": [{ "name": "ts", "type": "datetime" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "non_date_column_string_no_warning",
+      "query": "name > 'garbage'",
+      "columns": [{ "name": "name", "type": "string" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "date_column_invalid_column_ref_suppresses_datetime_literal",
+      "query": "event_day > foo+bar",
+      "columns": [{ "name": "event_day", "type": "date" }],
+      "expected_diagnostics": [
+        {
+          "code": "invalid_column_value",
+          "severity": "error",
+          "message_contains": "foo+bar"
+        }
+      ],
+      "absent_codes": ["invalid_datetime_literal"]
+    },
+    {
+      "name": "datetime_column_invalid_calendar_month",
+      "query": "ts > '2026-13-01'",
+      "columns": [{ "name": "ts", "type": "datetime" }],
+      "expected_diagnostics": [
+        {
+          "code": "invalid_datetime_literal",
+          "severity": "warning",
+          "message_contains": "2026-13-01"
+        }
+      ]
+    },
+    {
+      "name": "date_column_invalid_calendar_day",
+      "query": "event_day > '2026-02-31'",
+      "columns": [{ "name": "event_day", "type": "date" }],
+      "expected_diagnostics": [
+        {
+          "code": "invalid_datetime_literal",
+          "severity": "warning",
+          "message_contains": "2026-02-31"
+        }
+      ]
     }
   ]
 }

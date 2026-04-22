@@ -73,6 +73,12 @@ Les guillemets simples et doubles sont interchangeables : choisissez le delimite
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Types de colonnes Date vs. DateTime]
+Les schémas de colonnes distinguent **`Type.Date`** (uniquement jour calendaire — `YYYYMMDD`) de **`Type.DateTime`** (instant dans le temps avec résolution à la milliseconde). Le matcher utilise le type déclaré pour convertir les littéraux chaîne ISO-8601 et les valeurs temporelles natives côté droit. Les colonnes DateTime peuvent déclarer des métadonnées optionnelles `tz` (IANA) et `unit` (`ms` / `s` / `ns`) pour désambiguïser les chaînes naïves et les valeurs numériques.
+
+Voir [Dates](/fr/syntax/dates) pour le contrat iso8601 complet, les règles de repli de tz, la gestion de l'heure d'été, et la liste des types de valeur d'enregistrement supportés.
+:::
+
 ### Boolean
 
 Les mots-cles <FlyqlToken type="boolean">true</FlyqlToken> et <FlyqlToken type="boolean">false</FlyqlToken> (en minuscules, sensible a la casse) :

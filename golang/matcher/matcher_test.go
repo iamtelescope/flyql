@@ -27,6 +27,7 @@ type matcherTestCase struct {
 	Query    string         `json:"query"`
 	Data     map[string]any `json:"data"`
 	Expected bool           `json:"expected"`
+	Columns  map[string]any `json:"columns,omitempty"`
 }
 
 func TestMatcherEvaluatesCorrectly(t *testing.T) {
@@ -257,6 +258,7 @@ func TestMatcherFromDataFiles(t *testing.T) {
 		"types.json",
 		"regex.json",
 		"like.json",
+		"date_datetime.json",
 	}
 
 	for _, file := range files {
@@ -280,7 +282,14 @@ func TestMatcherFromDataFiles(t *testing.T) {
 						t.Fatalf("parse error for query %q: %v", tc.Query, err)
 					}
 
-					evaluator := NewEvaluator()
+					var schema *flyql.ColumnSchema
+					if len(tc.Columns) > 0 {
+						schema, err = flyql.FromPlainObject(tc.Columns)
+						if err != nil {
+							t.Fatalf("schema deserialization error for %q: %v", tc.Name, err)
+						}
+					}
+					evaluator := NewEvaluatorWithSchema(nil, "UTC", schema)
 					record := NewRecord(tc.Data)
 					got, evalErr := evaluator.Evaluate(result.Root, record)
 					if evalErr != nil {

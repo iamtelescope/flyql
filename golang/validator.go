@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/iamtelescope/flyql/golang/flyqltype"
 	"github.com/iamtelescope/flyql/golang/literal"
@@ -11,6 +12,49 @@ import (
 )
 
 var validColumnNameRE = regexp.MustCompile(`^[a-zA-Z0-9_.:/@|\-]+$`)
+
+// iso8601DateRE matches pure YYYY-MM-DD.
+var iso8601DateRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+
+// iso8601FullRE matches the lenient iso8601 family accepted by the matcher.
+var iso8601FullRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$`)
+
+// isValidISO8601 performs a shape AND calendar-validity check. A value
+// that matches the shape regex but represents an impossible calendar
+// date (e.g. "2026-13-45") is rejected — the matcher will reject it at
+// coerce time, so the validator warns now.
+func isValidISO8601(s string) bool {
+	if s == "" {
+		return false
+	}
+	if iso8601DateRE.MatchString(s) {
+		_, err := time.Parse("2006-01-02", s)
+		return err == nil
+	}
+	if iso8601FullRE.MatchString(s) {
+		for _, layout := range []string{
+			"2006-01-02T15:04:05.999999999Z07:00",
+			"2006-01-02T15:04:05Z07:00",
+			"2006-01-02T15:04:05.999999999",
+			"2006-01-02T15:04:05",
+			"2006-01-02 15:04:05.999999999Z07:00",
+			"2006-01-02 15:04:05Z07:00",
+			"2006-01-02 15:04:05.999999999",
+			"2006-01-02 15:04:05",
+		} {
+			if _, err := time.Parse(layout, s); err == nil {
+				return true
+			}
+		}
+		return false
+	}
+	return false
+}
+
+type rangeKey struct {
+	start int
+	end   int
+}
 
 // DiagnosticSeverity is the severity level of a diagnostic.
 type DiagnosticSeverity string
@@ -203,6 +247,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 	}
 
 	// COLUMN value validation
+	emittedRanges := make(map[rangeKey]struct{})
 	if expr.ValueType == literal.Column {
 		if v, ok := expr.Value.(string); ok && v != "" {
 			if !validColumnNameRE.MatchString(v) {
@@ -213,6 +258,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 						Severity: SeverityError,
 						Message:  fmt.Sprintf("invalid character in column name '%s'", v),
 					})
+					emittedRanges[rangeKey{expr.ValueRange.Start, expr.ValueRange.End}] = struct{}{}
 				}
 			} else {
 				colValSegments := strings.Split(v, ".")
@@ -224,6 +270,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 							Severity: SeverityError,
 							Message:  fmt.Sprintf("column '%s' is not defined", v),
 						})
+						emittedRanges[rangeKey{expr.ValueRange.Start, expr.ValueRange.End}] = struct{}{}
 					}
 				}
 			}
@@ -242,6 +289,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 							Severity: SeverityError,
 							Message:  fmt.Sprintf("invalid character in column name '%s'", v),
 						})
+						emittedRanges[rangeKey{expr.ValueRanges[i].Start, expr.ValueRanges[i].End}] = struct{}{}
 					}
 				} else {
 					colValSegments := strings.Split(v, ".")
@@ -253,9 +301,55 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 								Severity: SeverityError,
 								Message:  fmt.Sprintf("column '%s' is not defined", v),
 							})
+							emittedRanges[rangeKey{expr.ValueRanges[i].Start, expr.ValueRanges[i].End}] = struct{}{}
 						}
 					}
 				}
+			}
+		}
+	}
+
+	// Decision 16: invalid_datetime_literal for Date/DateTime columns.
+	// Precedence: suppress when another diagnostic already fired for the range.
+	if col != nil && (col.Type == flyqltype.Date || col.Type == flyqltype.DateTime) {
+		if expr.ValueType == literal.String {
+			if v, ok := expr.Value.(string); ok && expr.ValueRange != nil {
+				key := rangeKey{expr.ValueRange.Start, expr.ValueRange.End}
+				if _, seen := emittedRanges[key]; !seen && !isValidISO8601(v) {
+					diags = append(diags, Diagnostic{
+						Range:    *expr.ValueRange,
+						Code:     CodeInvalidDatetimeLiteral,
+						Severity: SeverityWarning,
+						Message:  fmt.Sprintf("invalid iso8601 datetime literal '%s' for %s column '%s'", v, col.Type, col.Name),
+					})
+					emittedRanges[key] = struct{}{}
+				}
+			}
+		}
+		for i, vt := range expr.ValuesTypes {
+			if vt != literal.String {
+				continue
+			}
+			if i >= len(expr.Values) || i >= len(expr.ValueRanges) {
+				continue
+			}
+			v, ok := expr.Values[i].(string)
+			if !ok {
+				continue
+			}
+			r := expr.ValueRanges[i]
+			key := rangeKey{r.Start, r.End}
+			if _, seen := emittedRanges[key]; seen {
+				continue
+			}
+			if !isValidISO8601(v) {
+				diags = append(diags, Diagnostic{
+					Range:    r,
+					Code:     CodeInvalidDatetimeLiteral,
+					Severity: SeverityWarning,
+					Message:  fmt.Sprintf("invalid iso8601 datetime literal '%s' for %s column '%s'", v, col.Type, col.Name),
+				})
+				emittedRanges[key] = struct{}{}
 			}
 		}
 	}

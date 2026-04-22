@@ -90,26 +90,28 @@ var coreParserMessages = map[int]string{
 
 // Validator diagnostic codes (excluding renderer codes which live in package columns).
 const (
-	CodeArgCount           = "arg_count"
-	CodeArgType            = "arg_type"
-	CodeChainType          = "chain_type"
-	CodeInvalidAST         = "invalid_ast"
-	CodeInvalidColumnValue = "invalid_column_value"
-	CodeUnknownColumn      = "unknown_column"
-	CodeUnknownColumnValue = "unknown_column_value"
-	CodeUnknownTransformer = "unknown_transformer"
+	CodeArgCount               = "arg_count"
+	CodeArgType                = "arg_type"
+	CodeChainType              = "chain_type"
+	CodeInvalidAST             = "invalid_ast"
+	CodeInvalidColumnValue     = "invalid_column_value"
+	CodeInvalidDatetimeLiteral = "invalid_datetime_literal"
+	CodeUnknownColumn          = "unknown_column"
+	CodeUnknownColumnValue     = "unknown_column_value"
+	CodeUnknownTransformer     = "unknown_transformer"
 )
 
 // validatorMessages maps non-renderer validator codes to canonical messages.
 var validatorMessages = map[string]string{
-	CodeArgCount:           "transformer argument count mismatch",
-	CodeArgType:            "transformer argument type mismatch",
-	CodeChainType:          "transformer chain type mismatch",
-	CodeInvalidAST:         "invalid AST",
-	CodeInvalidColumnValue: "invalid column value",
-	CodeUnknownColumn:      "unknown column",
-	CodeUnknownColumnValue: "unknown column value",
-	CodeUnknownTransformer: "unknown transformer",
+	CodeArgCount:               "transformer argument count mismatch",
+	CodeArgType:                "transformer argument type mismatch",
+	CodeChainType:              "transformer chain type mismatch",
+	CodeInvalidAST:             "invalid AST",
+	CodeInvalidColumnValue:     "invalid column value",
+	CodeInvalidDatetimeLiteral: "invalid datetime literal",
+	CodeUnknownColumn:          "unknown column",
+	CodeUnknownColumnValue:     "unknown column value",
+	CodeUnknownTransformer:     "unknown transformer",
 }
 
 // matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.

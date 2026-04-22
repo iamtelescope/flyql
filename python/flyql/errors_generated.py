@@ -128,6 +128,7 @@ CODE_ARG_TYPE = "arg_type"
 CODE_CHAIN_TYPE = "chain_type"
 CODE_INVALID_AST = "invalid_ast"
 CODE_INVALID_COLUMN_VALUE = "invalid_column_value"
+CODE_INVALID_DATETIME_LITERAL = "invalid_datetime_literal"
 CODE_RENDERER_ARG_COUNT = "renderer_arg_count"
 CODE_RENDERER_ARG_TYPE = "renderer_arg_type"
 CODE_UNKNOWN_COLUMN = "unknown_column"
@@ -141,6 +142,7 @@ VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_CHAIN_TYPE: "transformer chain type mismatch",
     CODE_INVALID_AST: "invalid AST",
     CODE_INVALID_COLUMN_VALUE: "invalid column value",
+    CODE_INVALID_DATETIME_LITERAL: "invalid datetime literal",
     CODE_RENDERER_ARG_COUNT: "renderer argument count mismatch",
     CODE_RENDERER_ARG_TYPE: "renderer argument type mismatch",
     CODE_UNKNOWN_COLUMN: "unknown column",

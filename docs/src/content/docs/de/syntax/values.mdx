@@ -73,6 +73,12 @@ Einfache und doppelte Anführungszeichen sind austauschbar — wählen Sie das T
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date vs. DateTime Spaltentypen]
+Spaltenschemata unterscheiden **`Type.Date`** (nur Kalendertag — `YYYYMMDD`) von **`Type.DateTime`** (Zeitpunkt mit Millisekundenauflösung). Der Matcher nutzt den deklarierten Typ, um ISO-8601-Stringliterale und native temporale Werte auf der rechten Seite zu konvertieren. DateTime-Spalten können optionale `tz`- (IANA) und `unit`- (`ms` / `s` / `ns`)-Metadaten für die Interpretation naiver Strings und numerischer Werte deklarieren.
+
+Siehe [Datumsangaben](/de/syntax/dates) für den vollständigen iso8601-Vertrag, TZ-Fallback-Regeln, DST-Behandlung und die Liste unterstützter Datensatzwert-Typen.
+:::
+
 ### Boolean
 
 Die Schlüsselwörter <FlyqlToken type="boolean">true</FlyqlToken> und <FlyqlToken type="boolean">false</FlyqlToken> (kleingeschrieben, case-sensitive):

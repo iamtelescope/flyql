@@ -34,10 +34,28 @@ const (
 	// rejected. Absorbs bool/boolean.
 	Bool Type = "bool"
 
-	// Date is point-in-time temporal values. Accepts temporal function
-	// calls (ago(), now(), etc.) and string literals coerced to dates.
-	// Absorbs date, date32, datetime, datetime64, timestamp, year.
+	// Date is calendar day only (Y/M/D) — no time-of-day component.
+	// Comparisons truncate to day granularity. Accepts temporal function
+	// calls (ago(), today(), startOf()) and ISO-8601 date or datetime
+	// string literals (the time component is ignored when present).
+	// Absorbs raw DB types date / date32.
+	//
+	// Distinct from DateTime — use this when the semantic is a calendar
+	// day, not an instant-in-time. A column declared Date that receives
+	// a datetime-shaped value emits a migration warning.
 	Date Type = "date"
+
+	// DateTime is an instant-in-time (point on the timeline, ms
+	// resolution). Comparisons happen at millisecond granularity
+	// (sub-ms precision is truncated). Accepts temporal function calls
+	// and ISO-8601 string literals with full time + optional timezone.
+	// Absorbs raw DB types datetime, datetime64, timestamp, timestamptz,
+	// year.
+	//
+	// Distinct from Date — use this for wall-clock events, timestamps,
+	// and anything with a time-of-day. Schema tz and unit metadata
+	// disambiguates naive strings and numeric values.
+	DateTime Type = "datetime"
 
 	// Duration is interval/duration values. Accepts duration literals like
 	// 30m1s, 1h, 7d. Absorbs ClickHouse Interval* and PostgreSQL interval.

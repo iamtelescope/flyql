@@ -73,6 +73,12 @@ AST: `value_type: "string"`
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date カラム型 vs. DateTime カラム型]
+カラムスキーマは **`Type.Date`**（暦日のみ — `YYYYMMDD`）と **`Type.DateTime`**（ミリ秒解像度の時点）を区別します。マッチャーは宣言された型を使って、RHS の ISO-8601 文字列リテラルやネイティブ時間値をコアースします。DateTime カラムはオプションで `tz`（IANA）と `unit`（`ms` / `s` / `ns`）メタデータを宣言でき、ナイーブ文字列や数値の曖昧さを解消します。
+
+完全な iso8601 契約、tz フォールバックルール、DST 処理、サポートされるレコード値型の一覧は [日付](/ja/syntax/dates) を参照してください。
+:::
+
 ### Boolean
 
 <FlyqlToken type="boolean">true</FlyqlToken> と <FlyqlToken type="boolean">false</FlyqlToken> という小文字のキーワードです。大文字小文字は区別されます。

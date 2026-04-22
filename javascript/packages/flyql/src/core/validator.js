@@ -9,6 +9,7 @@ import {
     CODE_CHAIN_TYPE,
     CODE_INVALID_AST,
     CODE_INVALID_COLUMN_VALUE,
+    CODE_INVALID_DATETIME_LITERAL,
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     CODE_UNKNOWN_COLUMN,
@@ -22,6 +23,7 @@ export {
     CODE_CHAIN_TYPE,
     CODE_INVALID_AST,
     CODE_INVALID_COLUMN_VALUE,
+    CODE_INVALID_DATETIME_LITERAL,
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     CODE_UNKNOWN_COLUMN,
@@ -31,6 +33,42 @@ export {
 }
 
 const VALID_COLUMN_NAME_RE = /^[a-zA-Z0-9_.:/@|-]+$/
+
+// Lenient iso8601 matcher — parity with matcher's _parseIsoStringToMs.
+const ISO8601_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const ISO8601_FULL_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/
+
+/**
+ * Shape AND calendar-validity check. Inputs that match the shape regex
+ * but represent impossible calendar values (e.g. `'2026-13-45'`) are
+ * rejected — the matcher will reject them at coerce time, so the
+ * validator warns now.
+ */
+function isValidISO8601(s) {
+    if (!s) return false
+    if (ISO8601_DATE_RE.test(s)) {
+        const y = parseInt(s.slice(0, 4), 10)
+        const m = parseInt(s.slice(5, 7), 10)
+        const d = parseInt(s.slice(8, 10), 10)
+        return _isCalendarValid(y, m, d)
+    }
+    if (ISO8601_FULL_RE.test(s)) {
+        const y = parseInt(s.slice(0, 4), 10)
+        const m = parseInt(s.slice(5, 7), 10)
+        const d = parseInt(s.slice(8, 10), 10)
+        const hh = parseInt(s.slice(11, 13), 10)
+        const mm = parseInt(s.slice(14, 16), 10)
+        const ss = parseInt(s.slice(17, 19), 10)
+        return _isCalendarValid(y, m, d) && hh < 24 && mm < 60 && ss < 60
+    }
+    return false
+}
+
+function _isCalendarValid(y, m, d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return false
+    const probe = new Date(Date.UTC(y, m - 1, d))
+    return probe.getUTCFullYear() === y && probe.getUTCMonth() === m - 1 && probe.getUTCDate() === d
+}
 
 export class Diagnostic {
     constructor(range, message, severity, code) {
@@ -199,6 +237,9 @@ function _diagnoseExpression(expression, schema, registry) {
         prevOutputType = t.outputType
     }
 
+    const emittedRanges = new Set()
+    const rangeKey = (r) => `${r.start}:${r.end}`
+
     if (
         expression.valueType === LiteralKind.COLUMN &&
         typeof expression.value === 'string' &&
@@ -214,6 +255,7 @@ function _diagnoseExpression(expression, schema, registry) {
                         CODE_INVALID_COLUMN_VALUE,
                     ),
                 )
+                emittedRanges.add(rangeKey(expression.valueRange))
             }
         } else if (schema.resolve(expression.value.split('.')) == null) {
             if (expression.valueRange != null) {
@@ -225,6 +267,7 @@ function _diagnoseExpression(expression, schema, registry) {
                         CODE_UNKNOWN_COLUMN_VALUE,
                     ),
                 )
+                emittedRanges.add(rangeKey(expression.valueRange))
             }
         }
     }
@@ -243,6 +286,7 @@ function _diagnoseExpression(expression, schema, registry) {
                                 CODE_INVALID_COLUMN_VALUE,
                             ),
                         )
+                        emittedRanges.add(rangeKey(expression.valueRanges[i]))
                     }
                 } else if (schema.resolve(val.split('.')) == null) {
                     if (expression.valueRanges != null && i < expression.valueRanges.length) {
@@ -254,7 +298,53 @@ function _diagnoseExpression(expression, schema, registry) {
                                 CODE_UNKNOWN_COLUMN_VALUE,
                             ),
                         )
+                        emittedRanges.add(rangeKey(expression.valueRanges[i]))
                     }
+                }
+            }
+        }
+    }
+
+    // Decision 16: invalid_datetime_literal for Date/DateTime columns,
+    // suppressed when another diagnostic already fired for the range.
+    if (col != null && (col.type === Type.Date || col.type === Type.DateTime)) {
+        if (
+            expression.valueType === LiteralKind.STRING &&
+            typeof expression.value === 'string' &&
+            expression.valueRange != null
+        ) {
+            const key = rangeKey(expression.valueRange)
+            if (!emittedRanges.has(key) && !isValidISO8601(expression.value)) {
+                diags.push(
+                    new Diagnostic(
+                        expression.valueRange,
+                        `invalid iso8601 datetime literal '${expression.value}' for ${col.type} column '${col.name}'`,
+                        'warning',
+                        CODE_INVALID_DATETIME_LITERAL,
+                    ),
+                )
+                emittedRanges.add(key)
+            }
+        }
+        if (expression.valuesTypes != null && expression.valueRanges != null) {
+            for (let i = 0; i < expression.valuesTypes.length; i++) {
+                if (expression.valuesTypes[i] !== LiteralKind.STRING) continue
+                if (i >= expression.values.length || i >= expression.valueRanges.length) continue
+                const v = expression.values[i]
+                if (typeof v !== 'string') continue
+                const r = expression.valueRanges[i]
+                const key = rangeKey(r)
+                if (emittedRanges.has(key)) continue
+                if (!isValidISO8601(v)) {
+                    diags.push(
+                        new Diagnostic(
+                            r,
+                            `invalid iso8601 datetime literal '${v}' for ${col.type} column '${col.name}'`,
+                            'warning',
+                            CODE_INVALID_DATETIME_LITERAL,
+                        ),
+                    )
+                    emittedRanges.add(key)
                 }
             }
         }

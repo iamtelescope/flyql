@@ -73,6 +73,12 @@ AST: `value_type: "string"`
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date बनाम DateTime कॉलम प्रकार]
+कॉलम स्कीमा **`Type.Date`** (केवल कैलेंडर दिन — `YYYYMMDD`) को **`Type.DateTime`** (मिलीसेकंड रिज़ॉल्यूशन पर समय का क्षण) से अलग करते हैं। मैचर घोषित प्रकार का उपयोग करके RHS पर ISO-8601 स्ट्रिंग लिटरल और मूल टेम्पोरल मानों को परिवर्तित करता है। DateTime कॉलम नेव स्ट्रिंग्स और संख्यात्मक मानों को स्पष्ट करने के लिए वैकल्पिक `tz` (IANA) और `unit` (`ms` / `s` / `ns`) मेटाडेटा घोषित कर सकते हैं।
+
+पूरे iso8601 अनुबंध, tz फॉलबैक नियमों, DST हैंडलिंग, और समर्थित रिकॉर्ड-मान प्रकारों की सूची के लिए [दिनांक](/hi/syntax/dates) देखें।
+:::
+
 ### Boolean
 
 कीवर्ड <FlyqlToken type="boolean">true</FlyqlToken> और <FlyqlToken type="boolean">false</FlyqlToken> (लोअरकेस, केस-संवेदनशील):

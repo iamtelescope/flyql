@@ -49,6 +49,11 @@ const EDITOR_TYPE_TO_FLYQL = {
     struct: Type.Struct,
     json: Type.JSON,
     date: Type.Date,
+    date32: Type.Date,
+    datetime: Type.DateTime,
+    datetime64: Type.DateTime,
+    timestamp: Type.DateTime,
+    timestamptz: Type.DateTime,
 }
 
 const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))

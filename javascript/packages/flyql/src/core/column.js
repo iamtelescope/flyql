@@ -18,6 +18,8 @@ export class Column {
             suggest = true,
             children = null,
             autocomplete,
+            tz = '',
+            unit = '',
         } = {},
     ) {
         if (typeof type !== 'string') {
@@ -36,6 +38,8 @@ export class Column {
         this.matchName = matchName !== null ? matchName : name
         this.suggest = suggest
         this.children = children
+        this.tz = tz
+        this.unit = unit
         if (autocomplete !== undefined) this.autocomplete = autocomplete
     }
 
@@ -46,6 +50,31 @@ export class Column {
     withRawIdentifier(identifier) {
         this.rawIdentifier = identifier
         return this
+    }
+
+    /**
+     * Serialize this Column to a plain object that round-trips through
+     * {@link ColumnSchema.fromPlainObject}. Empty-valued optional fields
+     * (tz, unit, empty values array, null children) are omitted so the
+     * output stays minimal.
+     */
+    asPlainObject() {
+        const result = { type: this.type }
+        if (this.values && this.values.length > 0) result.values = [...this.values]
+        if (this.displayName) result.display_name = this.displayName
+        if (this.rawIdentifier) result.raw_identifier = this.rawIdentifier
+        if (this.matchName && this.matchName !== this.name) result.match_name = this.matchName
+        if (this.suggest === false) result.suggest = this.suggest
+        if (this.children != null) {
+            const childDict = {}
+            for (const [k, child] of Object.entries(this.children)) {
+                if (child != null) childDict[k] = child.asPlainObject()
+            }
+            result.children = childDict
+        }
+        if (this.tz) result.tz = this.tz
+        if (this.unit) result.unit = this.unit
+        return result
     }
 }
 
@@ -189,6 +218,8 @@ function _columnFromPlainObject(name, raw) {
         children,
         autocomplete: raw.autocomplete,
         displayName: raw.display_name || raw.displayName || '',
+        tz: raw.tz || '',
+        unit: raw.unit || '',
     })
     if (raw.description) col.description = raw.description
     return col

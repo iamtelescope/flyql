@@ -24,6 +24,7 @@ edit to fix the error):
 
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, List, Literal, Optional
 
 from flyql.core.column import ColumnSchema
@@ -43,6 +44,7 @@ from flyql.errors_generated import (
     CODE_CHAIN_TYPE,
     CODE_INVALID_AST,
     CODE_INVALID_COLUMN_VALUE,
+    CODE_INVALID_DATETIME_LITERAL,
     CODE_RENDERER_ARG_COUNT,
     CODE_RENDERER_ARG_TYPE,
     CODE_UNKNOWN_COLUMN,
@@ -52,6 +54,44 @@ from flyql.errors_generated import (
 )
 
 _VALID_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z0-9_.:/@|\-]+$")
+
+# Lenient iso8601 matcher — same family accepted by the matcher's
+# _parse_iso_string_to_ms helper. Accepts T or space separator, optional
+# sub-second, optional Z/offset suffix, or a pure date form.
+_ISO8601_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_ISO8601_FULL_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$"
+)
+
+
+def _is_valid_iso8601(s: str) -> bool:
+    """Shape AND calendar validity check.
+
+    Rejects inputs that match the shape regex but represent impossible
+    calendar values (e.g. ``'2026-13-45'``, ``'2026-02-31'``) — the
+    matcher will reject these at coerce time, so the validator warns now.
+    """
+    if not s:
+        return False
+    if _ISO8601_DATE_RE.match(s):
+        try:
+            date.fromisoformat(s)
+            return True
+        except ValueError:
+            return False
+    if _ISO8601_FULL_RE.match(s):
+        # Normalise Z → +00:00 and space → T for fromisoformat (3.10 strict).
+        candidate = s
+        if candidate.endswith("Z"):
+            candidate = candidate[:-1] + "+00:00"
+        if " " in candidate:
+            candidate = candidate.replace(" ", "T", 1)
+        try:
+            datetime.fromisoformat(candidate)
+            return True
+        except ValueError:
+            return False
+    return False
 
 
 @dataclass(frozen=True)
@@ -74,6 +114,7 @@ __all__ = [
     "CODE_INVALID_AST",
     "CODE_UNKNOWN_COLUMN_VALUE",
     "CODE_INVALID_COLUMN_VALUE",
+    "CODE_INVALID_DATETIME_LITERAL",
     "CODE_UNKNOWN_RENDERER",
     "CODE_RENDERER_ARG_COUNT",
     "CODE_RENDERER_ARG_TYPE",
@@ -236,6 +277,8 @@ def _diagnose_expression(
 
         prev_output_type = t.output_type
 
+    emitted_ranges: set = set()
+
     if (
         expression.value_type == LiteralKind.COLUMN
         and isinstance(expression.value, str)
@@ -251,6 +294,9 @@ def _diagnose_expression(
                         message=f"invalid character in column name '{expression.value}'",
                     )
                 )
+                emitted_ranges.add(
+                    (expression.value_range.start, expression.value_range.end)
+                )
         elif schema.resolve(expression.value.split(".")) is None:
             if expression.value_range is not None:
                 diags.append(
@@ -260,6 +306,9 @@ def _diagnose_expression(
                         severity="error",
                         message=f"column '{expression.value}' is not defined",
                     )
+                )
+                emitted_ranges.add(
+                    (expression.value_range.start, expression.value_range.end)
                 )
 
     if expression.values_types is not None and expression.values is not None:
@@ -278,6 +327,12 @@ def _diagnose_expression(
                                 message=f"invalid character in column name '{val}'",
                             )
                         )
+                        emitted_ranges.add(
+                            (
+                                expression.value_ranges[i].start,
+                                expression.value_ranges[i].end,
+                            )
+                        )
                 elif schema.resolve(val.split(".")) is None:
                     if expression.value_ranges is not None and i < len(
                         expression.value_ranges
@@ -290,6 +345,61 @@ def _diagnose_expression(
                                 message=f"column '{val}' is not defined",
                             )
                         )
+                        emitted_ranges.add(
+                            (
+                                expression.value_ranges[i].start,
+                                expression.value_ranges[i].end,
+                            )
+                        )
+
+    # Decision 16: invalid_datetime_literal emits only when no earlier
+    # diagnostic fired for the same range. Date/DateTime column trigger.
+    if col is not None and col.type in (Type.Date, Type.DateTime):
+        if (
+            expression.value_type == LiteralKind.STRING
+            and isinstance(expression.value, str)
+            and expression.value_range is not None
+        ):
+            key = (expression.value_range.start, expression.value_range.end)
+            if key not in emitted_ranges and not _is_valid_iso8601(expression.value):
+                diags.append(
+                    Diagnostic(
+                        range=expression.value_range,
+                        code=CODE_INVALID_DATETIME_LITERAL,
+                        severity="warning",
+                        message=f"invalid iso8601 datetime literal '{expression.value}' "
+                        f"for {col.type.value} column '{col.name}'",
+                    )
+                )
+                emitted_ranges.add(key)
+        if (
+            expression.values is not None
+            and expression.values_types is not None
+            and expression.value_ranges is not None
+        ):
+            for i, vt in enumerate(expression.values_types):
+                if vt != LiteralKind.STRING:
+                    continue
+                if i >= len(expression.values) or i >= len(expression.value_ranges):
+                    continue
+                v = expression.values[i]
+                if not isinstance(v, str):
+                    continue
+                r = expression.value_ranges[i]
+                key = (r.start, r.end)
+                if key in emitted_ranges:
+                    continue
+                if not _is_valid_iso8601(v):
+                    diags.append(
+                        Diagnostic(
+                            range=r,
+                            code=CODE_INVALID_DATETIME_LITERAL,
+                            severity="warning",
+                            message=f"invalid iso8601 datetime literal '{v}' "
+                            f"for {col.type.value} column '{col.name}'",
+                        )
+                    )
+                    emitted_ranges.add(key)
 
     return diags
 

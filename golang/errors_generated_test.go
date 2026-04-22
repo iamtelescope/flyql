@@ -87,25 +87,27 @@ var generatedCoreParserMessages = map[string]string{
 }
 
 var generatedValidatorConstants = map[string]string{
-	"CODE_ARG_COUNT":            CodeArgCount,
-	"CODE_ARG_TYPE":             CodeArgType,
-	"CODE_CHAIN_TYPE":           CodeChainType,
-	"CODE_INVALID_AST":          CodeInvalidAST,
-	"CODE_INVALID_COLUMN_VALUE": CodeInvalidColumnValue,
-	"CODE_UNKNOWN_COLUMN":       CodeUnknownColumn,
-	"CODE_UNKNOWN_COLUMN_VALUE": CodeUnknownColumnValue,
-	"CODE_UNKNOWN_TRANSFORMER":  CodeUnknownTransformer,
+	"CODE_ARG_COUNT":                CodeArgCount,
+	"CODE_ARG_TYPE":                 CodeArgType,
+	"CODE_CHAIN_TYPE":               CodeChainType,
+	"CODE_INVALID_AST":              CodeInvalidAST,
+	"CODE_INVALID_COLUMN_VALUE":     CodeInvalidColumnValue,
+	"CODE_INVALID_DATETIME_LITERAL": CodeInvalidDatetimeLiteral,
+	"CODE_UNKNOWN_COLUMN":           CodeUnknownColumn,
+	"CODE_UNKNOWN_COLUMN_VALUE":     CodeUnknownColumnValue,
+	"CODE_UNKNOWN_TRANSFORMER":      CodeUnknownTransformer,
 }
 
 var generatedValidatorMessages = map[string]string{
-	"CODE_ARG_COUNT":            "transformer argument count mismatch",
-	"CODE_ARG_TYPE":             "transformer argument type mismatch",
-	"CODE_CHAIN_TYPE":           "transformer chain type mismatch",
-	"CODE_INVALID_AST":          "invalid AST",
-	"CODE_INVALID_COLUMN_VALUE": "invalid column value",
-	"CODE_UNKNOWN_COLUMN":       "unknown column",
-	"CODE_UNKNOWN_COLUMN_VALUE": "unknown column value",
-	"CODE_UNKNOWN_TRANSFORMER":  "unknown transformer",
+	"CODE_ARG_COUNT":                "transformer argument count mismatch",
+	"CODE_ARG_TYPE":                 "transformer argument type mismatch",
+	"CODE_CHAIN_TYPE":               "transformer chain type mismatch",
+	"CODE_INVALID_AST":              "invalid AST",
+	"CODE_INVALID_COLUMN_VALUE":     "invalid column value",
+	"CODE_INVALID_DATETIME_LITERAL": "invalid datetime literal",
+	"CODE_UNKNOWN_COLUMN":           "unknown column",
+	"CODE_UNKNOWN_COLUMN_VALUE":     "unknown column value",
+	"CODE_UNKNOWN_TRANSFORMER":      "unknown transformer",
 }
 
 var generatedMatcherConstants = map[string]string{

@@ -37,9 +37,28 @@ class Type(str, Enum):
     rejected. Absorbs bool/boolean."""
 
     Date = "date"
-    """Point-in-time temporal values. Accepts temporal function calls
-    (``ago()``, ``now()``, etc.) and string literals coerced to dates.
-    Absorbs date, date32, datetime, datetime64, timestamp, year."""
+    """Calendar day only (Y/M/D) — no time-of-day component. Comparisons
+    truncate to day granularity. Accepts temporal function calls
+    (``ago()``, ``today()``, ``startOf()``) and ISO-8601 date or datetime
+    string literals (the time component is ignored when present).
+    Absorbs raw DB types ``date`` / ``date32``.
+
+    Distinct from :attr:`DateTime` — use this when the semantic is a
+    calendar day, not an instant-in-time. A column declared ``Date`` that
+    receives a datetime-shaped value emits a migration warning.
+    """
+
+    DateTime = "datetime"
+    """Instant-in-time (point on the timeline, ms resolution). Comparisons
+    happen at millisecond granularity (sub-ms precision is truncated).
+    Accepts temporal function calls and ISO-8601 string literals with
+    full time + optional timezone. Absorbs raw DB types ``datetime``,
+    ``datetime64``, ``timestamp``, ``timestamptz``, ``year``.
+
+    Distinct from :attr:`Date` — use this for wall-clock events,
+    timestamps, and anything with a time-of-day. Schema ``tz`` and
+    ``unit`` metadata disambiguates naive strings and numeric values.
+    """
 
     Duration = "duration"
     """Interval/duration values. Accepts duration literals like

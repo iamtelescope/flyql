@@ -20,6 +20,8 @@ type Column struct {
 	MatchName     string             // raw unescaped name for validator lookups; defaults to Name
 	Suggest       bool               // whether this column appears in suggestions; defaults to true
 	Children      map[string]*Column // nested child columns; nil means flat (leaf) column
+	TZ            string             // IANA timezone name used when coercing naive datetime strings on this column (Date/DateTime only); empty = inherit Evaluator default
+	Unit          string             // numeric-value unit for DateTime columns: "ms" (default), "s", or "ns"; ignored for non-numeric values
 }
 
 // IsNested returns true if this column has children.
@@ -137,6 +139,7 @@ var validFlyQLTypes = map[string]Type{
 	"float":      TypeFloat,
 	"bool":       TypeBool,
 	"date":       TypeDate,
+	"datetime":   TypeDateTime,
 	"duration":   TypeDuration,
 	"array":      TypeArray,
 	"map":        TypeMap,
@@ -231,5 +234,53 @@ func columnFromPlainObject(name string, raw any) (*Column, error) {
 			}
 		}
 	}
+	if tz, ok := dict["tz"].(string); ok {
+		col.TZ = tz
+	}
+	if unit, ok := dict["unit"].(string); ok {
+		col.Unit = unit
+	}
 	return col, nil
+}
+
+// AsPlainObject serializes a Column to a map shape that round-trips through
+// columnFromPlainObject. Empty-valued optional fields (TZ, Unit, empty
+// Values, nil Children, etc.) are omitted so the output stays minimal.
+func (c *Column) AsPlainObject() map[string]any {
+	result := map[string]any{"type": string(c.Type)}
+	if len(c.Values) > 0 {
+		vals := make([]any, len(c.Values))
+		for i, v := range c.Values {
+			vals[i] = v
+		}
+		result["values"] = vals
+	}
+	if c.DisplayName != "" {
+		result["display_name"] = c.DisplayName
+	}
+	if c.RawIdentifier != "" {
+		result["raw_identifier"] = c.RawIdentifier
+	}
+	if c.MatchName != "" && c.MatchName != c.Name {
+		result["match_name"] = c.MatchName
+	}
+	if !c.Suggest {
+		result["suggest"] = c.Suggest
+	}
+	if c.Children != nil {
+		children := make(map[string]any, len(c.Children))
+		for k, child := range c.Children {
+			if child != nil {
+				children[k] = child.AsPlainObject()
+			}
+		}
+		result["children"] = children
+	}
+	if c.TZ != "" {
+		result["tz"] = c.TZ
+	}
+	if c.Unit != "" {
+		result["unit"] = c.Unit
+	}
+	return result
 }

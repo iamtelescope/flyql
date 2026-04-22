@@ -15,6 +15,7 @@ const (
 	TypeFloat      = flyqltype.Float
 	TypeBool       = flyqltype.Bool
 	TypeDate       = flyqltype.Date
+	TypeDateTime   = flyqltype.DateTime
 	TypeDuration   = flyqltype.Duration
 	TypeArray      = flyqltype.Array
 	TypeMap        = flyqltype.Map

@@ -73,6 +73,12 @@ AST：`value_type: "string"`
 <FlyqlCode code={`message = 'said "hello"'`} />
 :::
 
+:::note[Date 列类型 vs. DateTime 列类型]
+列模式区分 **`Type.Date`**（仅日历日 — `YYYYMMDD`）和 **`Type.DateTime`**（毫秒分辨率的时间瞬时）。matcher 使用声明的类型来强制转换右侧的 ISO-8601 字符串字面量和原生时间值。DateTime 列可以声明可选的 `tz`（IANA）和 `unit`（`ms` / `s` / `ns`）元数据,用于消除 naive 字符串和数值的歧义。
+
+关于完整的 iso8601 契约、tz 回退规则、DST 处理以及支持的记录值类型列表,请参见[日期](/zh/syntax/dates)。
+:::
+
 ### Boolean
 
 关键字 <FlyqlToken type="boolean">true</FlyqlToken> 和 <FlyqlToken type="boolean">false</FlyqlToken>（小写，区分大小写）：

@@ -1,36 +1,64 @@
 ---
 title: Datumsangaben
-description: Datums- und DateTime-Vergleiche in FlyQL — Stringliterale und Temporalfunktionen.
+description: Datums- und DateTime-Vergleiche in FlyQL — Stringliterale, Temporalfunktionen und Matcher-Koerzion.
 ---
 
 import FlyqlCode from '../../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
-FlyQL bietet zwei Möglichkeiten, gegen Datums- und DateTime-Werte zu vergleichen: **Stringliterale** für absolute Datumsangaben und **Temporalfunktionen** für relative Zeitfenster. Wähle die zur Absicht der Query passende Variante.
+FlyQL unterscheidet in Spaltenschemata zwischen **Kalendertagen** (`Type.Date`) und **Zeitpunkten** (`Type.DateTime`) und nutzt diese Unterscheidung, um die Matcher-Koerzion von ISO-8601-Stringliteralen zu steuern. SQL-Generatoren reichen Stringliterale dagegen unverändert durch — geparst werden sie von der Datenbank.
+
+## Kalendertag vs. Zeitpunkt
+
+`Type.Date` — ausschließlich Kalendertag. Vergleiche werden auf `YYYYMMDD` gekürzt. Deckt rohe DB-Typen `date` / `date32` ab.
+
+`Type.DateTime` — Punkt auf der Zeitachse mit Millisekundenauflösung. Vergleiche erfolgen in UTC-Millisekunden. Deckt `datetime`, `datetime64`, `timestamp`, `timestamptz`, `year` ab.
+
+Die Deklaration des semantischen Typs ist für den Matcher entscheidend: Eine `Date`-Spalte, die mit `'2026-04-06T15:30:00Z'` verglichen wird, kürzt den Datensatzwert vor dem Vergleich auf seine Y/M/D-Komponente, während eine `DateTime`-Spalte bis zur Millisekunde vergleicht.
+
+Erhält eine als `Type.Date` deklarierte Spalte einen datetime-förmigen Wert (natives `datetime` / `time.Time` / `Date`-Objekt oder einen ISO-String mit Zeitkomponente), gibt FlyQL pro Spalte einmalig eine `UserWarning` (Python) / Log-Eintrag (Go) / `console.warn` (JS) aus und schlägt die Migration zu `Type.DateTime` vor.
 
 ## Datum als Stringliteral
 
-Vergleiche eine Datumsspalte mit einem ISO-8601-Stringliteral. ClickHouse, PostgreSQL und StarRocks wandeln ISO-8601-Strings an der Datenbankgrenze alle in `DATE`- / `DATETIME`-Werte um, daher ist auf FlyQL-Ebene kein spezieller Datums-Konstruktor erforderlich.
+Vergleiche eine date/datetime-Spalte mit einem ISO-8601-Stringliteral. Generatoren reichen das Literal durch; die Datenbank parst es zur Ausführungszeit.
 
 <FlyqlCode code={`due_date < '2023-12-31'`} />
 <FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
 <FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
 
-| Spaltentyp | Akzeptiert | Generierter Vergleich |
-|------------|------------|-----------------------|
-| ClickHouse `Date` / `DateTime` / `DateTime64` | ISO-8601-String | Direkter Vergleich — ClickHouse parst das Literal zur Ausführungszeit |
-| PostgreSQL `date` / `timestamp` / `timestamptz` | ISO-8601-String | Direkter Vergleich — PostgreSQL castet das Literal zur Ausführungszeit |
-| StarRocks `DATE` / `DATETIME` | ISO-8601-String | Direkter Vergleich — StarRocks parst das Literal zur Ausführungszeit |
+Im Matcher steuern schema-deklarierte `Date`- / `DateTime`-Spalten das automatische Parsen von ISO-8601-Literalen UND Datensatzwerten. Für den Regelfall ist keine explizite Konvertierungsfunktion nötig.
 
-Uhrzeit, Zeitzonen-Offsets und Nur-Datum-Formen werden alle unterstützt, weil die Datenbank das Literal selbst parst.
+### Akzeptierte iso8601-Formen
+
+Die `iso8601`-Familie des Matchers ist tolerant:
+
+- `YYYY-MM-DD` — reines Kalenderdatum (für Date-Spalten oder Mitternacht in der Spalten-TZ für DateTime-Spalten).
+- `YYYY-MM-DDTHH:MM:SS` — naives Datetime.
+- `YYYY-MM-DD HH:MM:SS` — naives Datetime mit Leerzeichen als Trennzeichen (wird vor dem Parsen normalisiert).
+- `YYYY-MM-DDTHH:MM:SS.ffffff` — optionale Sub-Sekunden (nur ms-Auflösung — siehe „Genauigkeit" weiter unten).
+- Jede der obigen Formen mit `Z`- oder `±HH:MM`-Offset-Suffix.
+
+### Spaltenmetadaten für naive Literale
+
+Eine `DateTime`-Spaltendeklaration kann optionale Metadaten tragen:
+
+- `tz` — IANA-Zeitzonenname zur Interpretation naiver ISO-Strings. Fällt zurück auf die `default_timezone` des Evaluators, dann auf `"UTC"`.
+- `unit` — `"ms"` (Standard), `"s"` oder `"ns"`. Wird auf numerische Datensatzwerte angewandt; nicht-numerische Werte ignorieren das Feld.
+
+```json
+{
+  "ts":        { "type": "datetime", "tz": "Europe/Moscow", "unit": "s" },
+  "event_day": { "type": "date" }
+}
+```
 
 :::note[Strings müssen in Anführungszeichen]
-Datumsliterale sind Strings und **müssen in Anführungszeichen** stehen. Ohne Anführungszeichen interpretiert FlyQL den Wert als Spaltenreferenz. <FlyqlCode code={`due_date < 2023-12-31`} inline /> würde als Arithmetik auf einer Spalte namens `2023` geparst, nicht als Datumsliteral. Siehe [Werte & Typen — String](/de/syntax/values/#string).
+Datumsliterale sind Strings und **müssen in Anführungszeichen** stehen. Ohne Anführungszeichen interpretiert FlyQL den Wert als Spaltenreferenz. <FlyqlCode code={`due_date < 2023-12-31`} inline /> würde <FlyqlCode code={`2023-12-31`} inline /> als Arithmetik auf einer Spalte namens `2023` parsen, nicht als Datumsliteral. Siehe [Werte & Typen — String](/de/syntax/values/#string).
 :::
 
 ## Temporalfunktionen
 
-Für relative Zeitabfragen — "in der letzten Stunde", "seit Wochenanfang", "seit heute" — bietet FlyQL eingebaute Temporalfunktionen: <FlyqlCode code={`ago(...)`} inline />, <FlyqlCode code={`now()`} inline />, <FlyqlCode code={`today()`} inline /> und <FlyqlCode code={`startOf(...)`} inline />.
+Für relative Zeitabfragen — „in der letzten Stunde", „seit Wochenanfang", „seit heute" — bietet FlyQL eingebaute Temporalfunktionen: <FlyqlCode code={`ago(...)`} inline />, <FlyqlCode code={`now()`} inline />, <FlyqlCode code={`today()`} inline /> und <FlyqlCode code={`startOf(...)`} inline />.
 
 <FlyqlCode code={`created_at > ago(1h)`} />
 <FlyqlCode code={`updated_at >= ago(7d)`} />
@@ -38,7 +66,48 @@ Für relative Zeitabfragen — "in der letzten Stunde", "seit Wochenanfang", "se
 <FlyqlCode code={`event_time > startOf('day')`} />
 <FlyqlCode code={`scheduled_for >= today('Europe/Berlin')`} />
 
-Die vollständige Grammatik (Einheiten, Reihenfolgeregeln, Zeitzonenargumente) ist in [Werte & Typen — Temporalfunktionen](/de/syntax/values/) beschrieben.
+Die vollständige Grammatik (Einheiten, Reihenfolgeregeln, Zeitzonenargumente) ist in [Werte & Typen — Temporalfunktionen](/de/syntax/values/#temporal-functions) beschrieben.
+
+## Sommerzeit (DST)
+
+Wird ein naives Datetime-Literal (ohne Offset, ohne `Z`) in einer Sommerzeit-beachtenden TZ interpretiert, wählt FlyQL die von der Spezifikation definierte, eindeutige Auflösung:
+
+- **Rückstellung (mehrdeutige Wanduhr)** — die frühere Instanz wird gewählt (`fold=0` in Python-Semantik). Beispiel: `'2026-11-01 01:30:00'` in `America/New_York` wird zu 05:30 UTC (EDT), nicht zu 06:30 UTC (EST) aufgelöst.
+- **Vorstellung (nicht existierende Wanduhr)** — der Wert wird verworfen. Der Matcher gibt für diesen Datensatz `false` zurück (wird übersprungen). Beispiel: `'2026-03-08 02:30:00'` in `America/New_York` existiert nicht.
+
+Datensätze, die in die Vorstellungs-Lücke fallen, werden als nicht parsebar behandelt statt still nach vorn normalisiert.
+
+## Unterstützte Datensatzwert-Typen (Python)
+
+- `datetime.datetime` — tz-aware oder naiv (naiv nutzt die Spalten-`tz` oder den Evaluator-Standard).
+- `datetime.date` — nur Kalendertag.
+- `pandas.Timestamp` — funktioniert, da es von `datetime` erbt.
+- ISO-8601-Strings — siehe akzeptierte Formen oben.
+- `int` / `float` — standardmäßig Epoch-Millisekunden; setze die Spalten-`unit="s"` für Epoch-Sekunden oder `"ns"` für Nanosekunden.
+
+Heute nicht unterstützt:
+
+- `numpy.datetime64` — vor der Übergabe an den Matcher konvertieren: `pd.Timestamp(value).to_pydatetime()` oder `value.astype("datetime64[ms]").astype(int)`.
+
+## Genauigkeit
+
+Der Matcher von FlyQL vergleicht temporale Werte mit **Millisekundengenauigkeit**. Sub-Millisekunden-Präzision in Quelldaten wird vor dem Vergleich abgeschnitten:
+
+- Python — `int(dt.timestamp() * 1000)` verwirft Mikrosekunden.
+- Go — `UnixMilli()` verwirft Nanosekunden.
+- JavaScript — `Date` ist nativ ms.
+
+Wer Nanosekundenpräzision benötigt, muss Datensätze zu bigint-Nanosekunden vorverarbeiten und `unit="ns"` deklarieren. Der JS-Pfad verwendet `Number`, das oberhalb von `2^53` an Präzision verliert — der Nanosekunden-BigInt-Pfad ist für eine spätere Spezifikation vorgesehen.
+
+## Schemalose Numerik
+
+Numerische Datensatzwerte ohne Spaltenschema werden als **Epoch-Millisekunden** behandelt. Es gibt keine Autodetect-Heuristik — ein Datensatz `{"ts": 1712434800}` (Epoch-Sekunden, konventionsgemäß) wird als `1970-01-20` interpretiert, nicht als `2024`. Nutzer mit Epoch-Sekunden-Daten MÜSSEN `unit="s"` deklarieren:
+
+```json
+{ "ts": { "type": "datetime", "unit": "s" } }
+```
+
+Das ist bewusst streng: Eine Autodetect-Heuristik (z. B. `value < 10^10 → seconds`) versagt an der Grenze und bei legitimen alten Datumswerten, daher bevorzugen wir explizite Deklarationen gegenüber stillen Vermutungen.
 
 ## Wann was verwenden
 

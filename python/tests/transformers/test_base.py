@@ -21,8 +21,8 @@ class TestTransformerType:
     def test_array_value(self) -> None:
         assert Type.Array.value == "array"
 
-    def test_has_twelve_members(self) -> None:
-        assert len(Type) == 12
+    def test_has_thirteen_members(self) -> None:
+        assert len(Type) == 13
 
 
 class _StubTransformer(Transformer):

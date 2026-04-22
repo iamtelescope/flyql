@@ -1,34 +1,62 @@
 ---
 title: Dates
-description: Date and datetime comparisons in FlyQL — string literals and temporal functions.
+description: Date and datetime comparisons in FlyQL — string literals, temporal functions, and matcher coercion.
 ---
 
 import FlyqlCode from '../../../components/FlyqlCode.astro'
 import FlyqlToken from '../../../components/FlyqlToken.astro'
 
-FlyQL has two ways to compare against dates and datetimes: **string literals** for absolute dates, and **temporal functions** for relative-time windows. Pick whichever matches the intent of the query.
+FlyQL distinguishes **calendar days** (`Type.Date`) from **instants-in-time** (`Type.DateTime`) in column schemas, and uses that distinction to drive matcher coercion for ISO-8601 string literals. SQL generators, by contrast, pass string literals through verbatim — the database parses them.
 
-## Date as String Literal
+## Calendar day vs. instant
 
-Compare a date column to an ISO-8601 string literal. ClickHouse, PostgreSQL, and StarRocks all coerce ISO-8601 strings to `DATE` / `DATETIME` values at the database boundary, so no special date constructor is required at the FlyQL level.
+`Type.Date` — calendar day only. Comparisons truncate to `YYYYMMDD`. Absorbs raw DB types `date` / `date32`.
+
+`Type.DateTime` — point on the timeline at millisecond resolution. Comparisons happen in UTC milliseconds. Absorbs `datetime`, `datetime64`, `timestamp`, `timestamptz`, `year`.
+
+Declaring the semantic type matters for the matcher: a `Date` column compared against `'2026-04-06T15:30:00Z'` truncates the record value to its Y/M/D component before comparison, whereas a `DateTime` column compares down to the millisecond.
+
+If a column declared `Type.Date` receives a datetime-shaped value (native `datetime` / `time.Time` / `Date` instance, or an ISO string carrying a time component), FlyQL emits a one-time `UserWarning` (Python) / log line (Go) / `console.warn` (JS) per column suggesting migration to `Type.DateTime`.
+
+## Date as string literal
+
+Compare a date/datetime column to an ISO-8601 string literal. Generators pass the literal through; the database parses it at execute time.
 
 <FlyqlCode code={`due_date < '2023-12-31'`} />
 <FlyqlCode code={`created_at >= '2023-12-31T00:00:00Z'`} />
 <FlyqlCode code={`event_time >= '2023-01-01' and event_time <= '2023-12-31'`} />
 
-| Column type | Accepts | Generated comparison |
-|-------------|---------|----------------------|
-| ClickHouse `Date` / `DateTime` / `DateTime64` | ISO-8601 string | Direct comparison — ClickHouse parses the literal at execute time |
-| PostgreSQL `date` / `timestamp` / `timestamptz` | ISO-8601 string | Direct comparison — PostgreSQL casts the literal at execute time |
-| StarRocks `DATE` / `DATETIME` | ISO-8601 string | Direct comparison — StarRocks parses the literal at execute time |
+In the matcher, schema-declared `Date` / `DateTime` columns drive automatic parsing of ISO-8601 literals AND record values. No explicit conversion function is required for the common case.
 
-Time-of-day, time-zone offsets, and date-only forms are all supported because the database is the one parsing the literal.
+### Accepted iso8601 shapes
+
+The matcher's `iso8601` family is lenient:
+
+- `YYYY-MM-DD` — pure calendar date (for Date columns, or midnight-in-column-tz for DateTime columns).
+- `YYYY-MM-DDTHH:MM:SS` — naive datetime.
+- `YYYY-MM-DD HH:MM:SS` — naive datetime with space separator (normalised pre-parse).
+- `YYYY-MM-DDTHH:MM:SS.ffffff` — optional sub-second (ms resolution only — see "Precision" below).
+- Any of the above with a `Z` or `±HH:MM` offset suffix.
+
+### Column metadata for naive literals
+
+A `DateTime` column declaration may carry optional metadata:
+
+- `tz` — IANA timezone name used to interpret naive ISO strings. Falls back to the Evaluator's `default_timezone`, then to `"UTC"`.
+- `unit` — `"ms"` (default), `"s"`, or `"ns"`. Applied to numeric record values; non-numeric values ignore it.
+
+```json
+{
+  "ts":        { "type": "datetime", "tz": "Europe/Moscow", "unit": "s" },
+  "event_day": { "type": "date" }
+}
+```
 
 :::note[Strings must be quoted]
 Date literals are strings and **must be quoted**. Without quotes, FlyQL interprets the value as a column reference. <FlyqlCode code={`due_date < 2023-12-31`} inline /> would parse <FlyqlCode code={`2023-12-31`} inline /> as arithmetic on a column named `2023`, not a date literal. See [Values & Types — String](/syntax/values/#string).
 :::
 
-## Temporal Functions
+## Temporal functions
 
 For relative-time queries — "in the last hour", "since the start of this week", "since today" — FlyQL provides built-in temporal functions: <FlyqlCode code={`ago(...)`} inline />, <FlyqlCode code={`now()`} inline />, <FlyqlCode code={`today()`} inline />, and <FlyqlCode code={`startOf(...)`} inline />.
 
@@ -40,7 +68,48 @@ For relative-time queries — "in the last hour", "since the start of this week"
 
 The full grammar (units, ordering rules, timezone arguments) is covered in [Values & Types — Temporal Functions](/syntax/values/#temporal-functions).
 
-## When to Use Which
+## Daylight saving time
+
+When a naive datetime literal (no offset, no `Z`) is interpreted in a DST-observant tz, FlyQL picks the unambiguous resolution defined by the spec:
+
+- **Fall-back (ambiguous wall clock)** — the earlier occurrence is chosen (`fold=0` in Python semantics). Example: `'2026-11-01 01:30:00'` in `America/New_York` resolves to 05:30 UTC (EDT), not 06:30 UTC (EST).
+- **Spring-forward (non-existent wall clock)** — the value is rejected. The matcher returns `false` for that record (skipped). Example: `'2026-03-08 02:30:00'` in `America/New_York` does not exist.
+
+Records that fall into the spring-forward gap are treated as unparseable rather than silently normalized forward.
+
+## Supported record-value types (Python)
+
+- `datetime.datetime` — tz-aware or naive (naive uses column `tz` or Evaluator default).
+- `datetime.date` — calendar day only.
+- `pandas.Timestamp` — works because it subclasses `datetime`.
+- ISO-8601 strings — see accepted shapes above.
+- `int` / `float` — epoch milliseconds by default; set column `unit="s"` for epoch seconds or `"ns"` for nanoseconds.
+
+Unsupported today:
+
+- `numpy.datetime64` — convert before passing to the matcher: `pd.Timestamp(value).to_pydatetime()` or `value.astype("datetime64[ms]").astype(int)`.
+
+## Precision
+
+FlyQL's matcher compares temporal values at **millisecond granularity**. Sub-millisecond precision in source data is truncated before comparison:
+
+- Python — `int(dt.timestamp() * 1000)` drops microseconds.
+- Go — `UnixMilli()` drops nanoseconds.
+- JavaScript — `Date` is natively ms.
+
+Users who need nanosecond precision must pre-process records to bigint nanoseconds and declare `unit="ns"`. The JS path uses `Number` which loses precision above `2^53` — the nanosecond BigInt path is reserved for a follow-up spec.
+
+## Schemaless numerics
+
+Numeric record values without column schema are treated as **epoch milliseconds**. There is no autodetection heuristic — a record `{"ts": 1712434800}` (epoch seconds, by convention) is interpreted as `1970-01-20` not `2024`. Users with epoch-seconds data MUST declare `unit="s"`:
+
+```json
+{ "ts": { "type": "datetime", "unit": "s" } }
+```
+
+This is strict-by-design: an autodetection heuristic (e.g. `value < 10^10 → seconds`) fails at the boundary and on legitimate old-date values, so we prefer explicit declarations over silent guesses.
+
+## When to use which
 
 | Intent | Use | Example |
 |--------|-----|---------|

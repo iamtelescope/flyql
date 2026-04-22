@@ -35,7 +35,15 @@ const EDITOR_TYPE_TO_FLYQL = {
     map: Type.Map,
     struct: Type.Struct,
     json: Type.JSON,
+    // Calendar day (Y/M/D) — ClickHouse Date / Date32.
     date: Type.Date,
+    date32: Type.Date,
+    // Instant-in-time — ClickHouse DateTime / DateTime64,
+    // PostgreSQL timestamp / timestamptz, year.
+    datetime: Type.DateTime,
+    datetime64: Type.DateTime,
+    timestamp: Type.DateTime,
+    timestamptz: Type.DateTime,
 }
 
 const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))

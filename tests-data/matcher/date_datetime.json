@@ -1,0 +1,143 @@
+{
+  "version": "1.0",
+  "description": "Schema-driven Date/DateTime coercion fixtures. Covers the portable contract only (iso8601 strings, numeric-unit, DateTime vs Date truncation). Python-only native date/datetime auto-infer and numpy/pandas handling live in per-language tests per Decision 14.",
+  "test_suite": "date_datetime",
+  "tests": [
+    {
+      "name": "dt_iso_string_vs_iso_literal_gt",
+      "query": "ts > '2026-04-06T20:00:00Z'",
+      "data": {"ts": "2026-04-06T21:00:00Z"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": true
+    },
+    {
+      "name": "dt_iso_string_vs_iso_literal_lt",
+      "query": "ts < '2026-04-06T20:00:00Z'",
+      "data": {"ts": "2026-04-06T21:00:00Z"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": false
+    },
+    {
+      "name": "dt_epoch_s_with_unit",
+      "query": "ts > '2020-01-01T00:00:00Z'",
+      "data": {"ts": 1712434800},
+      "columns": {"ts": {"type": "datetime", "unit": "s"}},
+      "expected": true
+    },
+    {
+      "name": "dt_epoch_s_with_unit_older",
+      "query": "ts > '2030-01-01T00:00:00Z'",
+      "data": {"ts": 1712434800},
+      "columns": {"ts": {"type": "datetime", "unit": "s"}},
+      "expected": false
+    },
+    {
+      "name": "dt_naive_string_with_col_tz",
+      "query": "ts > '2026-04-06T17:00:00Z'",
+      "data": {"ts": "2026-04-06 21:00:00"},
+      "columns": {"ts": {"type": "datetime", "tz": "Europe/Moscow"}},
+      "expected": true
+    },
+    {
+      "name": "dt_naive_string_with_col_tz_lt",
+      "query": "ts < '2026-04-06T17:00:00Z'",
+      "data": {"ts": "2026-04-06 21:00:00"},
+      "columns": {"ts": {"type": "datetime", "tz": "Europe/Moscow"}},
+      "expected": false
+    },
+    {
+      "name": "date_column_datetime_record_day_granularity",
+      "query": "event_day = '2026-04-06'",
+      "data": {"event_day": "2026-04-06T15:30:00Z"},
+      "columns": {"event_day": {"type": "date"}},
+      "expected": true
+    },
+    {
+      "name": "date_column_greater_than_day",
+      "query": "event_day > '2026-04-05'",
+      "data": {"event_day": "2026-04-06T03:00:00Z"},
+      "columns": {"event_day": {"type": "date"}},
+      "expected": true
+    },
+    {
+      "name": "datetime_column_date_literal_midnight",
+      "query": "ts >= '2026-04-06'",
+      "data": {"ts": "2026-04-06T00:00:00Z"},
+      "columns": {"ts": {"type": "datetime", "tz": "UTC"}},
+      "expected": true
+    },
+    {
+      "name": "dt_unparseable_string_skipped",
+      "query": "ts > '2026-01-01T00:00:00Z'",
+      "data": {"ts": "not-a-date"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": false
+    },
+    {
+      "name": "dt_cross_tz_offset_correct",
+      "query": "ts > '2026-04-06T18:00:00Z'",
+      "data": {"ts": "2026-04-06T21:00:00+02:00"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": true
+    },
+    {
+      "name": "dt_dst_fall_back_earlier",
+      "description": "2026-11-01 01:30:00 in America/New_York is ambiguous (fall-back). Decision 19: resolve to the earlier occurrence (EDT, 05:30 UTC). Comparing against 06:00 UTC: earlier (05:30) is BEFORE 06:00, so `<` is true.",
+      "query": "ts < '2026-11-01T06:00:00Z'",
+      "data": {"ts": "2026-11-01 01:30:00"},
+      "columns": {"ts": {"type": "datetime", "tz": "America/New_York"}},
+      "expected": true
+    },
+    {
+      "name": "dt_dst_spring_forward_skipped",
+      "description": "2026-03-08 02:30:00 in America/New_York is in the spring-forward gap. Decision 19: coerce returns null → record skipped (false).",
+      "query": "ts > '2026-01-01T00:00:00Z'",
+      "data": {"ts": "2026-03-08 02:30:00"},
+      "columns": {"ts": {"type": "datetime", "tz": "America/New_York"}},
+      "expected": false
+    },
+    {
+      "name": "dt_in_list_mixed_iso",
+      "query": "ts in ['2026-04-06T00:00:00Z', '2026-04-07T00:00:00Z']",
+      "data": {"ts": "2026-04-06T00:00:00Z"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": true
+    },
+    {
+      "name": "dt_in_list_mismatch",
+      "query": "ts in ['2026-04-06T00:00:00Z', '2026-04-07T00:00:00Z']",
+      "data": {"ts": "2026-04-08T00:00:00Z"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": false
+    },
+    {
+      "name": "date_in_list_match",
+      "query": "event_day in ['2026-04-06', '2026-04-07']",
+      "data": {"event_day": "2026-04-06"},
+      "columns": {"event_day": {"type": "date"}},
+      "expected": true
+    },
+    {
+      "name": "date_in_list_no_match",
+      "query": "event_day in ['2026-04-06', '2026-04-07']",
+      "data": {"event_day": "2026-04-08"},
+      "columns": {"event_day": {"type": "date"}},
+      "expected": false
+    },
+    {
+      "name": "dt_microsecond_precision_collapse",
+      "description": "Decision 23: sub-ms precision is truncated; both values collapse to the same ms.",
+      "query": "ts = '2026-04-06T21:00:00.000456Z'",
+      "data": {"ts": "2026-04-06T21:00:00.000999Z"},
+      "columns": {"ts": {"type": "datetime"}},
+      "expected": true
+    },
+    {
+      "name": "dt_schemaless_epoch_seconds_wrong_by_design",
+      "description": "Decision 21: schemaless int is treated as ms. Epoch-seconds 1712434800 compared against an ISO date string → different types, comparison fails and result is false. Users with epoch-seconds data MUST declare unit='s'.",
+      "query": "ts > '2020-01-01T00:00:00Z'",
+      "data": {"ts": 1712434800},
+      "expected": false
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
     "name": "flyql-vue",
-    "version": "0.0.50",
+    "version": "0.0.51",
     "description": "Vue 3 editor components for FlyQL query language",
     "type": "module",
     "main": "./src/index.js",
@@ -38,7 +38,7 @@
     },
     "homepage": "https://docs.flyql.dev",
     "engines": {
-        "node": ">=16.0.0"
+        "node": ">=18.0.0"
     },
     "dependencies": {
         "flyql": "workspace:^"

@@ -1,8 +1,10 @@
 import json
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+from flyql.core.column import ColumnSchema
 from flyql.core.parser import parse
 from flyql.core.exceptions import FlyqlError
 from flyql.matcher.evaluator import Evaluator
@@ -223,6 +225,22 @@ def test_regex_matcher(test_case: dict) -> None:
     record = Record(data=test_case["data"])
     result = evaluator.evaluate(root, record)
     assert result is test_case["expected"], (
+        f"query={test_case['query']!r}, data={test_case['data']!r}: "
+        f"got {result}, want {test_case['expected']}"
+    )
+
+
+@pytest.mark.parametrize("test_case", load_matcher_test_data("date_datetime.json"))
+def test_date_datetime_matcher(test_case: dict) -> None:
+    root = parse(test_case["query"]).root
+    schema = None
+    if "columns" in test_case:
+        schema = ColumnSchema.from_plain_object(test_case["columns"])
+    evaluator = Evaluator(columns=schema)
+    record = Record(data=test_case["data"])
+    result = evaluator.evaluate(root, record)
+    assert result is test_case["expected"], (
+        f"case={test_case['name']!r}: "
         f"query={test_case['query']!r}, data={test_case['data']!r}: "
         f"got {result}, want {test_case['expected']}"
     )

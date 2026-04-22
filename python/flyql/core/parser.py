@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Any
+from typing import Dict, List, Optional, Union, Any
 
 from flyql.core.tree import Node
 from flyql.core.expression import (
@@ -97,7 +97,8 @@ class ParserError(FlyqlError):
 
 
 class Parser:
-    def __init__(self) -> None:
+    def __init__(self, capabilities: Optional[Dict[str, Any]] = None) -> None:
+        del capabilities
         self.pos: int = 0
         self.line = 0
         self.line_pos = 0
@@ -2294,7 +2295,11 @@ class Parser:
             return
 
     def parse(
-        self, text: str, raise_error: bool = True, ignore_last_char: bool = False
+        self,
+        text: str,
+        raise_error: bool = True,
+        ignore_last_char: bool = False,
+        capabilities: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Parse the given text.
@@ -2303,7 +2308,9 @@ class Parser:
             text: The text to parse
             raise_error: If True, raise ParserError on error. If False, set error state and return.
             ignore_last_char: If True, skip final state validation (inStateLastChar)
+            capabilities: Reserved for future parser feature flags. Currently a no-op stub.
         """
+        del capabilities
         self._depth = 0
         self.set_text(text)
         for c in text:
@@ -2423,7 +2430,10 @@ class ParseResult:
 
 
 def parse(
-    text: str, raise_error: bool = True, ignore_last_char: bool = False
+    text: str,
+    raise_error: bool = True,
+    ignore_last_char: bool = False,
+    capabilities: Optional[Dict[str, Any]] = None,
 ) -> ParseResult:
     """
     Parse the given text and return a ParseResult with the AST root node.
@@ -2432,7 +2442,9 @@ def parse(
         text: The text to parse
         raise_error: If True, raise ParserError on error. If False, set error state and return.
         ignore_last_char: If True, skip final state validation
+        capabilities: Reserved for future parser feature flags. Currently a no-op stub.
     """
+    del capabilities
     parser = Parser()
     parser.parse(text, raise_error, ignore_last_char)
     return ParseResult(root=parser.root)

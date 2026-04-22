@@ -41,6 +41,12 @@ var validBoolOperatorChars = map[rune]bool{
 	'r': true,
 }
 
+// Capabilities is a reserved config object for future parser feature flags.
+// It is currently a no-op stub — any options passed to NewParser, (*Parser).Parse,
+// or the package-level Parse are accepted for forward-compatibility but have no
+// runtime effect.
+type Capabilities struct{}
+
 type Parser struct {
 	pos                        int
 	line                       int
@@ -104,7 +110,8 @@ type Parser struct {
 	depth    int
 }
 
-func NewParser() *Parser {
+func NewParser(opts ...Capabilities) *Parser {
+	_ = opts
 	return &Parser{
 		boolOperator:     BoolOpAnd,
 		state:            stateInitial,
@@ -2302,7 +2309,8 @@ func (p *Parser) inStateLastChar() {
 	}
 }
 
-func (p *Parser) Parse(text string) error {
+func (p *Parser) Parse(text string, opts ...Capabilities) error {
+	_ = opts
 	p.depth = 0
 	p.text = text
 	p.pos = 0

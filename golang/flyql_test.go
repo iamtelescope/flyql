@@ -465,3 +465,54 @@ func TestNormalizeIdempotentOnCanonicalTrees(t *testing.T) {
 		})
 	}
 }
+
+func TestParserCapabilitiesStub(t *testing.T) {
+	const input = "a = b"
+
+	parseViaTopLevel := func(opts ...Capabilities) *Node {
+		result, err := Parse(input, opts...)
+		if err != nil {
+			t.Fatalf("Parse(%q, opts) failed: %v", input, err)
+		}
+		if result == nil || result.Root == nil {
+			t.Fatalf("Parse(%q, opts) returned nil root", input)
+		}
+		return result.Root
+	}
+
+	parseViaInstance := func(newOpts []Capabilities, parseOpts []Capabilities) *Node {
+		p := NewParser(newOpts...)
+		if err := p.Parse(input, parseOpts...); err != nil {
+			t.Fatalf("NewParser(%v).Parse(%q, %v) failed: %v", newOpts, input, parseOpts, err)
+		}
+		if p.Root == nil {
+			t.Fatalf("NewParser(%v).Parse(%q, %v) produced nil root", newOpts, input, parseOpts)
+		}
+		return p.Root
+	}
+
+	baselineRoot := parseViaTopLevel()
+	baseline := normalizeAST(nodeToExpectedAST(baselineRoot))
+
+	cases := []struct {
+		name string
+		root *Node
+	}{
+		{"TopLevelNoOpts", baselineRoot},
+		{"TopLevelOneOpt", parseViaTopLevel(Capabilities{})},
+		{"InstanceNoOptsAnywhere", parseViaInstance(nil, nil)},
+		{"InstanceNewParserOpt", parseViaInstance([]Capabilities{{}}, nil)},
+		{"InstanceParseOpt", parseViaInstance(nil, []Capabilities{{}})},
+		{"InstanceBothLayersOpt", parseViaInstance([]Capabilities{{}}, []Capabilities{{}})},
+		{"TopLevelMultipleOpts", parseViaTopLevel(Capabilities{}, Capabilities{})},
+		{"InstanceMultipleOpts", parseViaInstance([]Capabilities{{}, {}}, []Capabilities{{}, {}})},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := normalizeAST(nodeToExpectedAST(tc.root))
+			compareExpectedASTs(t, got, baseline, "Root")
+		})
+	}
+}

@@ -6,6 +6,7 @@ package flyql
 // entry; any change here must land alongside the JSON update in the same commit.
 var PublicSymbols = []string{
 	"BindParams",
+	"Capabilities",
 	"Column",
 	"ColumnSchema",
 	"Diagnose",

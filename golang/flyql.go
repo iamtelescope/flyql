@@ -4,7 +4,8 @@ type ParseResult struct {
 	Root *Node
 }
 
-func Parse(query string) (*ParseResult, error) {
+func Parse(query string, opts ...Capabilities) (*ParseResult, error) {
+	_ = opts
 	parser := NewParser()
 	if err := parser.Parse(query); err != nil {
 		return nil, err

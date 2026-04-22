@@ -70,7 +70,8 @@ function BOOL_OP_PRECEDENCE(op) {
 }
 
 export class Parser {
-    constructor() {
+    // eslint-disable-next-line no-unused-vars
+    constructor(capabilities = {}) {
         this.pos = 0
         this.line = 0
         this.linePos = 0
@@ -2316,7 +2317,8 @@ export class Parser {
         }
     }
 
-    parse(text, raiseError = true, ignoreLastChar = false) {
+    // eslint-disable-next-line no-unused-vars
+    parse(text, raiseError = true, ignoreLastChar = false, capabilities = {}) {
         this._depth = 0
         this.setText(text)
 
@@ -2470,7 +2472,8 @@ export class ParseResult {
     }
 }
 
-export function parse(text, raiseError = true, ignoreLastChar = false) {
+// eslint-disable-next-line no-unused-vars
+export function parse(text, raiseError = true, ignoreLastChar = false, capabilities = {}) {
     const parser = new Parser()
     parser.parse(text, raiseError, ignoreLastChar)
     return new ParseResult(parser.root)

@@ -251,6 +251,7 @@
   "golang": {
     "flyql": [
       "BindParams",
+      "Capabilities",
       "Column",
       "ColumnSchema",
       "Diagnose",

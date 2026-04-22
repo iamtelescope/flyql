@@ -392,3 +392,67 @@ describe('Parser Max Depth Direct Tests', () => {
         expect(parser.errno).not.toBe(ERR_MAX_DEPTH_EXCEEDED)
     })
 })
+
+describe('capabilities stub', () => {
+    const text = 'a = b'
+    const baseline = astToDict(parse(text).root)
+
+    const cases = [
+        { name: 'top-level no capabilities', build: () => parse(text).root },
+        { name: 'top-level explicit empty capabilities', build: () => parse(text, true, false, {}).root },
+        {
+            name: 'top-level capabilities with future flag',
+            build: () => parse(text, true, false, { future_flag: true }).root,
+        },
+        {
+            name: 'instance no capabilities either layer',
+            build: () => {
+                const p = new Parser()
+                p.parse(text)
+                return p.root
+            },
+        },
+        {
+            name: 'instance capabilities at construction',
+            build: () => {
+                const p = new Parser({})
+                p.parse(text)
+                return p.root
+            },
+        },
+        {
+            name: 'instance capabilities at parse call',
+            build: () => {
+                const p = new Parser()
+                p.parse(text, true, false, {})
+                return p.root
+            },
+        },
+        {
+            name: 'instance capabilities both layers distinct values',
+            build: () => {
+                const p = new Parser({ k: 1 })
+                p.parse(text, true, false, { k: 2 })
+                return p.root
+            },
+        },
+    ]
+
+    cases.forEach(({ name, build }) => {
+        it(name, () => {
+            const root = build()
+            expect(root).not.toBeNull()
+            const got = astToDict(root)
+            expect(compareAst(got, baseline)).toBe(true)
+        })
+    })
+
+    it('does not add a _capabilities field to Parser instances', () => {
+        const bareInstance = new Parser()
+        const capsInstance = new Parser({ x: 1 })
+        for (const instance of [bareInstance, capsInstance]) {
+            expect(Object.getOwnPropertyNames(instance).includes('_capabilities')).toBe(false)
+            expect(Object.keys(instance).includes('_capabilities')).toBe(false)
+        }
+    })
+})

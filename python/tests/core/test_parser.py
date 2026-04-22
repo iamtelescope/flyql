@@ -274,3 +274,43 @@ def test_syntax_error_takes_precedence_over_depth():
     parser.parse("(a== (((((((((", raise_error=False)
     assert parser.errno != 0
     assert parser.errno != ERR_MAX_DEPTH_EXCEEDED
+
+
+def test_capabilities_stub_signature():
+    text = "a = b"
+    baseline = ast_to_dict(parse(text).root)
+
+    p1 = Parser()
+    p1.parse(text)
+    p2 = Parser(capabilities={})
+    p2.parse(text)
+    p3 = Parser()
+    p3.parse(text, capabilities={})
+    p4 = Parser(capabilities={"k": 1})
+    p4.parse(text, capabilities={"k": 2})
+
+    cases = [
+        ("top_level_no_capabilities", parse(text).root),
+        ("top_level_capabilities_none", parse(text, capabilities=None).root),
+        ("top_level_capabilities_empty", parse(text, capabilities={}).root),
+        (
+            "top_level_capabilities_future_flag",
+            parse(text, capabilities={"future_flag": True}).root,
+        ),
+        ("instance_no_caps_either_layer", p1.root),
+        ("instance_caps_at_construction", p2.root),
+        ("instance_caps_at_parse_call", p3.root),
+        ("instance_caps_both_layers_distinct_values", p4.root),
+    ]
+
+    for name, root in cases:
+        assert root is not None, f"{name}: root is None"
+        got = ast_to_dict(root)
+        assert got == baseline, f"{name}: AST mismatch\nbaseline={baseline}\ngot={got}"
+
+    parser_instance = Parser()
+    assert not hasattr(parser_instance, "_capabilities")
+    assert "capabilities" not in vars(parser_instance)
+    parser_instance_with_caps = Parser(capabilities={"x": 1})
+    assert not hasattr(parser_instance_with_caps, "_capabilities")
+    assert "capabilities" not in vars(parser_instance_with_caps)

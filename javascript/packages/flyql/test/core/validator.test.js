@@ -142,6 +142,42 @@ class TakesInt extends Transformer {
     }
 }
 
+class AcceptsAny extends Transformer {
+    get name() {
+        return 'accepts_any'
+    }
+    get inputType() {
+        return Type.Any
+    }
+    get outputType() {
+        return Type.String
+    }
+    sql(dialect, columnRef) {
+        return columnRef
+    }
+    apply(value) {
+        return value
+    }
+}
+
+class AcceptsAnyReturningArray extends Transformer {
+    get name() {
+        return 'accepts_any_returning_array'
+    }
+    get inputType() {
+        return Type.Any
+    }
+    get outputType() {
+        return Type.Array
+    }
+    sql(dialect, columnRef) {
+        return columnRef
+    }
+    apply(value) {
+        return value
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Registry fixture
 // ---------------------------------------------------------------------------
@@ -152,6 +188,8 @@ function createRegistry() {
     reg.register(new StringToInt())
     reg.register(new TakesFloat())
     reg.register(new TakesInt())
+    reg.register(new AcceptsAny())
+    reg.register(new AcceptsAnyReturningArray())
     return reg
 }
 

@@ -23,4 +23,5 @@ const (
 	TypeJSON       = flyqltype.JSON
 	TypeJSONString = flyqltype.JSONString
 	TypeUnknown    = flyqltype.Unknown
+	TypeAny        = flyqltype.Any
 )

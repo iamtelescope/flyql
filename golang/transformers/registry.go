@@ -3,6 +3,8 @@ package transformers
 import (
 	"fmt"
 	"sort"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 // TransformerRegistry holds a collection of named transformers.
@@ -16,10 +18,20 @@ func (r *TransformerRegistry) Get(name string) Transformer {
 }
 
 // Register adds a transformer to the registry. Returns an error if a
-// transformer with the same name is already registered.
+// transformer with the same name is already registered, or if the
+// transformer declares flyqltype.Any as its OutputType or on any
+// ArgSpec.Type. Any is a transformer-input sentinel only.
 func (r *TransformerRegistry) Register(t Transformer) error {
 	if _, exists := r.transformers[t.Name()]; exists {
 		return fmt.Errorf("transformer '%s' is already registered", t.Name())
+	}
+	if t.OutputType() == flyqltype.Any {
+		return fmt.Errorf("transformer %q: OutputType cannot be flyqltype.Any", t.Name())
+	}
+	for _, spec := range t.ArgSchema() {
+		if spec.Type == flyqltype.Any {
+			return fmt.Errorf("transformer %q: ArgSpec.Type cannot be flyqltype.Any", t.Name())
+		}
 	}
 	r.transformers[t.Name()] = t
 	return nil

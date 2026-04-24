@@ -136,7 +136,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 }
             }
 
-            if (prevOutputType != null && prevOutputType !== t.inputType) {
+            if (prevOutputType != null && t.inputType !== Type.Any && prevOutputType !== t.inputType) {
                 if (ranges.nameRange) {
                     diags.push(
                         makeDiag(

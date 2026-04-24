@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	flyql "github.com/iamtelescope/flyql/golang"
+	"github.com/iamtelescope/flyql/golang/flyqltype"
+	"github.com/iamtelescope/flyql/golang/transformers"
 )
 
 func validatorDataPath() string {
@@ -190,6 +192,70 @@ func TestColumnsDiagnoseEntryPopulated(t *testing.T) {
 	codeStr, _ := d.Entry.Code.(string)
 	if codeStr != d.Code {
 		t.Errorf("Entry.Code = %v; want %q", d.Entry.Code, d.Code)
+	}
+}
+
+type acceptsAnyT struct{}
+
+func (acceptsAnyT) Name() string                                     { return "accepts_any" }
+func (acceptsAnyT) Description() string                              { return "" }
+func (acceptsAnyT) InputType() flyqltype.Type                        { return flyqltype.Any }
+func (acceptsAnyT) OutputType() flyqltype.Type                       { return flyqltype.String }
+func (acceptsAnyT) ArgSchema() []transformers.ArgSpec                { return nil }
+func (acceptsAnyT) SQL(dialect, columnRef string, args []any) string { return columnRef }
+func (acceptsAnyT) Apply(value any, args []any) any                  { return value }
+
+type acceptsAnyReturningArrayT struct{}
+
+func (acceptsAnyReturningArrayT) Name() string                                     { return "accepts_any_returning_array" }
+func (acceptsAnyReturningArrayT) Description() string                              { return "" }
+func (acceptsAnyReturningArrayT) InputType() flyqltype.Type                        { return flyqltype.Any }
+func (acceptsAnyReturningArrayT) OutputType() flyqltype.Type                       { return flyqltype.Array }
+func (acceptsAnyReturningArrayT) ArgSchema() []transformers.ArgSpec                { return nil }
+func (acceptsAnyReturningArrayT) SQL(dialect, columnRef string, args []any) string { return columnRef }
+func (acceptsAnyReturningArrayT) Apply(value any, args []any) any                  { return value }
+
+func registryWithAny(t *testing.T) *transformers.TransformerRegistry {
+	t.Helper()
+	reg := transformers.DefaultRegistry()
+	if err := reg.Register(acceptsAnyT{}); err != nil {
+		t.Fatalf("Register(acceptsAnyT) failed: %v", err)
+	}
+	if err := reg.Register(acceptsAnyReturningArrayT{}); err != nil {
+		t.Fatalf("Register(acceptsAnyReturningArrayT) failed: %v", err)
+	}
+	return reg
+}
+
+func TestColumnsValidator_AnyInputBypass(t *testing.T) {
+	parsed, err := Parse("level|accepts_any", Capabilities{Transformers: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols := []flyql.Column{flyql.NewColumn("level", flyql.TypeInt)}
+	diags := Diagnose(parsed, flyql.FromColumns(cols), registryWithAny(t))
+	for _, d := range diags {
+		if d.Code == flyql.CodeChainType {
+			t.Errorf("expected no chain_type diagnostic, got %+v", d)
+		}
+	}
+}
+
+func TestColumnsValidator_ChainStrictAfterAnyInput(t *testing.T) {
+	parsed, err := Parse("level|accepts_any_returning_array|upper", Capabilities{Transformers: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cols := []flyql.Column{flyql.NewColumn("level", flyql.TypeInt)}
+	diags := Diagnose(parsed, flyql.FromColumns(cols), registryWithAny(t))
+	chainCount := 0
+	for _, d := range diags {
+		if d.Code == flyql.CodeChainType {
+			chainCount++
+		}
+	}
+	if chainCount != 1 {
+		t.Fatalf("expected exactly 1 chain_type diagnostic, got %d (diags=%+v)", chainCount, diags)
 	}
 }
 

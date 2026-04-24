@@ -3,6 +3,8 @@ title: 사용자 정의 Transformers
 description: 도메인별 transformer를 등록해 사용자 정의 값 변환으로 FlyQL을 확장합니다
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
 FlyQL의 transformer 시스템은 확장 가능합니다. parser, SQL generator, in-memory matcher, editor autocomplete 전반에서 내장 transformer(`upper`, `lower`, `len`)와 동일하게 동작하는 사용자 정의 transformer를 등록할 수 있습니다.
 
 ## Transformer 인터페이스
@@ -12,7 +14,7 @@ FlyQL의 transformer 시스템은 확장 가능합니다. parser, SQL generator,
 | 멤버 | 타입 | 설명 |
 |--------|------|-------------|
 | `name` | string | 고유한 소문자 식별자입니다. 예: `"firstoctet"` |
-| `inputType` | Type | 기대하는 입력 타입입니다. (`string`, `int`, `float`, `bool`, `array`) |
+| `inputType` | Type | 기대하는 입력 타입입니다. (`string`, `int`, `float`, `bool`, `array`), 또는 모든 상위 타입을 받는 와일드카드 입력인 `any` — [Any 입력 transformer](#any-입력-transformer) 참조 |
 | `outputType` | Type | 변환 후 출력 타입입니다. |
 | `argSchema` | ArgSpec[] | 선언된 인수 타입 및 인수 개수 (기본값: 비어 있음 = 인수 없음) |
 | `sql(dialect, columnRef, args)` | string | column 참조를 감싸는 방언별 SQL을 생성합니다. |
@@ -241,11 +243,99 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 // matched == true
 ```
 
+## Any 입력 transformer
+
+transformer는 `inputType = Type.Any` (문자열 값 `"any"`)를 선언하여 모든 상위 타입을 입력으로 받을 수 있습니다. 대표적인 사용 사례는 컬럼의 타입 이름을 반환하는 `type` transformer입니다.
+
+규칙:
+
+- `Any`는 `inputType`에서만 유효합니다. `outputType`이나 `ArgSpec.type`에 `Any`를 선언하면 `register()` 시점에 거부됩니다. 모든 transformer는 반드시 구체적인 출력 타입을 선언해야 합니다.
+- Any 입력 transformer가 체인에서 사용될 때 입력 타입 동등성 검사는 건너뜁니다. 하류 엄격성은 그대로 유지됩니다 — 예: `col|accepts_any_returning_array|upper`는 `array`가 `upper`의 유효한 입력이 아니므로 `upper`에서 여전히 에러가 발생합니다.
+- `parseFlyQLType("any")`는 에러를 발생시킵니다. `any`는 유효한 컬럼 또는 값 타입이 아닙니다.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.flyql_type import Type
+from flyql.transformers import Transformer
+
+class TypeTransformer(Transformer):
+    @property
+    def name(self): return "type"
+    @property
+    def input_type(self): return Type.Any      # 모든 상위 타입 수용
+    @property
+    def output_type(self): return Type.String  # 반드시 구체적이어야 함
+    def sql(self, dialect, column_ref, args=None):
+        if dialect == "clickhouse":
+            return f"toTypeName({column_ref})"
+        return f"pg_typeof({column_ref})::text"
+    def apply(self, value, args=None):
+        return type(value).__name__
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Type } from 'flyql'
+import { Transformer } from 'flyql/transformers'
+
+class TypeTransformer extends Transformer {
+    get name() { return 'type' }
+    get inputType() { return Type.Any }         // 모든 상위 타입 수용
+    get outputType() { return Type.String }     // 반드시 구체적이어야 함
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toTypeName(${columnRef})`
+        return `pg_typeof(${columnRef})::text`
+    }
+    apply(value) {
+        return typeof value
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+import (
+    "fmt"
+    "reflect"
+    "github.com/iamtelescope/flyql/golang/flyqltype"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type TypeTransformer struct{}
+
+func (TypeTransformer) Name() string                      { return "type" }
+func (TypeTransformer) Description() string               { return "" }
+func (TypeTransformer) InputType() flyqltype.Type         { return flyqltype.Any }     // 와일드카드
+func (TypeTransformer) OutputType() flyqltype.Type        { return flyqltype.String }  // 구체적
+func (TypeTransformer) ArgSchema() []transformers.ArgSpec { return nil }
+func (TypeTransformer) SQL(dialect, columnRef string, args []any) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toTypeName(%s)", columnRef)
+    }
+    return fmt.Sprintf("pg_typeof(%s)::text", columnRef)
+}
+func (TypeTransformer) Apply(value any, args []any) any {
+    if value == nil {
+        return "nil"
+    }
+    return reflect.TypeOf(value).String()
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## 타입 호환성
 
 사용자 정의 transformer도 내장 transformer와 동일한 타입 체인 검증에 참여합니다. 예를 들어 `field|firstoctet|upper`를 체인으로 연결하면, 시스템은 `firstoctet`의 출력이 `int`인데 `upper`는 `string`을 요구한다는 점을 감지합니다.
 
-사용 가능한 타입은 [`flyql.Type`](/advanced/column-types/)을 참조하세요. 11개 값을 가진 정규 enum(`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`)입니다.
+[`flyql.Type`](/advanced/column-types/) 참조. 유일한 예외는 `Any`로, 이는 transformer 입력 와일드카드이며 유효한 컬럼 또는 값 타입이 아닙니다.
 
 ## `diagnose()`를 사용한 검증
 

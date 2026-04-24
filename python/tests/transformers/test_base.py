@@ -1,8 +1,9 @@
 import pytest
 from typing import Any
 
+from flyql.core.exceptions import FlyqlError
+from flyql.flyql_type import Type, parse_flyql_type
 from flyql.transformers.base import Transformer
-from flyql.flyql_type import Type
 
 
 class TestTransformerType:
@@ -21,8 +22,18 @@ class TestTransformerType:
     def test_array_value(self) -> None:
         assert Type.Array.value == "array"
 
-    def test_has_thirteen_members(self) -> None:
-        assert len(Type) == 13
+    def test_has_fourteen_members(self) -> None:
+        assert len(Type) == 14
+
+    def test_type_any_member_exposed(self) -> None:
+        assert Type.Any == "any"
+        assert isinstance(Type.Any, Type)
+
+
+class TestParseFlyQLTypeAny:
+    def test_parse_flyql_type_rejects_any(self) -> None:
+        with pytest.raises(FlyqlError, match="unknown flyql type"):
+            parse_flyql_type("any")
 
 
 class _StubTransformer(Transformer):

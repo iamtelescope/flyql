@@ -147,6 +147,17 @@ A presenca de uma chave `jsonstring` em um schema de objeto simples -- incluindo
 
 Evite `sed` ingenuos -- eles deixam virgulas orfas quando `jsonstring` e a ultima chave em um objeto e nao sao portaveis entre GNU sed e BSD sed.
 
+## `Type.Any` -- coringa de entrada de transformer
+
+`Type.Any` (valor string `"any"`) e um sentinela usado apenas como tipo de entrada de um transformer. Ele declara que o transformer aceita qualquer tipo upstream de coluna ou de saida de transformer. Intencionalmente, **nao** e um dos valores elegiveis para coluna listados acima.
+
+- `parseFlyQLType("any")` / `ParseType("any")` gera erro. O parser estrito rejeita `"any"` como token de tipo de coluna.
+- `TransformerRegistry.register` rejeita qualquer transformer que declare `Any` como `output_type` ou em qualquer `ArgSpec.type`. Todo transformer ainda deve declarar um tipo de saida concreto; `Any` em `output_type` quebraria a tipagem da cadeia downstream.
+
+Quando um validador de AST, validador de colunas ou helper de cadeia em tempo de execucao encontra um transformer com `input_type == Any`, a verificacao de igualdade do tipo de entrada e ignorada. A rigidez downstream e preservada -- `col|accepts_any_returning_array|upper` ainda gera erro em `upper` porque `array` nao e uma entrada valida para `upper`.
+
+Para declaracao e uso, veja [Transformadores Customizados -- Transformers com entrada Any](/advanced/custom-transformers/#transformers-com-entrada-any).
+
 ## Parse em modo estrito
 
 O helper `parseFlyQLType` (`flyql.ParseType` em Go, `flyql.parse_flyql_type` em Python, `parseFlyQLType` em JS) e **estrito**: ele gera um erro para qualquer string que nao seja um dos 11 tokens validos em minusculas.

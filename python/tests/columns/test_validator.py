@@ -21,6 +21,8 @@ from flyql.errors_generated import VALIDATOR_REGISTRY
 from flyql.core.range import Range
 from flyql.flyql_type import Type, parse_flyql_type
 from flyql.renderers import ArgSpec, Renderer, RendererRegistry
+from flyql.transformers.base import Transformer
+from flyql.transformers.registry import TransformerRegistry, default_registry
 
 FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -128,6 +130,78 @@ def test_chain_type_mismatch():
     cols = parse("level|len|upper", capabilities={"transformers": True})
     diags = diagnose(cols, _schema_from_column("level", "string"))
     assert any(d.code == CODE_CHAIN_TYPE for d in diags)
+
+
+class _AcceptsAny(Transformer):
+    @property
+    def name(self) -> str:
+        return "accepts_any"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.Any
+
+    @property
+    def output_type(self) -> Type:
+        return Type.String
+
+    def sql(self, dialect, column_ref, args=None):
+        return column_ref
+
+    def apply(self, value, args=None):
+        return value
+
+
+class _AcceptsAnyReturningArray(Transformer):
+    @property
+    def name(self) -> str:
+        return "accepts_any_returning_array"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.Any
+
+    @property
+    def output_type(self) -> Type:
+        return Type.Array
+
+    def sql(self, dialect, column_ref, args=None):
+        return column_ref
+
+    def apply(self, value, args=None):
+        return value
+
+
+def _registry_with_any() -> TransformerRegistry:
+    reg = default_registry()
+    reg.register(_AcceptsAny())
+    reg.register(_AcceptsAnyReturningArray())
+    return reg
+
+
+def test_any_input_transformer_accepts_any_column_type():
+    cols = parse("level|accepts_any", capabilities={"transformers": True})
+    diags = diagnose(
+        cols,
+        _schema_from_column("level", "int"),
+        registry=_registry_with_any(),
+    )
+    assert not any(d.code == CODE_CHAIN_TYPE for d in diags)
+
+
+def test_chain_remains_strict_after_any_input_returning_array():
+    cols = parse(
+        "level|accepts_any_returning_array|upper",
+        capabilities={"transformers": True},
+    )
+    diags = diagnose(
+        cols,
+        _schema_from_column("level", "int"),
+        registry=_registry_with_any(),
+    )
+    chain_diags = [d for d in diags if d.code == CODE_CHAIN_TYPE]
+    assert len(chain_diags) == 1
+    assert "upper" in chain_diags[0].message
 
 
 def test_dotted_column_highlights_base():

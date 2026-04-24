@@ -49,9 +49,15 @@ export const Type = Object.freeze({
     JSONString: 'jsonstring',
     /** Documented fallback for types flyql cannot reason about. */
     Unknown: 'unknown',
+    /** Sentinel used ONLY as a transformer's `inputType`, declaring the
+     *  transformer accepts any upstream column/transformer type. Not a
+     *  valid column or value type — `parseFlyQLType('any')` throws
+     *  FlyqlError. Not a valid `outputType` or `ArgSpec.type` —
+     *  `TransformerRegistry.register` throws if either declares Any. */
+    Any: 'any',
 })
 
-const _VALID_TOKENS = new Set(Object.values(Type))
+const _VALID_TOKENS = new Set(Object.values(Type).filter((v) => v !== Type.Any))
 
 /**
  * Strictly parse a string into a flyql.Type. Throws FlyqlError on any

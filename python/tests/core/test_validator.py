@@ -183,6 +183,46 @@ class TakesInt(Transformer):
         return value
 
 
+class AcceptsAny(Transformer):
+    @property
+    def name(self) -> str:
+        return "accepts_any"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.Any
+
+    @property
+    def output_type(self) -> Type:
+        return Type.String
+
+    def sql(self, dialect, column_ref, args=None):
+        return column_ref
+
+    def apply(self, value, args=None):
+        return value
+
+
+class AcceptsAnyReturningArray(Transformer):
+    @property
+    def name(self) -> str:
+        return "accepts_any_returning_array"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.Any
+
+    @property
+    def output_type(self) -> Type:
+        return Type.Array
+
+    def sql(self, dialect, column_ref, args=None):
+        return column_ref
+
+    def apply(self, value, args=None):
+        return value
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -195,6 +235,8 @@ def registry() -> TransformerRegistry:
     reg.register(StringToInt())
     reg.register(TakesFloat())
     reg.register(TakesInt())
+    reg.register(AcceptsAny())
+    reg.register(AcceptsAnyReturningArray())
     return reg
 
 

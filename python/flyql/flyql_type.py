@@ -96,8 +96,16 @@ class Type(str, Enum):
     fall through to defaults; path access errors with "unsupported
     column type"; transformers cannot accept it."""
 
+    Any = "any"
+    """Sentinel used ONLY as a transformer's ``input_type``, declaring the
+    transformer accepts any upstream column/transformer type. Not a valid
+    column or value type — ``parse_flyql_type('any')`` raises
+    :class:`flyql.core.exceptions.FlyqlError`. Not a valid ``output_type``
+    or ``ArgSpec.type`` — ``TransformerRegistry.register`` raises
+    :class:`flyql.core.exceptions.FlyqlError` if either declares ``Any``."""
 
-_VALID_TYPE_TOKENS = {member.value: member for member in Type}
+
+_VALID_TYPE_TOKENS = {member.value: member for member in Type if member is not Type.Any}
 
 
 def parse_flyql_type(s: str) -> Type:

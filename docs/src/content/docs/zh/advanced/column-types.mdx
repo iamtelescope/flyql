@@ -147,6 +147,17 @@ Type.Unknown
 
 避免使用简单的 `sed`——当 `jsonstring` 是对象中的最后一个键时会留下孤立逗号，且在 GNU sed 和 BSD sed 之间不可移植。
 
+## `Type.Any` — transformer 输入通配符
+
+`Type.Any`（字符串值 `"any"`）是一个**仅用作 transformer 输入类型的哨兵值**。它声明该 transformer 接受任何上游列或转换器的输出类型，无论该类型为何。它有意**不**属于上表中可用作列类型的值：
+
+- `parseFlyQLType("any")` / `ParseType("any")` 会报错。严格解析器拒绝 `"any"` 作为列类型标记。
+- `TransformerRegistry.register` 拒绝任何将 `Any` 声明为 `output_type` 或任意 `ArgSpec.type` 的 transformer。每个 transformer 仍然必须声明一个具体的输出类型；`Any` 用于输出会破坏下游链的类型推断。
+
+当 AST 校验器、列校验器或运行时链辅助函数遇到 `input_type == Any` 的 transformer 时，该步骤的输入类型相等性检查会被跳过。下游严格性仍然保留 —— `col|accepts_any_returning_array|upper` 仍然会在 `upper` 处报错，因为 `array` 不是 `upper` 的有效输入。
+
+声明和使用请参见 [自定义转换器 — Any 输入 transformer](/advanced/custom-transformers/#any-输入-transformer)。
+
 ## 严格模式解析
 
 `parseFlyQLType` 辅助函数（Go 中为 `flyql.ParseType`，Python 中为 `flyql.parse_flyql_type`，JS 中为 `parseFlyQLType`）是**严格的**：对于不属于 11 个有效小写标记之一的任何字符串，都会报错。

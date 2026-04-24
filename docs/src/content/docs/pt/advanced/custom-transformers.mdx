@@ -3,6 +3,8 @@ title: Transformadores Personalizados
 description: Registar transformadores específicos do domínio para estender o FlyQL com transformações de valores personalizadas
 ---
 
+import { Tabs, TabItem } from '@astrojs/starlight/components'
+
 O sistema de transformadores do FlyQL é extensível. Pode registar transformadores personalizados que funcionam de forma idêntica aos integrados (`upper`, `lower`, `len`) nos parsers, geradores SQL, matcher em memória e autocompletar do editor.
 
 ## Interface do Transformador
@@ -12,7 +14,7 @@ Cada transformador implementa 6 membros:
 | Membro | Tipo | Descrição |
 |--------|------|-------------|
 | `name` | string | Identificador único em minúsculas (por exemplo, `"firstoctet"`) |
-| `inputType` | Type | Tipo de entrada esperado (`string`, `int`, `float`, `bool`, `array`) |
+| `inputType` | Type | Tipo de entrada esperado (`string`, `int`, `float`, `bool`, `array`, ou `any` para entrada universal que aceita qualquer tipo a montante — ver [Transformers com entrada Any](#transformers-com-entrada-any)) |
 | `outputType` | Type | Tipo de saída após a transformação |
 | `argSchema` | ArgSpec[] | Tipos de argumento declarados e aridade (por omissão: vazio = sem argumentos) |
 | `sql(dialect, columnRef, args)` | string | Gerar SQL específico do dialeto envolvendo a referência da coluna |
@@ -241,11 +243,99 @@ matched, _ := matcher.Match("src_ip|firstoctet > 192", map[string]any{"src_ip": 
 // matched == true
 ```
 
+## Transformers com entrada `Any`
+
+Um transformer pode declarar `inputType = Type.Any` (valor de string `"any"`) para aceitar qualquer tipo a montante. O caso de uso motivador é um transformer `type` que devolve o nome do tipo da coluna, independentemente do tipo concreto dessa coluna.
+
+Regras:
+
+1. `Any` é válido apenas em `inputType`. Declarar `Any` como `outputType` ou em qualquer `ArgSpec.type` é rejeitado em tempo de `register()`. Cada transformer deve declarar um tipo de saída concreto.
+2. Quando um transformer com entrada Any é usado numa cadeia, a verificação de igualdade do tipo de entrada é ignorada. A estritude a jusante é preservada — por exemplo, `col|accepts_any_returning_array|upper` continua a dar erro em `upper` porque `array` não é uma entrada válida para `upper`.
+3. `parseFlyQLType("any")` gera um erro: `any` não é um tipo de coluna ou de valor válido.
+
+<Tabs syncKey="lang">
+<TabItem label="Python">
+
+```python
+from flyql.flyql_type import Type
+from flyql.transformers import Transformer
+
+class TypeTransformer(Transformer):
+    @property
+    def name(self): return "type"
+    @property
+    def input_type(self): return Type.Any      # aceita qualquer tipo a montante
+    @property
+    def output_type(self): return Type.String  # deve ser concreto
+    def sql(self, dialect, column_ref, args=None):
+        if dialect == "clickhouse":
+            return f"toTypeName({column_ref})"
+        return f"pg_typeof({column_ref})::text"
+    def apply(self, value, args=None):
+        return type(value).__name__
+```
+
+</TabItem>
+<TabItem label="JavaScript">
+
+```javascript
+import { Type } from 'flyql'
+import { Transformer } from 'flyql/transformers'
+
+class TypeTransformer extends Transformer {
+    get name() { return 'type' }
+    get inputType() { return Type.Any }         // aceita qualquer tipo a montante
+    get outputType() { return Type.String }     // deve ser concreto
+    sql(dialect, columnRef) {
+        if (dialect === 'clickhouse') return `toTypeName(${columnRef})`
+        return `pg_typeof(${columnRef})::text`
+    }
+    apply(value) {
+        return typeof value
+    }
+}
+```
+
+</TabItem>
+<TabItem label="Go">
+
+```go
+import (
+    "fmt"
+    "reflect"
+    "github.com/iamtelescope/flyql/golang/flyqltype"
+    "github.com/iamtelescope/flyql/golang/transformers"
+)
+
+type TypeTransformer struct{}
+
+func (TypeTransformer) Name() string                      { return "type" }
+func (TypeTransformer) Description() string               { return "" }
+func (TypeTransformer) InputType() flyqltype.Type         { return flyqltype.Any }     // carácter universal
+func (TypeTransformer) OutputType() flyqltype.Type        { return flyqltype.String }  // concreto
+func (TypeTransformer) ArgSchema() []transformers.ArgSpec { return nil }
+func (TypeTransformer) SQL(dialect, columnRef string, args []any) string {
+    if dialect == "clickhouse" {
+        return fmt.Sprintf("toTypeName(%s)", columnRef)
+    }
+    return fmt.Sprintf("pg_typeof(%s)::text", columnRef)
+}
+func (TypeTransformer) Apply(value any, args []any) any {
+    if value == nil {
+        return "nil"
+    }
+    return reflect.TypeOf(value).String()
+}
+```
+
+</TabItem>
+</Tabs>
+
 ## Compatibilidade de Tipos
 
 Os transformadores personalizados participam na mesma validação de cadeia de tipos que os integrados. Se encadear `field|firstoctet|upper`, o sistema deteta que `firstoctet` produz `int` mas `upper` requer `string`.
 
-Tipos disponíveis: consulte [`flyql.Type`](/advanced/column-types/) — o enum canónico de 11 valores (`String`, `Int`, `Float`, `Bool`, `Date`, `Duration`, `Array`, `Map`, `Struct`, `JSON`, `Unknown`).
+Tipos disponíveis: consulte [`flyql.Type`](/advanced/column-types/). A única exceção é `Any`, que é um carácter universal de entrada de transformer e não é um tipo de coluna ou valor válido.
 
 ## Validação com `diagnose()`
 

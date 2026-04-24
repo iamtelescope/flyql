@@ -211,7 +211,7 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 		}
 
 		// Chain type check
-		if hasPrevType && prevOutputType != t.InputType() {
+		if hasPrevType && t.InputType() != flyqltype.Any && prevOutputType != t.InputType() {
 			diags = append(diags, MakeDiag(tr.NameRange, CodeChainType, SeverityError, fmt.Sprintf("%s expects %s input, got %s", tr.Name, t.InputType(), prevOutputType)))
 		}
 

@@ -147,6 +147,17 @@ Type.Unknown
 
 素朴な `sed` は避けてください。`jsonstring` がオブジェクトの最後のキーである場合に孤立したカンマが残り、GNU sed と BSD sed の間でポータブルではありません。
 
+## `Type.Any` — transformer 入力のワイルドカード
+
+`Type.Any`（文字列値 `"any"`）は、transformer の入力型としてのみ使用されるセンチネルです。これは transformer が任意の上流カラム/transformer 出力型を受け入れることを宣言します。これは意図的に、上記に列挙されたカラムに使用可能な値には含まれていません。
+
+- `parseFlyQLType("any")` / `ParseType("any")` はエラーを発生させます。厳密パーサーは `"any"` をカラム型トークンとして拒否します。
+- `TransformerRegistry.register` は、`Any` を `output_type` または任意の `ArgSpec.type` として宣言する transformer を拒否します。すべての transformer は依然として具体的な出力型を宣言する必要があります。出力型に `Any` を宣言すると、下流のチェーン型付けが破綻するためです。
+
+AST バリデーター、カラムバリデーター、または実行時のチェーンヘルパーが `input_type == Any` を持つ transformer に遭遇すると、入力型の等価性チェックがスキップされます。下流の厳密性は保たれます。たとえば `col|accepts_any_returning_array|upper` は `array` が `upper` の有効な入力ではないため、依然として `upper` でエラーになります。
+
+宣言と使用方法については [カスタム transformer — Any 入力 transformer](/advanced/custom-transformers/#any-入力-transformer) を参照してください。
+
 ## 厳密モードパース
 
 `parseFlyQLType` ヘルパー（Go では `flyql.ParseType`、Python では `flyql.parse_flyql_type`、JS では `parseFlyQLType`）は**厳密**です。11 個の有効な小文字トークンのいずれでもない文字列に対してエラーを発生させます。

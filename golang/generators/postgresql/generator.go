@@ -48,7 +48,7 @@ func validateTransformerChain(keyTransformers []flyql.Transformer, registry *tra
 		if transformer == nil {
 			return fmt.Errorf("unknown transformer: %s", t.Name)
 		}
-		if transformer.InputType() != currentType {
+		if transformer.InputType() != flyqltype.Any && transformer.InputType() != currentType {
 			return fmt.Errorf("transformer chain type error: '%s' at position %d requires %s input, but received %s",
 				t.Name, i, transformer.InputType(), currentType)
 		}

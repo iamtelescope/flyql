@@ -169,7 +169,7 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 			}
 
 			// Chain type check
-			if hasPrevType && prevOutputType != t.InputType() {
+			if hasPrevType && t.InputType() != flyqltype.Any && prevOutputType != t.InputType() {
 				diags = append(diags, flyql.MakeDiag(nameRange, flyql.CodeChainType, flyql.SeverityError, fmt.Sprintf("%s expects %s input, got %s", transformer.Name, t.InputType(), prevOutputType)))
 			}
 

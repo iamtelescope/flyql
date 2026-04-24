@@ -80,6 +80,28 @@ func (takesIntTransformer) ArgSchema() []transformers.ArgSpec {
 	}
 }
 
+type acceptsAnyTransformer struct{}
+
+func (acceptsAnyTransformer) Name() string                                    { return "accepts_any" }
+func (acceptsAnyTransformer) Description() string                             { return "" }
+func (acceptsAnyTransformer) InputType() flyqltype.Type                       { return flyqltype.Any }
+func (acceptsAnyTransformer) OutputType() flyqltype.Type                      { return flyqltype.String }
+func (acceptsAnyTransformer) SQL(dialect, col string, args []any) string      { return col }
+func (acceptsAnyTransformer) Apply(value interface{}, args []any) interface{} { return value }
+func (acceptsAnyTransformer) ArgSchema() []transformers.ArgSpec               { return nil }
+
+type acceptsAnyReturningArrayTransformer struct{}
+
+func (acceptsAnyReturningArrayTransformer) Name() string                               { return "accepts_any_returning_array" }
+func (acceptsAnyReturningArrayTransformer) Description() string                        { return "" }
+func (acceptsAnyReturningArrayTransformer) InputType() flyqltype.Type                  { return flyqltype.Any }
+func (acceptsAnyReturningArrayTransformer) OutputType() flyqltype.Type                 { return flyqltype.Array }
+func (acceptsAnyReturningArrayTransformer) SQL(dialect, col string, args []any) string { return col }
+func (acceptsAnyReturningArrayTransformer) Apply(value interface{}, args []any) interface{} {
+	return value
+}
+func (acceptsAnyReturningArrayTransformer) ArgSchema() []transformers.ArgSpec { return nil }
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -90,6 +112,8 @@ func testRegistry() *transformers.TransformerRegistry {
 	_ = reg.Register(stringToInt{})
 	_ = reg.Register(takesFloat{})
 	_ = reg.Register(takesIntTransformer{})
+	_ = reg.Register(acceptsAnyTransformer{})
+	_ = reg.Register(acceptsAnyReturningArrayTransformer{})
 	return reg
 }
 

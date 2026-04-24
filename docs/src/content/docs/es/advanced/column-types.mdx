@@ -147,6 +147,17 @@ La presencia de una clave `jsonstring` en un schema de plain-object — incluyen
 
 Evita `sed` ingenuo — deja comas huérfanas cuando `jsonstring` es la última clave en un objeto y no es portable entre GNU sed y BSD sed.
 
+## `Type.Any` — comodín de entrada de transformer
+
+`Type.Any` (valor de string `"any"`) es un sentinel que se usa únicamente como tipo de entrada de un transformer. Declara que el transformer acepta cualquier tipo upstream de columna o de salida de transformer. Intencionalmente **no** es uno de los valores elegibles como tipo de columna listados arriba.
+
+- `parseFlyQLType("any")` / `ParseType("any")` lanza un error. El parser estricto rechaza `"any"` como token de tipo de columna.
+- `TransformerRegistry.register` rechaza cualquier transformer que declare `Any` como `output_type` o en cualquier `ArgSpec.type`. Todo transformer debe declarar igualmente un tipo de salida concreto; `Any` en la salida rompería el tipado de cadenas downstream.
+
+Cuando un validador AST, un validador de columnas o un helper de cadenas en tiempo de ejecución encuentra un transformer con `input_type == Any`, se omite la comprobación de igualdad del tipo de entrada. La estrictez downstream se conserva — `col|accepts_any_returning_array|upper` sigue dando error en `upper` porque `array` no es una entrada válida para `upper`.
+
+Consulta [Transformers personalizados — Transformers con entrada `Any`](/advanced/custom-transformers/#transformers-con-entrada-any) para la declaración y el uso.
+
 ## Parseo en modo estricto
 
 El helper `parseFlyQLType` (`flyql.ParseType` en Go, `flyql.parse_flyql_type` en Python, `parseFlyQLType` en JS) es **estricto**: lanza un error para cualquier string que no sea uno de los 11 tokens válidos en minúsculas.

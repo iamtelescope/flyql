@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "Shared validator test fixtures. Each test provides a query, column schema, and expected diagnostics. Custom transformers (takes_string_then_int, string_to_int, takes_float, takes_int) must be registered per-language before running.",
+  "description": "Shared validator test fixtures. Each test provides a query, column schema, and expected diagnostics. Custom transformers (takes_string_then_int, string_to_int, takes_float, takes_int, accepts_any, accepts_any_returning_array) must be registered per-language before running.",
   "test_suite": "validator",
   "custom_transformers": {
     "takes_string_then_int": {
@@ -29,6 +29,16 @@
       "arg_schema": [
         { "type": "int", "required": true }
       ]
+    },
+    "accepts_any": {
+      "input_type": "any",
+      "output_type": "string",
+      "arg_schema": []
+    },
+    "accepts_any_returning_array": {
+      "input_type": "any",
+      "output_type": "array",
+      "arg_schema": []
     }
   },
   "tests": [
@@ -190,6 +200,36 @@
       "expected_diagnostics": [
         { "code": "chain_type", "severity": "error", "message_contains": "upper" }
       ]
+    },
+    {
+      "name": "any_input_accepts_string_column",
+      "query": "host|accepts_any='V'",
+      "columns": [{ "name": "host", "type": "string" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "any_input_accepts_non_string_column",
+      "query": "count|accepts_any='V'",
+      "columns": [{ "name": "count", "type": "int" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["chain_type"]
+    },
+    {
+      "name": "chain_after_any_input_returning_array_errors_on_upper",
+      "query": "count|accepts_any_returning_array|upper='V'",
+      "columns": [{ "name": "count", "type": "int" }],
+      "expected_diagnostics": [
+        { "code": "chain_type", "severity": "error", "message_contains": "upper" }
+      ]
+    },
+    {
+      "name": "any_input_on_unknown_column_still_skips_chain_type",
+      "query": "missing|accepts_any='V'",
+      "columns": [],
+      "expected_diagnostics": [
+        { "code": "unknown_column", "severity": "error" }
+      ],
+      "absent_codes": ["chain_type"]
     },
     {
       "name": "multiple_expressions",

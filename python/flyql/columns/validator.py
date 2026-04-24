@@ -151,7 +151,11 @@ def diagnose(
                         )
                     )
 
-            if prev_output_type is not None and prev_output_type != t.input_type:
+            if (
+                prev_output_type is not None
+                and t.input_type is not Type.Any
+                and prev_output_type != t.input_type
+            ):
                 if name_range is not None:
                     diags.append(
                         make_diag(

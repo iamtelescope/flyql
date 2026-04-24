@@ -133,6 +133,8 @@ func FromColumns(columns []Column) *ColumnSchema {
 
 // validFlyQLTypes is the set of accepted lowercase tokens for ParseType.
 // Keep in sync with flyqltype.Type.
+// Note: flyqltype.Any is intentionally excluded — it is a transformer
+// input_type sentinel, not a column type.
 var validFlyQLTypes = map[string]Type{
 	"string":     TypeString,
 	"int":        TypeInt,

@@ -1,8 +1,9 @@
 import pytest
-from typing import Any
+from typing import Any, ClassVar, Tuple
 
-from flyql.transformers.base import Transformer
+from flyql.core.exceptions import FlyqlError
 from flyql.flyql_type import Type
+from flyql.transformers.base import ArgSpec, Transformer
 from flyql.transformers.registry import TransformerRegistry, default_registry
 
 
@@ -92,3 +93,57 @@ class TestDefaultRegistry:
         assert t is not None
         assert t.input_type == Type.String
         assert t.output_type == Type.Int
+
+
+class _AnyOutputTransformer(Transformer):
+    @property
+    def name(self) -> str:
+        return "any_output"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.String
+
+    @property
+    def output_type(self) -> Type:
+        return Type.Any
+
+    def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
+        return column_ref
+
+    def apply(self, value: Any, args: Any = None) -> Any:
+        return value
+
+
+class _AnyArgTransformer(Transformer):
+    arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (ArgSpec(type=Type.Any),)
+
+    @property
+    def name(self) -> str:
+        return "any_arg"
+
+    @property
+    def input_type(self) -> Type:
+        return Type.String
+
+    @property
+    def output_type(self) -> Type:
+        return Type.String
+
+    def sql(self, dialect: str, column_ref: str, args: Any = None) -> str:
+        return column_ref
+
+    def apply(self, value: Any, args: Any = None) -> Any:
+        return value
+
+
+class TestRegistryRejectsAny:
+    def test_register_rejects_any_output_type(self) -> None:
+        registry = TransformerRegistry()
+        with pytest.raises(FlyqlError, match="output_type cannot be Type.Any"):
+            registry.register(_AnyOutputTransformer())
+
+    def test_register_rejects_any_arg_type(self) -> None:
+        registry = TransformerRegistry()
+        with pytest.raises(FlyqlError, match="ArgSpec.type cannot be Type.Any"):
+            registry.register(_AnyArgTransformer())

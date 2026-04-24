@@ -67,7 +67,10 @@ def validate_transformer_chain(
         transformer = registry.get(t.name)
         if transformer is None:
             raise FlyqlError(f"unknown transformer: {t.name}")
-        if transformer.input_type != current_type:
+        if (
+            transformer.input_type is not Type.Any
+            and transformer.input_type != current_type
+        ):
             raise FlyqlError(
                 f"transformer chain type error: '{t.name}' at position {i} "
                 f"requires {transformer.input_type.value} input, "

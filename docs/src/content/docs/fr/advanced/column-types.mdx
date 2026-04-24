@@ -147,6 +147,17 @@ La présence d'une clé `jsonstring` dans un schéma d'objet plat — y compris 
 
 Évitez le `sed` naïf — il laisse des virgules orphelines lorsque `jsonstring` est la dernière clé d'un objet et n'est pas portable entre GNU sed et BSD sed.
 
+## `Type.Any` — joker d'entrée pour transformer
+
+`Type.Any` (valeur de chaîne `"any"`) est un sentinelle utilisé uniquement comme type d'entrée d'un transformer. Il déclare que le transformer accepte n'importe quel type de colonne ou de sortie de transformer en amont. Il ne fait intentionnellement **pas** partie des valeurs éligibles comme types de colonnes énumérées ci-dessus.
+
+- `parseFlyQLType("any")` / `ParseType("any")` lève une erreur. Le parseur strict rejette `"any"` comme token de type de colonne.
+- `TransformerRegistry.register` rejette tout transformer qui déclare `Any` comme `output_type` ou sur n'importe quel `ArgSpec.type`. Chaque transformer doit toujours déclarer un type de sortie concret ; `Any` en sortie casserait le typage de chaîne en aval.
+
+Lorsqu'un validateur AST, un validateur de colonnes ou un helper de chaîne d'exécution rencontre un transformer avec `input_type == Any`, la vérification d'égalité du type d'entrée est ignorée. La rigueur en aval est préservée — `col|accepts_any_returning_array|upper` échoue toujours sur `upper` car `array` n'est pas une entrée valide pour `upper`.
+
+Voir [Transformers personnalisés — Transformateurs avec entree `Any`](/advanced/custom-transformers/#transformateurs-avec-entree-any) pour la déclaration et l'utilisation.
+
 ## Analyse en mode strict
 
 Le helper `parseFlyQLType` (`flyql.ParseType` en Go, `flyql.parse_flyql_type` en Python, `parseFlyQLType` en JS) est **strict** : il lève une erreur pour toute chaîne qui n'est pas l'un des 11 tokens valides en minuscules.

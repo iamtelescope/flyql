@@ -1,7 +1,10 @@
 package transformers
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/iamtelescope/flyql/golang/flyqltype"
 )
 
 func TestDefaultRegistry(t *testing.T) {
@@ -75,5 +78,49 @@ func TestDefaultRegistryReturnsFreshInstance(t *testing.T) {
 	r2 := DefaultRegistry()
 	if r1 == r2 {
 		t.Error("DefaultRegistry() should return a fresh instance each call")
+	}
+}
+
+type anyOutputTransformer struct{}
+
+func (anyOutputTransformer) Name() string                                     { return "any_output" }
+func (anyOutputTransformer) Description() string                              { return "" }
+func (anyOutputTransformer) InputType() flyqltype.Type                        { return flyqltype.String }
+func (anyOutputTransformer) OutputType() flyqltype.Type                       { return flyqltype.Any }
+func (anyOutputTransformer) ArgSchema() []ArgSpec                             { return nil }
+func (anyOutputTransformer) SQL(dialect, columnRef string, args []any) string { return columnRef }
+func (anyOutputTransformer) Apply(value any, args []any) any                  { return value }
+
+type anyArgTransformer struct{}
+
+func (anyArgTransformer) Name() string               { return "any_arg" }
+func (anyArgTransformer) Description() string        { return "" }
+func (anyArgTransformer) InputType() flyqltype.Type  { return flyqltype.String }
+func (anyArgTransformer) OutputType() flyqltype.Type { return flyqltype.String }
+func (anyArgTransformer) ArgSchema() []ArgSpec {
+	return []ArgSpec{{Type: flyqltype.Any, Required: true}}
+}
+func (anyArgTransformer) SQL(dialect, columnRef string, args []any) string { return columnRef }
+func (anyArgTransformer) Apply(value any, args []any) any                  { return value }
+
+func TestRegisterRejectsAnyOutputType(t *testing.T) {
+	r := &TransformerRegistry{transformers: make(map[string]Transformer)}
+	err := r.Register(anyOutputTransformer{})
+	if err == nil {
+		t.Fatal("Register(anyOutputTransformer{}) returned nil error; want rejection")
+	}
+	if !strings.Contains(err.Error(), "OutputType cannot be flyqltype.Any") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "OutputType cannot be flyqltype.Any")
+	}
+}
+
+func TestRegisterRejectsAnyArgType(t *testing.T) {
+	r := &TransformerRegistry{transformers: make(map[string]Transformer)}
+	err := r.Register(anyArgTransformer{})
+	if err == nil {
+		t.Fatal("Register(anyArgTransformer{}) returned nil error; want rejection")
+	}
+	if !strings.Contains(err.Error(), "ArgSpec.Type cannot be flyqltype.Any") {
+		t.Errorf("error = %q, want substring %q", err.Error(), "ArgSpec.Type cannot be flyqltype.Any")
 	}
 }

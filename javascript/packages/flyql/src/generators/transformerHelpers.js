@@ -1,3 +1,4 @@
+import { Type } from '../flyql_type.js'
 import { defaultRegistry } from '../transformers/index.js'
 
 export function applyTransformerSQL(columnRef, transformers, dialect, registry = null) {
@@ -45,7 +46,7 @@ export function validateTransformerChain(transformers, registry = null, baseType
         if (!transformer) {
             throw new Error(`unknown transformer: ${tDict.name}`)
         }
-        if (transformer.inputType !== currentType) {
+        if (transformer.inputType !== Type.Any && transformer.inputType !== currentType) {
             throw new Error(
                 `transformer chain type error: '${tDict.name}' at position ${i} ` +
                     `requires ${transformer.inputType} input, ` +

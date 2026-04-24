@@ -238,7 +238,7 @@ function _diagnoseExpression(expression, schema, registry) {
             )
         }
 
-        if (prevOutputType != null && prevOutputType !== t.inputType) {
+        if (prevOutputType != null && t.inputType !== Type.Any && prevOutputType !== t.inputType) {
             diags.push(
                 makeDiag(
                     transformer.nameRange,

@@ -147,6 +147,17 @@ Presence of a `jsonstring` key in a plain-object schema — including `"jsonstri
 
 Avoid naive `sed` — it leaves orphan commas when `jsonstring` is the last key in an object and is not portable between GNU sed and BSD sed.
 
+## `Type.Any` — transformer-input wildcard
+
+`Type.Any` (string value `"any"`) is a **sentinel used only as a transformer's input type**. It declares that the transformer accepts any upstream column or transformer output type, regardless of what that type is. It is intentionally **not** one of the column-eligible values in the table above:
+
+- `parseFlyQLType("any")` / `ParseType("any")` raises an error. The strict parser rejects `"any"` as a column type token.
+- `TransformerRegistry.register` rejects any transformer that declares `Any` as `output_type` or on any `ArgSpec.type`. Every transformer must still declare a concrete output type; `Any` on output would break downstream chain typing.
+
+When an AST validator, columns validator, or runtime chain helper encounters a transformer with `input_type == Any`, the input-type equality check is skipped for that step. Downstream strictness is preserved — the next transformer is still checked against the Any-input transformer's concrete `output_type`, so `col|accepts_any_returning_array|upper` still errors at `upper` because `array` is not a valid input to `upper`.
+
+See [Custom transformers — Any-input transformers](/advanced/custom-transformers/#any-input-transformers) for declaration and usage.
+
 ## Strict-mode parsing
 
 The `parseFlyQLType` helper (`flyql.ParseType` in Go, `flyql.parse_flyql_type` in Python, `parseFlyQLType` in JS) is **strict**: it raises an error for any string that is not one of the 11 valid lowercase tokens.

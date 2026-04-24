@@ -98,4 +98,9 @@ const (
 	// ClickHouse Nothing/Object/Variant/Dynamic and geometry types,
 	// StarRocks bitmap/hll, and any unrecognized DB type.
 	Unknown Type = "unknown"
+
+	// Any is a sentinel ONLY for transformer InputType(). Rejected by
+	// ParseType as a column type; rejected by TransformerRegistry.Register
+	// as OutputType() or on any ArgSpec.Type.
+	Any Type = "any"
 )

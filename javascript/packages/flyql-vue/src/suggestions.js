@@ -90,7 +90,7 @@ export function getTransformerSuggestions(schema, ctx, registry = null) {
     for (const name of names) {
         const t = registry.get(name)
         if (!t) continue
-        if (inputType && t.inputType !== inputType) continue
+        if (inputType && t.inputType !== Type.Any && t.inputType !== inputType) continue
         if (prefix && !name.toLowerCase().startsWith(prefix)) continue
         results.push({
             label: name,
@@ -267,7 +267,7 @@ export function getOperatorSuggestions(schema, fieldName, registry = null) {
     }
     const hasTransformers = registry.names().some((name) => {
         const t = registry.get(name)
-        return !colType || t.inputType === colType
+        return !colType || t.inputType === Type.Any || t.inputType === colType
     })
     if (hasTransformers) {
         mapped.splice(2, 0, { label: '|', insertText: '|', type: 'transformer', detail: 'transformer (pipe)' })
@@ -673,7 +673,7 @@ export async function updateSuggestions(
                 const chainParts = ctx.transformerChain.split('|')
                 const lastInChain = chainParts[chainParts.length - 1]
                 const lastT = _registry.get(lastInChain)
-                if (lastT && lastT.outputType !== exactMatch.inputType) {
+                if (lastT && exactMatch.inputType !== Type.Any && lastT.outputType !== exactMatch.inputType) {
                     suggestionType = 'transformer'
                     typeError = true
                 }
@@ -684,7 +684,7 @@ export async function updateSuggestions(
                 const outputType = exactMatch.outputType
                 const hasChainable = _registry.names().some((name) => {
                     const tr = _registry.get(name)
-                    return tr && tr.inputType === outputType
+                    return tr && (tr.inputType === Type.Any || tr.inputType === outputType)
                 })
                 if (hasChainable) {
                     suggestions.push({ label: '|', insertText: '|', type: 'transformer', detail: 'chain transformer' })

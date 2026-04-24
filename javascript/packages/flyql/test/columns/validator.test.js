@@ -18,6 +18,7 @@ import { VALIDATOR_REGISTRY } from '../../src/errors_generated.js'
 import { Range } from '../../src/core/range.js'
 import { Renderer, RendererRegistry, ArgSpec } from '../../src/renderers/index.js'
 import { Type, parseFlyQLType } from '../../src/flyql_type.js'
+import { Transformer, defaultRegistry } from '../../src/transformers/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -124,6 +125,63 @@ describe('Columns Validator', () => {
             const cols = parse('level|len|upper', { transformers: true })
             const diags = diagnose(cols, makeSchemaFromColumn('level', 'string'))
             expect(diags.some((d) => d.code === CODE_CHAIN_TYPE)).toBe(true)
+        })
+
+        class _AcceptsAny extends Transformer {
+            get name() {
+                return 'accepts_any'
+            }
+            get inputType() {
+                return Type.Any
+            }
+            get outputType() {
+                return Type.String
+            }
+            sql(dialect, columnRef) {
+                return columnRef
+            }
+            apply(value) {
+                return value
+            }
+        }
+
+        class _AcceptsAnyReturningArray extends Transformer {
+            get name() {
+                return 'accepts_any_returning_array'
+            }
+            get inputType() {
+                return Type.Any
+            }
+            get outputType() {
+                return Type.Array
+            }
+            sql(dialect, columnRef) {
+                return columnRef
+            }
+            apply(value) {
+                return value
+            }
+        }
+
+        function _registryWithAny() {
+            const reg = defaultRegistry()
+            reg.register(new _AcceptsAny())
+            reg.register(new _AcceptsAnyReturningArray())
+            return reg
+        }
+
+        it('Any-input transformer accepts any column type', () => {
+            const cols = parse('level|accepts_any', { transformers: true })
+            const diags = diagnose(cols, makeSchemaFromColumn('level', 'int'), _registryWithAny())
+            expect(diags.some((d) => d.code === CODE_CHAIN_TYPE)).toBe(false)
+        })
+
+        it('chain remains strict after Any-input transformer returning array', () => {
+            const cols = parse('level|accepts_any_returning_array|upper', { transformers: true })
+            const diags = diagnose(cols, makeSchemaFromColumn('level', 'int'), _registryWithAny())
+            const chainDiags = diags.filter((d) => d.code === CODE_CHAIN_TYPE)
+            expect(chainDiags).toHaveLength(1)
+            expect(chainDiags[0].message).toContain('upper')
         })
 
         it('multiple errors returns all diagnostics', () => {

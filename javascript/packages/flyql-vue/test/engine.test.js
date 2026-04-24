@@ -1571,4 +1571,52 @@ describe('EditorEngine', () => {
             }
         })
     })
+
+    describe('getSelectedInfo', () => {
+        it('returns column info for column suggestion', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('sta')
+            engine.setCursorPosition(3)
+            await engine.updateSuggestions()
+            const info = engine.getSelectedInfo()
+            expect(info).not.toBeNull()
+            expect(info.infoKind).toBe('column')
+            expect(info.label).toBe('status')
+            expect(info.type).toBe('enum')
+            expect(info.hasChildren).toBe(false)
+        })
+
+        it('returns transformer info for upper transformer pick', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upp')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            const info = engine.getSelectedInfo()
+            expect(info).toEqual({
+                infoKind: 'transformer',
+                label: 'upper',
+                inputType: 'string',
+                outputType: 'string',
+                args: [],
+                description: 'Convert the string to uppercase.',
+            })
+        })
+
+        it('returns null when there is no context (no query set)', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+
+        it('returns null when selected transformer is missing from registry', async () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.setQuery('host|upp')
+            engine.setCursorPosition(8)
+            await engine.updateSuggestions()
+            // Direct injection — bypass the suggestion pipeline to validate
+            // the registry-miss null-return contract.
+            engine.suggestions = [{ type: 'transformer', label: 'nonexistent', insertText: 'nonexistent', detail: '' }]
+            engine.state.selectedIndex = 0
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+    })
 })

@@ -16,6 +16,7 @@ class ArgSpec:
 
 class Transformer(ABC):
     arg_schema: ClassVar[Tuple[ArgSpec, ...]] = ()
+    description: ClassVar[str] = ""
 
     @property
     @abstractmethod

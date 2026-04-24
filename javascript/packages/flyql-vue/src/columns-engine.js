@@ -967,11 +967,43 @@ export class ColumnsEngine {
     }
 
     /**
-     * Info-box data for the current selection. Mirrors EditorEngine.getSelectedInfo.
+     * Info-box data for the current selection. Branches on the active
+     * suggestion's `type` and returns one of three kind-specific shapes,
+     * all tagged with an `infoKind` discriminator:
+     *   - `{ infoKind: 'column', label, type, description, hasChildren }`
+     *   - `{ infoKind: 'transformer', label, inputType, outputType, args,
+     *         description }`
+     *   - `{ infoKind: 'renderer', label, args, description }`
+     * Returns `null` when there is no context, no target key can be resolved,
+     * or the selected transformer/renderer is missing from its registry.
+     *
+     * Mirror in engine.js — keep column/transformer branches in sync.
      */
     getSelectedInfo() {
         if (!this.context) return null
         const selected = this.suggestions[this.state.selectedIndex]
+        if (selected && selected.type === 'transformer') {
+            const t = this.registry ? this.registry.get(selected.label) : null
+            if (!t) return null
+            return {
+                infoKind: 'transformer',
+                label: t.name,
+                inputType: t.inputType,
+                outputType: t.outputType,
+                args: (t.argSchema || []).map((a) => ({ type: a.type, required: a.required !== false })),
+                description: t.description || '',
+            }
+        }
+        if (selected && selected.type === 'renderer') {
+            const r = this.rendererRegistry ? this.rendererRegistry.get(selected.label) : null
+            if (!r) return null
+            return {
+                infoKind: 'renderer',
+                label: r.name,
+                args: (r.argSchema || []).map((a) => ({ type: a.type, required: a.required !== false })),
+                description: r.description || '',
+            }
+        }
         let targetKey = null
         if (selected && selected.type === 'column') {
             targetKey = selected.label
@@ -982,6 +1014,7 @@ export class ColumnsEngine {
         const def = resolveColumnDef(this.columns, targetKey)
         const type = def ? def.rawType || def.type || '' : (selected && selected.detail) || ''
         return {
+            infoKind: 'column',
             label: targetKey,
             type,
             description: def && def.description ? def.description : '',

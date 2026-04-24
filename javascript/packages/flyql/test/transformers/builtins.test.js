@@ -1,12 +1,46 @@
 import { describe, it, expect } from 'vitest'
-import { UpperTransformer, LowerTransformer, LenTransformer, SplitTransformer } from '../../src/transformers/index.js'
+import {
+    UpperTransformer,
+    LowerTransformer,
+    LenTransformer,
+    SplitTransformer,
+    Transformer,
+} from '../../src/transformers/index.js'
 import { Type } from '../../src/flyql_type.js'
+
+describe('Transformer base', () => {
+    class _Stub extends Transformer {
+        get name() {
+            return 'stub'
+        }
+        get inputType() {
+            return Type.String
+        }
+        get outputType() {
+            return Type.String
+        }
+        sql() {
+            return 'STUB'
+        }
+        apply(v) {
+            return v
+        }
+    }
+
+    it('defaults description to empty string', () => {
+        expect(new _Stub().description).toBe('')
+    })
+})
 
 describe('UpperTransformer', () => {
     const t = new UpperTransformer()
 
     it('has correct name', () => {
         expect(t.name).toBe('upper')
+    })
+
+    it('has description', () => {
+        expect(t.description).toBe('Convert the string to uppercase.')
     })
 
     it('has correct input type', () => {
@@ -41,6 +75,10 @@ describe('LowerTransformer', () => {
         expect(t.name).toBe('lower')
     })
 
+    it('has description', () => {
+        expect(t.description).toBe('Convert the string to lowercase.')
+    })
+
     it('has correct input type', () => {
         expect(t.inputType).toBe(Type.String)
     })
@@ -67,6 +105,10 @@ describe('LenTransformer', () => {
 
     it('has correct name', () => {
         expect(t.name).toBe('len')
+    })
+
+    it('has description', () => {
+        expect(t.description).toBe('Return the length of the string.')
     })
 
     it('has correct input type', () => {
@@ -99,6 +141,10 @@ describe('SplitTransformer', () => {
 
     it('has correct name', () => {
         expect(t.name).toBe('split')
+    })
+
+    it('has description', () => {
+        expect(t.description).toBe('Split the string into an array by a delimiter.')
     })
 
     it('has correct input type', () => {

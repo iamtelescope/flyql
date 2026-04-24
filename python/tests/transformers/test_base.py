@@ -69,3 +69,7 @@ class TestTransformerBaseClass:
     def test_concrete_subclass_apply(self) -> None:
         t = _StubTransformer()
         assert t.apply("hello") == "hello"
+
+    def test_concrete_subclass_description_defaults_empty(self) -> None:
+        t = _StubTransformer()
+        assert t.description == ""

@@ -24,6 +24,10 @@ export class Transformer {
         return []
     }
 
+    get description() {
+        return ''
+    }
+
     sql(dialect, columnRef, _args = []) {
         throw new Error('not implemented')
     }

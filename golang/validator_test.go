@@ -17,7 +17,8 @@ import (
 
 type takesStringThenInt struct{}
 
-func (takesStringThenInt) Name() string { return "takes_string_then_int" }
+func (takesStringThenInt) Name() string        { return "takes_string_then_int" }
+func (takesStringThenInt) Description() string { return "" }
 func (takesStringThenInt) InputType() flyqltype.Type {
 	return flyqltype.String
 }
@@ -35,7 +36,8 @@ func (takesStringThenInt) ArgSchema() []transformers.ArgSpec {
 
 type stringToInt struct{}
 
-func (stringToInt) Name() string { return "string_to_int" }
+func (stringToInt) Name() string        { return "string_to_int" }
+func (stringToInt) Description() string { return "" }
 func (stringToInt) InputType() flyqltype.Type {
 	return flyqltype.String
 }
@@ -47,6 +49,7 @@ func (stringToInt) ArgSchema() []transformers.ArgSpec               { return []t
 type takesFloat struct{}
 
 func (takesFloat) Name() string              { return "takes_float" }
+func (takesFloat) Description() string       { return "" }
 func (takesFloat) InputType() flyqltype.Type { return flyqltype.String }
 func (takesFloat) OutputType() flyqltype.Type {
 	return flyqltype.String
@@ -61,7 +64,8 @@ func (takesFloat) ArgSchema() []transformers.ArgSpec {
 
 type takesIntTransformer struct{}
 
-func (takesIntTransformer) Name() string { return "takes_int" }
+func (takesIntTransformer) Name() string        { return "takes_int" }
+func (takesIntTransformer) Description() string { return "" }
 func (takesIntTransformer) InputType() flyqltype.Type {
 	return flyqltype.String
 }

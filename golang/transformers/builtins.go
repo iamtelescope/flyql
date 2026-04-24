@@ -11,6 +11,7 @@ import (
 type Upper struct{}
 
 func (Upper) Name() string               { return "upper" }
+func (Upper) Description() string        { return "Convert the string to uppercase." }
 func (Upper) InputType() flyqltype.Type  { return flyqltype.String }
 func (Upper) OutputType() flyqltype.Type { return flyqltype.String }
 func (Upper) ArgSchema() []ArgSpec       { return []ArgSpec{} }
@@ -29,6 +30,7 @@ func (Upper) SQL(dialect, columnRef string, args []any) string {
 type Lower struct{}
 
 func (Lower) Name() string               { return "lower" }
+func (Lower) Description() string        { return "Convert the string to lowercase." }
 func (Lower) InputType() flyqltype.Type  { return flyqltype.String }
 func (Lower) OutputType() flyqltype.Type { return flyqltype.String }
 func (Lower) ArgSchema() []ArgSpec       { return []ArgSpec{} }
@@ -47,6 +49,7 @@ func (Lower) SQL(dialect, columnRef string, args []any) string {
 type Len struct{}
 
 func (Len) Name() string                                    { return "len" }
+func (Len) Description() string                             { return "Return the length of the string." }
 func (Len) InputType() flyqltype.Type                       { return flyqltype.String }
 func (Len) OutputType() flyqltype.Type                      { return flyqltype.Int }
 func (Len) ArgSchema() []ArgSpec                            { return []ArgSpec{} }
@@ -63,6 +66,7 @@ func (Len) SQL(dialect, columnRef string, args []any) string {
 type Split struct{}
 
 func (Split) Name() string               { return "split" }
+func (Split) Description() string        { return "Split the string into an array by a delimiter." }
 func (Split) InputType() flyqltype.Type  { return flyqltype.String }
 func (Split) OutputType() flyqltype.Type { return flyqltype.Array }
 func (Split) ArgSchema() []ArgSpec {
@@ -99,3 +103,13 @@ func (Split) Apply(value interface{}, args []any) interface{} {
 	}
 	return result
 }
+
+// Compile-time interface-satisfaction checks for all builtins. Future
+// additions to the Transformer interface surface here at build time rather
+// than at registry-lookup time.
+var (
+	_ Transformer = Upper{}
+	_ Transformer = Lower{}
+	_ Transformer = Len{}
+	_ Transformer = Split{}
+)

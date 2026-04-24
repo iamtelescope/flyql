@@ -51,6 +51,16 @@ export function labelWasTruncated(label, opts = {}) {
 }
 
 /**
+ * Format an `argSchema`-derived args list as a signature string
+ * (e.g. `string, string?` — type-enum values are lowercase per `flyql_type.js:18`).
+ * Used by Info-box templates.
+ */
+export function signatureArgs(args) {
+    if (!args || args.length === 0) return ''
+    return args.map((a) => (a.required === false ? a.type + '?' : a.type)).join(', ')
+}
+
+/**
  * Insert `text` at `{start, end}` of `textarea`, preserving the browser's native
  * undo stack. Uses document.execCommand('insertText') when available. Verifies
  * the native path actually mutated the textarea (defends against execCommand

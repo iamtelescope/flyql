@@ -190,14 +190,36 @@
                     @mousedown.stop="panelInteracting = true"
                     @mouseup="panelInteracting = false"
                 >
-                    <div class="flyql-panel__header">Info</div>
+                    <div class="flyql-panel__header">
+                        <template v-if="selectedInfo.infoKind === 'column'">Column info</template>
+                        <template v-else-if="selectedInfo.infoKind === 'transformer'">Transformer info</template>
+                        <template v-else>Info</template>
+                    </div>
                     <div class="flyql-panel__footer">
-                        <div class="flyql-panel__footer-row">
-                            <span class="flyql-panel__footer-path" v-html="highlightMatch(selectedInfo.label)"></span>
-                        </div>
-                        <div v-if="selectedInfo.description" class="flyql-panel__footer-desc">
-                            {{ selectedInfo.description }}
-                        </div>
+                        <template v-if="selectedInfo.infoKind === 'transformer'">
+                            <div class="flyql-panel__footer-row">
+                                <span class="flyql-panel__footer-signature">
+                                    {{ selectedInfo.label }}({{ signatureArgs(selectedInfo.args) }})
+                                </span>
+                                <span class="flyql-panel__footer-types">
+                                    {{ selectedInfo.inputType }} → {{ selectedInfo.outputType }}
+                                </span>
+                            </div>
+                            <div v-if="selectedInfo.description" class="flyql-panel__footer-desc">
+                                {{ selectedInfo.description }}
+                            </div>
+                        </template>
+                        <template v-else>
+                            <div class="flyql-panel__footer-row">
+                                <span
+                                    class="flyql-panel__footer-path"
+                                    v-html="highlightMatch(selectedInfo.label)"
+                                ></span>
+                            </div>
+                            <div v-if="selectedInfo.description" class="flyql-panel__footer-desc">
+                                {{ selectedInfo.description }}
+                            </div>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -208,7 +230,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { EditorEngine } from './engine.js'
-import { insertAtSelection, truncateLabel, labelWasTruncated } from './editor-helpers.js'
+import { insertAtSelection, truncateLabel, labelWasTruncated, signatureArgs } from './editor-helpers.js'
 import './flyql.css'
 
 // ── Props & Emits ──
@@ -299,6 +321,7 @@ const selectedInfo = ref(null)
 const shouldShowInfo = computed(() => {
     const info = selectedInfo.value
     if (!info) return false
+    if (info.infoKind === 'transformer' || info.infoKind === 'renderer') return true
     const item = suggestions.value[selectedIndex.value]
     const shortened = item && item.displayLabel && item.displayLabel !== item.label
     return shortened || labelWasTruncated(info.label) || !!info.description

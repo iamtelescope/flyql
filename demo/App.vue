@@ -94,7 +94,7 @@
                                 @click="query = otelLogs.defaults.query"
                             >Reset to default</button>
                             <button v-for="(ex, i) in examples" :key="i"
-                                class="px-3 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-full hover:border-gray-400 dark:hover:border-gray-400 transition-colors flyql-highlight"
+                                class="px-3 py-1 text-xs font-mono border border-gray-300 dark:border-gray-600 rounded-full hover:border-gray-400 dark:hover:border-gray-400 transition-colors cursor-pointer flyql-highlight"
                                 @click="query = ex"
                                 v-html="exampleHighlights[i]"
                             />

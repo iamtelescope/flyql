@@ -72,3 +72,9 @@ func TestRendererRegistrySetDiagnose(t *testing.T) {
 		t.Error("expected diagnose hook to be set")
 	}
 }
+
+func TestBaseRendererDescriptionDefault(t *testing.T) {
+	if got := (BaseRenderer{}).Description(); got != "" {
+		t.Errorf("Description() = %q, want empty", got)
+	}
+}

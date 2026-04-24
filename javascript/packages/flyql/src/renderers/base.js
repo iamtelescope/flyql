@@ -9,6 +9,10 @@ export class Renderer {
         return []
     }
 
+    get description() {
+        return ''
+    }
+
     get metadata() {
         return {}
     }

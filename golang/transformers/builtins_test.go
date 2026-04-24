@@ -19,6 +19,9 @@ func TestUpperTransformer(t *testing.T) {
 	if u.OutputType() != flyqltype.String {
 		t.Errorf("OutputType() = %q, want %q", u.OutputType(), flyqltype.String)
 	}
+	if got := u.Description(); got != "Convert the string to uppercase." {
+		t.Errorf("Description() = %q, want %q", got, "Convert the string to uppercase.")
+	}
 
 	// SQL per dialect
 	dialects := []struct {
@@ -55,6 +58,9 @@ func TestLowerTransformer(t *testing.T) {
 	if l.OutputType() != flyqltype.String {
 		t.Errorf("OutputType() = %q, want %q", l.OutputType(), flyqltype.String)
 	}
+	if got := l.Description(); got != "Convert the string to lowercase." {
+		t.Errorf("Description() = %q, want %q", got, "Convert the string to lowercase.")
+	}
 
 	dialects := []struct {
 		dialect string
@@ -89,6 +95,9 @@ func TestLenTransformer(t *testing.T) {
 	if l.OutputType() != flyqltype.Int {
 		t.Errorf("OutputType() = %q, want %q", l.OutputType(), flyqltype.Int)
 	}
+	if got := l.Description(); got != "Return the length of the string." {
+		t.Errorf("Description() = %q, want %q", got, "Return the length of the string.")
+	}
 
 	dialects := []struct {
 		dialect string
@@ -108,6 +117,13 @@ func TestLenTransformer(t *testing.T) {
 
 	if got := l.Apply("hello", nil); got != 5 {
 		t.Errorf("Apply(%q) = %v, want %d", "hello", got, 5)
+	}
+}
+
+func TestSplitTransformerDescription(t *testing.T) {
+	s := Split{}
+	if got := s.Description(); got != "Split the string into an array by a delimiter." {
+		t.Errorf("Description() = %q, want %q", got, "Split the string into an array by a delimiter.")
 	}
 }
 

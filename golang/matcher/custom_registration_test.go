@@ -13,7 +13,8 @@ import (
 
 type firstOctet struct{}
 
-func (f firstOctet) Name() string { return "firstoctet" }
+func (f firstOctet) Name() string        { return "firstoctet" }
+func (f firstOctet) Description() string { return "" }
 func (f firstOctet) InputType() flyqltype.Type {
 	return flyqltype.String
 }

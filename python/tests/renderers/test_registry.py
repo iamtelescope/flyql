@@ -61,3 +61,15 @@ def test_renderer_default_metadata_and_diagnose():
     r = _Plain()
     assert r.metadata == {}
     assert r.diagnose([], object()) == []
+
+
+def test_renderer_base_defaults_description_empty():
+    # Dedicated minimal subclass — does not share state with _Plain, so a
+    # future edit that adds a `description` attribute on _Plain cannot
+    # silently mask this test.
+    class _DescStub(Renderer):
+        @property
+        def name(self) -> str:
+            return "desc_stub"
+
+    assert _DescStub().description == ""

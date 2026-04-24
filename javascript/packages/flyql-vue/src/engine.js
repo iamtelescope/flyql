@@ -984,16 +984,33 @@ export class EditorEngine {
     }
 
     /**
-     * Info-box data for the current selection.
-     * Returns {label, type, description, hasChildren} for whichever column the
-     * user is "on" right now — either the selected column suggestion, or the
-     * filter column inferred from parser context when no column is selected
-     * (e.g., value/operator/boolOp phases). Returns null if there's nothing
-     * useful to display.
+     * Info-box data for the current selection. Branches on the active
+     * suggestion's `type` and returns one of three kind-specific shapes,
+     * all tagged with an `infoKind` discriminator:
+     *   - `{ infoKind: 'column', label, type, description, hasChildren }`
+     *   - `{ infoKind: 'transformer', label, inputType, outputType, args,
+     *         description }` — `args` derived from the transformer's
+     *     `argSchema`.
+     * Returns `null` when there is no context, no target key can be resolved,
+     * or the selected transformer's name is missing from the registry.
+     *
+     * Mirror in columns-engine.js — keep column/transformer branches in sync.
      */
     getSelectedInfo() {
         if (!this.context) return null
         const selected = this.suggestions[this.state.selectedIndex]
+        if (selected && selected.type === 'transformer') {
+            const t = this.registry ? this.registry.get(selected.label) : null
+            if (!t) return null
+            return {
+                infoKind: 'transformer',
+                label: t.name,
+                inputType: t.inputType,
+                outputType: t.outputType,
+                args: (t.argSchema || []).map((a) => ({ type: a.type, required: a.required !== false })),
+                description: t.description || '',
+            }
+        }
         let targetKey = null
         if (selected && selected.type === 'column') {
             targetKey = selected.label
@@ -1004,6 +1021,7 @@ export class EditorEngine {
         const def = resolveColumnDef(this.columns, targetKey)
         const type = def ? def.rawType || def.type || '' : (selected && selected.detail) || ''
         return {
+            infoKind: 'column',
             label: targetKey,
             type,
             description: def && def.description ? def.description : '',

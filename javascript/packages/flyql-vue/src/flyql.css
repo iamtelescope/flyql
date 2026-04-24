@@ -353,6 +353,19 @@
     user-select: text;
 }
 
+.flyql-panel__footer-signature {
+    font-family: var(--flyql-code-font-family);
+    font-weight: 600;
+    color: var(--flyql-text);
+    user-select: text;
+}
+
+.flyql-panel__footer-types {
+    font-family: var(--flyql-code-font-family);
+    color: var(--flyql-placeholder-color);
+    user-select: text;
+}
+
 /* ── Loader bar ── */
 .flyql-panel__loader {
     height: 2px;

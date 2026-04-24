@@ -12,6 +12,7 @@ import (
 type FirstOctet struct{}
 
 func (f FirstOctet) Name() string               { return "firstoctet" }
+func (f FirstOctet) Description() string        { return "" }
 func (f FirstOctet) InputType() flyqltype.Type  { return flyqltype.String }
 func (f FirstOctet) OutputType() flyqltype.Type { return flyqltype.Int }
 func (f FirstOctet) ArgSchema() []ArgSpec       { return []ArgSpec{} }

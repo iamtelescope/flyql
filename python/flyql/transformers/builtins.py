@@ -6,6 +6,8 @@ from .base import ArgSpec, Transformer
 
 
 class UpperTransformer(Transformer):
+    description: ClassVar[str] = "Convert the string to uppercase."
+
     @property
     def name(self) -> str:
         return "upper"
@@ -30,6 +32,8 @@ class UpperTransformer(Transformer):
 
 
 class LowerTransformer(Transformer):
+    description: ClassVar[str] = "Convert the string to lowercase."
+
     @property
     def name(self) -> str:
         return "lower"
@@ -54,6 +58,8 @@ class LowerTransformer(Transformer):
 
 
 class LenTransformer(Transformer):
+    description: ClassVar[str] = "Return the length of the string."
+
     @property
     def name(self) -> str:
         return "len"
@@ -81,6 +87,7 @@ class SplitTransformer(Transformer):
     arg_schema: ClassVar[Tuple[ArgSpec, ...]] = (
         ArgSpec(type=Type.String, required=False),
     )
+    description: ClassVar[str] = "Split the string into an array by a delimiter."
 
     @property
     def name(self) -> str:

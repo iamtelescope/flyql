@@ -932,4 +932,102 @@ describe('ColumnsEngine', () => {
             expect(diags.filter((d) => d.code === 'unknown_renderer')).toEqual([])
         })
     })
+
+    describe('getSelectedInfo', () => {
+        class LinkRenderer extends Renderer {
+            get name() {
+                return 'link'
+            }
+            get argSchema() {
+                return [new ArgSpec(Type.String, true)]
+            }
+            get description() {
+                return 'Render as a link.'
+            }
+        }
+
+        function makeRendererRegistry() {
+            const reg = new RendererRegistry()
+            reg.register(new LinkRenderer())
+            return reg
+        }
+
+        it('returns column info for column suggestion', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('ser')
+            engine.setCursorPosition(3)
+            await engine.updateSuggestions()
+            const info = engine.getSelectedInfo()
+            expect(info).not.toBeNull()
+            expect(info.infoKind).toBe('column')
+            expect(info.label).toBe('service')
+            expect(info.type).toBe('string')
+            expect(info.hasChildren).toBe(false)
+        })
+
+        it('returns transformer info for upper transformer pick', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('message|upp')
+            engine.setCursorPosition(11)
+            await engine.updateSuggestions()
+            const info = engine.getSelectedInfo()
+            expect(info).toEqual({
+                infoKind: 'transformer',
+                label: 'upper',
+                inputType: 'string',
+                outputType: 'string',
+                args: [],
+                description: 'Convert the string to uppercase.',
+            })
+        })
+
+        it('returns renderer info for renderer pick', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: makeRendererRegistry() })
+            engine.setQuery('message as msg|l')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            const info = engine.getSelectedInfo()
+            expect(info).toEqual({
+                infoKind: 'renderer',
+                label: 'link',
+                args: [{ type: 'string', required: true }],
+                description: 'Render as a link.',
+            })
+        })
+
+        it('returns null when there is no context', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+
+        it('returns null when selected transformer is missing from registry', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, TRANSFORMERS_OPTS)
+            engine.setQuery('message|upp')
+            engine.setCursorPosition(11)
+            await engine.updateSuggestions()
+            engine.suggestions = [{ type: 'transformer', label: 'nonexistent', insertText: 'nonexistent', detail: '' }]
+            engine.state.selectedIndex = 0
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+
+        it('returns null when selected renderer is missing from registry', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: makeRendererRegistry() })
+            engine.setQuery('message as msg|l')
+            engine.setCursorPosition(16)
+            await engine.updateSuggestions()
+            engine.suggestions = [{ type: 'renderer', label: 'nonexistent', insertText: 'nonexistent', detail: '' }]
+            engine.state.selectedIndex = 0
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+
+        it('returns null for renderer suggestion when rendererRegistry is null', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.setQuery('message')
+            engine.setCursorPosition(7)
+            await engine.updateSuggestions()
+            engine.suggestions = [{ type: 'renderer', label: 'link', insertText: 'link', detail: '' }]
+            engine.state.selectedIndex = 0
+            expect(engine.getSelectedInfo()).toBeNull()
+        })
+    })
 })

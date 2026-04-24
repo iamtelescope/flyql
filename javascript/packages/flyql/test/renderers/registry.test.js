@@ -56,4 +56,16 @@ describe('RendererRegistry', () => {
         expect(r.metadata).toEqual({})
         expect(r.diagnose([], {})).toEqual([])
     })
+
+    it('base renderer defaults description to empty string', () => {
+        // Dedicated minimal subclass — does not share state with PlainRenderer,
+        // so a future edit that adds a `description` getter on PlainRenderer
+        // cannot silently mask this test.
+        class _DescStub extends Renderer {
+            get name() {
+                return 'desc_stub'
+            }
+        }
+        expect(new _DescStub().description).toBe('')
+    })
 })

@@ -16,6 +16,9 @@ class TestUpperTransformer:
     def test_name(self) -> None:
         assert self.t.name == "upper"
 
+    def test_description(self) -> None:
+        assert self.t.description == "Convert the string to uppercase."
+
     def test_input_type(self) -> None:
         assert self.t.input_type == Type.String
 
@@ -47,6 +50,9 @@ class TestLowerTransformer:
     def test_name(self) -> None:
         assert self.t.name == "lower"
 
+    def test_description(self) -> None:
+        assert self.t.description == "Convert the string to lowercase."
+
     def test_input_type(self) -> None:
         assert self.t.input_type == Type.String
 
@@ -74,6 +80,9 @@ class TestLenTransformer:
 
     def test_name(self) -> None:
         assert self.t.name == "len"
+
+    def test_description(self) -> None:
+        assert self.t.description == "Return the length of the string."
 
     def test_input_type(self) -> None:
         assert self.t.input_type == Type.String
@@ -120,6 +129,9 @@ class TestSqlNesting:
 class TestSplitTransformerSQLEscaping:
     def setup_method(self) -> None:
         self.t = SplitTransformer()
+
+    def test_description(self) -> None:
+        assert self.t.description == "Split the string into an array by a delimiter."
 
     def test_escapes_single_quotes(self) -> None:
         sql = self.t.sql("clickhouse", "col", ["'"])

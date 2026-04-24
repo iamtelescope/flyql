@@ -234,7 +234,7 @@
         "Body ilike \"%timeout%\"",
         "not SeverityText = \"INFO\"",
         "LogAttributes.db",
-        "ResourceAttributes.service.name = @ServiceName",
+        "ServiceName in [\"order-service\", \"payment-service\"]",
         "Metadata.enterprise.observability.telemetry.emission.sampler.rate >= 0.5"
     ],
     "defaults": {

@@ -14,6 +14,10 @@ export class UpperTransformer extends Transformer {
         return Type.String
     }
 
+    get description() {
+        return 'Convert the string to uppercase.'
+    }
+
     sql(dialect, columnRef) {
         if (dialect === 'clickhouse') {
             return `upper(${columnRef})`
@@ -37,6 +41,10 @@ export class LowerTransformer extends Transformer {
 
     get outputType() {
         return Type.String
+    }
+
+    get description() {
+        return 'Convert the string to lowercase.'
     }
 
     sql(dialect, columnRef) {
@@ -66,6 +74,10 @@ export class SplitTransformer extends Transformer {
 
     get argSchema() {
         return [new ArgSpec(Type.String, false)]
+    }
+
+    get description() {
+        return 'Split the string into an array by a delimiter.'
     }
 
     sql(dialect, columnRef, args = []) {
@@ -100,6 +112,10 @@ export class LenTransformer extends Transformer {
 
     get outputType() {
         return Type.Int
+    }
+
+    get description() {
+        return 'Return the length of the string.'
     }
 
     sql(dialect, columnRef) {

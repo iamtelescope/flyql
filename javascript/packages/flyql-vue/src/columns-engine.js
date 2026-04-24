@@ -774,7 +774,15 @@ export class ColumnsEngine {
         return this.columns
     }
 
-    getDiagnostics() {
+    /**
+     * @param {object} [opts]
+     * @param {boolean} [opts.includeEof=false] When true, do NOT suppress
+     *   parse errors that land at end-of-input. Wired to a ~2s idle timer
+     *   in the editor SFC so unclosed brackets/parens/quotes eventually
+     *   surface once the user stops typing.
+     */
+    getDiagnostics(opts = {}) {
+        const includeEof = opts.includeEof === true
         const value = this.state.query
         if (!value) {
             this.diagnostics = []
@@ -791,7 +799,7 @@ export class ColumnsEngine {
             const lastPos = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos : 0
             const atEof = (typedChars ? typedChars.length : 0) >= value.length - 1
             const alwaysReport = ALWAYS_REPORT_ERRNOS.has(parser.errno)
-            if (atEof && !alwaysReport) {
+            if (atEof && !alwaysReport && !includeEof) {
                 this.diagnostics = []
                 return this.diagnostics
             }
@@ -805,7 +813,7 @@ export class ColumnsEngine {
             const lastPos = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos : 0
             const atEof = (typedChars ? typedChars.length : 0) >= value.length - 1
             const alwaysReport = ALWAYS_REPORT_ERRNOS.has(parser.errno)
-            if (atEof && !alwaysReport) {
+            if (atEof && !alwaysReport && !includeEof) {
                 this.diagnostics = []
                 return this.diagnostics
             }

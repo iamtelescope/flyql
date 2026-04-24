@@ -330,11 +330,17 @@ const shouldShowInfo = computed(() => {
 // Diagnostics are debounced on the typing path so squiggles/panels don't
 // flash the moment a keystroke is incomplete. Decisive actions (suggestion
 // accept, Tab cycle, prop change, external flush) bypass the delay.
+//
+// A second longer timer (IDLE) re-runs diagnostics with includeEof=true,
+// so EOF-suppressed errors (unclosed `[`, `(`, `"` …) eventually surface
+// once the user truly pauses. Both timers reset on every keystroke.
 const DIAG_DEBOUNCE_MS = 400
+const DIAG_IDLE_MS = 2000
 let diagTimer = null
+let diagIdleTimer = null
 
-function _publishDiagnostics() {
-    engine.getDiagnostics()
+function _publishDiagnostics(opts = {}) {
+    engine.getDiagnostics(opts)
     filterColumnValueDiagnostics()
     diagnostics.value = engine.diagnostics
     emit('diagnostics', diagnostics.value)
@@ -342,16 +348,25 @@ function _publishDiagnostics() {
 
 function scheduleDiagnostics() {
     if (diagTimer) clearTimeout(diagTimer)
+    if (diagIdleTimer) clearTimeout(diagIdleTimer)
     diagTimer = setTimeout(() => {
         diagTimer = null
         _publishDiagnostics()
     }, DIAG_DEBOUNCE_MS)
+    diagIdleTimer = setTimeout(() => {
+        diagIdleTimer = null
+        _publishDiagnostics({ includeEof: true })
+    }, DIAG_IDLE_MS)
 }
 
 function flushDiagnostics() {
     if (diagTimer) {
         clearTimeout(diagTimer)
         diagTimer = null
+    }
+    if (diagIdleTimer) {
+        clearTimeout(diagIdleTimer)
+        diagIdleTimer = null
     }
     _publishDiagnostics()
 }
@@ -688,6 +703,16 @@ function acceptSuggestion(index) {
     if (suggestion.type === 'transformer' && suggestion.label === '|') {
         while (range.start > 0 && currentValue[range.start - 1] === ' ') {
             range.start--
+        }
+    }
+
+    // Bool ops (and/or/not) require whitespace separation from a preceding
+    // token. When accepting right after `]`, `)`, `"`, etc. (no trailing
+    // space yet), prepend one so we get `…] and ` not `…]and `.
+    if (suggestion.type === 'boolOp') {
+        const charBefore = range.start > 0 ? currentValue[range.start - 1] : ''
+        if (charBefore && charBefore !== ' ' && charBefore !== '\t' && charBefore !== '\n') {
+            insertText = ' ' + insertText
         }
     }
 

@@ -249,6 +249,32 @@ describe('suggestions', () => {
             expect(range.start).toBe(text.length - 4)
         })
 
+        it('boolOp accept after closing bracket does not eat prior token', () => {
+            const text = 'ServiceName in ["a", "b"]'
+            const ctx = { expecting: 'boolOp', textBeforeCursor: text }
+            const range = getInsertRange(ctx, text, 'boolOp')
+            // Cursor sits right after `]`. The walk-back must stop at `]`,
+            // not consume `"b"]` as a "word".
+            expect(range.start).toBe(text.length)
+            expect(range.end).toBe(text.length)
+        })
+
+        it('boolOp accept after closing quote does not eat prior token', () => {
+            const text = 'host="api"'
+            const ctx = { expecting: 'boolOp', textBeforeCursor: text }
+            const range = getInsertRange(ctx, text, 'boolOp')
+            expect(range.start).toBe(text.length)
+            expect(range.end).toBe(text.length)
+        })
+
+        it('boolOp accept after closing paren does not eat prior token', () => {
+            const text = '(a=1 or b=2)'
+            const ctx = { expecting: 'boolOp', textBeforeCursor: text }
+            const range = getInsertRange(ctx, text, 'boolOp')
+            expect(range.start).toBe(text.length)
+            expect(range.end).toBe(text.length)
+        })
+
         it('returns transformer range covering only prefix after pipe', () => {
             const ctx = { expecting: 'transformer', transformerPrefix: 'up', textBeforeCursor: 'host|up' }
             const range = getInsertRange(ctx, 'host|up', 'transformer')

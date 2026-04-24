@@ -290,27 +290,42 @@ const shouldShowInfo = computed(() => {
 // Diagnostics are debounced on the typing path so squiggles/panels don't
 // flash the moment a keystroke is incomplete. Decisive actions (suggestion
 // accept, prop change, blur, external flush) bypass the delay.
+//
+// A second longer timer (IDLE) re-runs diagnostics with includeEof=true,
+// so EOF-suppressed errors (unclosed `(`, `"` …) eventually surface once
+// the user truly pauses. Both timers reset on every keystroke.
 const DIAG_DEBOUNCE_MS = 400
+const DIAG_IDLE_MS = 2000
 let diagTimer = null
+let diagIdleTimer = null
 
-function _publishDiagnostics() {
-    engine.getDiagnostics()
+function _publishDiagnostics(opts = {}) {
+    engine.getDiagnostics(opts)
     diagnostics.value = engine.diagnostics
     emit('diagnostics', engine.diagnostics)
 }
 
 function scheduleDiagnostics() {
     if (diagTimer) clearTimeout(diagTimer)
+    if (diagIdleTimer) clearTimeout(diagIdleTimer)
     diagTimer = setTimeout(() => {
         diagTimer = null
         _publishDiagnostics()
     }, DIAG_DEBOUNCE_MS)
+    diagIdleTimer = setTimeout(() => {
+        diagIdleTimer = null
+        _publishDiagnostics({ includeEof: true })
+    }, DIAG_IDLE_MS)
 }
 
 function flushDiagnostics() {
     if (diagTimer) {
         clearTimeout(diagTimer)
         diagTimer = null
+    }
+    if (diagIdleTimer) {
+        clearTimeout(diagIdleTimer)
+        diagIdleTimer = null
     }
     _publishDiagnostics()
 }

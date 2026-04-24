@@ -234,8 +234,15 @@ export class EditorEngine {
     /**
      * Run the validator on the current query and return diagnostics.
      * Includes parser syntax errors and semantic validation errors.
+     *
+     * @param {object} [opts]
+     * @param {boolean} [opts.includeEof=false] When true, do NOT suppress
+     *   parse errors that land at end-of-input. The editor wires this to a
+     *   ~2s idle timer so a query like `status in [1, 2` eventually surfaces
+     *   "unexpected EOF" once the user stops typing.
      */
-    getDiagnostics() {
+    getDiagnostics(opts = {}) {
+        const includeEof = opts.includeEof === true
         const value = this.state.query
         if (!value) {
             this.diagnostics = []
@@ -247,8 +254,9 @@ export class EditorEngine {
             parser.parse(normalized, false, false)
         } catch (e) {
             const range = e.range || new Range(parser.typedChars ? parser.typedChars.length : 0, normalized.length)
-            // Suppress syntax errors at the end of query — user is still typing
-            if (range.end >= normalized.length) {
+            // Suppress syntax errors at the end of query — user is still typing.
+            // The idle-timer path passes includeEof=true to override.
+            if (range.end >= normalized.length && !includeEof) {
                 this.diagnostics = []
                 return this.diagnostics
             }
@@ -264,7 +272,7 @@ export class EditorEngine {
             // at core/parser.js:1742), so they can never be a prefix of a
             // valid in-progress `and`/`or`. Always report.
             const alwaysReport = parser.errno === ERR_INVALID_CHAR_IN_EXPECT_BOOL
-            if (atEof && !alwaysReport) {
+            if (atEof && !alwaysReport && !includeEof) {
                 this.diagnostics = []
                 return this.diagnostics
             }

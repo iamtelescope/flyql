@@ -570,10 +570,15 @@ export function getInsertRange(ctx, fullText, suggestionType) {
         }
         return { start: cursorPos - valLen, end: valueEnd }
     } else if (ctx.expecting === 'boolOp') {
+        // Walk back only through letters — bool ops (and/or/not) are alphabetic.
+        // Stopping on any non-letter (whitespace, ], ), ", punctuation) prevents
+        // an accept-after-`]` from eating the prior value token.
         const text = ctx.textBeforeCursor
         let wordLen = 0
         for (let i = text.length - 1; i >= 0; i--) {
-            if (text[i] === ' ' || text[i] === '\t' || text[i] === '\n' || text[i] === '\r') break
+            const c = text.charCodeAt(i)
+            const isLetter = (c >= 65 && c <= 90) || (c >= 97 && c <= 122)
+            if (!isLetter) break
             wordLen++
         }
         return { start: cursorPos - wordLen, end: endPos }

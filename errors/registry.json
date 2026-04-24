@@ -300,12 +300,18 @@
         "unknown_column": {
           "name": "CODE_UNKNOWN_COLUMN",
           "message": "unknown column",
-          "description": ""
+          "description": "The referenced column does not exist in the supplied schema. Check for typos or use a column registered on the schema."
         },
         "unknown_transformer": {
           "name": "CODE_UNKNOWN_TRANSFORMER",
           "message": "unknown transformer",
           "description": ""
+        },
+        "unknown_transformer_arg_column": {
+          "name": "CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN",
+          "message": "unknown column in transformer argument",
+          "description": "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.",
+          "dynamic_message": true
         },
         "arg_count": {
           "name": "CODE_ARG_COUNT",

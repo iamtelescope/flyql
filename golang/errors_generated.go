@@ -143,41 +143,44 @@ var coreParserRegistry = map[int]ErrorEntry{
 
 // Validator diagnostic codes (excluding renderer codes which live in package columns).
 const (
-	CodeArgCount               = "arg_count"
-	CodeArgType                = "arg_type"
-	CodeChainType              = "chain_type"
-	CodeInvalidAST             = "invalid_ast"
-	CodeInvalidColumnValue     = "invalid_column_value"
-	CodeInvalidDatetimeLiteral = "invalid_datetime_literal"
-	CodeUnknownColumn          = "unknown_column"
-	CodeUnknownColumnValue     = "unknown_column_value"
-	CodeUnknownTransformer     = "unknown_transformer"
+	CodeArgCount                    = "arg_count"
+	CodeArgType                     = "arg_type"
+	CodeChainType                   = "chain_type"
+	CodeInvalidAST                  = "invalid_ast"
+	CodeInvalidColumnValue          = "invalid_column_value"
+	CodeInvalidDatetimeLiteral      = "invalid_datetime_literal"
+	CodeUnknownColumn               = "unknown_column"
+	CodeUnknownColumnValue          = "unknown_column_value"
+	CodeUnknownTransformer          = "unknown_transformer"
+	CodeUnknownTransformerArgColumn = "unknown_transformer_arg_column"
 )
 
 // validatorMessages maps non-renderer validator codes to canonical messages.
 var validatorMessages = map[string]string{
-	CodeArgCount:               "transformer argument count mismatch",
-	CodeArgType:                "transformer argument type mismatch",
-	CodeChainType:              "transformer chain type mismatch",
-	CodeInvalidAST:             "invalid AST",
-	CodeInvalidColumnValue:     "invalid column value",
-	CodeInvalidDatetimeLiteral: "invalid datetime literal",
-	CodeUnknownColumn:          "unknown column",
-	CodeUnknownColumnValue:     "unknown column value",
-	CodeUnknownTransformer:     "unknown transformer",
+	CodeArgCount:                    "transformer argument count mismatch",
+	CodeArgType:                     "transformer argument type mismatch",
+	CodeChainType:                   "transformer chain type mismatch",
+	CodeInvalidAST:                  "invalid AST",
+	CodeInvalidColumnValue:          "invalid column value",
+	CodeInvalidDatetimeLiteral:      "invalid datetime literal",
+	CodeUnknownColumn:               "unknown column",
+	CodeUnknownColumnValue:          "unknown column value",
+	CodeUnknownTransformer:          "unknown transformer",
+	CodeUnknownTransformerArgColumn: "unknown column in transformer argument",
 }
 
 // validatorRegistry maps non-renderer validator codes to ErrorEntry records.
 var validatorRegistry = map[string]ErrorEntry{
-	CodeArgCount:               {Code: CodeArgCount, Name: "CODE_ARG_COUNT", Message: "transformer argument count mismatch", Description: "", DynamicMessage: false},
-	CodeArgType:                {Code: CodeArgType, Name: "CODE_ARG_TYPE", Message: "transformer argument type mismatch", Description: "", DynamicMessage: false},
-	CodeChainType:              {Code: CodeChainType, Name: "CODE_CHAIN_TYPE", Message: "transformer chain type mismatch", Description: "", DynamicMessage: false},
-	CodeInvalidAST:             {Code: CodeInvalidAST, Name: "CODE_INVALID_AST", Message: "invalid AST", Description: "", DynamicMessage: false},
-	CodeInvalidColumnValue:     {Code: CodeInvalidColumnValue, Name: "CODE_INVALID_COLUMN_VALUE", Message: "invalid column value", Description: "", DynamicMessage: false},
-	CodeInvalidDatetimeLiteral: {Code: CodeInvalidDatetimeLiteral, Name: "CODE_INVALID_DATETIME_LITERAL", Message: "invalid datetime literal", Description: "Emitted when a string literal compared against a Date or DateTime column cannot be parsed as iso8601. Severity (warning) is decided at the validator emission site (see Decision 8); not a registry field.", DynamicMessage: false},
-	CodeUnknownColumn:          {Code: CodeUnknownColumn, Name: "CODE_UNKNOWN_COLUMN", Message: "unknown column", Description: "", DynamicMessage: false},
-	CodeUnknownColumnValue:     {Code: CodeUnknownColumnValue, Name: "CODE_UNKNOWN_COLUMN_VALUE", Message: "unknown column value", Description: "", DynamicMessage: false},
-	CodeUnknownTransformer:     {Code: CodeUnknownTransformer, Name: "CODE_UNKNOWN_TRANSFORMER", Message: "unknown transformer", Description: "", DynamicMessage: false},
+	CodeArgCount:                    {Code: CodeArgCount, Name: "CODE_ARG_COUNT", Message: "transformer argument count mismatch", Description: "", DynamicMessage: false},
+	CodeArgType:                     {Code: CodeArgType, Name: "CODE_ARG_TYPE", Message: "transformer argument type mismatch", Description: "", DynamicMessage: false},
+	CodeChainType:                   {Code: CodeChainType, Name: "CODE_CHAIN_TYPE", Message: "transformer chain type mismatch", Description: "", DynamicMessage: false},
+	CodeInvalidAST:                  {Code: CodeInvalidAST, Name: "CODE_INVALID_AST", Message: "invalid AST", Description: "", DynamicMessage: false},
+	CodeInvalidColumnValue:          {Code: CodeInvalidColumnValue, Name: "CODE_INVALID_COLUMN_VALUE", Message: "invalid column value", Description: "", DynamicMessage: false},
+	CodeInvalidDatetimeLiteral:      {Code: CodeInvalidDatetimeLiteral, Name: "CODE_INVALID_DATETIME_LITERAL", Message: "invalid datetime literal", Description: "Emitted when a string literal compared against a Date or DateTime column cannot be parsed as iso8601. Severity (warning) is decided at the validator emission site (see Decision 8); not a registry field.", DynamicMessage: false},
+	CodeUnknownColumn:               {Code: CodeUnknownColumn, Name: "CODE_UNKNOWN_COLUMN", Message: "unknown column", Description: "The referenced column does not exist in the supplied schema. Check for typos or use a column registered on the schema.", DynamicMessage: false},
+	CodeUnknownColumnValue:          {Code: CodeUnknownColumnValue, Name: "CODE_UNKNOWN_COLUMN_VALUE", Message: "unknown column value", Description: "", DynamicMessage: false},
+	CodeUnknownTransformer:          {Code: CodeUnknownTransformer, Name: "CODE_UNKNOWN_TRANSFORMER", Message: "unknown transformer", Description: "", DynamicMessage: false},
+	CodeUnknownTransformerArgColumn: {Code: CodeUnknownTransformerArgColumn, Name: "CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN", Message: "unknown column in transformer argument", Description: "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.", DynamicMessage: true},
 }
 
 // matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.

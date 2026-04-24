@@ -43,12 +43,14 @@
                             </div>
                             <div class="p-2">
                                 <FlyqlColumns
+                                    ref="columnsRef"
                                     v-model="selectExpr"
                                     :columns="editorColumns"
                                     :renderer-registry="_rendererRegistry"
                                     :dark="isDark"
                                     :placeholder="otelLogs.defaults.columnsPlaceholder"
                                     @update:parsed="onColumnsParsed"
+                                    @diagnostics="onColumnsDiagnostics"
                                 />
                             </div>
                         </div>
@@ -80,11 +82,10 @@
                                     :dark="isDark"
                                     :placeholder="otelLogs.defaults.queryPlaceholder"
                                     @submit="runQuery"
-                                    @parse-error="onParseError"
+                                    @diagnostics="onQueryDiagnostics"
                                 />
                             </div>
                         </div>
-                        <div v-if="parseError" class="mt-2 text-sm text-red-500 font-mono">{{ parseError }}</div>
 
                         <!-- Examples -->
                         <div class="mt-3 ml-2 flex flex-wrap gap-2">
@@ -103,8 +104,6 @@
                         <div class="mt-6 ml-2">
                             <button
                                 class="inline-flex items-center gap-2 px-4 py-1.5 text-sm bg-green-600 hover:bg-green-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white rounded-md font-medium transition-colors cursor-pointer active:scale-95"
-                                :class="{ 'opacity-40 !cursor-not-allowed': !canRun }"
-                                :disabled="!canRun"
                                 @click="runQuery"
                             >
                                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -112,8 +111,32 @@
                             </button>
                         </div>
 
-                        <!-- Output tabs -->
+                        <!-- Output area -->
                         <div class="mt-4">
+                            <!-- Run-time diagnostic block: replaces tabs when the last Run hit errors -->
+                            <div
+                                v-if="runDiagnostics.length > 0"
+                                class="rounded-lg border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4"
+                            >
+                                <div class="text-xs font-medium text-red-700 dark:text-red-300 mb-3 flex items-center gap-2">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                    Cannot run — {{ runDiagnostics.length }} error{{ runDiagnostics.length === 1 ? '' : 's' }} in query or columns
+                                </div>
+                                <ul class="space-y-2">
+                                    <li v-for="(diag, i) in runDiagnostics" :key="i" class="text-xs">
+                                        <div class="font-mono text-red-800 dark:text-red-200">{{ diag.message }}</div>
+                                        <div
+                                            v-if="diag.error && diag.error.description"
+                                            class="mt-1 text-red-600 dark:text-red-300 opacity-80 font-sans"
+                                        >{{ diag.error.description }}</div>
+                                    </li>
+                                </ul>
+                            </div>
+                            <template v-else>
                             <div class="flex gap-1 mb-3">
                                 <button
                                     class="px-4 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 cursor-pointer"
@@ -185,8 +208,8 @@
                                                     :class="typeof getRowValue(row, ci) === 'string' && getRowValue(row, ci)?.startsWith('{') ? 'text-gray-500 dark:text-gray-400 text-[11px] whitespace-nowrap' : 'whitespace-nowrap'"
                                                 >
                                                     <span
-                                                        v-if="getTagClasses(ci)"
-                                                        :class="getTagClasses(ci)"
+                                                        v-if="getTagClasses(row, ci)"
+                                                        :class="getTagClasses(row, ci)"
                                                     >{{ getRowValue(row, ci) }}</span>
                                                     <template v-else>{{ getRowValue(row, ci) }}</template>
                                                 </td>
@@ -195,6 +218,7 @@
                                     </table>
                                 </div>
                             </div>
+                            </template>
                         </div>
                     </div>
 
@@ -336,20 +360,21 @@ const query = ref(otelLogs.defaults.query)
 const selectExpr = ref(otelLogs.defaults.selectExpr)
 const parsedColumnsCount = ref(5)
 
-const parsedColumns = ref([
+const DEFAULT_PARSED_COLUMNS = [
     { name: 'Timestamp', transformers: [] },
     { name: 'SeverityText', transformers: [{ name: 'lower', arguments: [] }], alias: 'Severity' },
     { name: 'ServiceName', transformers: [] },
     { name: 'Body', transformers: [] },
     { name: 'LogAttributes.http.status_code', transformers: [], alias: 'StatusCode' },
-])
-const snapshotColumns = ref([])
+]
+const parsedColumns = ref([...DEFAULT_PARSED_COLUMNS])
+// snapshotColumns is what the output tabs render. Only updated on Run — live
+// parsedColumns never feed into the table so a keystroke in the columns editor
+// does not reshape the filtered data preview.
+const snapshotColumns = ref([...DEFAULT_PARSED_COLUMNS])
 const displayColumns = computed(() => {
     if (snapshotColumns.value.length > 0) {
         return snapshotColumns.value.map((c) => c.alias || c.name)
-    }
-    if (parsedColumns.value.length > 0) {
-        return parsedColumns.value.map((c) => c.alias || c.name)
     }
     return schemaColumns.map((c) => c.name)
 })
@@ -385,7 +410,7 @@ function applyTransformers(value, transformers) {
 }
 
 function getRowValue(row, colIdx) {
-    let cols = snapshotColumns.value.length > 0 ? snapshotColumns.value : parsedColumns.value
+    const cols = snapshotColumns.value
     if (cols.length === 0) {
         const name = schemaColumns[colIdx]?.name || ''
         if (!name) return null
@@ -406,27 +431,47 @@ function getRowValue(row, colIdx) {
 // If the parsed column at `colIdx` has a `|tag` renderer, return the class list
 // to paint the value as a pill/badge. First arg (optional) is a color keyword:
 // 'red' | 'green' | 'blue' | 'yellow' | 'gray' (default: gray).
-function getTagClasses(colIdx) {
-    const cols = snapshotColumns.value.length > 0 ? snapshotColumns.value : parsedColumns.value
+const TAG_COLORS = new Set(['gray', 'red', 'green', 'blue', 'yellow'])
+
+function isEmptyCell(val) {
+    return val == null || val === '' || val === '-'
+}
+
+function getTagClasses(row, colIdx) {
+    const cols = snapshotColumns.value
     const col = cols[colIdx]
     if (!col || !col.renderers || col.renderers.length === 0) return null
     const tagRenderer = col.renderers.find((r) => r.name === 'tag')
     if (!tagRenderer) return null
-    const color = (tagRenderer.arguments && tagRenderer.arguments[0]) || 'gray'
+    if (isEmptyCell(getRowValue(row, colIdx))) return null
+    const raw = tagRenderer.arguments && tagRenderer.arguments[0]
+    const color = typeof raw === 'string' && TAG_COLORS.has(raw) ? raw : 'gray'
     return ['flyql-demo-tag', `flyql-demo-tag--${color}`]
 }
 
 
 const editorRef = ref(null)
-const parseError = ref(null)
+const columnsRef = ref(null)
 const outputTab = ref('sql')
 const dialectIdx = ref(0)
 const sqlResults = ref([])
 const hasRun = ref(false)
 const matchError = ref(null)
 const matchResults = ref(sampleRecords.map(() => null))
+// Live diagnostics — tracked while typing so they can be snapshotted at Run time.
+// Never surfaced at demo-level while typing; editors surface their own in-panel.
+const queryDiagnostics = ref([])
+const columnsDiagnostics = ref([])
+// Snapshot set at Run time. When non-empty, replaces the SQL/Filter output
+// area with a diagnostic block. Empties out on the next successful Run.
+const runDiagnostics = ref([])
 
-const canRun = computed(() => !parseError.value)
+function onQueryDiagnostics(diags) {
+    queryDiagnostics.value = diags || []
+}
+function onColumnsDiagnostics(diags) {
+    columnsDiagnostics.value = diags || []
+}
 const matchedCount = computed(() => matchResults.value.filter((m) => m === true).length)
 
 function dialectTypeFor(col) {
@@ -466,11 +511,26 @@ function toggleDark() {
     document.documentElement.classList.toggle('flyql-dark', isDark.value)
 }
 
-function onParseError(err) { parseError.value = err }
-
 function runQuery() {
-    if (!canRun.value) return
     hasRun.value = true
+    // Force editors to publish any pending (debounced) diagnostics BEFORE we
+    // read from the tracking refs — otherwise a fast Run right after typing
+    // would snapshot a stale diagnostic set.
+    editorRef.value?.flushDiagnostics?.()
+    columnsRef.value?.flushDiagnostics?.()
+    // Snapshot editor-reported diagnostics (both editors) at Run time. If any
+    // 'error' severity items are present, short-circuit output generation and
+    // render the diagnostic block in place of the SQL/Filter tabs.
+    const snapshot = [...queryDiagnostics.value, ...columnsDiagnostics.value].filter(
+        (d) => d.severity === 'error',
+    )
+    runDiagnostics.value = snapshot
+    if (snapshot.length > 0) {
+        sqlResults.value = []
+        matchResults.value = sampleRecords.map(() => null)
+        matchError.value = null
+        return
+    }
     snapshotColumns.value = [...parsedColumns.value]
 
     const hasQuery = query.value.trim().length > 0

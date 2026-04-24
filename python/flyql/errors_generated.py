@@ -533,6 +533,7 @@ CODE_UNKNOWN_COLUMN = "unknown_column"
 CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
 CODE_UNKNOWN_RENDERER = "unknown_renderer"
 CODE_UNKNOWN_TRANSFORMER = "unknown_transformer"
+CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN = "unknown_transformer_arg_column"
 
 VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_ARG_COUNT: "transformer argument count mismatch",
@@ -547,6 +548,7 @@ VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_UNKNOWN_COLUMN_VALUE: "unknown column value",
     CODE_UNKNOWN_RENDERER: "unknown renderer",
     CODE_UNKNOWN_TRANSFORMER: "unknown transformer",
+    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN: "unknown column in transformer argument",
 }
 
 VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {
@@ -610,7 +612,7 @@ VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {
         code=CODE_UNKNOWN_COLUMN,
         name="CODE_UNKNOWN_COLUMN",
         message="unknown column",
-        description="",
+        description="The referenced column does not exist in the supplied schema. Check for typos or use a column registered on the schema.",
         dynamic_message=False,
     ),
     CODE_UNKNOWN_COLUMN_VALUE: ErrorEntry(
@@ -633,6 +635,13 @@ VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {
         message="unknown transformer",
         description="",
         dynamic_message=False,
+    ),
+    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN: ErrorEntry(
+        code=CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+        name="CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN",
+        message="unknown column in transformer argument",
+        description="The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.",
+        dynamic_message=True,
     ),
 }
 

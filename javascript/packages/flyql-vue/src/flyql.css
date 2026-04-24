@@ -273,6 +273,18 @@
     user-select: text;
 }
 
+.flyql-panel__diagnostic-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.flyql-panel__diagnostic-desc {
+    font-size: 0.85em;
+    opacity: 0.75;
+    user-select: text;
+}
+
 .flyql-panel__footer {
     display: flex;
     flex-direction: column;
@@ -322,6 +334,7 @@
 .flyql-panel__footer-desc {
     color: color-mix(in srgb, var(--flyql-text) 75%, transparent);
     line-height: 1.35;
+    user-select: text;
 }
 
 .flyql-panel__footer-status {
@@ -337,6 +350,7 @@
     white-space: normal;
     word-break: break-all;
     line-height: 1.35;
+    user-select: text;
 }
 
 /* ── Loader bar ── */
@@ -576,6 +590,18 @@
 
 .flyql-argument-number {
     color: var(--flyql-number-color);
+}
+
+.flyql-col-argument-string {
+    color: var(--flyql-value-color);
+}
+
+.flyql-col-argument-number {
+    color: var(--flyql-number-color);
+}
+
+.flyql-col-argument-column {
+    color: var(--flyql-field-ref-color, var(--flyql-key-color));
 }
 
 .flyql-wildcard {

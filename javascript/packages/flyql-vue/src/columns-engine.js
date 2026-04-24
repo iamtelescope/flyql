@@ -13,12 +13,26 @@ import {
     State,
     TRANSFORMER_OPERATOR,
     COLUMNS_DELIMITER,
+    COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
 } from 'flyql/columns'
+
+// Errnos that should always surface as diagnostics even at EOF — the user
+// can't resolve them by continuing to type (an unclosed quote, for example,
+// stays broken until the closing quote is added).
+const ALWAYS_REPORT_ERRNOS = new Set([COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG])
 import { defaultRegistry } from 'flyql/transformers'
 import { defaultRegistry as defaultRendererRegistryFn } from 'flyql/renderers'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
-import { Column, ColumnSchema, Diagnostic, Range, CODE_UNKNOWN_COLUMN, CODE_UNKNOWN_TRANSFORMER } from 'flyql/core'
+import {
+    Column,
+    ColumnSchema,
+    Diagnostic,
+    Range,
+    CODE_UNKNOWN_COLUMN,
+    CODE_UNKNOWN_TRANSFORMER,
+    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+} from 'flyql/core'
 import { Type } from 'flyql'
 
 /** Maps editor-input raw-type strings to canonical flyql.Type. */
@@ -69,6 +83,9 @@ const COL_CHAR_TYPE_CLASS = {
     [CharType.OPERATOR]: 'flyql-col-operator',
     [CharType.TRANSFORMER]: 'flyql-col-transformer',
     [CharType.ARGUMENT]: 'flyql-col-argument',
+    [CharType.ARGUMENT_STRING]: 'flyql-col-argument-string',
+    [CharType.ARGUMENT_COLUMN]: 'flyql-col-argument-column',
+    [CharType.ARGUMENT_NUMBER]: 'flyql-col-argument-number',
     [CharType.ALIAS]: 'flyql-col-alias',
     [CharType.ERROR]: 'flyql-col-error',
     [CharType.RENDERER]: 'flyql-col-renderer',
@@ -771,26 +788,29 @@ export class ColumnsEngine {
             typedChars = parser.typedChars
         } catch (e) {
             typedChars = parser.typedChars
-            const start = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos + 1 : 0
-            // Suppress syntax errors at end of input
-            if (start >= value.length - 1) {
+            const lastPos = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos : 0
+            const atEof = (typedChars ? typedChars.length : 0) >= value.length - 1
+            const alwaysReport = ALWAYS_REPORT_ERRNOS.has(parser.errno)
+            if (atEof && !alwaysReport) {
                 this.diagnostics = []
                 return this.diagnostics
             }
             this.diagnostics = [
-                new Diagnostic(new Range(start, value.length), e.message || 'Parse error', 'error', 'syntax'),
+                new Diagnostic(new Range(lastPos, value.length), e.message || 'Parse error', 'error', 'syntax'),
             ]
             return this.diagnostics
         }
 
         if (parser.state === State.ERROR) {
-            const start = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos + 1 : 0
-            if (start >= value.length - 1) {
+            const lastPos = typedChars && typedChars.length > 0 ? typedChars[typedChars.length - 1][0].pos : 0
+            const atEof = (typedChars ? typedChars.length : 0) >= value.length - 1
+            const alwaysReport = ALWAYS_REPORT_ERRNOS.has(parser.errno)
+            if (atEof && !alwaysReport) {
                 this.diagnostics = []
                 return this.diagnostics
             }
             this.diagnostics = [
-                new Diagnostic(new Range(start, value.length), parser.errorText || 'Parse error', 'error', 'syntax'),
+                new Diagnostic(new Range(lastPos, value.length), parser.errorText || 'Parse error', 'error', 'syntax'),
             ]
             return this.diagnostics
         }
@@ -856,6 +876,12 @@ export class ColumnsEngine {
                         }
                     }
                     return true
+                }
+                if (d.code === CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN) {
+                    const match = d.message.match(/^unknown column in argument: '(.+)'$/)
+                    if (!match) return true
+                    const partial = match[1].toLowerCase()
+                    return !columnNames.some((n) => n.startsWith(partial) && n !== partial)
                 }
                 return true
             })

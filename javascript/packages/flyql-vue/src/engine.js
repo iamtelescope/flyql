@@ -16,6 +16,7 @@ import {
     diagnose,
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
+    ERR_INVALID_CHAR_IN_EXPECT_BOOL,
     Range,
 } from 'flyql/core'
 import { Type, tokenize } from 'flyql'
@@ -255,15 +256,21 @@ export class EditorEngine {
             return this.diagnostics
         }
         if (parser.state === State.ERROR) {
-            const start = parser.typedChars ? parser.typedChars.length : 0
-            // Suppress if error is at the end of query
-            if (start >= normalized.length - 1) {
+            const typed = parser.typedChars || []
+            const lastPos = typed.length > 0 ? typed[typed.length - 1][0].pos : 0
+            const atEof = typed.length >= normalized.length - 1
+            // Chars that hit this errno are by definition not in
+            // VALID_BOOL_OPERATORS_CHARS (the parser already filters by that
+            // at core/parser.js:1742), so they can never be a prefix of a
+            // valid in-progress `and`/`or`. Always report.
+            const alwaysReport = parser.errno === ERR_INVALID_CHAR_IN_EXPECT_BOOL
+            if (atEof && !alwaysReport) {
                 this.diagnostics = []
                 return this.diagnostics
             }
             this.diagnostics = [
                 new Diagnostic(
-                    new Range(start, normalized.length),
+                    new Range(lastPos, normalized.length),
                     parser.errorText || 'Parse error',
                     'error',
                     'syntax',

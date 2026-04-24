@@ -2,6 +2,7 @@ import {
     Diagnostic,
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
+    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
     CODE_ARG_COUNT,
     CODE_ARG_TYPE,
     CODE_CHAIN_TYPE,
@@ -93,8 +94,31 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
             }
 
             const argRanges = ranges.argumentRanges || []
+            const transformerArgKinds = transformer.argumentKinds || []
+            // Guard against parser-bug or legacy-AST drift: only trust kinds when
+            // length matches the argument list. On mismatch fall through to the
+            // pre-existing literal type checks.
+            const transformerKindsInSync = transformerArgKinds.length === transformer.arguments.length
             for (let j = 0; j < transformer.arguments.length; j++) {
                 if (j >= t.argSchema.length) break
+                if (transformerKindsInSync && transformerArgKinds[j] === 'col') {
+                    const rawRef = transformer.arguments[j]
+                    if (
+                        typeof rawRef === 'string' &&
+                        schema.resolve(rawRef.split('.')) == null &&
+                        j < argRanges.length
+                    ) {
+                        diags.push(
+                            makeDiag(
+                                argRanges[j],
+                                `unknown column in argument: '${rawRef}'`,
+                                'error',
+                                CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+                            ),
+                        )
+                    }
+                    continue
+                }
                 const expected = t.argSchema[j].type
                 const actual = jsToFlyQLType(transformer.arguments[j])
                 if (actual == null) continue
@@ -176,8 +200,28 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
             }
 
             const rArgRanges = ranges.argumentRanges || []
+            const rendererArgKinds = renderer.argumentKinds || []
+            const rendererKindsInSync = rendererArgKinds.length === renderer.arguments.length
             for (let j = 0; j < renderer.arguments.length; j++) {
                 if (j >= r.argSchema.length) break
+                if (rendererKindsInSync && rendererArgKinds[j] === 'col') {
+                    const rawRef = renderer.arguments[j]
+                    if (
+                        typeof rawRef === 'string' &&
+                        schema.resolve(rawRef.split('.')) == null &&
+                        j < rArgRanges.length
+                    ) {
+                        diags.push(
+                            makeDiag(
+                                rArgRanges[j],
+                                `unknown column in argument: '${rawRef}'`,
+                                'error',
+                                CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+                            ),
+                        )
+                    }
+                    continue
+                }
                 const expected = r.argSchema[j].type
                 const actual = jsToFlyQLType(renderer.arguments[j])
                 if (actual == null) continue
@@ -195,7 +239,7 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 }
             }
 
-            const hookDiags = r.diagnose ? r.diagnose(renderer.arguments, col) : []
+            const hookDiags = r.diagnose ? r.diagnose(renderer.arguments, col, ranges) : []
             if (hookDiags && hookDiags.length > 0) {
                 diags.push(...hookDiags)
             }

@@ -505,6 +505,7 @@ export const CODE_UNKNOWN_COLUMN = 'unknown_column'
 export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
 export const CODE_UNKNOWN_RENDERER = 'unknown_renderer'
 export const CODE_UNKNOWN_TRANSFORMER = 'unknown_transformer'
+export const CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN = 'unknown_transformer_arg_column'
 
 export const VALIDATOR_MESSAGES = Object.freeze({
     [CODE_ARG_COUNT]: 'transformer argument count mismatch',
@@ -519,6 +520,7 @@ export const VALIDATOR_MESSAGES = Object.freeze({
     [CODE_UNKNOWN_COLUMN_VALUE]: 'unknown column value',
     [CODE_UNKNOWN_RENDERER]: 'unknown renderer',
     [CODE_UNKNOWN_TRANSFORMER]: 'unknown transformer',
+    [CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN]: 'unknown column in transformer argument',
 })
 
 export const VALIDATOR_REGISTRY = Object.freeze({
@@ -560,7 +562,13 @@ export const VALIDATOR_REGISTRY = Object.freeze({
         '',
         false,
     ),
-    [CODE_UNKNOWN_COLUMN]: new ErrorEntry(CODE_UNKNOWN_COLUMN, 'CODE_UNKNOWN_COLUMN', 'unknown column', '', false),
+    [CODE_UNKNOWN_COLUMN]: new ErrorEntry(
+        CODE_UNKNOWN_COLUMN,
+        'CODE_UNKNOWN_COLUMN',
+        'unknown column',
+        'The referenced column does not exist in the supplied schema. Check for typos or use a column registered on the schema.',
+        false,
+    ),
     [CODE_UNKNOWN_COLUMN_VALUE]: new ErrorEntry(
         CODE_UNKNOWN_COLUMN_VALUE,
         'CODE_UNKNOWN_COLUMN_VALUE',
@@ -581,6 +589,13 @@ export const VALIDATOR_REGISTRY = Object.freeze({
         'unknown transformer',
         '',
         false,
+    ),
+    [CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN]: new ErrorEntry(
+        CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+        'CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN',
+        'unknown column in transformer argument',
+        "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.",
+        true,
     ),
 })
 

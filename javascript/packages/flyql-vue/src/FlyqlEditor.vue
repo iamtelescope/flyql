@@ -176,10 +176,20 @@
                             class="flyql-panel__diagnostic-bullet"
                             :class="'flyql-panel__diagnostic-bullet--' + diag.severity"
                         ></span>
-                        <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
+                        <div class="flyql-panel__diagnostic-body">
+                            <span class="flyql-panel__diagnostic-msg">{{ diag.message }}</span>
+                            <span v-if="diag.error && diag.error.description" class="flyql-panel__diagnostic-desc">{{
+                                diag.error.description
+                            }}</span>
+                        </div>
                     </div>
                 </div>
-                <div v-if="shouldShowInfo" class="flyql-panel__info">
+                <div
+                    v-if="shouldShowInfo"
+                    class="flyql-panel__info"
+                    @mousedown.stop="panelInteracting = true"
+                    @mouseup="panelInteracting = false"
+                >
                     <div class="flyql-panel__header">Info</div>
                     <div class="flyql-panel__footer">
                         <div class="flyql-panel__footer-row">
@@ -294,6 +304,35 @@ const shouldShowInfo = computed(() => {
     return shortened || labelWasTruncated(info.label) || !!info.description
 })
 
+// Diagnostics are debounced on the typing path so squiggles/panels don't
+// flash the moment a keystroke is incomplete. Decisive actions (suggestion
+// accept, Tab cycle, prop change, external flush) bypass the delay.
+const DIAG_DEBOUNCE_MS = 400
+let diagTimer = null
+
+function _publishDiagnostics() {
+    engine.getDiagnostics()
+    filterColumnValueDiagnostics()
+    diagnostics.value = engine.diagnostics
+    emit('diagnostics', diagnostics.value)
+}
+
+function scheduleDiagnostics() {
+    if (diagTimer) clearTimeout(diagTimer)
+    diagTimer = setTimeout(() => {
+        diagTimer = null
+        _publishDiagnostics()
+    }, DIAG_DEBOUNCE_MS)
+}
+
+function flushDiagnostics() {
+    if (diagTimer) {
+        clearTimeout(diagTimer)
+        diagTimer = null
+    }
+    _publishDiagnostics()
+}
+
 function filterColumnValueDiagnostics() {
     const ta = textareaRef.value
     if (!ta) return
@@ -318,8 +357,7 @@ function filterColumnValueDiagnostics() {
 
 function switchTab(tab) {
     engine.setTab(tab)
-    engine.getDiagnostics()
-    filterColumnValueDiagnostics()
+    flushDiagnostics()
     syncFromEngine()
 }
 
@@ -335,7 +373,8 @@ function syncFromEngine() {
     stateLabel.value = engine.getStateLabel()
     context.value = engine.context
     activeTab.value = engine.activeTab
-    diagnostics.value = engine.diagnostics
+    // diagnostics.value is managed by schedule/flushDiagnostics (debounced).
+    // Don't sync here — would defeat the delay on typing paths.
     selectedInfo.value = engine.getSelectedInfo()
 
     // Check for parse-error transitions
@@ -419,11 +458,9 @@ async function triggerSuggestions() {
     engine.setQuery(ta.value)
     engine.setCursorPosition(ta.selectionStart)
 
-    // Run diagnostics — fast, sync operation
-    engine.getDiagnostics()
-    filterColumnValueDiagnostics()
+    // Debounce diagnostic visual output on the typing path.
+    scheduleDiagnostics()
     syncFromEngine()
-    emit('diagnostics', diagnostics.value)
 
     try {
         const promise = engine.updateSuggestions()
@@ -543,8 +580,7 @@ function onKeydown(e) {
         if (activated.value && engine.context?.expecting === 'value') {
             e.preventDefault()
             engine.cycleTab()
-            engine.getDiagnostics()
-            filterColumnValueDiagnostics()
+            flushDiagnostics()
             syncFromEngine()
         } else if (activated.value && suggestions.value.length > 0) {
             e.preventDefault()
@@ -659,11 +695,10 @@ function acceptSuggestion(index) {
     engine.setQuery(newValue)
     engine.setCursorPosition(newCursorPos)
 
-    engine.getDiagnostics()
+    flushDiagnostics()
     syncFromEngine()
-    emit('diagnostics', diagnostics.value)
 
-    if (diagnostics.value.length > 0) {
+    if (engine.diagnostics.length > 0) {
         engine.suggestions = []
         engine.message = ''
         engine.suggestionType = ''
@@ -715,6 +750,8 @@ function onBlur() {
     activated.value = false
     engine.state.setFocused(false)
     engine.state.setActivated(false)
+    // The user has stopped typing — surface any pending diagnostics immediately.
+    flushDiagnostics()
     emit('blur')
 }
 
@@ -816,9 +853,8 @@ watch(
     () => props.registry,
     (newReg) => {
         engine.setRegistry(newReg)
-        engine.getDiagnostics()
+        flushDiagnostics()
         syncFromEngine()
-        emit('diagnostics', diagnostics.value)
     },
 )
 
@@ -858,7 +894,7 @@ function getQueryStatus() {
     return engine.getQueryStatus()
 }
 
-defineExpose({ focus, blur, getQueryStatus })
+defineExpose({ focus, blur, getQueryStatus, flushDiagnostics })
 </script>
 
 <style scoped>

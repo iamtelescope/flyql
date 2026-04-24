@@ -3,6 +3,12 @@ import { State } from './state.js'
 import { ParserError } from './exceptions.js'
 import { ESCAPE_SEQUENCES, DOUBLE_QUOTE, SINGLE_QUOTE, VALID_ALIAS_OPERATOR, CharType } from './constants.js'
 import { Range } from '../core/range.js'
+
+// Strict numeric classifiers for unquoted transformer/renderer arguments.
+// Deliberately stricter than parseInt / parseFloat so that values like
+// '2abc', 'Infinity', '1e5', '.5' fall through to the field-reference branch.
+const INT_RE = /^-?\d+$/
+const FLOAT_RE = /^-?(?:\d+\.\d+|\d+\.|\.\d+)$/
 import {
     COLUMNS_ERR_EXPECTED_CLOSING_PAREN,
     COLUMNS_ERR_INVALID_CHAR_AFTER_ARGS,
@@ -53,9 +59,22 @@ export class Parser {
         this._transformerStart = -1
         this._transformerArgStart = -1
         this._transformerArgRanges = []
+        this._transformerArgKinds = []
         this._rendererStart = -1
         this._rendererArgStart = -1
         this._rendererArgRanges = []
+        this._rendererArgKinds = []
+    }
+
+    _reclassifyTypedChars(startPos, endPos, charType) {
+        for (let k = this.typedChars.length - 1; k >= 0; k--) {
+            const entry = this.typedChars[k]
+            const pos = entry[0].pos
+            if (pos < startPos) break
+            if (pos < endPos) {
+                entry[1] = charType
+            }
+        }
     }
 
     trackChar(charType) {
@@ -91,31 +110,42 @@ export class Parser {
             arguments: this.transformerArguments,
             nameRange,
             argumentRanges: this._transformerArgRanges,
+            argumentKinds: this._transformerArgKinds,
         })
         this.resetTransformer()
     }
 
     storeArgument() {
-        let value = this.transformerArgument
-        if (this.transformerArgumentType === 'auto') {
-            const intValue = parseInt(value, 10)
-            const floatValue = parseFloat(value)
-            if (!isNaN(intValue) && intValue.toString() === value) {
-                value = intValue
-            } else if (!isNaN(floatValue)) {
-                value = floatValue
-            }
+        const raw = this.transformerArgument
+        let value = raw
+        let kind
+        if (this.transformerArgumentType === 'str') {
+            kind = 'str'
+        } else if (INT_RE.test(raw)) {
+            value = parseInt(raw, 10)
+            kind = 'int'
+        } else if (FLOAT_RE.test(raw)) {
+            value = parseFloat(raw)
+            kind = 'float'
+        } else {
+            kind = 'col'
         }
         this.transformerArguments.push(value)
+        this._transformerArgKinds.push(kind)
         if (this._transformerArgStart >= 0) {
             let end
-            if (this.transformerArgumentType === 'str') {
+            if (kind === 'str') {
                 // Quoted argument: end after closing quote (char.pos is closing quote)
-                end = this.char ? this.char.pos + 1 : this._transformerArgStart + this.transformerArgument.length + 2
+                end = this.char ? this.char.pos + 1 : this._transformerArgStart + raw.length + 2
             } else {
-                end = this._transformerArgStart + this.transformerArgument.length
+                end = this._transformerArgStart + raw.length
             }
             this._transformerArgRanges.push(new Range(this._transformerArgStart, end))
+            if (kind === 'int' || kind === 'float') {
+                this._reclassifyTypedChars(this._transformerArgStart, end, CharType.ARGUMENT_NUMBER)
+            } else if (kind === 'col') {
+                this._reclassifyTypedChars(this._transformerArgStart, end, CharType.ARGUMENT_COLUMN)
+            }
         }
         this.resetTransformerArgument()
     }
@@ -128,30 +158,41 @@ export class Parser {
             arguments: this.rendererArguments,
             nameRange,
             argumentRanges: this._rendererArgRanges,
+            argumentKinds: this._rendererArgKinds,
         })
         this.resetRenderer()
     }
 
     storeRendererArgument() {
-        let value = this.rendererArgument
-        if (this.rendererArgumentType === 'auto') {
-            const intValue = parseInt(value, 10)
-            const floatValue = parseFloat(value)
-            if (!isNaN(intValue) && intValue.toString() === value) {
-                value = intValue
-            } else if (!isNaN(floatValue)) {
-                value = floatValue
-            }
+        const raw = this.rendererArgument
+        let value = raw
+        let kind
+        if (this.rendererArgumentType === 'str') {
+            kind = 'str'
+        } else if (INT_RE.test(raw)) {
+            value = parseInt(raw, 10)
+            kind = 'int'
+        } else if (FLOAT_RE.test(raw)) {
+            value = parseFloat(raw)
+            kind = 'float'
+        } else {
+            kind = 'col'
         }
         this.rendererArguments.push(value)
+        this._rendererArgKinds.push(kind)
         if (this._rendererArgStart >= 0) {
             let end
-            if (this.rendererArgumentType === 'str') {
-                end = this.char ? this.char.pos + 1 : this._rendererArgStart + this.rendererArgument.length + 2
+            if (kind === 'str') {
+                end = this.char ? this.char.pos + 1 : this._rendererArgStart + raw.length + 2
             } else {
-                end = this._rendererArgStart + this.rendererArgument.length
+                end = this._rendererArgStart + raw.length
             }
             this._rendererArgRanges.push(new Range(this._rendererArgStart, end))
+            if (kind === 'int' || kind === 'float') {
+                this._reclassifyTypedChars(this._rendererArgStart, end, CharType.ARGUMENT_NUMBER)
+            } else if (kind === 'col') {
+                this._reclassifyTypedChars(this._rendererArgStart, end, CharType.ARGUMENT_COLUMN)
+            }
         }
         this.resetRendererArgument()
     }
@@ -163,6 +204,7 @@ export class Parser {
         this._rendererStart = -1
         this._rendererArgStart = -1
         this._rendererArgRanges = []
+        this._rendererArgKinds = []
     }
 
     resetRenderers() {
@@ -185,13 +227,13 @@ export class Parser {
         }
     }
 
-    extendRendererArgument() {
+    extendRendererArgument(charType = CharType.RENDERER_ARGUMENT) {
         if (this.char) {
             if (this._rendererArgStart < 0) {
                 this._rendererArgStart = this.char.pos
             }
             this.rendererArgument += this.char.value
-            this.trackChar(CharType.RENDERER_ARGUMENT)
+            this.trackChar(charType)
         }
     }
 
@@ -210,6 +252,7 @@ export class Parser {
         this._transformerStart = -1
         this._transformerArgStart = -1
         this._transformerArgRanges = []
+        this._transformerArgKinds = []
     }
 
     resetColumn() {
@@ -274,13 +317,13 @@ export class Parser {
         }
     }
 
-    extendTransformerArgument() {
+    extendTransformerArgument(charType = CharType.ARGUMENT) {
         if (this.char) {
             if (this._transformerArgStart < 0) {
                 this._transformerArgStart = this.char.pos
             }
             this.transformerArgument += this.char.value
-            this.trackChar(CharType.ARGUMENT)
+            this.trackChar(charType)
         }
     }
 
@@ -561,10 +604,12 @@ export class Parser {
         if (this.char.isDoubleQuote()) {
             this.transformerArgumentType = 'str'
             this._transformerArgStart = this.char.pos
+            this.trackChar(CharType.ARGUMENT_STRING)
             this.setState(State.TRANSFORMER_ARGUMENT_DOUBLE_QUOTED)
         } else if (this.char.isSingleQuote()) {
             this.transformerArgumentType = 'str'
             this._transformerArgStart = this.char.pos
+            this.trackChar(CharType.ARGUMENT_STRING)
             this.setState(State.TRANSFORMER_ARGUMENT_SINGLE_QUOTED)
         } else if (this.char.isTransformerArgumentValue()) {
             this.extendTransformerArgument()
@@ -614,18 +659,19 @@ export class Parser {
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== DOUBLE_QUOTE) {
-                    this.extendTransformerArgument()
+                    this.extendTransformerArgument(CharType.ARGUMENT_STRING)
                 }
             } else {
-                this.extendTransformerArgument()
+                this.extendTransformerArgument(CharType.ARGUMENT_STRING)
             }
         } else if (this.char.isTransformerDoubleQuotedArgumentValue()) {
-            this.extendTransformerArgument()
+            this.extendTransformerArgument(CharType.ARGUMENT_STRING)
         } else if (this.char.isDoubleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendTransformerArgument()
+                this.extendTransformerArgument(CharType.ARGUMENT_STRING)
             } else {
+                this.trackChar(CharType.ARGUMENT_STRING)
                 this.storeArgument()
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
@@ -641,18 +687,19 @@ export class Parser {
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== SINGLE_QUOTE) {
-                    this.extendTransformerArgument()
+                    this.extendTransformerArgument(CharType.ARGUMENT_STRING)
                 }
             } else {
-                this.extendTransformerArgument()
+                this.extendTransformerArgument(CharType.ARGUMENT_STRING)
             }
         } else if (this.char.isTransformerSingleQuotedArgumentValue()) {
-            this.extendTransformerArgument()
+            this.extendTransformerArgument(CharType.ARGUMENT_STRING)
         } else if (this.char.isSingleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendTransformerArgument()
+                this.extendTransformerArgument(CharType.ARGUMENT_STRING)
             } else {
+                this.trackChar(CharType.ARGUMENT_STRING)
                 this.storeArgument()
                 this.setState(State.EXPECT_TRANSFORMER_ARGUMENT_DELIMITER)
             }
@@ -828,12 +875,12 @@ export class Parser {
         if (this.char.isDoubleQuote()) {
             this.rendererArgumentType = 'str'
             this._rendererArgStart = this.char.pos
-            this.trackChar(CharType.RENDERER_ARGUMENT)
+            this.trackChar(CharType.ARGUMENT_STRING)
             this.setState(State.RENDERER_ARGUMENT_DOUBLE_QUOTED)
         } else if (this.char.isSingleQuote()) {
             this.rendererArgumentType = 'str'
             this._rendererArgStart = this.char.pos
-            this.trackChar(CharType.RENDERER_ARGUMENT)
+            this.trackChar(CharType.ARGUMENT_STRING)
             this.setState(State.RENDERER_ARGUMENT_SINGLE_QUOTED)
         } else if (this.char.isTransformerArgumentValue()) {
             this.extendRendererArgument()
@@ -885,19 +932,19 @@ export class Parser {
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== DOUBLE_QUOTE) {
-                    this.extendRendererArgument()
+                    this.extendRendererArgument(CharType.ARGUMENT_STRING)
                 }
             } else {
-                this.extendRendererArgument()
+                this.extendRendererArgument(CharType.ARGUMENT_STRING)
             }
         } else if (this.char.isTransformerDoubleQuotedArgumentValue()) {
-            this.extendRendererArgument()
+            this.extendRendererArgument(CharType.ARGUMENT_STRING)
         } else if (this.char.isDoubleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendRendererArgument()
+                this.extendRendererArgument(CharType.ARGUMENT_STRING)
             } else {
-                this.trackChar(CharType.RENDERER_ARGUMENT)
+                this.trackChar(CharType.ARGUMENT_STRING)
                 this.storeRendererArgument()
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }
@@ -913,19 +960,19 @@ export class Parser {
             if (nextPos < this.text.length) {
                 const nextChar = this.text[nextPos]
                 if (nextChar !== SINGLE_QUOTE) {
-                    this.extendRendererArgument()
+                    this.extendRendererArgument(CharType.ARGUMENT_STRING)
                 }
             } else {
-                this.extendRendererArgument()
+                this.extendRendererArgument(CharType.ARGUMENT_STRING)
             }
         } else if (this.char.isTransformerSingleQuotedArgumentValue()) {
-            this.extendRendererArgument()
+            this.extendRendererArgument(CharType.ARGUMENT_STRING)
         } else if (this.char.isSingleQuote()) {
             const prevPos = this.char.pos - 1
             if (this.text[prevPos] === '\\') {
-                this.extendRendererArgument()
+                this.extendRendererArgument(CharType.ARGUMENT_STRING)
             } else {
-                this.trackChar(CharType.RENDERER_ARGUMENT)
+                this.trackChar(CharType.ARGUMENT_STRING)
                 this.storeRendererArgument()
                 this.setState(State.EXPECT_RENDERER_ARGUMENT_DELIMITER)
             }

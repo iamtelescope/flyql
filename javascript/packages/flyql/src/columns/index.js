@@ -43,6 +43,7 @@ export function parseToJson(text, capabilities) {
     return JSON.stringify(parseToDicts(text, capabilities))
 }
 
+export { COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG } from '../errors_generated.js'
 export {
     Parser,
     ParsedColumn,

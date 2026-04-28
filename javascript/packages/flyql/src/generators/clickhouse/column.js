@@ -2,6 +2,7 @@ import { Type } from '../../flyql_type.js'
 import { FlyqlError } from '../../core/exceptions.js'
 
 const wrapperRegex = /^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\(/i
+const enumRegex = /^(enum8|enum16)\s*\(/i
 
 const typeRegexes = {
     [Type.String]: /^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)/i,
@@ -52,6 +53,7 @@ const flyqlTypeToClickHouseTypes = {
         'uuid',
         'ipv4',
         'ipv6',
+        'enum',
         'enum8',
         'enum16',
     ]),
@@ -158,6 +160,7 @@ export function normalizeClickHouseType(chType) {
         normalized = (lastParen >= 0 ? afterKeyword.slice(0, lastParen) : afterKeyword).trim()
     }
 
+    if (enumRegex.test(normalized)) return Type.String
     if (typeRegexes[Type.String].test(normalized)) return Type.String
     if (flyqlTypeToClickHouseTypes[Type.String].has(normalized)) return Type.String
 

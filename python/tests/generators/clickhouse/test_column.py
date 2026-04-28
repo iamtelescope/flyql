@@ -75,6 +75,11 @@ class TestColumnFromSharedData:
         column = _make(columns_data["columns"]["enum_column"])
         assert column.values == ["value1", "value2"]
 
+    def test_severity_parametrized_enum_column(self, columns_data):
+        column = _make(columns_data["columns"]["severity"])
+        assert column.flyql_type == Type.String
+        assert column.values == ["error", "warn", "info"]
+
 
 class TestNormalizeClickhouseType:
     @pytest.mark.parametrize(
@@ -95,6 +100,15 @@ class TestNormalizeClickhouseType:
             ("Map(String, Int64)", Type.Map),
             ("JSON", Type.JSON),
             ("UnknownType", Type.Unknown),
+            ("enum", Type.String),
+            ("Enum8", Type.String),
+            ("Enum16", Type.String),
+            ("Enum8('a' = 1, 'b' = 2)", Type.String),
+            ("Enum16('x' = 1, 'y' = 2)", Type.String),
+            ("Nullable(Enum8('a' = 1, 'b' = 2))", Type.String),
+            ("LowCardinality(Enum8('a' = 1))", Type.String),
+            ("enum8()", Type.String),
+            ("enum16()", Type.String),
         ],
     )
     def test_normalize_type(self, input_type, expected):

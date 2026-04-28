@@ -14,6 +14,8 @@ var typeRegexes = map[flyqltype.Type]*regexp.Regexp{}
 
 var wrapperRegex = regexp.MustCompile(`(?i)^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)`)
 
+var enumRegex = regexp.MustCompile(`(?i)^(enum8|enum16)\s*\(`)
+
 func init() {
 	typeRegexes[flyqltype.String] = regexp.MustCompile(`(?i)^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)`)
 	typeRegexes[flyqltype.Int] = regexp.MustCompile(`(?i)^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)`)
@@ -42,7 +44,7 @@ var flyqlTypeToClickHouseTypes = map[flyqltype.Type]map[string]bool{
 		"binary large object": true, "binary varying": true, "clob": true,
 		"nchar": true, "nvarchar": true, "varchar2": true, "binary": true,
 		"varbinary": true, "bytea": true, "uuid": true, "ipv4": true, "ipv6": true,
-		"enum8": true, "enum16": true,
+		"enum": true, "enum8": true, "enum16": true,
 	},
 	flyqltype.Int: {
 		"int8": true, "int16": true, "int32": true, "int64": true, "int128": true, "int256": true,
@@ -103,6 +105,9 @@ func NormalizeClickHouseType(chType string) flyqltype.Type {
 		normalized = strings.TrimSpace(match[2])
 	}
 
+	if enumRegex.MatchString(normalized) {
+		return flyqltype.String
+	}
 	if typeRegexes[flyqltype.String].MatchString(normalized) {
 		return flyqltype.String
 	}

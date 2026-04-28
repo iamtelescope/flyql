@@ -328,6 +328,17 @@ func TestNormalizeClickHouseType(t *testing.T) {
 		{"ipv4", "IPv4", flyqltype.String},
 		{"ipv6", "IPv6", flyqltype.String},
 
+		// Enum types (bare and parametrized) classify as String
+		{"enum_bare", "enum", flyqltype.String},
+		{"enum8_bare", "Enum8", flyqltype.String},
+		{"enum16_bare", "Enum16", flyqltype.String},
+		{"enum8_parametrized", "Enum8('a' = 1, 'b' = 2)", flyqltype.String},
+		{"enum16_parametrized", "Enum16('x' = 1, 'y' = 2)", flyqltype.String},
+		{"enum8_nullable_parametrized", "Nullable(Enum8('a' = 1, 'b' = 2))", flyqltype.String},
+		{"enum8_lowcardinality_parametrized", "LowCardinality(Enum8('a' = 1))", flyqltype.String},
+		{"enum8_empty_parens", "enum8()", flyqltype.String},
+		{"enum16_empty_parens", "enum16()", flyqltype.String},
+
 		// Unknown type
 		{"unknown", "UnknownType", flyqltype.Unknown},
 	}

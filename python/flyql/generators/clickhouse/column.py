@@ -13,6 +13,7 @@ REGEX = {
     "wrapper": re.compile(
         r"^(nullable|lowcardinality|simpleaggregatefunction|aggregatefunction)\s*\(\s*(.+)\)"
     ),
+    "string_enum": re.compile(r"^(enum8|enum16)\s*\("),
     Type.String: re.compile(r"^(varchar|char|fixedstring)\s*\(\s*\d+\s*\)"),
     Type.Int: re.compile(
         r"^(tinyint|smallint|mediumint|int|integer|bigint)\s*\(\s*\d+\s*\)"
@@ -66,6 +67,7 @@ FLYQL_TYPE_TO_CLICKHOUSE_TYPES: Dict[Type, set] = {
         "uuid",
         "ipv4",
         "ipv6",
+        "enum",
         "enum8",
         "enum16",
     },
@@ -182,6 +184,8 @@ def normalize_clickhouse_type(ch_type: str) -> Type:
     if match:
         normalized = match.group(2).strip()
 
+    if REGEX["string_enum"].match(normalized):
+        return Type.String
     if REGEX[Type.String].match(normalized):
         return Type.String
     if normalized in FLYQL_TYPE_TO_CLICKHOUSE_TYPES[Type.String]:

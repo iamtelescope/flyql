@@ -104,6 +104,24 @@
       "input": "status = 1 and status > 2",
       "expected_result": "success",
       "expected_sql": "status = 1 AND status > 2"
+    },
+    {
+      "name": "severity_parametrized_enum_equals",
+      "input": "severity='error'",
+      "expected_result": "success",
+      "expected_sql": "severity = 'error'"
+    },
+    {
+      "name": "log_level_parametrized_enum_regex",
+      "input": "log_level~'^err.*'",
+      "expected_result": "success",
+      "expected_sql": "match(log_level, '^err.*')"
+    },
+    {
+      "name": "log_level_parametrized_enum_like",
+      "input": "log_level like 'err%'",
+      "expected_result": "success",
+      "expected_sql": "log_level LIKE 'err%'"
     }
   ]
 }

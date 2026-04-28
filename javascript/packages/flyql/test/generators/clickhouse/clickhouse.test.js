@@ -155,6 +155,34 @@ describe('normalizeClickHouseType', () => {
     it('handles nested type in wrapper', () => {
         expect(normalizeClickHouseType('Nullable(DateTime64(3))')).toBe('date')
     })
+
+    it('maps bare enum to string', () => {
+        expect(normalizeClickHouseType('enum')).toBe('string')
+    })
+
+    it('maps parametrized Enum8 to string', () => {
+        expect(normalizeClickHouseType("Enum8('a' = 1, 'b' = 2)")).toBe('string')
+    })
+
+    it('maps parametrized Enum16 to string', () => {
+        expect(normalizeClickHouseType("Enum16('x' = 1, 'y' = 2)")).toBe('string')
+    })
+
+    it('unwraps Nullable(Enum8(...)) to string', () => {
+        expect(normalizeClickHouseType("Nullable(Enum8('a' = 1, 'b' = 2))")).toBe('string')
+    })
+
+    it('unwraps LowCardinality(Enum8(...)) to string', () => {
+        expect(normalizeClickHouseType("LowCardinality(Enum8('a' = 1))")).toBe('string')
+    })
+
+    it('accepts empty enum8 parens', () => {
+        expect(normalizeClickHouseType('enum8()')).toBe('string')
+    })
+
+    it('accepts empty enum16 parens', () => {
+        expect(normalizeClickHouseType('enum16()')).toBe('string')
+    })
 })
 
 function runSelectTestSuite(fixtureName) {

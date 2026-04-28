@@ -60,6 +60,20 @@
         "value2"
       ]
     },
+    "severity": {
+      "name": "severity",
+      "type": "Enum8('error' = 1, 'warn' = 2, 'info' = 3)",
+      "values": [
+        "error",
+        "warn",
+        "info"
+      ]
+    },
+    "log_level": {
+      "name": "log_level",
+      "type": "Enum8('error' = 1, 'warn' = 2, 'info' = 3)",
+      "values": null
+    },
     "status": {
       "name": "status",
       "type": "Int32",

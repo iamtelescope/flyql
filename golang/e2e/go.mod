@@ -6,7 +6,7 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.44.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/iamtelescope/flyql/golang v0.0.0
-	github.com/jackc/pgx/v5 v5.9.0
+	github.com/jackc/pgx/v5 v5.9.2
 )
 
 require (

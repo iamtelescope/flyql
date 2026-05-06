@@ -25,13 +25,13 @@ edit to fix the error):
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Any, List, Literal, Optional
+from typing import Any, List, Literal, Optional, Tuple
 
 from flyql.core.column import ColumnSchema
 from flyql.core.expression import Expression
 from flyql.core.range import Range
 from flyql.core.tree import Node
-from flyql.flyql_type import Type
+from flyql.flyql_type import Type, type_permits_unknown_children
 from flyql.literal import LiteralKind
 from flyql.transformers.base import Transformer as TransformerDef
 from flyql.transformers.registry import TransformerRegistry, default_registry
@@ -206,6 +206,9 @@ def _diagnose_expression(
             if seg == "":
                 break  # trailing dot — user still typing
             if col.children is None:
+                if type_permits_unknown_children(col.type):
+                    col = None
+                    break
                 diags.append(
                     make_diag(
                         range=expression.key.segment_ranges[i],
@@ -218,6 +221,9 @@ def _diagnose_expression(
                 break
             child = col.children.get(seg.lower())
             if child is None:
+                if type_permits_unknown_children(col.type):
+                    col = None
+                    break
                 diags.append(
                     make_diag(
                         range=expression.key.segment_ranges[i],
@@ -320,8 +326,15 @@ def _diagnose_expression(
                 emitted_ranges.add(
                     (expression.value_range.start, expression.value_range.end)
                 )
-        elif schema.resolve(expression.value.split(".")) is None:
-            if expression.value_range is not None:
+        else:
+            resolved, parent_permissive = _walk_and_check_permissive(
+                schema, expression.value.split(".")
+            )
+            if (
+                not resolved
+                and not parent_permissive
+                and expression.value_range is not None
+            ):
                 diags.append(
                     make_diag(
                         range=expression.value_range,
@@ -356,9 +369,15 @@ def _diagnose_expression(
                                 expression.value_ranges[i].end,
                             )
                         )
-                elif schema.resolve(val.split(".")) is None:
-                    if expression.value_ranges is not None and i < len(
-                        expression.value_ranges
+                else:
+                    resolved, parent_permissive = _walk_and_check_permissive(
+                        schema, val.split(".")
+                    )
+                    if (
+                        not resolved
+                        and not parent_permissive
+                        and expression.value_ranges is not None
+                        and i < len(expression.value_ranges)
                     ):
                         diags.append(
                             make_diag(
@@ -425,6 +444,32 @@ def _diagnose_expression(
                     emitted_ranges.add(key)
 
     return diags
+
+
+def _walk_and_check_permissive(
+    schema: ColumnSchema, segments: List[str]
+) -> Tuple[bool, bool]:
+    """Walk a dotted path and report (resolved, parent_permissive).
+
+    On full resolution, ``parent_permissive`` is False. On failure mid-walk,
+    ``parent_permissive`` is True iff the deepest resolved parent is a
+    JSON-family type (per :func:`type_permits_unknown_children`); callers
+    use this to suppress unknown-column diagnostics for paths under
+    semantically dynamic parents.
+    """
+    if not segments:
+        return False, False
+    col = schema.get(segments[0])
+    if col is None:
+        return False, False
+    for i in range(1, len(segments)):
+        if col.children is None:
+            return False, type_permits_unknown_children(col.type)
+        child = col.children.get(segments[i].lower())
+        if child is None:
+            return False, type_permits_unknown_children(col.type)
+        col = child
+    return True, False
 
 
 def _python_to_flyql_type(v: Any) -> Optional[Type]:

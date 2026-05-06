@@ -20,7 +20,7 @@ from flyql.core.validator import (
     Diagnostic,
     make_diag,
 )
-from flyql.flyql_type import Type
+from flyql.flyql_type import Type, type_permits_unknown_children
 from flyql.renderers.registry import (
     RendererRegistry,
     default_registry as default_renderer_registry,
@@ -69,17 +69,23 @@ def diagnose(
         prev_output_type: Optional[Type] = None
         if resolved is None:
             if col.name_range is not None:
-                fail_seg, fail_range = _find_failing_segment(
+                fail_seg, fail_range, parent = _find_failing_segment(
                     col, schema, col.name_range, segments
                 )
-                diags.append(
-                    make_diag(
-                        range=fail_range,
-                        message=f"column '{fail_seg}' is not defined",
-                        severity="error",
-                        code=CODE_UNKNOWN_COLUMN,
+                if parent is not None and type_permits_unknown_children(parent.type):
+                    # Permissive parent (JSON, JSONString, Map, Unknown) — undeclared
+                    # nested key access is allowed; suppress diag and treat downstream
+                    # input type as unknown.
+                    prev_output_type = None
+                else:
+                    diags.append(
+                        make_diag(
+                            range=fail_range,
+                            message=f"column '{fail_seg}' is not defined",
+                            severity="error",
+                            code=CODE_UNKNOWN_COLUMN,
+                        )
                     )
-                )
         elif resolved.type != Type.Unknown:
             prev_output_type = resolved.type
 
@@ -252,11 +258,25 @@ def _find_failing_segment(
     schema: ColumnSchema,
     name_range: Range,
     segments: Optional[List[str]] = None,
-) -> tuple[str, Range]:
-    """Find the first unresolvable segment and its source range."""
+) -> tuple[str, Range, Optional[Column]]:
+    """Find the first unresolvable segment and its source range.
+
+    Also returns the deepest *resolved* parent column (or None when the
+    failing segment is the root). Callers inspect ``parent.type`` against
+    :func:`type_permits_unknown_children` to decide whether to suppress
+    the unknown-column diagnostic for paths under JSON-family parents.
+    """
     segs = segments if segments is not None else col.segments
     current: Optional[Column] = None
+    previous: Optional[Column] = None
     for i, seg in enumerate(segs):
+        # TD-10 strict pattern: capture previous BEFORE any reassignment of
+        # current. Both the lookup-hit branch and the no-children else
+        # branch reset current — without capturing previous as the FIRST
+        # statement of the loop body, the permissive-parent check at the
+        # call site would see None for any failure where the parent has
+        # no children at all.
+        previous = current
         if i == 0:
             current = schema.get(seg)
         elif current is not None and current.children is not None:
@@ -267,5 +287,5 @@ def _find_failing_segment(
             offset = name_range.start
             for j in range(i):
                 offset += len(segs[j]) + 1  # +1 for dot
-            return seg, Range(offset, offset + len(seg))
-    return segs[0], Range(name_range.start, name_range.start + len(segs[0]))
+            return seg, Range(offset, offset + len(seg)), previous
+    return segs[0], Range(name_range.start, name_range.start + len(segs[0])), None

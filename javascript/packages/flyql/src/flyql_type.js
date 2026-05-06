@@ -71,3 +71,11 @@ export function parseFlyQLType(s) {
     if (_VALID_TOKENS.has(s)) return s
     throw new FlyqlError(`unknown flyql type: ${JSON.stringify(s)}`)
 }
+
+/**
+ * Returns true when a column of this type may have undeclared nested
+ * keys (i.e., children chain breaks should not error).
+ */
+export function typePermitsUnknownChildren(type) {
+    return type === Type.JSON || type === Type.JSONString || type === Type.Map || type === Type.Unknown
+}

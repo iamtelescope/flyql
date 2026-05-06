@@ -146,12 +146,20 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 				break // trailing dot — user still typing
 			}
 			if col.Children == nil {
+				if flyqltype.TypePermitsUnknownChildren(col.Type) {
+					col = nil
+					break
+				}
 				diags = append(diags, MakeDiag(expr.Key.SegmentRanges[i], CodeUnknownColumn, SeverityError, fmt.Sprintf("column '%s' is not defined", expr.Key.Segments[i])))
 				col = nil
 				break
 			}
 			child := col.Children[strings.ToLower(expr.Key.Segments[i])]
 			if child == nil {
+				if flyqltype.TypePermitsUnknownChildren(col.Type) {
+					col = nil
+					break
+				}
 				diags = append(diags, MakeDiag(expr.Key.SegmentRanges[i], CodeUnknownColumn, SeverityError, fmt.Sprintf("column '%s' is not defined", expr.Key.Segments[i])))
 				col = nil
 				break
@@ -231,11 +239,10 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 				}
 			} else {
 				colValSegments := strings.Split(v, ".")
-				if schema.Resolve(colValSegments) == nil {
-					if expr.ValueRange != nil {
-						diags = append(diags, MakeDiag(*expr.ValueRange, CodeUnknownColumnValue, SeverityError, fmt.Sprintf("column '%s' is not defined", v)))
-						emittedRanges[rangeKey{expr.ValueRange.Start, expr.ValueRange.End}] = struct{}{}
-					}
+				resolved, parentPermissive := walkAndCheckPermissive(schema, colValSegments)
+				if !resolved && !parentPermissive && expr.ValueRange != nil {
+					diags = append(diags, MakeDiag(*expr.ValueRange, CodeUnknownColumnValue, SeverityError, fmt.Sprintf("column '%s' is not defined", v)))
+					emittedRanges[rangeKey{expr.ValueRange.Start, expr.ValueRange.End}] = struct{}{}
 				}
 			}
 		}
@@ -252,11 +259,10 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 					}
 				} else {
 					colValSegments := strings.Split(v, ".")
-					if schema.Resolve(colValSegments) == nil {
-						if i < len(expr.ValueRanges) {
-							diags = append(diags, MakeDiag(expr.ValueRanges[i], CodeUnknownColumnValue, SeverityError, fmt.Sprintf("column '%s' is not defined", v)))
-							emittedRanges[rangeKey{expr.ValueRanges[i].Start, expr.ValueRanges[i].End}] = struct{}{}
-						}
+					resolved, parentPermissive := walkAndCheckPermissive(schema, colValSegments)
+					if !resolved && !parentPermissive && i < len(expr.ValueRanges) {
+						diags = append(diags, MakeDiag(expr.ValueRanges[i], CodeUnknownColumnValue, SeverityError, fmt.Sprintf("column '%s' is not defined", v)))
+						emittedRanges[rangeKey{expr.ValueRanges[i].Start, expr.ValueRanges[i].End}] = struct{}{}
 					}
 				}
 			}
@@ -299,6 +305,32 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 	}
 
 	return diags
+}
+
+// walkAndCheckPermissive walks a dotted path against the schema and
+// reports (resolved, parentPermissive). On failure mid-walk,
+// parentPermissive is true iff the deepest resolved parent is a
+// JSON-family type — callers use this to suppress unknown-column-value
+// diagnostics for paths under semantically dynamic parents.
+func walkAndCheckPermissive(schema *ColumnSchema, segments []string) (bool, bool) {
+	if len(segments) == 0 {
+		return false, false
+	}
+	col := schema.Get(segments[0])
+	if col == nil {
+		return false, false
+	}
+	for i := 1; i < len(segments); i++ {
+		if col.Children == nil {
+			return false, flyqltype.TypePermitsUnknownChildren(col.Type)
+		}
+		child := col.Children[strings.ToLower(segments[i])]
+		if child == nil {
+			return false, flyqltype.TypePermitsUnknownChildren(col.Type)
+		}
+		col = child
+	}
+	return true, false
 }
 
 // goToFlyQLType maps a Go runtime value to its flyql.Type.

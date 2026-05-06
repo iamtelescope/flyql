@@ -11,9 +11,10 @@ import {
     CODE_RENDERER_ARG_TYPE,
     jsToFlyQLType,
     makeDiag,
+    _walkAndCheckPermissive,
 } from '../core/validator.js'
 import { Range } from '../core/range.js'
-import { Type } from '../flyql_type.js'
+import { Type, typePermitsUnknownChildren } from '../flyql_type.js'
 import { defaultRegistry } from '../transformers/registry.js'
 import { defaultRegistry as defaultRendererRegistry } from '../renderers/registry.js'
 
@@ -36,10 +37,19 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
         let prevOutputType
         if (resolved == null) {
             if (col.nameRange) {
-                const { segment, range } = _findFailingSegment(col, schema, segments)
-                diags.push(makeDiag(range, `column '${segment}' is not defined`, 'error', CODE_UNKNOWN_COLUMN))
+                const { segment, range, parent } = _findFailingSegment(col, schema, segments)
+                if (parent != null && typePermitsUnknownChildren(parent.type)) {
+                    // Permissive parent (JSON, JSONString, Map, Unknown) — undeclared
+                    // nested key access is allowed; suppress diag and treat downstream
+                    // input type as unknown.
+                    prevOutputType = null
+                } else {
+                    diags.push(makeDiag(range, `column '${segment}' is not defined`, 'error', CODE_UNKNOWN_COLUMN))
+                    prevOutputType = null
+                }
+            } else {
+                prevOutputType = null
             }
-            prevOutputType = null
         } else {
             prevOutputType = resolved.type && resolved.type !== Type.Unknown ? resolved.type : null
         }
@@ -103,19 +113,21 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 if (j >= t.argSchema.length) break
                 if (transformerKindsInSync && transformerArgKinds[j] === 'col') {
                     const rawRef = transformer.arguments[j]
-                    if (
-                        typeof rawRef === 'string' &&
-                        schema.resolve(rawRef.split('.')) == null &&
-                        j < argRanges.length
-                    ) {
-                        diags.push(
-                            makeDiag(
-                                argRanges[j],
-                                `unknown column in argument: '${rawRef}'`,
-                                'error',
-                                CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
-                            ),
+                    if (typeof rawRef === 'string' && j < argRanges.length) {
+                        const { resolved: argResolved, parentPermissive } = _walkAndCheckPermissive(
+                            schema,
+                            rawRef.split('.'),
                         )
+                        if (!argResolved && !parentPermissive) {
+                            diags.push(
+                                makeDiag(
+                                    argRanges[j],
+                                    `unknown column in argument: '${rawRef}'`,
+                                    'error',
+                                    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+                                ),
+                            )
+                        }
                     }
                     continue
                 }
@@ -206,19 +218,21 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
                 if (j >= r.argSchema.length) break
                 if (rendererKindsInSync && rendererArgKinds[j] === 'col') {
                     const rawRef = renderer.arguments[j]
-                    if (
-                        typeof rawRef === 'string' &&
-                        schema.resolve(rawRef.split('.')) == null &&
-                        j < rArgRanges.length
-                    ) {
-                        diags.push(
-                            makeDiag(
-                                rArgRanges[j],
-                                `unknown column in argument: '${rawRef}'`,
-                                'error',
-                                CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
-                            ),
+                    if (typeof rawRef === 'string' && j < rArgRanges.length) {
+                        const { resolved: argResolved, parentPermissive } = _walkAndCheckPermissive(
+                            schema,
+                            rawRef.split('.'),
                         )
+                        if (!argResolved && !parentPermissive) {
+                            diags.push(
+                                makeDiag(
+                                    rArgRanges[j],
+                                    `unknown column in argument: '${rawRef}'`,
+                                    'error',
+                                    CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+                                ),
+                            )
+                        }
                     }
                     continue
                 }
@@ -259,7 +273,15 @@ export function diagnose(parsedColumns, schema, registry = null, rendererRegistr
 
 function _findFailingSegment(col, schema, segments) {
     let current = null
+    let previous = null
     for (let i = 0; i < segments.length; i++) {
+        // TD-10 strict pattern: capture previous BEFORE any reassignment of
+        // current. Both the lookup-hit branch (current = current.children[seg])
+        // and the no-children branch (current = null) reset current — without
+        // capturing previous as the FIRST statement of the loop body, the
+        // permissive-parent check at the call site would see `null` for any
+        // failure where the parent has no children at all.
+        previous = current
         if (i === 0) {
             current = schema.get(segments[i])
         } else if (current != null && current.children != null) {
@@ -272,8 +294,16 @@ function _findFailingSegment(col, schema, segments) {
             for (let j = 0; j < i; j++) {
                 offset += segments[j].length + 1
             }
-            return { segment: segments[i], range: new Range(offset, offset + segments[i].length) }
+            return {
+                segment: segments[i],
+                range: new Range(offset, offset + segments[i].length),
+                parent: previous,
+            }
         }
     }
-    return { segment: segments[0], range: new Range(col.nameRange.start, col.nameRange.start + segments[0].length) }
+    return {
+        segment: segments[0],
+        range: new Range(col.nameRange.start, col.nameRange.start + segments[0].length),
+        parent: null,
+    }
 }

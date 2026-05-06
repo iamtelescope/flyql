@@ -125,3 +125,9 @@ def parse_flyql_type(s: str) -> Type:
     if s in _VALID_TYPE_TOKENS:
         return _VALID_TYPE_TOKENS[s]
     raise FlyqlError(f"unknown flyql type: {s!r}")
+
+
+def type_permits_unknown_children(t: Type) -> bool:
+    """Return True when a column of this type may have undeclared nested
+    keys (i.e., children chain breaks should not error)."""
+    return t in (Type.JSON, Type.JSONString, Type.Map, Type.Unknown)

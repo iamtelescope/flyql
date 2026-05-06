@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { Type, parseFlyQLType } from '../src/flyql_type.js'
+import { Type, parseFlyQLType, typePermitsUnknownChildren } from '../src/flyql_type.js'
 import { FlyqlError } from '../src/core/exceptions.js'
 
 describe('parseFlyQLType', () => {
@@ -16,5 +16,14 @@ describe('parseFlyQLType', () => {
 describe('Type.Any', () => {
     it('is defined and equals "any"', () => {
         expect(Type.Any).toBe('any')
+    })
+})
+
+describe('typePermitsUnknownChildren', () => {
+    it('returns true for exactly JSON, JSONString, Map, Unknown', () => {
+        const permissive = new Set([Type.JSON, Type.JSONString, Type.Map, Type.Unknown])
+        for (const value of Object.values(Type)) {
+            expect(typePermitsUnknownChildren(value)).toBe(permissive.has(value))
+        }
     })
 })

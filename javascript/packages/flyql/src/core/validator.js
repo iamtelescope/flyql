@@ -1,5 +1,5 @@
 import { LiteralKind } from '../literal/literal_kind.js'
-import { Type } from '../flyql_type.js'
+import { Type, typePermitsUnknownChildren } from '../flyql_type.js'
 import { Range } from './range.js'
 import { defaultRegistry } from '../transformers/registry.js'
 
@@ -123,6 +123,30 @@ export function jsToFlyQLType(v) {
     return null
 }
 
+// Walks a dotted path against the schema. Returns { resolved, parentPermissive }.
+// On full resolution, parentPermissive is false (unused). On failure mid-walk,
+// parentPermissive reports whether the deepest resolved parent is a JSON-family
+// type (per typePermitsUnknownChildren) — callers use this to suppress the
+// unknown-column diagnostic for paths under semantically dynamic parents.
+// Exported (with underscore-prefixed name) so columns/validator.js can reuse
+// the same predicate for transformer-arg and renderer-arg COL-kind references.
+export function _walkAndCheckPermissive(schema, segments) {
+    if (!segments || segments.length === 0) return { resolved: false, parentPermissive: false }
+    let col = schema.get(segments[0])
+    if (col == null) return { resolved: false, parentPermissive: false }
+    for (let i = 1; i < segments.length; i++) {
+        if (col.children == null) {
+            return { resolved: false, parentPermissive: typePermitsUnknownChildren(col.type) }
+        }
+        const child = col.children[segments[i].toLowerCase()] || null
+        if (child == null) {
+            return { resolved: false, parentPermissive: typePermitsUnknownChildren(col.type) }
+        }
+        col = child
+    }
+    return { resolved: true, parentPermissive: false }
+}
+
 function _diagnoseExpression(expression, schema, registry) {
     const diags = []
 
@@ -156,6 +180,10 @@ function _diagnoseExpression(expression, schema, registry) {
             const seg = expression.key.segments[i]
             if (seg === '') break
             if (col.children == null) {
+                if (typePermitsUnknownChildren(col.type)) {
+                    col = null
+                    break
+                }
                 diags.push(
                     makeDiag(
                         expression.key.segmentRanges[i],
@@ -169,6 +197,10 @@ function _diagnoseExpression(expression, schema, registry) {
             }
             const child = col.children[seg.toLowerCase()] || null
             if (child == null) {
+                if (typePermitsUnknownChildren(col.type)) {
+                    col = null
+                    break
+                }
                 diags.push(
                     makeDiag(
                         expression.key.segmentRanges[i],
@@ -272,8 +304,9 @@ function _diagnoseExpression(expression, schema, registry) {
                 )
                 emittedRanges.add(rangeKey(expression.valueRange))
             }
-        } else if (schema.resolve(expression.value.split('.')) == null) {
-            if (expression.valueRange != null) {
+        } else {
+            const { resolved, parentPermissive } = _walkAndCheckPermissive(schema, expression.value.split('.'))
+            if (!resolved && !parentPermissive && expression.valueRange != null) {
                 diags.push(
                     makeDiag(
                         expression.valueRange,
@@ -303,8 +336,14 @@ function _diagnoseExpression(expression, schema, registry) {
                         )
                         emittedRanges.add(rangeKey(expression.valueRanges[i]))
                     }
-                } else if (schema.resolve(val.split('.')) == null) {
-                    if (expression.valueRanges != null && i < expression.valueRanges.length) {
+                } else {
+                    const { resolved, parentPermissive } = _walkAndCheckPermissive(schema, val.split('.'))
+                    if (
+                        !resolved &&
+                        !parentPermissive &&
+                        expression.valueRanges != null &&
+                        i < expression.valueRanges.length
+                    ) {
                         diags.push(
                             makeDiag(
                                 expression.valueRanges[i],

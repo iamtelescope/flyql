@@ -25,3 +25,11 @@ const (
 	TypeUnknown    = flyqltype.Unknown
 	TypeAny        = flyqltype.Any
 )
+
+// TypePermitsUnknownChildren returns true when a column of this type may
+// have undeclared nested keys (i.e., children chain breaks should not
+// error). Re-export of flyqltype.TypePermitsUnknownChildren so external
+// users write flyql.TypePermitsUnknownChildren directly.
+func TypePermitsUnknownChildren(t Type) bool {
+	return flyqltype.TypePermitsUnknownChildren(t)
+}

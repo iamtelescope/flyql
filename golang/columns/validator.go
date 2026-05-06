@@ -99,10 +99,19 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 		if resolved == nil {
 			// Find the first unresolvable segment for precise error reporting
 			if col.NameRange.End > 0 {
-				failSegment, failRange := findFailingSegment(col, schema, segments)
-				diags = append(diags, flyql.MakeDiag(failRange, flyql.CodeUnknownColumn, flyql.SeverityError, fmt.Sprintf("column '%s' is not defined", failSegment)))
+				failSegment, failRange, parent := findFailingSegment(col, schema, segments)
+				if parent != nil && flyqltype.TypePermitsUnknownChildren(parent.Type) {
+					// Permissive parent (JSON, JSONString, Map, Unknown) — undeclared
+					// nested key access is allowed; suppress diag and treat downstream
+					// input type as unknown.
+					hasPrevType = false
+				} else {
+					diags = append(diags, flyql.MakeDiag(failRange, flyql.CodeUnknownColumn, flyql.SeverityError, fmt.Sprintf("column '%s' is not defined", failSegment)))
+					hasPrevType = false
+				}
+			} else {
+				hasPrevType = false
 			}
-			hasPrevType = false
 		} else {
 			prevOutputType = resolved.Type
 			hasPrevType = resolved.Type != "" && resolved.Type != flyql.TypeUnknown
@@ -249,10 +258,22 @@ func DiagnoseWithOptions(parsedColumns []ParsedColumn, schema *flyql.ColumnSchem
 }
 
 // findFailingSegment identifies the first unresolvable segment in a parsed column
-// and returns the segment name and its source range.
-func findFailingSegment(col ParsedColumn, schema *flyql.ColumnSchema, segments []string) (string, flyql.Range) {
+// and returns the segment name, its source range, and the deepest *resolved*
+// parent column (or nil when the failing segment is the root). Callers
+// inspect parent.Type against flyqltype.TypePermitsUnknownChildren to decide
+// whether to suppress the unknown-column diagnostic for paths under
+// JSON-family parents.
+func findFailingSegment(col ParsedColumn, schema *flyql.ColumnSchema, segments []string) (string, flyql.Range, *flyql.Column) {
 	var current *flyql.Column
+	var previous *flyql.Column
 	for i, seg := range segments {
+		// TD-10 strict pattern: capture previous BEFORE any reassignment of
+		// current. Both the lookup-hit branch and the no-children else
+		// branch reset current — without capturing previous as the FIRST
+		// statement of the loop body, the permissive-parent check at the
+		// call site would see nil for any failure where the parent has
+		// no children at all.
+		previous = current
 		if i == 0 {
 			current = schema.Get(seg)
 		} else if current != nil && current.Children != nil {
@@ -268,11 +289,11 @@ func findFailingSegment(col ParsedColumn, schema *flyql.ColumnSchema, segments [
 			return seg, flyql.Range{
 				Start: offset,
 				End:   offset + len(seg),
-			}
+			}, previous
 		}
 	}
 	return segments[0], flyql.Range{
 		Start: col.NameRange.Start,
 		End:   col.NameRange.Start + len(segments[0]),
-	}
+	}, nil
 }

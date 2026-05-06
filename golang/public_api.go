@@ -44,5 +44,6 @@ var PublicSymbols = []string{
 	"Tokenize",
 	"Transformer",
 	"Type",
+	"TypePermitsUnknownChildren",
 	"TypedChar",
 }

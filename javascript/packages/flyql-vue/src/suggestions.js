@@ -3,7 +3,7 @@
  */
 
 import { Operator, VALID_KEY_VALUE_OPERATORS, isNumeric } from 'flyql/core'
-import { Type } from 'flyql'
+import { Type, typePermitsUnknownChildren } from 'flyql'
 import { defaultRegistry } from 'flyql/transformers'
 
 const OPERATOR_NAMES = {
@@ -54,6 +54,9 @@ const COLUMN_TYPE_TO_FLYQL = {
 }
 
 const _FLYQL_TYPE_VALUES = new Set(Object.values(Type))
+
+// Permissive parents per validator semantics — type module is the source of truth.
+const _isPermissiveParent = (col) => col != null && typePermitsUnknownChildren(col.type)
 
 export function getTransformerSuggestions(schema, ctx, registry = null) {
     if (!registry) registry = defaultRegistry()
@@ -158,22 +161,18 @@ export function getKeySuggestions(schema, prefix) {
     if (prefix.includes('.')) {
         const nested = getNestedColumnSuggestions(schema, prefix)
         if (nested.length > 0) return nested
-        // Check if this is a schemaless object column (no children) — signal async needed.
-        // After the unify-column-type-system refactor, "object" can be either
-        // the raw editor-input string 'object' OR the canonical Type.Unknown
-        // (since 'object' isn't a flyql.Type, it gets normalized to Unknown).
+        // Permissive parents per validator semantics — type module is the source of truth.
         const dotIndex = prefix.lastIndexOf('.')
         const rawParentPath = prefix.substring(0, dotIndex)
         const segments = rawParentPath.split('.')
         const rootCol = schema.get(segments[0])
-        const isObjectLike = (col) => col && (col.type === 'object' || col.type === Type.Unknown)
-        if (isObjectLike(rootCol)) {
+        if (_isPermissiveParent(rootCol)) {
             if (!rootCol.children) {
-                return null // root is schemaless object — signal async
+                return null // root is schemaless permissive parent — signal async
             }
             const fullResolved = schema.resolve(segments)
-            if (fullResolved && !fullResolved.children && isObjectLike(fullResolved)) {
-                return null // reached a schemaless object deeper in static tree
+            if (fullResolved && !fullResolved.children && _isPermissiveParent(fullResolved)) {
+                return null // reached a schemaless permissive parent deeper in static tree
             }
         }
         return []
@@ -455,17 +454,14 @@ export async function getKeyDiscoverySuggestions(schema, prefix, onKeyDiscovery,
     const rootCol = schema.get(segments[0])
     if (!rootCol || rootCol.suggest === false) return []
 
-    // After the unify-column-type-system refactor, "object" can be either
-    // the raw editor-input string 'object' OR canonical Type.Unknown.
-    const isObjectLike = (col) => col && (col.type === 'object' || col.type === Type.Unknown)
-    // If root node has children, check if the full path resolves through static children
+    // Permissive parents per validator semantics — type module is the source of truth.
     if (rootCol.children) {
         const fullResolved = schema.resolve(segments)
         if (fullResolved && fullResolved.children) return [] // fully static path
-        if (fullResolved && !isObjectLike(fullResolved)) return [] // leaf node
+        if (fullResolved && !_isPermissiveParent(fullResolved)) return [] // leaf node
         if (!fullResolved) return []
     }
-    if (!isObjectLike(rootCol)) return []
+    if (!_isPermissiveParent(rootCol)) return []
 
     const parentPath = segments.join('.')
     const rootColumnName = segments[0]

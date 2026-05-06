@@ -14,11 +14,11 @@ const NESTED_COLUMNS_PLAIN = {
     level: { type: 'enum', suggest: true },
     service: { type: 'string', suggest: true },
     metadata: {
-        type: 'object',
+        type: 'json',
         suggest: true,
         children: {
             labels: {
-                type: 'object',
+                type: 'json',
                 suggest: true,
                 children: {
                     tier: { type: 'string', suggest: true },
@@ -29,18 +29,18 @@ const NESTED_COLUMNS_PLAIN = {
         },
     },
     hidden_nested: {
-        type: 'object',
+        type: 'json',
         suggest: false,
         children: {
             secret: { type: 'string', suggest: true },
         },
     },
     config: {
-        type: 'object',
+        type: 'json',
         suggest: true,
         children: {
             hidden_group: {
-                type: 'object',
+                type: 'json',
                 suggest: false,
                 children: {
                     value: { type: 'string', suggest: true },
@@ -71,7 +71,7 @@ describe('getKeySuggestions — flat columns (AC #4)', () => {
     it('nested column shows type as detail', () => {
         const result = getKeySuggestions(NESTED_COLUMNS, 'meta')
         const meta = result.find((s) => s.label === 'metadata')
-        expect(meta.detail).toBe('object')
+        expect(meta.detail).toBe('json')
     })
 
     it('nested column insertText has trailing dot', () => {
@@ -111,7 +111,7 @@ describe('getNestedColumnSuggestions (AC #1, #2)', () => {
     it('intermediate node shows type as detail', () => {
         const result = getNestedColumnSuggestions(NESTED_COLUMNS, 'metadata.')
         const labelsItem = result.find((s) => s.label === 'metadata.labels')
-        expect(labelsItem.detail).toBe('object')
+        expect(labelsItem.detail).toBe('json')
     })
 
     it('intermediate node insertText has trailing dot', () => {
@@ -244,7 +244,7 @@ describe('resolveColumnDef — nested column resolution (P1)', () => {
 
     it('resolves intermediate nested column', () => {
         const col = resolveColumnDef(NESTED_COLUMNS, 'metadata.labels')
-        expect(col.type).toBe('object')
+        expect(col.type).toBe('json')
         expect(col.children).toBeDefined()
     })
 
@@ -261,7 +261,7 @@ describe('getOperatorSuggestions — nested columns (P1)', () => {
     it('type-filters operators for nested enum-type column', () => {
         const ENUM_NESTED = ColumnSchema.fromPlainObject({
             data: {
-                type: 'object',
+                type: 'json',
                 suggest: true,
                 children: {
                     status: { type: 'enum', suggest: true },
@@ -352,7 +352,7 @@ describe('resolveColumnDef — case-insensitive top-level (P1r2)', () => {
 describe('getValueSuggestions — nested columns (P2r2)', () => {
     const VALUED_NESTED = ColumnSchema.fromPlainObject({
         data: {
-            type: 'object',
+            type: 'json',
             suggest: true,
             children: {
                 status: { type: 'enum', suggest: true, autocomplete: true, values: ['active', 'inactive'] },

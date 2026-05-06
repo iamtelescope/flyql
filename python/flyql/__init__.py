@@ -25,7 +25,7 @@ from .renderers import (
     RendererRegistry,
     default_registry as default_renderer_registry,
 )
-from .flyql_type import Type, parse_flyql_type
+from .flyql_type import Type, parse_flyql_type, type_permits_unknown_children
 from .literal import LiteralKind
 from .tokenize import tokenize, Token
 
@@ -71,4 +71,5 @@ __all__ = [
     "parse_flyql_type",
     "parse_key",
     "tokenize",
+    "type_permits_unknown_children",
 ]

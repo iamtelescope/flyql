@@ -15,11 +15,11 @@ const MIXED_COLUMNS_PLAIN = {
     level: { type: 'enum', suggest: true, autocomplete: true, values: ['info', 'error'] },
     service: { type: 'string', suggest: true },
     metadata: {
-        type: 'object',
+        type: 'json',
         suggest: true,
         children: {
             labels: {
-                type: 'object',
+                type: 'json',
                 suggest: true,
                 children: {
                     tier: { type: 'string', suggest: true },
@@ -29,8 +29,8 @@ const MIXED_COLUMNS_PLAIN = {
             version: { type: 'string', suggest: true },
         },
     },
-    request: { type: 'object', suggest: true }, // schemaless — no children
-    payload: { type: 'object', suggest: true }, // another schemaless
+    request: { type: 'json', suggest: true }, // schemaless — no children
+    payload: { type: 'json', suggest: true }, // another schemaless
     flags: { type: 'string', suggest: true }, // not object — no discovery
 }
 
@@ -40,7 +40,7 @@ const MOCK_KEYS = {
     request: [
         { name: 'method', type: 'string' },
         { name: 'url', type: 'string' },
-        { name: 'headers', type: 'object', hasChildren: true },
+        { name: 'headers', type: 'json', hasChildren: true },
     ],
     'request|headers': [
         { name: 'content_type', type: 'string' },
@@ -187,7 +187,18 @@ describe('getKeyDiscoverySuggestions (AC #1, #2, #7, #9)', () => {
         const method = result.find((s) => s.label === 'request.method')
         expect(method.detail).toBe('string')
         const headers = result.find((s) => s.label === 'request.headers')
-        expect(headers.detail).toBe('object')
+        expect(headers.detail).toBe('json')
+    })
+
+    it('canonical type:unknown column triggers discovery (AC13b regression anchor)', async () => {
+        const unknownColumns = ColumnSchema.fromPlainObject({
+            blob: { type: 'unknown', suggest: true },
+        })
+        const mockDiscovery = vi.fn(async () => [{ name: 'foo', type: 'string' }])
+        const cache = {}
+        const result = await getKeyDiscoverySuggestions(unknownColumns, 'blob.', mockDiscovery, cache, () => {})
+        expect(mockDiscovery).toHaveBeenCalledWith('blob', ['blob'])
+        expect(result.map((s) => s.label)).toContain('blob.foo')
     })
 
     it('default detail is unknown when type omitted', async () => {
@@ -317,7 +328,7 @@ describe('operator suggestions for discovered keys (AC #10 analog)', () => {
         // Simulate a schema where a discovered key was resolved
         const numericCol = ColumnSchema.fromPlainObject({
             data: {
-                type: 'object',
+                type: 'json',
                 suggest: true,
                 children: {
                     count: { type: 'number', suggest: true },

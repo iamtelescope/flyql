@@ -104,3 +104,10 @@ const (
 	// as OutputType() or on any ArgSpec.Type.
 	Any Type = "any"
 )
+
+// TypePermitsUnknownChildren returns true when a column of this type may
+// have undeclared nested keys (i.e., children chain breaks should not
+// error).
+func TypePermitsUnknownChildren(t Type) bool {
+	return t == JSON || t == JSONString || t == Map || t == Unknown
+}

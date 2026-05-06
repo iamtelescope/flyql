@@ -392,7 +392,7 @@ describe('suggestions', () => {
                 host: { type: 'string', suggest: true, autocomplete: true },
                 count: { type: 'number', suggest: true, autocomplete: false },
                 hidden: { type: 'string', suggest: false, autocomplete: false },
-                meta: { type: 'object', suggest: true, children: { region: { type: 'string', suggest: true } } },
+                meta: { type: 'json', suggest: true, children: { region: { type: 'string', suggest: true } } },
             })
             const result = getColumnSuggestionsForValue(columnsWithChildren, 'me')
             const metaItem = result.find((s) => s.label === 'meta')
@@ -415,7 +415,7 @@ describe('suggestions', () => {
         it('returns nested column paths', () => {
             const columnsWithChildren = ColumnSchema.fromPlainObject({
                 meta: {
-                    type: 'object',
+                    type: 'json',
                     suggest: true,
                     children: { region: { type: 'string', suggest: true }, tier: { type: 'string', suggest: true } },
                 },

@@ -483,6 +483,97 @@
           "message_contains": "2026-02-31"
         }
       ]
+    },
+    {
+      "name": "permissive_lhs_json_no_children",
+      "query": "body.message='x'",
+      "columns": [{ "name": "body", "type": "json" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "permissive_lhs_map_no_children",
+      "query": "body.message='x'",
+      "columns": [{ "name": "body", "type": "map" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "permissive_lhs_jsonstring_no_children",
+      "query": "body.message='x'",
+      "columns": [{ "name": "body", "type": "jsonstring" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "permissive_lhs_unknown_no_children",
+      "query": "body.message='x'",
+      "columns": [{ "name": "body", "type": "unknown" }],
+      "expected_diagnostics": []
+    },
+    {
+      "name": "strict_lhs_struct_errors",
+      "query": "body.message='x'",
+      "columns": [{ "name": "body", "type": "struct" }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column",
+          "severity": "error",
+          "message_contains": "message"
+        }
+      ]
+    },
+    {
+      "name": "permissive_value_side_column_ref",
+      "query": "host=body.message",
+      "columns": [
+        { "name": "host", "type": "string" },
+        { "name": "body", "type": "json" }
+      ],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "permissive_in_list_value_side",
+      "query": "host in [body.foo, body.bar]",
+      "columns": [
+        { "name": "host", "type": "string" },
+        { "name": "body", "type": "json" }
+      ],
+      "expected_diagnostics": [],
+      "absent_codes": ["unknown_column_value"]
+    },
+    {
+      "name": "strict_value_side_struct_errors",
+      "query": "host=body.x",
+      "columns": [
+        { "name": "host", "type": "string" },
+        { "name": "body", "type": "struct" }
+      ],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column_value",
+          "severity": "error",
+          "message_contains": "body.x"
+        }
+      ]
+    },
+    {
+      "name": "permissive_lhs_then_transformer_no_chain",
+      "query": "body.message|upper='x'",
+      "columns": [{ "name": "body", "type": "json" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["chain_type"]
+    },
+    {
+      "name": "permissive_lhs_multi_transformer_chain",
+      "query": "body.foo|len|upper='x'",
+      "columns": [{ "name": "body", "type": "json" }],
+      "expected_diagnostics": [
+        {
+          "code": "chain_type",
+          "severity": "error",
+          "range": [13, 18],
+          "message_contains": "upper"
+        }
+      ]
     }
   ]
 }

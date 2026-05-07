@@ -1445,6 +1445,135 @@ describe('EditorEngine', () => {
         })
     })
 
+    describe('getHighlightTokens — quoted-key path-dot handling', () => {
+        const KEY_OPEN = '<span class="flyql-key">'
+        const SP_CLOSE = '</span>'
+        const DOT = '<span class="flyql-path-dot">.</span>'
+        const SPACE = '<span class="flyql-space"> </span>'
+        const OP_EQ = '<span class="flyql-operator">=</span>'
+
+        it('AC1 — single-quoted key: inner dots stay unwrapped', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("Metadata.'1.2.3.4' = 123")
+            expect(html).toBe(
+                `${KEY_OPEN}Metadata${DOT}&#x27;1.2.3.4&#x27;${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">123</span>`,
+            )
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(1)
+        })
+
+        it('AC2 — double-quoted key: inner dots stay unwrapped', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('Metadata."1.2.3.4" = 123')
+            expect(html).toBe(
+                `${KEY_OPEN}Metadata${DOT}&quot;1.2.3.4&quot;${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">123</span>`,
+            )
+        })
+
+        it('AC5 — mixed unquoted+quoted segments: separator dots wrapped, inner dots not', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("Metadata.'1.2.3.4'.subkey = 1")
+            expect(html).toBe(
+                `${KEY_OPEN}Metadata${DOT}&#x27;1.2.3.4&#x27;${DOT}subkey${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">1</span>`,
+            )
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(2)
+        })
+
+        it("AC6 — escaped inner quote (\\') does not close the segment", () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("a.'b\\'c.d' = 1")
+            expect(html).toBe(
+                `${KEY_OPEN}a${DOT}&#x27;b\\&#x27;c.d&#x27;${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">1</span>`,
+            )
+        })
+
+        it("AC9 — backslash-doubling parity (\\\\' treated as \\'): pinned output", () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("a.'b\\\\'c.d' = 1")
+            // Walker uses single-prev-char check, mirroring parser
+            // (core/parser.js:1631 / :1653). \\' is mis-handled the same way.
+            expect(html).toBe(
+                `${KEY_OPEN}a${DOT}&#x27;b\\\\&#x27;c.d&#x27;${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">1</span>`,
+            )
+        })
+
+        it('AC7 — regression: unquoted dotted path keeps wrapped separators', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('foo.bar.baz = 1')
+            expect(html).toBe(
+                `${KEY_OPEN}foo${DOT}bar${DOT}baz${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-number">1</span>`,
+            )
+        })
+
+        it('AC8 — non-DOT_PATH tokens unchanged: STRING with dot stays literal', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("tag = 'foo.bar.baz'")
+            expect(html).toBe(
+                `${KEY_OPEN}tag${SP_CLOSE}${SPACE}${OP_EQ}${SPACE}<span class="flyql-string">&#x27;foo.bar.baz&#x27;</span>`,
+            )
+            expect(html).not.toContain('flyql-path-dot')
+        })
+
+        it('AC8 — byte-equivalence for plain DOT_PATH tokens (no quotes/backslashes)', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            expect(engine.getHighlightTokens('foo.bar.baz')).toBe(`${KEY_OPEN}foo${DOT}bar${DOT}baz${SP_CLOSE}`)
+            expect(engine.getHighlightTokens('a')).toBe(`${KEY_OPEN}a${SP_CLOSE}`)
+            expect(engine.getHighlightTokens('a.b')).toBe(`${KEY_OPEN}a${DOT}b${SP_CLOSE}`)
+            expect(engine.getHighlightTokens('service.api.users.profile')).toBe(
+                `${KEY_OPEN}service${DOT}api${DOT}users${DOT}profile${SP_CLOSE}`,
+            )
+        })
+
+        it('AC10 — diagnostic spanning a quoted segment: inner dots stay unwrapped', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            const query = "Metadata.'1.2.3.4' = 123"
+            const diag = new Diagnostic(new Range(5, 15), 'msg', 'error', 'syntax')
+            const html = engine.getHighlightTokens(query, [diag])
+            // Exactly one path-dot span (the unquoted separator before the
+            // opening quote) — even though the diagnostic forces a per-char
+            // split through the quoted segment.
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(1)
+            // No path-dot span sits between the opening and closing &#x27;
+            // entities (i.e., inside the quoted segment).
+            expect(html).not.toMatch(/&#x27;[^]*<span class="flyql-path-dot">\.<\/span>[^]*&#x27;/)
+            expect(html).toContain('flyql-diagnostic--error')
+        })
+    })
+
+    describe('highlightMatch — quoted-segment regressions (AC11, AC11b)', () => {
+        it('AC11 — non-truncation prefix-split inside a quoted segment leaves inner dots unwrapped', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', key: "meta.'1." }
+            const html = engine.highlightMatch("meta.'1.2.3.4'.sub")
+            expect(html).toBe(
+                '<span class="flyql-panel__match">meta<span class="flyql-path-dot">.</span>&#x27;1.</span>2.3.4&#x27;<span class="flyql-path-dot">.</span>sub',
+            )
+            // Exactly two path-dot spans: the unquoted separator inside the
+            // matched piece and the unquoted separator before "sub". The dots
+            // inside '1.2.3.4' stay literal.
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(2)
+        })
+
+        it('AC11b — truncation branch (deferred limitation): pinned baseline', () => {
+            const engine = new EditorEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', key: "service.api.users.'profile.te" }
+            const original = "service.api.users.'profile.test'.email"
+            const truncated = "…users.'profile.test'.email"
+            const html = engine.highlightMatch(truncated, original)
+            // The truncation branch still wraps every dot — including the one
+            // inside the quoted segment — because the mask cannot recover the
+            // original quote state once leading characters are stripped.
+            // This pin documents the deferred limitation; future fix that
+            // threads the original-label mask will intentionally update.
+            expect(html).toBe(
+                '…<span class="flyql-panel__match">users<span class="flyql-path-dot">.</span>&#x27;profile<span class="flyql-path-dot">.</span>te</span>st&#x27;<span class="flyql-path-dot">.</span>email',
+            )
+        })
+    })
+
     describe('tab cycling', () => {
         it('defaults activeTab to values', () => {
             const engine = new EditorEngine(TEST_COLUMNS)

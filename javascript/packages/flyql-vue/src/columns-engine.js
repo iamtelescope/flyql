@@ -24,6 +24,7 @@ import { defaultRegistry } from 'flyql/transformers'
 import { defaultRegistry as defaultRendererRegistryFn } from 'flyql/renderers'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
+import { computeOutsideQuoteMask, renderWithDotMask } from './path-dot.js'
 import {
     Column,
     ColumnSchema,
@@ -115,15 +116,27 @@ function escapeHtml(str) {
 
 function wrapDots(escaped) {
     // escaped is already HTML-safe; dots in escaped text map 1:1 to dots in label.
+    // Retained for the highlightMatch truncation branch (deferred limitation,
+    // see AC11b). All other call sites go through renderWithDotMask.
     return escaped.replace(/\./g, '<span class="flyql-path-dot">.</span>')
 }
 
 // Column expression tokens that can be dotted identifier paths.
 const DOT_PATH_COL_CHAR_TYPES = new Set([CharType.COLUMN])
 
-function wrapSpan(charType, text) {
-    const escaped = escapeHtml(text)
-    const content = DOT_PATH_COL_CHAR_TYPES.has(charType) ? wrapDots(escaped) : escaped
+function wrapSpan(charType, segText, segMask) {
+    const isDotPath = DOT_PATH_COL_CHAR_TYPES.has(charType)
+    let content
+    if (!isDotPath) {
+        content = escapeHtml(segText)
+    } else if (segMask) {
+        content = renderWithDotMask(segText, segMask)
+    } else {
+        // No mask supplied: caller knows the value contains no quoted
+        // segments, so every dot is a separator. Equivalent to the pre-fix
+        // wrapDots(escapeHtml(...)) flow and byte-identical for plain paths.
+        content = wrapDots(escapeHtml(segText))
+    }
     const cls = COL_CHAR_TYPE_CLASS[charType]
     if (cls) {
         return `<span class="${cls}">${content}</span>`
@@ -636,18 +649,30 @@ export class ColumnsEngine {
             }
         }
 
+        // Compute outside-quote mask once over the full value; per-segment
+        // emits slice it by absolute position so quote state stays stable
+        // across diagnostic, highlight, and newline-driven splits.
+        // Skip mask construction entirely when the value contains no quote
+        // characters — the byte-equivalent legacy path in wrapSpan handles it.
+        const valueMask = /['"]/.test(value) ? computeOutsideQuoteMask(value) : null
+
         // Build highlight using char positions — columns parser skips spaces
         // in some states, so typedChars count != value length. Use pos to align.
         let html = ''
         let currentType = null
         let currentText = ''
+        let currentStart = 0
         let currentDiag = null
         let currentHighlight = false
         let lastPos = -1
 
         const flushSpan = () => {
             if (!currentText) return
-            const inner = wrapSpan(currentType, currentText)
+            const segMask =
+                valueMask && DOT_PATH_COL_CHAR_TYPES.has(currentType)
+                    ? valueMask.slice(currentStart, currentStart + currentText.length)
+                    : null
+            const inner = wrapSpan(currentType, currentText, segMask)
             if (currentDiag || currentHighlight) {
                 const classes = ['flyql-diagnostic']
                 if (currentDiag) {
@@ -698,9 +723,16 @@ export class ColumnsEngine {
             const ch = value[pos] !== undefined ? value[pos] : char.value
             const newDiag = diagMap ? diagMap[pos] || null : null
             const newHighlight = highlightSet ? highlightSet.has(pos) : false
+            // Compare by integer diagnostic index — diagMap[pos] is a freshly-
+            // built `{ diag, index }` object per position, so reference equality
+            // would never hold even for adjacent positions covered by the same
+            // diagnostic. Without this, the per-char split inside a diagnostic
+            // would never coalesce.
+            const currentDiagIdx = currentDiag ? currentDiag.index : -1
+            const newDiagIdx = newDiag ? newDiag.index : -1
             if (
                 charType === currentType &&
-                newDiag === currentDiag &&
+                newDiagIdx === currentDiagIdx &&
                 newHighlight === currentHighlight &&
                 ch !== '\n'
             ) {
@@ -711,6 +743,7 @@ export class ColumnsEngine {
                 currentDiag = newDiag
                 currentHighlight = newHighlight
                 currentText = ch
+                currentStart = pos
             }
             lastPos = pos
         }
@@ -1047,12 +1080,19 @@ export class ColumnsEngine {
      */
     highlightMatch(label, originalLabel = null) {
         const prefix = this.getFilterPrefix()
-        if (!prefix) return wrapDots(escapeHtml(label))
+        // Skip mask construction when the label has no quoted segments;
+        // wrapDots(escapeHtml(...)) is byte-equivalent in that case.
+        const labelMask = /['"]/.test(label) ? computeOutsideQuoteMask(label) : null
+        const renderSlice = (start, end) => {
+            const piece = label.substring(start, end)
+            return labelMask ? renderWithDotMask(piece, labelMask.slice(start, end)) : wrapDots(escapeHtml(piece))
+        }
+        if (!prefix) return renderSlice(0, label.length)
         const lowerLabel = label.toLowerCase()
         const lowerPrefix = prefix.toLowerCase()
         if (lowerLabel.startsWith(lowerPrefix)) {
-            const matched = wrapDots(escapeHtml(label.substring(0, prefix.length)))
-            const rest = wrapDots(escapeHtml(label.substring(prefix.length)))
+            const matched = renderSlice(0, prefix.length)
+            const rest = renderSlice(prefix.length, label.length)
             return `<span class="flyql-panel__match">${matched}</span>${rest}`
         }
         if (
@@ -1065,11 +1105,15 @@ export class ColumnsEngine {
             const strippedLen = originalLabel.length - kept.length
             if (prefix.length > strippedLen) {
                 const visibleMatchLen = Math.min(prefix.length - strippedLen, kept.length)
+                // Truncation branch: deferred limitation. Mask computed on
+                // `kept` would not reflect the original quote state when
+                // the leading characters were stripped, so we keep the
+                // pre-fix escapeHtml+wrapDots flow here. AC11b pins this.
                 const matched = wrapDots(escapeHtml(kept.substring(0, visibleMatchLen)))
                 const rest = wrapDots(escapeHtml(kept.substring(visibleMatchLen)))
                 return `\u2026<span class="flyql-panel__match">${matched}</span>${rest}`
             }
         }
-        return wrapDots(escapeHtml(label))
+        return renderSlice(0, label.length)
     }
 }

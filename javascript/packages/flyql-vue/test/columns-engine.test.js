@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ColumnsEngine } from '../src/columns-engine.js'
-import { ColumnSchema } from 'flyql/core'
+import { ColumnSchema, Diagnostic, Range } from 'flyql/core'
 import { Transformer, TransformerRegistry, defaultRegistry } from 'flyql/transformers'
 import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
 import { Type } from 'flyql'
@@ -721,6 +721,109 @@ describe('ColumnsEngine', () => {
             const content = readFileSync(resolve(import.meta.dirname, '../src/columns-engine.js'), 'utf-8')
             expect(content).not.toMatch(/from\s+['"]vue['"]/)
             expect(content).not.toMatch(/from\s+['"]react['"]/)
+        })
+    })
+
+    describe('getHighlightTokens — quoted-column path-dot handling', () => {
+        const COL_OPEN = '<span class="flyql-col-column">'
+        const SP_CLOSE = '</span>'
+        const DOT = '<span class="flyql-path-dot">.</span>'
+        const ALIAS_AS = ' as '
+        const aliasOpen = (label) => `<span class="flyql-col-alias">${label}</span>`
+
+        it('AC3 — single-quoted column segment: inner dots stay unwrapped', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("Metadata.'1.2.3.4' as M123")
+            expect(html).toBe(`${COL_OPEN}Metadata${DOT}&#x27;1.2.3.4&#x27;${SP_CLOSE}${ALIAS_AS}${aliasOpen('M123')}`)
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(1)
+        })
+
+        it('AC4 — double-quoted column segment: inner dots stay unwrapped', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('Metadata."1.2.3.4" as M123')
+            expect(html).toBe(`${COL_OPEN}Metadata${DOT}&quot;1.2.3.4&quot;${SP_CLOSE}${ALIAS_AS}${aliasOpen('M123')}`)
+        })
+
+        it('AC5 — mixed unquoted+quoted column segments: only separator dots wrapped', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("Metadata.'1.2.3.4'.subkey as Mx")
+            expect(html).toBe(
+                `${COL_OPEN}Metadata${DOT}&#x27;1.2.3.4&#x27;${DOT}subkey${SP_CLOSE}${ALIAS_AS}${aliasOpen('Mx')}`,
+            )
+        })
+
+        it("AC6 — escaped inner quote (\\') does not close the segment", () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("a.'b\\'c.d' as A")
+            expect(html).toBe(`${COL_OPEN}a${DOT}&#x27;b\\&#x27;c.d&#x27;${SP_CLOSE}${ALIAS_AS}${aliasOpen('A')}`)
+        })
+
+        it('AC9 — backslash-doubling parity in columns mode: pinned output', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens("a.'b\\\\'c.d' as A")
+            // Columns parser has no quoted-key state; the column run breaks
+            // around the escape sequence and the column tokens get split.
+            // This pin documents what the renderer emits.
+            expect(html).toBe(
+                `${COL_OPEN}a${DOT}&#x27;b\\${SP_CLOSE}\\${COL_OPEN}&#x27;c.d&#x27;${SP_CLOSE}${ALIAS_AS}${aliasOpen('A')}`,
+            )
+        })
+
+        it('AC7 — regression: unquoted dotted column path keeps wrapped separators', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('foo.bar.baz')
+            // Note: TEST_COLUMNS in this file does not include foo/bar/baz, but
+            // tokenization is purely syntactic so highlight ignores the schema.
+            expect(html).toBe(`${COL_OPEN}foo${DOT}bar${DOT}baz${SP_CLOSE}`)
+        })
+
+        it('AC10 — diagnostic spanning a quoted segment: inner dots stay unwrapped', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const query = "Metadata.'1.2.3.4' as M123"
+            const diag = new Diagnostic(new Range(5, 15), 'msg', 'error', 'syntax')
+            const html = engine.getHighlightTokens(query, [diag])
+            // Exactly one path-dot span (the unquoted separator), no path-dot
+            // inside the quoted segment despite per-char diagnostic split.
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(1)
+            expect(html).not.toMatch(/&#x27;[^]*<span class="flyql-path-dot">\.<\/span>[^]*&#x27;/)
+            expect(html).toContain('flyql-diagnostic--error')
+        })
+
+        it('AC12 — columns regression: literal backslash before dot in unquoted column', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            const html = engine.getHighlightTokens('foo\\.bar')
+            // \ is admitted as a column char (isColumnValue), so the dot is
+            // outside any quote and gets wrapped. \ stays literal because
+            // escapeHtml does not escape backslash.
+            expect(html).toBe(`${COL_OPEN}foo\\${DOT}bar${SP_CLOSE}`)
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(1)
+        })
+    })
+
+    describe('highlightMatch — quoted-segment regressions (AC11, AC11b)', () => {
+        it('AC11 — non-truncation prefix-split inside a quoted segment leaves inner dots unwrapped', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: "meta.'1." }
+            const html = engine.highlightMatch("meta.'1.2.3.4'.sub")
+            expect(html).toBe(
+                '<span class="flyql-panel__match">meta<span class="flyql-path-dot">.</span>&#x27;1.</span>2.3.4&#x27;<span class="flyql-path-dot">.</span>sub',
+            )
+            const dotMatches = html.match(/<span class="flyql-path-dot">\.<\/span>/g)
+            expect(dotMatches.length).toBe(2)
+        })
+
+        it('AC11b — truncation branch (deferred limitation): pinned baseline', () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS)
+            engine.context = { expecting: 'column', column: "service.api.users.'profile.te" }
+            const original = "service.api.users.'profile.test'.email"
+            const truncated = "…users.'profile.test'.email"
+            const html = engine.highlightMatch(truncated, original)
+            expect(html).toBe(
+                '…<span class="flyql-panel__match">users<span class="flyql-path-dot">.</span>&#x27;profile<span class="flyql-path-dot">.</span>te</span>st&#x27;<span class="flyql-path-dot">.</span>email',
+            )
         })
     })
 

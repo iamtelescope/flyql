@@ -30,6 +30,7 @@ import {
     getInsertRange,
     STATE_LABELS,
 } from './suggestions.js'
+import { computeOutsideQuoteMask, renderWithDotMask } from './path-dot.js'
 
 /**
  * Maps editor-input raw-type strings (as appearing in user schema definitions)
@@ -107,6 +108,8 @@ function escapeHtml(str) {
 
 function wrapDots(escaped) {
     // escaped is already HTML-safe; dots in escaped text map 1:1 to dots in label.
+    // Retained for the highlightMatch truncation branch (deferred limitation,
+    // see AC11b). All other call sites go through renderWithDotMask.
     return escaped.replace(/\./g, '<span class="flyql-path-dot">.</span>')
 }
 
@@ -140,9 +143,19 @@ function normalizeForParser(text) {
 // highlighted query, not just in the suggestion panel.
 const DOT_PATH_CHAR_TYPES = new Set([CharType.KEY, CharType.COLUMN])
 
-function wrapSpan(charType, text) {
-    const escaped = escapeHtml(text)
-    const content = DOT_PATH_CHAR_TYPES.has(charType) ? wrapDots(escaped) : escaped
+function wrapSpan(charType, segText, segMask) {
+    const isDotPath = DOT_PATH_CHAR_TYPES.has(charType)
+    let content
+    if (!isDotPath) {
+        content = escapeHtml(segText)
+    } else if (segMask) {
+        content = renderWithDotMask(segText, segMask)
+    } else {
+        // No mask supplied: caller knows the value contains no quoted
+        // segments, so every dot is a separator. Equivalent to the pre-fix
+        // wrapDots(escapeHtml(...)) flow and byte-identical for plain paths.
+        content = wrapDots(escapeHtml(segText))
+    }
     const cls = CHAR_TYPE_CLASS[charType]
     if (cls) {
         return `<span class="${cls}">${content}</span>`
@@ -805,8 +818,17 @@ export class EditorEngine {
             return entry ? entry.index : -1
         }
 
-        const emitSegment = (tokenType, segText, segDiag, segHighlight) => {
-            const inner = wrapSpan(tokenType, segText)
+        // Compute outside-quote mask once over the full value; per-segment
+        // emits slice it by absolute position. Quote state stays stable
+        // across diagnostic, highlight, and newline-driven splits.
+        // Skip mask construction entirely when the value contains no quote
+        // characters — the byte-equivalent legacy path in wrapSpan handles it.
+        const valueMask = /['"]/.test(value) ? computeOutsideQuoteMask(value) : null
+
+        const emitSegment = (tokenType, segStart, segEnd, segDiag, segHighlight) => {
+            const segText = value.substring(segStart, segEnd)
+            const segMask = valueMask && DOT_PATH_CHAR_TYPES.has(tokenType) ? valueMask.slice(segStart, segEnd) : null
+            const inner = wrapSpan(tokenType, segText, segMask)
             if (segDiag || segHighlight) {
                 const classes = ['flyql-diagnostic']
                 if (segDiag) {
@@ -858,8 +880,7 @@ export class EditorEngine {
                 const highlightChanged = curHighlight !== segHighlight
 
                 if (atEnd || diagChanged || highlightChanged || prevIsNewline || curIsNewline) {
-                    const segText = value.substring(segStart, i)
-                    html += emitSegment(token.type, segText, segDiag, segHighlight)
+                    html += emitSegment(token.type, segStart, i, segDiag, segHighlight)
                     if (atEnd) break
                     segStart = i
                     segDiag = curDiagIdx >= 0 ? diagMap[i] : null
@@ -1047,12 +1068,19 @@ export class EditorEngine {
      */
     highlightMatch(label, originalLabel = null) {
         const prefix = this.getFilterPrefix()
-        if (!prefix) return wrapDots(escapeHtml(label))
+        // Skip mask construction when the label has no quoted segments;
+        // wrapDots(escapeHtml(...)) is byte-equivalent in that case.
+        const labelMask = /['"]/.test(label) ? computeOutsideQuoteMask(label) : null
+        const renderSlice = (start, end) => {
+            const piece = label.substring(start, end)
+            return labelMask ? renderWithDotMask(piece, labelMask.slice(start, end)) : wrapDots(escapeHtml(piece))
+        }
+        if (!prefix) return renderSlice(0, label.length)
         const lowerLabel = label.toLowerCase()
         const lowerPrefix = prefix.toLowerCase()
         if (lowerLabel.startsWith(lowerPrefix)) {
-            const matched = wrapDots(escapeHtml(label.substring(0, prefix.length)))
-            const rest = wrapDots(escapeHtml(label.substring(prefix.length)))
+            const matched = renderSlice(0, prefix.length)
+            const rest = renderSlice(prefix.length, label.length)
             return `<span class="flyql-panel__match">${matched}</span>${rest}`
         }
         if (
@@ -1065,11 +1093,15 @@ export class EditorEngine {
             const strippedLen = originalLabel.length - kept.length
             if (prefix.length > strippedLen) {
                 const visibleMatchLen = Math.min(prefix.length - strippedLen, kept.length)
+                // Truncation branch: deferred limitation. Mask computed on
+                // `kept` would not reflect the original quote state when
+                // the leading characters were stripped, so we keep the
+                // pre-fix escapeHtml+wrapDots flow here. AC11b pins this.
                 const matched = wrapDots(escapeHtml(kept.substring(0, visibleMatchLen)))
                 const rest = wrapDots(escapeHtml(kept.substring(visibleMatchLen)))
                 return `\u2026<span class="flyql-panel__match">${matched}</span>${rest}`
             }
         }
-        return wrapDots(escapeHtml(label))
+        return renderSlice(0, label.length)
     }
 }

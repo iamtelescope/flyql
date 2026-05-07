@@ -216,8 +216,8 @@
         "indent_char": " ",
         "indent_count": 2
       },
-      "expected_unformatted_sql": "message AS msg, count AS total",
-      "expected_formatted_sql": "message AS msg,\n  count AS total"
+      "expected_unformatted_sql": "message AS `msg`, count AS `total`",
+      "expected_formatted_sql": "message AS `msg`,\n  count AS `total`"
     },
     {
       "name": "select_with_segmented_keys",

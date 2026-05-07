@@ -3,7 +3,6 @@ package clickhouse
 import (
 	"fmt"
 	"github.com/iamtelescope/flyql/golang/flyqltype"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,8 +22,6 @@ type SelectResult struct {
 	Columns []*SelectColumn
 	SQL     string
 }
-
-var validAliasPattern = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_.]*$`)
 
 // toKeyTransformers converts columns-package transformers (the canonical
 // parser's output shape) to flyql-package transformers (the Key's field
@@ -166,24 +163,10 @@ func ToSQLSelectWithOptions(text string, cols map[string]*Column, options *Gener
 			alias = *parsed.Alias
 		}
 		if alias != "" {
-			if !validAliasPattern.MatchString(alias) {
-				return nil, fmt.Errorf("invalid alias: %s", alias)
-			}
-			quotedAlias := alias
-			if strings.Contains(alias, ".") {
-				quotedAlias = fmt.Sprintf("`%s`", alias)
-			}
-			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, quotedAlias)
+			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, quoteAlias(alias))
 		} else if len(path) > 0 {
 			alias = strings.SplitN(key.Raw, "|", 2)[0]
-			if !validAliasPattern.MatchString(alias) {
-				return nil, fmt.Errorf("invalid alias: %s", alias)
-			}
-			quotedAlias := alias
-			if strings.Contains(alias, ".") {
-				quotedAlias = fmt.Sprintf("`%s`", alias)
-			}
-			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, quotedAlias)
+			sqlExpr = fmt.Sprintf("%s AS %s", sqlExpr, quoteAlias(alias))
 		}
 
 		result.Columns = append(result.Columns, &SelectColumn{

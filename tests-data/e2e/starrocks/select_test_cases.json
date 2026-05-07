@@ -1019,6 +1019,18 @@
         ["5", "ERROR TEST"],
         ["6", "HELLO TEST"]
       ]
+    },
+    {
+      "name": "json_path_quoted_segment_alias",
+      "select_columns": "id, meta_json.'obs.test'.test as obs_value",
+      "expected_rows": [
+        ["1", "value-1"],
+        ["2", "value-2"],
+        ["3", "value-3"],
+        ["4", "null"],
+        ["5", "value-5"],
+        ["6", "value-6"]
+      ]
     }
   ]
 }

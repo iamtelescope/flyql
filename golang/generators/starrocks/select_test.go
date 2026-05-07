@@ -81,3 +81,43 @@ func TestSelectErrors(t *testing.T) {
 	columns := loadColumns(t)
 	runSelectTestSuite(t, columns, "select_errors.json")
 }
+
+func TestQuoteAlias(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"plain", "msg", "`msg`"},
+		{"inner_backtick", "foo`bar", "`foo``bar`"},
+		{"leading_digit", "123abc", "`123abc`"},
+		{"empty", "", "``"},
+		{"with_space", "name with space", "`name with space`"},
+		{"with_dot", "a.b", "`a.b`"},
+		{"with_single_quote", "foo'bar", "`foo'bar`"},
+		{"with_hyphen", "foo-bar", "`foo-bar`"},
+		{"double_backtick", "foo``bar", "`foo````bar`"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := quoteAlias(tc.input); got != tc.expected {
+				t.Errorf("quoteAlias(%q) = %q, want %q", tc.input, got, tc.expected)
+			}
+		})
+	}
+}
+
+// Regression: previously the regex rejected aliases starting with a digit.
+func TestToSQLSelect_AcceptsLeadingDigitAlias(t *testing.T) {
+	cols := map[string]*Column{
+		"message": NewColumn(ColumnDef{Name: "message", Type: "STRING"}),
+	}
+	result, err := ToSQLSelect("message as 123abc", cols)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.SQL != "`message` AS `123abc`" {
+		t.Errorf("got %q, want \"`message` AS `123abc`\"", result.SQL)
+	}
+}

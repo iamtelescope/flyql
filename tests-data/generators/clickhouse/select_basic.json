@@ -31,25 +31,25 @@
       "name": "column_with_alias",
       "input": "message as msg",
       "expected_result": "success",
-      "expected_sql": "message AS msg"
+      "expected_sql": "message AS `msg`"
     },
     {
       "name": "column_with_alias_uppercase_as",
       "input": "message AS msg",
       "expected_result": "success",
-      "expected_sql": "message AS msg"
+      "expected_sql": "message AS `msg`"
     },
     {
       "name": "multiple_columns_with_alias",
       "input": "message, count as num",
       "expected_result": "success",
-      "expected_sql": "message, count AS num"
+      "expected_sql": "message, count AS `num`"
     },
     {
       "name": "all_columns_with_aliases",
       "input": "message as msg, count as num",
       "expected_result": "success",
-      "expected_sql": "message AS msg, count AS num"
+      "expected_sql": "message AS `msg`, count AS `num`"
     }
   ]
 }

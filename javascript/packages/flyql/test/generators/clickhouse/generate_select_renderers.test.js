@@ -7,7 +7,7 @@ describe('ClickHouse generateSelect — renderer-suffix in alias (regression)', 
     it('|tag no-arg: alias is clean and |tag is absent from the column expression', () => {
         const result = generateSelect('message as msg|tag', columns)
         expect(result.columns[0].alias).toBe('msg')
-        expect(result.columns[0].sqlExpr).toBe('message AS msg')
+        expect(result.columns[0].sqlExpr).toBe('message AS `msg`')
         expect(result.columns[0].sqlExpr).not.toContain('|')
         expect(result.columns[0].sqlExpr).not.toContain('tag')
     })
@@ -15,7 +15,7 @@ describe('ClickHouse generateSelect — renderer-suffix in alias (regression)', 
     it("|tag('red') with string arg: alias is clean and 'red' is absent", () => {
         const result = generateSelect("message as msg|tag('red')", columns)
         expect(result.columns[0].alias).toBe('msg')
-        expect(result.columns[0].sqlExpr).toBe('message AS msg')
+        expect(result.columns[0].sqlExpr).toBe('message AS `msg`')
         expect(result.columns[0].sqlExpr).not.toContain('|')
         expect(result.columns[0].sqlExpr).not.toContain('tag')
         expect(result.columns[0].sqlExpr).not.toContain('red')
@@ -24,7 +24,7 @@ describe('ClickHouse generateSelect — renderer-suffix in alias (regression)', 
     it('|upper transformer + |tag renderer: emits lowercase upper(...) and clean alias', () => {
         const result = generateSelect('message|upper as msg|tag', columns)
         expect(result.columns[0].alias).toBe('msg')
-        expect(result.columns[0].sqlExpr).toBe('upper(message) AS msg')
+        expect(result.columns[0].sqlExpr).toBe('upper(message) AS `msg`')
         expect(result.columns[0].sqlExpr).not.toContain('|')
         expect(result.columns[0].sqlExpr).not.toContain('tag')
     })
@@ -32,7 +32,7 @@ describe('ClickHouse generateSelect — renderer-suffix in alias (regression)', 
     it("|tag('red', 'blue') with multiple string args: alias clean, args absent", () => {
         const result = generateSelect("message as msg|tag('red', 'blue')", columns)
         expect(result.columns[0].alias).toBe('msg')
-        expect(result.columns[0].sqlExpr).toBe('message AS msg')
+        expect(result.columns[0].sqlExpr).toBe('message AS `msg`')
         expect(result.columns[0].sqlExpr).not.toContain('|')
         expect(result.columns[0].sqlExpr).not.toContain('tag')
         expect(result.columns[0].sqlExpr).not.toContain('red')

@@ -49,6 +49,11 @@ function getIdentifier(column) {
     return column.name
 }
 
+function quoteAlias(alias) {
+    const escaped = alias.replace(/`/g, '``')
+    return '`' + escaped + '`'
+}
+
 const jsonKeyPattern = /^[a-zA-Z_][.a-zA-Z0-9_-]*$/
 
 const escapeCharsMap = {
@@ -284,8 +289,6 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         }
     }
 }
-
-const validAliasPattern = /^[a-zA-Z_][a-zA-Z0-9_.]*$/
 
 function expressionToSQLSegmented(expr, columns) {
     const reverseOperator = expr.operator === Operator.NOT_REGEX ? 'NOT ' : ''
@@ -1198,18 +1201,10 @@ export function generateSelect(text, columns, registry = null, options = {}) {
 
         let alias = parsed.alias
         if (alias) {
-            if (!validAliasPattern.test(alias)) {
-                throw new Error(`invalid alias: ${alias}`)
-            }
-            const quotedAlias = alias.includes('.') ? `\`${alias}\`` : alias
-            sqlExpr = `${sqlExpr} AS ${quotedAlias}`
+            sqlExpr = `${sqlExpr} AS ${quoteAlias(alias)}`
         } else if (path.length > 0) {
             alias = key.raw.split('|')[0]
-            if (!validAliasPattern.test(alias)) {
-                throw new Error(`invalid alias: ${alias}`)
-            }
-            const quotedAlias = alias.includes('.') ? `\`${alias}\`` : alias
-            sqlExpr = `${sqlExpr} AS ${quotedAlias}`
+            sqlExpr = `${sqlExpr} AS ${quoteAlias(alias)}`
         }
 
         selectColumns.push({

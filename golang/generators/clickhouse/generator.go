@@ -272,6 +272,11 @@ func getIdentifier(column *Column) string {
 	return column.Name
 }
 
+func quoteAlias(alias string) string {
+	escaped := strings.ReplaceAll(alias, "`", "``")
+	return "`" + escaped + "`"
+}
+
 func resolveRhsColumnRef(value string, columns map[string]*Column) (string, bool) {
 	key, err := flyql.ParseKey(value, 0)
 	if err != nil {

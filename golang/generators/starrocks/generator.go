@@ -22,6 +22,11 @@ func getIdentifier(column *Column) string {
 	return fmt.Sprintf("`%s`", escaped)
 }
 
+func quoteAlias(alias string) string {
+	escaped := strings.ReplaceAll(alias, "`", "``")
+	return "`" + escaped + "`"
+}
+
 func applyTransformerSQL(columnRef string, keyTransformers []flyql.Transformer, dialect string, registry *transformers.TransformerRegistry) (string, error) {
 	result := columnRef
 	for _, t := range keyTransformers {

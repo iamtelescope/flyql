@@ -11,7 +11,7 @@ from flyql.core.exceptions import FlyqlError
 from flyql.core.key import KeyTransformer
 from flyql.core.range import Range
 from flyql.generators.clickhouse import Column, to_sql_select
-from flyql.generators.clickhouse.generator import _to_key_transformers
+from flyql.generators.clickhouse.generator import _quote_alias, _to_key_transformers
 
 
 @pytest.mark.parametrize(
@@ -65,25 +65,25 @@ def test_to_key_transformers_defensive_copy() -> None:
         (
             "message as msg|tag",
             "msg",
-            "message AS msg",
+            "message AS `msg`",
             ["|", "tag"],
         ),
         (
             "message as msg|tag('red')",
             "msg",
-            "message AS msg",
+            "message AS `msg`",
             ["|", "tag", "red"],
         ),
         (
             "message as msg|tag('red', 'blue')",
             "msg",
-            "message AS msg",
+            "message AS `msg`",
             ["|", "tag", "red", "blue"],
         ),
         (
             "message|upper as msg|tag",
             "msg",
-            "upper(message) AS msg",
+            "upper(message) AS `msg`",
             ["|", "tag"],
         ),
     ],
@@ -119,3 +119,39 @@ def test_to_sql_select_renderer_without_alias_errors() -> None:
         to_sql_select("message|tag", cols)
     # Accepts FlyqlError, ParserError, or similar from the canonical parser.
     assert exc_info.value is not None
+
+
+@pytest.mark.parametrize(
+    "alias, expected",
+    [
+        ("msg", "`msg`"),
+        ("foo`bar", "`foo``bar`"),
+        ("123abc", "`123abc`"),
+        ("", "``"),
+        ("name with space", "`name with space`"),
+        ("a.b", "`a.b`"),
+        ("foo'bar", "`foo'bar`"),
+        ("foo-bar", "`foo-bar`"),
+        ("foo``bar", "`foo````bar`"),
+    ],
+    ids=[
+        "plain",
+        "inner_backtick",
+        "leading_digit",
+        "empty",
+        "with_space",
+        "with_dot",
+        "with_single_quote",
+        "with_hyphen",
+        "double_backtick",
+    ],
+)
+def test_quote_alias_edge_cases(alias: str, expected: str) -> None:
+    assert _quote_alias(alias) == expected
+
+
+def test_to_sql_select_accepts_leading_digit_alias() -> None:
+    """Regression: previously the regex rejected aliases starting with a digit."""
+    cols = {"message": Column(name="message", _type="String")}
+    result = to_sql_select("message as 123abc", cols)
+    assert result.sql == "message AS `123abc`"

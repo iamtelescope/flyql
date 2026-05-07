@@ -61,6 +61,11 @@ def get_identifier(column: Column) -> str:
     return column.name
 
 
+def _quote_alias(alias: str) -> str:
+    escaped = alias.replace("`", "``")
+    return f"`{escaped}`"
+
+
 JSON_KEY_PATTERN = re.compile(r"^[a-zA-Z_][.a-zA-Z0-9_-]*$")
 
 ESCAPE_CHARS_MAP = {
@@ -1207,8 +1212,6 @@ def to_sql_where_with_options(
 
 # SELECT clause generation
 
-VALID_ALIAS_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
-
 
 @dataclass
 class SelectColumn:
@@ -1339,16 +1342,10 @@ def to_sql_select_with_options(
 
         alias = parsed.alias or ""
         if alias:
-            if not VALID_ALIAS_PATTERN.match(alias):
-                raise FlyqlError(f"invalid alias: {alias}")
-            quoted_alias = f"`{alias}`" if "." in alias else alias
-            sql_expr = f"{sql_expr} AS {quoted_alias}"
+            sql_expr = f"{sql_expr} AS {_quote_alias(alias)}"
         elif path:
             alias = key.raw.split("|")[0]
-            if not VALID_ALIAS_PATTERN.match(alias):
-                raise FlyqlError(f"invalid alias: {alias}")
-            quoted_alias = f"`{alias}`" if "." in alias else alias
-            sql_expr = f"{sql_expr} AS {quoted_alias}"
+            sql_expr = f"{sql_expr} AS {_quote_alias(alias)}"
 
         select_columns.append(
             SelectColumn(key=key, alias=alias, column=column, sql_expr=sql_expr)

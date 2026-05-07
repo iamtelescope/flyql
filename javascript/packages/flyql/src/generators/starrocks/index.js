@@ -47,8 +47,12 @@ function getIdentifier(column) {
     return `\`${escaped}\``
 }
 
+function quoteAlias(alias) {
+    const escaped = alias.replace(/`/g, '``')
+    return '`' + escaped + '`'
+}
+
 const jsonKeyPattern = /^[a-zA-Z_][.a-zA-Z0-9_-]*$/
-const validAliasPattern = /^[a-zA-Z_][a-zA-Z0-9_.]*$/
 
 const escapeCharsMap = {
     '\b': '\\b',
@@ -999,12 +1003,10 @@ export function generateSelect(text, columns, registry = null, options = {}) {
 
         let alias = parsed.alias
         if (alias) {
-            if (!validAliasPattern.test(alias)) throw new Error(`invalid alias: ${alias}`)
-            sqlExpr = `${sqlExpr} AS \`${alias}\``
+            sqlExpr = `${sqlExpr} AS ${quoteAlias(alias)}`
         } else if (path.length > 0) {
             alias = key.raw.split('|')[0]
-            if (!validAliasPattern.test(alias)) throw new Error(`invalid alias: ${alias}`)
-            sqlExpr = `${sqlExpr} AS \`${alias}\``
+            sqlExpr = `${sqlExpr} AS ${quoteAlias(alias)}`
         }
 
         selectColumns.push({ key, alias, column, sqlExpr })

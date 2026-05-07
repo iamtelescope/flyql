@@ -104,6 +104,18 @@
       "input": "new_json.key|upper as KEY",
       "expected_result": "success",
       "expected_sql": "UPPER(`new_json`->'\"key\"') AS `KEY`"
+    },
+    {
+      "name": "json_path_quoted_segment_alias_auto",
+      "input": "new_json.'obs.test'.test",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"obs.test\"'->'\"test\"' AS `new_json.'obs.test'.test`"
+    },
+    {
+      "name": "json_path_quoted_segment_alias_explicit",
+      "input": "new_json.'obs.test'.test as obs_test",
+      "expected_result": "success",
+      "expected_sql": "`new_json`->'\"obs.test\"'->'\"test\"' AS `obs_test`"
     }
   ]
 }

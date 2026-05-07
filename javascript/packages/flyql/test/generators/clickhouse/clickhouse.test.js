@@ -231,7 +231,7 @@ describe('generateSelect', () => {
 
     it('selects column with alias', () => {
         const result = generateSelect('message as msg', columns)
-        expect(result.sql).toBe('message AS msg')
+        expect(result.sql).toBe('message AS `msg`')
     })
 
     it('selects JSON path with implicit alias', () => {
@@ -259,15 +259,17 @@ describe('generateSelect', () => {
         expect(() => generateSelect('unknown_col', columns)).toThrow('unknown column')
     })
 
-    it('rejects invalid alias characters', () => {
-        // Canonical columns parser sanitizes whitespace/punctuation, but an alias
-        // that starts with a digit still fails the generator's validAliasPattern.
-        expect(() => generateSelect('message as 123abc', columns)).toThrow('invalid alias')
+    it('accepts previously-rejected alias via backtick quoting', () => {
+        // Previously the generator threw 'invalid alias' for aliases that didn't match
+        // the regex ^[a-zA-Z_][a-zA-Z0-9_.]*$. The regex gate was removed; aliases
+        // that previously failed validation now succeed via backtick wrapping.
+        const result = generateSelect('message as 123abc', columns)
+        expect(result.sql).toBe('message AS `123abc`')
     })
 
     it('accepts valid alias', () => {
         const result = generateSelect('message as msg', columns)
-        expect(result.sql).toBe('message AS msg')
+        expect(result.sql).toBe('message AS `msg`')
     })
 })
 

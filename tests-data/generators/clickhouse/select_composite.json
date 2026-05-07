@@ -19,7 +19,7 @@
       "name": "json_with_alias",
       "input": "new_json.key as label",
       "expected_result": "success",
-      "expected_sql": "new_json.`key` AS label"
+      "expected_sql": "new_json.`key` AS `label`"
     },
     {
       "name": "jsonstring_single_path",
@@ -37,7 +37,7 @@
       "name": "jsonstring_with_alias",
       "input": "json_column.key as label",
       "expected_result": "success",
-      "expected_sql": "JSONExtractString(json_column, 'key') AS label"
+      "expected_sql": "JSONExtractString(json_column, 'key') AS `label`"
     },
     {
       "name": "map_key",
@@ -49,7 +49,7 @@
       "name": "map_key_with_alias",
       "input": "metadata.key as meta_key",
       "expected_result": "success",
-      "expected_sql": "metadata['key'] AS meta_key"
+      "expected_sql": "metadata['key'] AS `meta_key`"
     },
     {
       "name": "array_first_element",
@@ -67,13 +67,13 @@
       "name": "array_element_with_alias",
       "input": "tags.0 as first_tag",
       "expected_result": "success",
-      "expected_sql": "tags[1] AS first_tag"
+      "expected_sql": "tags[1] AS `first_tag`"
     },
     {
       "name": "mixed_simple_json_map_array",
       "input": "message, new_json.key as k, count",
       "expected_result": "success",
-      "expected_sql": "message, new_json.`key` AS k, count"
+      "expected_sql": "message, new_json.`key` AS `k`, count"
     },
     {
       "name": "map_key_with_transformer",
@@ -97,13 +97,25 @@
       "name": "map_key_with_transformer_and_alias",
       "input": "metadata.key|upper as KEY",
       "expected_result": "success",
-      "expected_sql": "upper(metadata['key']) AS KEY"
+      "expected_sql": "upper(metadata['key']) AS `KEY`"
     },
     {
       "name": "map_key_with_transformer_mixed",
       "input": "metadata.key|upper, metadata.other",
       "expected_result": "success",
       "expected_sql": "upper(metadata['key']) AS `metadata.key`, metadata['other'] AS `metadata.other`"
+    },
+    {
+      "name": "json_path_quoted_segment_alias_auto",
+      "input": "new_json.'obs.test'.test",
+      "expected_result": "success",
+      "expected_sql": "new_json.`obs.test`.`test` AS `new_json.'obs.test'.test`"
+    },
+    {
+      "name": "json_path_quoted_segment_alias_explicit",
+      "input": "new_json.'obs.test'.test as obs_test",
+      "expected_result": "success",
+      "expected_sql": "new_json.`obs.test`.`test` AS `obs_test`"
     }
   ]
 }

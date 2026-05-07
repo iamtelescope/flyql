@@ -1034,6 +1034,201 @@ describe('ColumnsEngine', () => {
             // No renderer diagnostics because renderer parsing is disabled
             expect(diags.filter((d) => d.code === 'unknown_renderer')).toEqual([])
         })
+
+        it('AC1: getInsertRange replaces typed renderer prefix', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|h'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const sugg = engine.suggestions.find((s) => s.label === 'href')
+            expect(sugg).toBeDefined()
+            const range = engine.getInsertRange(engine.context, query, sugg)
+            expect(range).toEqual({ start: 15, end: 16 })
+        })
+
+        it('AC2: getFilterPrefix returns typed renderer prefix', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|h'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.getFilterPrefix()).toBe('h')
+        })
+
+        it('AC3: highlightMatch wraps matched portion of renderer label', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|h'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const html = engine.highlightMatch('href')
+            expect(html).toContain('<span class="flyql-panel__match">h</span>ref')
+        })
+
+        it('AC4: exact-match emits next-column delimiter exactly once', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|href'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const commas = engine.suggestions.filter((s) => s.label === ',')
+            expect(commas).toHaveLength(1)
+            expect(commas[0].type).toBe('delimiter')
+            expect(commas[0].insertText).toBe(', ')
+            expect(engine.suggestionType).toBe('next')
+        })
+
+        it('AC5a: exact-match with args emits ()', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|href'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const parens = engine.suggestions.filter((s) => s.label === '()')
+            expect(parens).toHaveLength(1)
+            expect(parens[0].insertText).toBe('()')
+            expect(parens[0].type).toBe('delimiter')
+            expect(parens[0].cursorOffset).toBe(-1)
+        })
+
+        it('AC5b: exact-match without args does not emit ()', async () => {
+            class PlainRenderer extends Renderer {
+                get name() {
+                    return 'plain'
+                }
+            }
+            const reg = new RendererRegistry()
+            reg.register(new PlainRenderer())
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: reg })
+            const query = 'message as msg|plain'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.some((s) => s.label === '()')).toBe(false)
+            expect(engine.suggestionType).toBe('next')
+        })
+
+        it('AC6: exact-match never emits chaining pipe', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|href'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.some((s) => s.label === '|')).toBe(false)
+        })
+
+        it('AC7: other partial matches come before next-step items', async () => {
+            class TagRenderer extends Renderer {
+                get name() {
+                    return 'tag'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            class TaggedRenderer extends Renderer {
+                get name() {
+                    return 'tagged'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            class TemplateRenderer extends Renderer {
+                get name() {
+                    return 'template'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            const reg = new RendererRegistry()
+            reg.register(new TagRenderer())
+            reg.register(new TaggedRenderer())
+            reg.register(new TemplateRenderer())
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: reg })
+            const query = 'message as msg|tag'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.map((s) => s.label)).toEqual(['tagged', ',', '()'])
+        })
+
+        it('AC8: empty-prefix path preserves legacy behavior', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const labels = engine.suggestions.map((s) => s.label)
+            expect(labels).toContain('href')
+            expect(labels).toContain('badge')
+            expect(engine.suggestionType).toBe('renderer')
+            expect(engine.suggestions.some((s) => s.label === ',' || s.label === '()' || s.label === '|')).toBe(false)
+        })
+
+        it('AC9: end-to-end accept replaces typed prefix exactly', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|h'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            const sugg = engine.suggestions.find((s) => s.label === 'href')
+            const range = engine.getInsertRange(engine.context, query, sugg)
+            const result = query.slice(0, range.start) + sugg.insertText + query.slice(range.end)
+            expect(result).toBe('message as msg|href')
+        })
+
+        it('AC10: no exact match preserves legacy filter ordering', async () => {
+            class TagRenderer extends Renderer {
+                get name() {
+                    return 'tag'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            class TaggedRenderer extends Renderer {
+                get name() {
+                    return 'tagged'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            class TemplateRenderer extends Renderer {
+                get name() {
+                    return 'template'
+                }
+                get argSchema() {
+                    return [new ArgSpec(Type.String, true)]
+                }
+            }
+            const reg = new RendererRegistry()
+            reg.register(new TagRenderer())
+            reg.register(new TaggedRenderer())
+            reg.register(new TemplateRenderer())
+            const engine = new ColumnsEngine(TEST_COLUMNS, { rendererRegistry: reg })
+            const query = 'message as msg|ta'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestions.map((s) => s.label)).toEqual(['tag', 'tagged'])
+            expect(engine.suggestionType).toBe('renderer')
+            expect(engine.suggestions.some((s) => s.label === ',' || s.label === '()' || s.label === '|')).toBe(false)
+        })
+
+        it('AC11: "No matching renderers" preserved on non-matching prefix', async () => {
+            const engine = new ColumnsEngine(TEST_COLUMNS, RENDERER_OPTS())
+            const query = 'message as msg|zzz'
+            engine.setQuery(query)
+            engine.setCursorPosition(query.length)
+            await engine.updateSuggestions()
+            expect(engine.suggestions).toHaveLength(0)
+            expect(engine.message).toBe('No matching renderers')
+            expect(engine.suggestionType).toBe('renderer')
+        })
     })
 
     describe('getSelectedInfo', () => {

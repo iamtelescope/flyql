@@ -674,6 +674,8 @@ function badgeText(type) {
             return 'C'
         case 'transformer':
             return 'T'
+        case 'renderer':
+            return 'R'
         case 'delimiter':
             return 'S'
         default:

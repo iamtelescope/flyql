@@ -482,7 +482,7 @@ export class ColumnsEngine {
                         label: '()',
                         insertText: '()',
                         type: 'delimiter',
-                        detail: this._transformerDetail(prefix),
+                        detail: this._transformerDetail(matchedName),
                         cursorOffset: -1,
                     })
                 }
@@ -530,20 +530,62 @@ export class ColumnsEngine {
             }
             const prefix = (ctx.renderer || '').toLowerCase()
             const names = this.rendererRegistry.names()
-            const suggestions = []
-            for (const n of names) {
-                if (prefix && !n.toLowerCase().startsWith(prefix)) continue
-                suggestions.push({
-                    label: n,
-                    insertText: n,
-                    type: 'renderer',
-                    detail: this._rendererDetail(n),
-                })
-            }
-            this.suggestions = suggestions
-            this.suggestionType = 'renderer'
-            if (suggestions.length === 0 && prefix) {
-                this.message = 'No matching renderers'
+            const hasExactMatch = prefix && names.some((n) => n.toLowerCase() === prefix)
+
+            if (hasExactMatch) {
+                // RendererRegistry.get is case-sensitive — resolve to the
+                // canonical (case-preserving) name from the registry, NOT
+                // the lowercased prefix.
+                const matchedName = names.find((n) => n.toLowerCase() === prefix)
+                const r = this.rendererRegistry.get(matchedName)
+                const hasArgs = r && r.argSchema && r.argSchema.length > 0
+                const nextSteps = [
+                    {
+                        label: COLUMNS_DELIMITER,
+                        insertText: COLUMNS_DELIMITER + ' ',
+                        type: 'delimiter',
+                        detail: 'next column',
+                    },
+                ]
+                if (hasArgs) {
+                    nextSteps.push({
+                        label: '()',
+                        insertText: '()',
+                        type: 'delimiter',
+                        detail: this._rendererDetail(matchedName),
+                        cursorOffset: -1,
+                    })
+                }
+                // Renderers cannot be chained — no `|` next-step suggestion.
+                const otherRenderers = []
+                for (const n of names) {
+                    if (n.toLowerCase() === prefix) continue
+                    if (!n.toLowerCase().startsWith(prefix)) continue
+                    otherRenderers.push({
+                        label: n,
+                        insertText: n,
+                        type: 'renderer',
+                        detail: this._rendererDetail(n),
+                    })
+                }
+                this.suggestions = [...otherRenderers, ...nextSteps]
+                this.suggestionType = 'next'
+            } else {
+                const suggestions = []
+                for (const n of names) {
+                    if (prefix && !n.toLowerCase().startsWith(prefix)) continue
+                    suggestions.push({
+                        label: n,
+                        insertText: n,
+                        type: 'renderer',
+                        detail: this._rendererDetail(n),
+                    })
+                }
+                this.suggestions = suggestions
+                this.suggestionType = 'renderer'
+                if (suggestions.length === 0 && prefix) {
+                    this.message = 'No matching renderers'
+                }
             }
         } else if (ctx.expecting === 'alias') {
             if (ctx.state === State.EXPECT_ALIAS) {
@@ -959,7 +1001,7 @@ export class ColumnsEngine {
         }
 
         // Delimiter and pipe suggestions insert at cursor, don't replace prefix
-        if (suggestion && (suggestion.type === 'delimiter' || suggestion.label === '|' || suggestion.label === '()')) {
+        if (suggestion && (suggestion.type === 'delimiter' || suggestion.label === '|')) {
             return { start: cursor, end: cursor }
         }
 
@@ -969,6 +1011,10 @@ export class ColumnsEngine {
         }
         if (context.expecting === 'transformer') {
             const prefix = context.transformer || ''
+            return { start: cursor - prefix.length, end: endPos }
+        }
+        if (context.expecting === 'renderer') {
+            const prefix = context.renderer || ''
             return { start: cursor - prefix.length, end: endPos }
         }
         return { start: cursor, end: endPos }
@@ -991,6 +1037,13 @@ export class ColumnsEngine {
     }
 
     getStateLabel() {
+        // Renderers cannot be chained, so the generic 'next' label
+        // ("column name, separator or transformer") is misleading after
+        // an exact-match renderer — only the next-column separator (and
+        // optionally `()`) are valid.
+        if (this.suggestionType === 'next' && this.context && this.context.expecting === 'renderer') {
+            return 'next column'
+        }
         return STATE_LABELS[this.suggestionType] || ''
     }
 
@@ -1067,6 +1120,7 @@ export class ColumnsEngine {
         if (!this.context) return ''
         if (this.context.expecting === 'column') return this.context.column || ''
         if (this.context.expecting === 'transformer') return this.context.transformer || ''
+        if (this.context.expecting === 'renderer') return this.context.renderer || ''
         return ''
     }
 

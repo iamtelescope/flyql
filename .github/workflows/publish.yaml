@@ -17,6 +17,7 @@ on:
           - validate
           - python
           - javascript
+          - vuejs
           - golang
 
 permissions: {}
@@ -37,7 +38,7 @@ jobs:
 
   validate-javascript:
     name: Validate JavaScript
-    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript'
+    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript' || inputs.target == 'vuejs'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -132,8 +133,12 @@ jobs:
 
   flyql-vue:
     name: Publish flyql-vue to npm
-    needs: flyql
-    if: inputs.target == 'all' || inputs.target == 'javascript'
+    needs: [validate-javascript, flyql]
+    if: |
+      always() &&
+      needs.validate-javascript.result == 'success' &&
+      (needs.flyql.result == 'success' || needs.flyql.result == 'skipped') &&
+      (inputs.target == 'all' || inputs.target == 'javascript' || inputs.target == 'vuejs')
     runs-on: ubuntu-latest
     permissions:
       id-token: write

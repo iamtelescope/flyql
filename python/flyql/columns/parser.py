@@ -377,6 +377,7 @@ class Parser:
             return
         elif self.state == State.EXPECT_ALIAS:
             if self.alias:
+                self.alias = self.alias.rstrip(" ")
                 self.store_column()
             else:
                 self.set_error_state(
@@ -697,10 +698,13 @@ class Parser:
         if not self.char:
             return
         if self.char.is_space():
-            return
+            if self.alias == "":
+                return
+            self.extend_alias()
         elif self.char.is_column_value():
             self.extend_alias()
         elif self.char.is_columns_delimiter():
+            self.alias = self.alias.rstrip(" ")
             self.set_state(State.EXPECT_COLUMN)
             self.store_column()
         elif self.char.is_transformer_operator():
@@ -716,6 +720,7 @@ class Parser:
                     COLUMNS_ERR_RENDERER_REQUIRES_ALIAS,
                 )
                 return
+            self.alias = self.alias.rstrip(" ")
             self.set_state(State.EXPECT_RENDERER)
 
     def in_state_expect_renderer(self) -> None:

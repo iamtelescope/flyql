@@ -144,6 +144,215 @@
       ]
     },
     {
+      "name": "column_with_alias_with_space",
+      "input": "message as user message",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user message"
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_multiple_internal_spaces",
+      "input": "message as user  message",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user  message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user  message"
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_leading_spaces_skipped",
+      "input": "message as   user message",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user message"
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_trailing_space_before_comma",
+      "input": "message as user message , status",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user message"
+        },
+        {
+          "name": "status",
+          "transformers": [],
+          "alias": null,
+          "segments": [
+            "status"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_trailing_space_before_pipe",
+      "input": "message as user message |upper",
+      "capabilities": {
+        "renderers": true
+      },
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user message",
+          "renderers": [
+            {
+              "name": "upper",
+              "arguments": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_trailing_space_eof",
+      "input": "message as user message ",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "user message",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "user message"
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_multiple_trailing_spaces_eof",
+      "input": "message as bc   ",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "bc",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "bc"
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_no_space_regression",
+      "input": "message as bc, name",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "bc",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "bc"
+        },
+        {
+          "name": "name",
+          "transformers": [],
+          "alias": null,
+          "segments": [
+            "name"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "column_with_empty_alias_before_comma_regression",
+      "input": "message as ,status",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": null,
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        },
+        {
+          "name": "status",
+          "transformers": [],
+          "alias": null,
+          "segments": [
+            "status"
+          ],
+          "is_segmented": false,
+          "display_name": ""
+        }
+      ]
+    },
+    {
+      "name": "column_with_alias_keyword_as_in_alias",
+      "input": "message as as foo",
+      "expected_result": "success",
+      "expected_columns": [
+        {
+          "name": "message",
+          "transformers": [],
+          "alias": "as foo",
+          "segments": [
+            "message"
+          ],
+          "is_segmented": false,
+          "display_name": "as foo"
+        }
+      ]
+    },
+    {
       "name": "column_with_transformer",
       "input": "message|chars",
       "capabilities": {

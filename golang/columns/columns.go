@@ -488,6 +488,7 @@ func (p *parser) inStateLastChar() {
 		return
 	case stateExpectAlias:
 		if p.alias != "" {
+			p.alias = strings.TrimRight(p.alias, " ")
 			p.storeColumn()
 		} else {
 			p.setErrorState("unexpected end of alias. Expected alias value", columnsErrUnexpectedEndOfAliasOperator)
@@ -768,10 +769,14 @@ func (p *parser) inStateExpectAliasOperator() {
 
 func (p *parser) inStateExpectAlias() {
 	if p.charValue == " " {
-		return
+		if p.alias == "" {
+			return
+		}
+		p.alias += " " // alias doesn't need range tracking
 	} else if isColumnValue(p.charValue) {
 		p.alias += p.charValue // alias doesn't need range tracking
 	} else if p.charValue == "," {
+		p.alias = strings.TrimRight(p.alias, " ")
 		p.state = stateExpectColumn
 		p.storeColumn()
 	} else if p.charValue == "|" {
@@ -783,6 +788,7 @@ func (p *parser) inStateExpectAlias() {
 			p.setErrorState("renderers require an alias", columnsErrRendererRequiresAlias)
 			return
 		}
+		p.alias = strings.TrimRight(p.alias, " ")
 		p.state = stateExpectRenderer
 	}
 }

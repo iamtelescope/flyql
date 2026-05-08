@@ -444,6 +444,7 @@ export class Parser {
             return
         } else if (this.state === State.EXPECT_ALIAS) {
             if (this.alias) {
+                this.alias = this.alias.replace(/ +$/, '')
                 this.storeColumn()
             } else {
                 this.setErrorState(
@@ -768,11 +769,15 @@ export class Parser {
     inStateExpectAlias() {
         if (!this.char) return
         if (this.char.isSpace()) {
-            this.trackChar(CharType.SPACE)
-            return
+            if (this.alias === '') {
+                this.trackChar(CharType.SPACE)
+                return
+            }
+            this.extendAlias()
         } else if (this.char.isColumnValue()) {
             this.extendAlias()
         } else if (this.char.isColumnsDelimiter()) {
+            this.alias = this.alias.replace(/ +$/, '')
             this.trackChar(CharType.OPERATOR)
             this.setState(State.EXPECT_COLUMN)
             this.storeColumn()
@@ -787,6 +792,7 @@ export class Parser {
                 this.setErrorState('renderers require an alias', COLUMNS_ERR_RENDERER_REQUIRES_ALIAS)
                 return
             }
+            this.alias = this.alias.replace(/ +$/, '')
             this.trackChar(CharType.RENDERER_PIPE)
             this.setState(State.EXPECT_RENDERER)
         }

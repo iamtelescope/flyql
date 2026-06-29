@@ -172,16 +172,23 @@ export function escapeParam(item) {
     }
 
     if (typeof item === 'string') {
-        let result = "'"
+        // escapeCharsMap uses C-style backslash escapes (\', \\, \n, ...), which
+        // are only interpreted inside a PostgreSQL escape-string literal (E'...').
+        // A plain '...' literal under standard_conforming_strings (the default)
+        // treats backslashes literally, so a value containing a quote would
+        // produce invalid SQL / allow injection. Use E'...' only when the value
+        // actually needs an escape; plain values stay '...'.
+        let body = ''
+        let needsEscape = false
         for (const c of item) {
             if (escapeCharsMap[c] !== undefined) {
-                result += escapeCharsMap[c]
+                body += escapeCharsMap[c]
+                needsEscape = true
             } else {
-                result += c
+                body += c
             }
         }
-        result += "'"
-        return result
+        return needsEscape ? `E'${body}'` : `'${body}'`
     }
 
     if (typeof item === 'boolean') {

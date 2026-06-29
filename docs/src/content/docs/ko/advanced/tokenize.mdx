@@ -160,7 +160,7 @@ tokenize('x!y')
 ## 제한 사항
 
 - **columns 모드는 JavaScript 전용.** 타입이 지정된 문자 출력을 기록하는 건 JavaScript columns parser뿐이며, Python과 Go의 columns parser는 그렇지 않습니다. 따라서 해당 언어에서 `tokenize()`는 columns 모드로 확장될 수 없습니다.
-- **ASCII 전용 보장.** 언어 간 오프셋 동일성은 ASCII 입력에서만 보장됩니다. 비 ASCII 입력은 바이트/코드포인트/UTF-16 단위 차이 때문에 언어마다 `start`/`end`가 다를 수 있습니다.
+- **코드 포인트 오프셋.** 모든 언어에서 `start`/`end`는 유니코드 코드 포인트 단위입니다. ASCII든 아니든, 이모지처럼 BMP를 벗어난 문자까지 포함해 글자 하나마다 오프셋이 정확히 1씩 늘어납니다. 어떤 입력이든 Python, Go, JavaScript가 같은 오프셋을 내며, 바이트(Go)나 UTF-16 단위(JavaScript)가 아닙니다. 에디터의 좌표계가 다르면 직접 변환해서 쓰세요.
 - **줄/열 번호 없음.** 토큰은 문자 오프셋만 노출합니다. 에디터에서 `(line, column)`이 필요하다면 원본 텍스트와 `start`에서 계산하세요.
 
 ## 관련 문서

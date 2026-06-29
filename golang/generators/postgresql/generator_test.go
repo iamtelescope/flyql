@@ -185,10 +185,10 @@ func TestEscapeParam(t *testing.T) {
 		expectErr bool
 	}{
 		{"string", "hello", "'hello'", false},
-		{"string_with_quote", "test'quote", "'test\\'quote'", false},
-		{"string_with_backslash", "test\\backslash", "'test\\\\backslash'", false},
-		{"string_with_newline", "test\nNewline", "'test\\nNewline'", false},
-		{"string_with_tab", "test\ttab", "'test\\ttab'", false},
+		{"string_with_quote", "test'quote", "E'test\\'quote'", false},
+		{"string_with_backslash", "test\\backslash", "E'test\\\\backslash'", false},
+		{"string_with_newline", "test\nNewline", "E'test\\nNewline'", false},
+		{"string_with_tab", "test\ttab", "E'test\\ttab'", false},
 		{"nil", nil, "NULL", false},
 		{"int", 123, "123", false},
 		{"int8", int8(8), "8", false},

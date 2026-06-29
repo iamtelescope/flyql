@@ -160,7 +160,7 @@ Leere Eingabe gibt eine leere Liste zurück, niemals ein Trailing-Error-Token.
 ## Einschränkungen
 
 - **Columns-Modus ist nur in JavaScript verfügbar.** Nur der JavaScript-Columns-Parser erfasst typisierte Zeichenausgaben; die Columns-Parser in Python und Go tun das nicht, daher kann `tokenize()` in diesen Sprachen nicht auf den Columns-Modus erweitert werden.
-- **Nur ASCII-Garantien.** Sprachübergreifende Offset-Parität ist nur für ASCII-Eingaben garantiert. Nicht-ASCII-Eingaben können wegen Byte/Codepoint/UTF16-Unit-Unterschieden unterschiedliche `start`/`end`-Werte liefern.
+- **Code-Point-Offsets.** `start` und `end` zählen in allen Sprachen Unicode-Code-Points: Jedes Zeichen rückt den Offset um genau eins weiter – egal ob ASCII oder nicht, Emojis und andere Zeichen außerhalb der BMP eingeschlossen. Für jede Eingabe liefern Python, Go und JavaScript dieselben Offsets; es sind weder Byte-Offsets (Go) noch UTF-16-Einheiten (JavaScript). Wenn dein Editor ein anderes Koordinatensystem nutzt, rechnest du selbst um.
 - **Keine Zeilen- oder Spaltennummern.** Tokens exponieren nur Zeichen-Offsets. Wenn du `(line, column)`-Paare für einen Editor brauchst, berechne sie aus `start` relativ zum Quelltext.
 
 ## Siehe auch

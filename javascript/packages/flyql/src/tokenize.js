@@ -58,7 +58,7 @@ export function tokenize(text, options = {}) {
                 text: curText,
                 type: curType,
                 start: curStart,
-                end: curStart + curText.length,
+                end: curStart + [...curText].length,
             })
             curText = char.value
             curType = charType
@@ -70,7 +70,7 @@ export function tokenize(text, options = {}) {
             text: curText,
             type: curType,
             start: curStart,
-            end: curStart + curText.length,
+            end: curStart + [...curText].length,
         })
     }
 
@@ -83,12 +83,15 @@ export function tokenize(text, options = {}) {
     }
 
     const consumed = tokens.length > 0 ? tokens[tokens.length - 1].end : 0
-    if (consumed < text.length) {
+    // consumed is a code-point offset, so slice and measure the trailing
+    // remainder by code point (String indexing/.length count UTF-16 units).
+    const codePoints = [...text]
+    if (consumed < codePoints.length) {
         tokens.push({
-            text: text.slice(consumed),
+            text: codePoints.slice(consumed).join(''),
             type: mode === 'columns' ? ColumnsCharType.ERROR : QueryCharType.ERROR,
             start: consumed,
-            end: text.length,
+            end: codePoints.length,
         })
     }
 

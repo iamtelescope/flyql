@@ -49,19 +49,19 @@
       "name": "like_escaped_percent",
       "input": "message like 'hello\\%world'",
       "expected_result": "success",
-      "expected_sql": "\"message\" LIKE 'hello\\\\%world'"
+      "expected_sql": "\"message\" LIKE E'hello\\\\%world'"
     },
     {
       "name": "like_escaped_underscore",
       "input": "message like 'test\\_value'",
       "expected_result": "success",
-      "expected_sql": "\"message\" LIKE 'test\\\\_value'"
+      "expected_sql": "\"message\" LIKE E'test\\\\_value'"
     },
     {
       "name": "like_lone_backslash_escaped",
       "input": "message like \\",
       "expected_result": "success",
-      "expected_sql": "\"message\" LIKE '\\\\\\\\'"
+      "expected_sql": "\"message\" LIKE E'\\\\\\\\'"
     }
   ]
 }

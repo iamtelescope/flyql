@@ -26,3 +26,21 @@ INSERT INTO flyql_e2e_test VALUES
 (4, '',            0,   0.0,   false, '2022-12-31', 500, 'alice',   'prod',    NULL, NULL, ARRAY['iot'], 'dc=>ap-1,tier=>premium', 'alice@web3', NULL, '{"baz":"qux-4"}'),
 (5, 'error test',  5,   50.0,  true,  '2023-03-15', 201, 'bob',     'dev',     '{"region":"us-east","tier":"free","location":{"city":"NYC","cloud":{"provider":"azure"}}}', '{"region":"us-east","tier":"free","dc.region":"us-1","location":{"city":"NYC","cloud":{"provider":"azure"}},"tags":["web"],"0":"zero-b"}', ARRAY['web'], 'dc=>us-1,tier=>free', 'bob@web1', NULL, '{"baz":"qux-5"}'),
 (6, 'hello test',  200, 150.0, true,  '2023-09-01', 300, 'dave',    'staging', '{"region":"eu-west","tier":"premium","location":{"city":"Paris","cloud":{"provider":"azure"}}}', '{"region":"eu-west","tier":"premium","dc.region":"eu-1","location":{"city":"Paris","cloud":{"provider":"azure"}},"tags":["api","mobile"],"0":"zero-c"}', ARRAY['api','mobile'], 'dc=>eu-1,tier=>premium', 'dave@web2', 'value6', '{"baz":"qux-6"}');
+
+-- Dedicated table for cross-language Cyrillic (non-ASCII) e2e cases.
+-- Mirrors tests-data/e2e/cyrillic.json. Kept separate from flyql_e2e_test so the
+-- shared 6-row dataset and its expected_ids stay untouched.
+CREATE TABLE flyql_cyrillic_test (
+    id integer,
+    message text,
+    name text,
+    env text,
+    count integer
+);
+
+INSERT INTO flyql_cyrillic_test VALUES
+(1, 'привет',     'алиса', 'прод', 10),
+(2, 'мир',        'борис', 'тест', 20),
+(3, 'привет мир', 'алиса', 'прод', 30),
+(4, 'hello',      'alice', 'prod', 40),
+(5, 'ка''та',     'влад',  'прод', 50);

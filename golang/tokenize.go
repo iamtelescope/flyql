@@ -3,6 +3,7 @@ package flyql
 import (
 	"errors"
 	"regexp"
+	"unicode/utf8"
 )
 
 // Token is the cross-language token shape emitted by Tokenize.
@@ -69,7 +70,7 @@ func Tokenize(text, mode string) ([]Token, error) {
 					Text:  curText,
 					Type:  curType,
 					Start: curStart,
-					End:   curStart + len(curText),
+					End:   curStart + utf8.RuneCountInString(curText),
 				})
 				curText = string(c.Value)
 				curType = c.Type
@@ -80,7 +81,7 @@ func Tokenize(text, mode string) ([]Token, error) {
 			Text:  curText,
 			Type:  curType,
 			Start: curStart,
-			End:   curStart + len(curText),
+			End:   curStart + utf8.RuneCountInString(curText),
 		})
 	}
 
@@ -94,12 +95,15 @@ func Tokenize(text, mode string) ([]Token, error) {
 	if len(tokens) > 0 {
 		consumed = tokens[len(tokens)-1].End
 	}
-	if consumed < len(text) {
+	// consumed is a code-point offset, so the trailing slice and total length
+	// must be measured in code points too (text indexes bytes natively).
+	runes := []rune(text)
+	if consumed < len(runes) {
 		tokens = append(tokens, Token{
-			Text:  text[consumed:],
+			Text:  string(runes[consumed:]),
 			Type:  CharTypeError,
 			Start: consumed,
-			End:   len(text),
+			End:   len(runes),
 		})
 	}
 

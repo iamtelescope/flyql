@@ -1,8 +1,8 @@
 {
     "version": "1.0",
-    "description": "Tokenizer test cases for cross-language parity (query mode). ASCII-only; non-ASCII inputs out of scope. Fixtures hand-authored from the parser oracle (not derived from tokenize() output). Covers: flyqlKey, flyqlOperator, number, string, flyqlBoolean, flyqlNull, flyqlColumn, flyqlError, plus optional space, flyqlPipe, flyqlTransformer. Exercises all five VALUE upgrade branches and pins rejection of Infinity/NaN/hex by the canonical numeric regex.",
+    "description": "Tokenizer test cases for cross-language parity (query mode). Token start/end are code-point (not byte/UTF-16-unit) offsets, identical across Python, Go, and JS for all input including non-ASCII and astral (non-BMP) characters. Fixtures hand-authored from the parser oracle (not derived from tokenize() output). Covers: flyqlKey, flyqlOperator, number, string, flyqlBoolean, flyqlNull, flyqlColumn, flyqlError, plus optional space, flyqlPipe, flyqlTransformer. Exercises all five VALUE upgrade branches, pins rejection of Infinity/NaN/hex by the canonical numeric regex, and includes Cyrillic and emoji cases that pin code-point offset parity.",
     "test_suite": "tokenize_query",
-    "ascii_only": true,
+    "ascii_only": false,
     "coverage": [
         "flyqlKey",
         "flyqlOperator",
@@ -360,6 +360,64 @@
                 { "text": "=", "type": "flyqlOperator", "start": 23, "end": 24 },
                 { "text": " ", "type": "space", "start": 24, "end": 25 },
                 { "text": "200", "type": "number", "start": 25, "end": 28 }
+            ]
+        },
+        {
+            "name": "cyrillic_string_value",
+            "input": "name='алиса'",
+            "expected_tokens": [
+                { "text": "name", "type": "flyqlKey", "start": 0, "end": 4 },
+                { "text": "=", "type": "flyqlOperator", "start": 4, "end": 5 },
+                { "text": "'алиса'", "type": "string", "start": 5, "end": 12 }
+            ]
+        },
+        {
+            "name": "cyrillic_bare_value_column",
+            "input": "env=прод",
+            "expected_tokens": [
+                { "text": "env", "type": "flyqlKey", "start": 0, "end": 3 },
+                { "text": "=", "type": "flyqlOperator", "start": 3, "end": 4 },
+                { "text": "прод", "type": "flyqlColumn", "start": 4, "end": 8 }
+            ]
+        },
+        {
+            "name": "cyrillic_string_with_space",
+            "input": "message='привет мир'",
+            "expected_tokens": [
+                { "text": "message", "type": "flyqlKey", "start": 0, "end": 7 },
+                { "text": "=", "type": "flyqlOperator", "start": 7, "end": 8 },
+                { "text": "'привет мир'", "type": "string", "start": 8, "end": 20 }
+            ]
+        },
+        {
+            "name": "cyrillic_compound_offsets_stay_aligned",
+            "input": "name='алиса' and count>15",
+            "expected_tokens": [
+                { "text": "name", "type": "flyqlKey", "start": 0, "end": 4 },
+                { "text": "=", "type": "flyqlOperator", "start": 4, "end": 5 },
+                { "text": "'алиса'", "type": "string", "start": 5, "end": 12 },
+                { "text": " ", "type": "space", "start": 12, "end": 13 },
+                { "text": "and", "type": "flyqlOperator", "start": 13, "end": 16 },
+                { "text": " ", "type": "space", "start": 16, "end": 17 },
+                { "text": "count", "type": "flyqlKey", "start": 17, "end": 22 },
+                { "text": ">", "type": "flyqlOperator", "start": 22, "end": 23 },
+                { "text": "15", "type": "number", "start": 23, "end": 25 }
+            ]
+        },
+        {
+            "name": "astral_emoji_string_value",
+            "input": "msg='🚀'",
+            "expected_tokens": [
+                { "text": "msg", "type": "flyqlKey", "start": 0, "end": 3 },
+                { "text": "=", "type": "flyqlOperator", "start": 3, "end": 4 },
+                { "text": "'🚀'", "type": "string", "start": 4, "end": 7 }
+            ]
+        },
+        {
+            "name": "cyrillic_error_trailing",
+            "input": "#плохо",
+            "expected_tokens": [
+                { "text": "#плохо", "type": "flyqlError", "start": 0, "end": 6 }
             ]
         }
     ]

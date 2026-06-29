@@ -50,7 +50,7 @@ describe('tokenize (query mode)', () => {
                     expect(tokens[i].start).toBe(tokens[i - 1].end)
                 }
             }
-            expect(tokens[tokens.length - 1].end).toBe(input.length)
+            expect(tokens[tokens.length - 1].end).toBe([...input].length)
         }
     })
 
@@ -175,7 +175,7 @@ describe('tokenize (columns mode)', () => {
                     expect(tokens[i].start).toBe(tokens[i - 1].end)
                 }
             }
-            expect(tokens[tokens.length - 1].end).toBe(tc.input.length)
+            expect(tokens[tokens.length - 1].end).toBe([...tc.input].length)
         }
     })
 })

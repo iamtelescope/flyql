@@ -131,6 +131,11 @@ def test_parameters_parsing(test_case):
     run_test_case(test_case)
 
 
+@pytest.mark.parametrize("test_case", load_test_data("unicode.json")["tests"])
+def test_unicode_parsing(test_case):
+    run_test_case(test_case)
+
+
 @pytest.mark.parametrize("test_case", load_test_data("precedence.json")["tests"])
 def test_precedence_parsing(test_case):
     run_test_case(test_case)

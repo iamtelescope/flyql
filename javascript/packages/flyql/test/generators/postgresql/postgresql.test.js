@@ -135,11 +135,11 @@ describe('PostgreSQL Generator', () => {
         })
 
         it('escapes string with special chars', () => {
-            expect(escapeParam("it's")).toBe("'it\\'s'")
+            expect(escapeParam("it's")).toBe("E'it\\'s'")
         })
 
         it('escapes string with backslash', () => {
-            expect(escapeParam('a\\b')).toBe("'a\\\\b'")
+            expect(escapeParam('a\\b')).toBe("E'a\\\\b'")
         })
 
         it('escapes boolean true (lowercase)', () => {

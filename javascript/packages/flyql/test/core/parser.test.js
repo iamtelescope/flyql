@@ -59,6 +59,16 @@ describe('Parser Basic Tests', () => {
     })
 })
 
+describe('Parser Unicode Tests', () => {
+    const testData = loadTestData('unicode.json')
+
+    testData.tests.forEach((testCase) => {
+        it(testCase.name, () => {
+            runTestCase(testCase)
+        })
+    })
+})
+
 describe('Parser Boolean Tests', () => {
     const testData = loadTestData('boolean.json')
 

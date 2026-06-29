@@ -374,6 +374,7 @@ func TestParser(t *testing.T) {
 		"parser/functions.json",
 		"parser/parameters.json",
 		"parser/precedence.json",
+		"parser/unicode.json",
 	}
 
 	for _, file := range files {

@@ -51,7 +51,7 @@ type Parser struct {
 	pos                        int
 	line                       int
 	linePos                    int
-	text                       string
+	text                       []rune
 	state                      state
 	char                       *char
 	key                        string
@@ -2312,7 +2312,7 @@ func (p *Parser) inStateLastChar() {
 func (p *Parser) Parse(text string, opts ...Capabilities) error {
 	_ = opts
 	p.depth = 0
-	p.text = text
+	p.text = []rune(text)
 	p.pos = 0
 	p.line = 0
 	p.linePos = 0
@@ -2327,7 +2327,7 @@ func (p *Parser) Parse(text string, opts ...Capabilities) error {
 	p.TypedChars = nil
 	p.transformerQuote = 0
 
-	for _, c := range text {
+	for _, c := range p.text {
 		if p.state == stateError {
 			break
 		}

@@ -141,7 +141,13 @@ export class Parser {
     }
 
     setText(text) {
-        this.text = text
+        // Store as an array of code points (not the raw UTF-16 string) so that
+        // position-based indexing — this.text[nextPos]/[prevPos] and
+        // this.text.length — stays consistent with this.pos, which advances one
+        // step per code point. Without this, astral (non-BMP, surrogate-pair)
+        // characters desync the lookahead and break parsing. Mirrors the Go
+        // parser's []rune handling and Python's code-point string semantics.
+        this.text = Array.from(text)
     }
 
     setChar(char) {
@@ -2323,7 +2329,7 @@ export class Parser {
         this._depth = 0
         this.setText(text)
 
-        for (let c of text) {
+        for (let c of this.text) {
             if (this.state === State.ERROR) {
                 break
             }

@@ -54,6 +54,13 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     except ImportError:
         pass
 
+    try:
+        from test_cyrillic_e2e import _results as cyrillic_results
+
+        all_results.extend(cyrillic_results)
+    except ImportError:
+        pass
+
     if all_results:
         report = {"language": "python", "results": all_results}
         try:

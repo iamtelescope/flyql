@@ -181,11 +181,7 @@ def pg_available() -> bool:
     return _is_available(lambda: pg_query("SELECT 1 AS ok"))
 
 
-_DB_CASES = [
-    (case, db)
-    for case in CASES
-    for db in case.get("databases", [])
-]
+_DB_CASES = [(case, db) for case in CASES for db in case.get("databases", [])]
 
 
 @pytest.mark.parametrize(

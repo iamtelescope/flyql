@@ -160,7 +160,7 @@ Empty input returns an empty list, never a trailing error.
 ## Limitations
 
 - **Columns mode is JavaScript-only.** Only the JavaScript columns parser records typed-character output; the Python and Go columns parsers don't, so `tokenize()` in those languages can't extend to columns mode.
-- **ASCII-only guarantees.** Cross-language offset parity is guaranteed for ASCII input. Non-ASCII inputs may produce different `start`/`end` values across languages because of byte-vs-codepoint-vs-UTF16-unit differences.
+- **Code-point offsets.** `start`/`end` are Unicode code-point offsets in every language — each character, ASCII or not (including astral / non-BMP characters such as emoji), advances the offset by exactly one. Offsets are identical across Python, Go, and JavaScript for all input; they are not byte offsets (Go) or UTF-16 code-unit offsets (JavaScript). Convert to your editor's coordinate system on your end if it differs.
 - **No line or column numbers.** Tokens expose only character offsets. If you need `(line, column)` pairs for an editor, compute them from `start` against the source text.
 
 ## See also

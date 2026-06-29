@@ -160,7 +160,7 @@ tokenize('x!y')
 ## 限制
 
 - **columns 模式仅限 JavaScript。** 只有 JavaScript 的 columns 解析器会记录带类型的字符输出；Python 和 Go 的 columns 解析器都不会，因此这两种语言的 `tokenize()` 无法扩展到 columns 模式。
-- **仅保证 ASCII。** 跨语言的偏移一致性仅对 ASCII 输入保证。非 ASCII 输入由于字节 / 码点 / UTF-16 单元的差异，在不同语言中 `start`/`end` 可能不同。
+- **码点偏移。** 在所有语言里，`start`/`end` 都以 Unicode 码点为单位：无论是否 ASCII，包括表情符号等 BMP 以外的字符，每个字符都让偏移正好加一。无论输入是什么，Python、Go 和 JavaScript 给出的偏移都一致；它既不是字节（Go），也不是 UTF-16 单元（JavaScript）。如果你的编辑器用的是另一套坐标系，请自行换算。
 - **没有行号或列号。** token 只暴露字符偏移。若编辑器需要 `(line, column)`，请基于 `start` 和源文本自行计算。
 
 ## 参见

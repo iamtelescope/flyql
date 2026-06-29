@@ -152,8 +152,8 @@ func TestTokenizeMonotonicOffsets(t *testing.T) {
 				t.Errorf("%q: tokens[%d].Start=%d != tokens[%d].End=%d", input, i, tok.Start, i-1, tokens[i-1].End)
 			}
 		}
-		if tokens[len(tokens)-1].End != len(input) {
-			t.Errorf("%q: last token End=%d != len(input)=%d", input, tokens[len(tokens)-1].End, len(input))
+		if wantEnd := len([]rune(input)); tokens[len(tokens)-1].End != wantEnd {
+			t.Errorf("%q: last token End=%d != code-point len(input)=%d", input, tokens[len(tokens)-1].End, wantEnd)
 		}
 	}
 }

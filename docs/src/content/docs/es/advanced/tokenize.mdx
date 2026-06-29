@@ -160,7 +160,7 @@ Una entrada vacía devuelve una lista vacía, nunca un token de error final.
 ## Limitaciones
 
 - **El modo columns es exclusivo de JavaScript.** Solo el parser de columnas de JavaScript registra salida tipada por carácter; los parsers de columnas de Python y Go no lo hacen, así que `tokenize()` en esos lenguajes no puede extenderse al modo columns.
-- **Garantías solo ASCII.** La paridad de offsets entre lenguajes solo está garantizada para entradas ASCII. Entradas no ASCII pueden producir valores `start`/`end` distintos entre lenguajes debido a diferencias entre bytes, codepoints y unidades UTF-16.
+- **Offsets en code points.** En todos los lenguajes, `start` y `end` se cuentan en code points Unicode: cada carácter hace avanzar el offset exactamente uno, sea ASCII o no, incluidos los emojis y demás caracteres fuera del BMP. Sea cual sea la entrada, Python, Go y JavaScript dan los mismos offsets; no son bytes (Go) ni unidades UTF-16 (JavaScript). Si tu editor usa otro sistema de coordenadas, haz la conversión por tu cuenta.
 - **Sin números de línea o columna.** Los tokens solo exponen offsets de carácter. Si necesitas pares `(línea, columna)` para un editor, calcúlalos a partir de `start` sobre el texto fuente.
 
 ## Véase también

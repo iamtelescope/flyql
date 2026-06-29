@@ -61,13 +61,13 @@
       "name": "hstore_key_with_single_quote",
       "input": "metadata.\"key'quote\"='value'",
       "expected_result": "success",
-      "expected_sql": "\"metadata\"->'key\\'quote' = 'value'"
+      "expected_sql": "\"metadata\"->E'key\\'quote' = 'value'"
     },
     {
       "name": "hstore_key_with_backslash",
       "input": "metadata.\"key\\\\slash\"='value'",
       "expected_result": "success",
-      "expected_sql": "\"metadata\"->'key\\\\slash' = 'value'"
+      "expected_sql": "\"metadata\"->E'key\\\\slash' = 'value'"
     },
     {
       "name": "hstore_like",

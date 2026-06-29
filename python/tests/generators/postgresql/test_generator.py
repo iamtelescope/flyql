@@ -27,8 +27,9 @@ class TestEscapeParam:
         assert escape_param("hello") == "'hello'"
 
     def test_string_with_single_quote(self):
-        # PG generator backslash-escapes single quotes.
-        assert "\\'" in escape_param("it's")
+        # Values with a quote use a PG escape-string literal (E'...') so the
+        # backslash escape is interpreted under standard_conforming_strings.
+        assert escape_param("it's") == "E'it\\'s'"
 
     def test_bool_true(self):
         assert escape_param(True) == "true"

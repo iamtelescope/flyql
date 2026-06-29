@@ -158,7 +158,16 @@ def escape_param(item: Any) -> str:
     if item is None:
         return "NULL"
     elif isinstance(item, str):
-        return f"'{''.join(ESCAPE_CHARS_MAP.get(c, c) for c in item)}'"
+        # ESCAPE_CHARS_MAP uses C-style backslash escapes (\', \\, \n, ...), which
+        # are only interpreted inside a PostgreSQL escape-string literal (E'...').
+        # A plain '...' literal under standard_conforming_strings (the default)
+        # treats backslashes literally, so a value containing a quote would
+        # produce invalid SQL / allow injection. Use E'...' only when the value
+        # actually needs an escape; plain values stay '...'.
+        escaped = "".join(ESCAPE_CHARS_MAP.get(c, c) for c in item)
+        if any(c in ESCAPE_CHARS_MAP for c in item):
+            return f"E'{escaped}'"
+        return f"'{escaped}'"
     elif isinstance(item, bool):
         return "true" if item else "false"
     elif isinstance(item, float):

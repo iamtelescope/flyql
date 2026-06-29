@@ -157,17 +157,10 @@ var durationUnitToPostgreSQL = map[string]string{
 }
 
 func escapeStringValue(s string) string {
-	var sb strings.Builder
-	sb.WriteRune('\'')
-	for _, c := range s {
-		if escaped, ok := escapeCharsMap[c]; ok {
-			sb.WriteString(escaped)
-		} else {
-			sb.WriteRune(c)
-		}
-	}
-	sb.WriteRune('\'')
-	return sb.String()
+	// Route through EscapeParam so timezone arguments get the same
+	// standard-conforming E'...' escaping as every other string literal.
+	result, _ := EscapeParam(s)
+	return result
 }
 
 func functionCallToPostgreSQLSQL(fc *flyql.FunctionCall, defaultTz string) (string, error) {
@@ -253,17 +246,26 @@ func EscapeParam(item any) (string, error) {
 
 	switch v := item.(type) {
 	case string:
-		var sb strings.Builder
-		sb.WriteRune('\'')
+		// escapeCharsMap uses C-style backslash escapes (\', \\, \n, ...), which
+		// are only interpreted inside a PostgreSQL escape-string literal (E'...').
+		// A plain '...' literal under standard_conforming_strings (the default)
+		// treats backslashes literally, so a value containing a quote would
+		// produce invalid SQL / allow injection. Use E'...' only when the value
+		// actually needs an escape; plain values stay '...'.
+		needsEscape := false
+		var body strings.Builder
 		for _, c := range v {
 			if escaped, ok := escapeCharsMap[c]; ok {
-				sb.WriteString(escaped)
+				body.WriteString(escaped)
+				needsEscape = true
 			} else {
-				sb.WriteRune(c)
+				body.WriteRune(c)
 			}
 		}
-		sb.WriteRune('\'')
-		return sb.String(), nil
+		if needsEscape {
+			return "E'" + body.String() + "'", nil
+		}
+		return "'" + body.String() + "'", nil
 	case bool:
 		if v {
 			return "true", nil

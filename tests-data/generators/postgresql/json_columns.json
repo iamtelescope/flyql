@@ -343,7 +343,7 @@
       "name": "jsonb_like_escaped_percent",
       "input": "jsonb_column.name like 'test\\%value'",
       "expected_result": "success",
-      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' like 'test\\\\%value')"
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' like E'test\\\\%value')"
     }
   ]
 }

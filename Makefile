@@ -30,8 +30,10 @@ e2e-clean:
 	cd e2e && make clean
 e2e-viewer:
 	cd e2e-viewer && E2E_REPORT_FILE=../e2e/output/report.json make dev
-run-demo:
-	cd demo && make dev
+run-vue-demo:
+	cd demo/vue && make dev
+run-react-demo:
+	cd demo/react && make dev
 docs-install:
 	cd docs && npm install
 docs-build:
@@ -50,8 +52,11 @@ e2e-errno-parity:
 check-package-metadata:
 	@diff -q LICENSE javascript/packages/flyql/LICENSE >/dev/null || { echo "LICENSE drift: javascript/packages/flyql/LICENSE differs from root"; exit 1; }
 	@diff -q LICENSE javascript/packages/flyql-vue/LICENSE >/dev/null || { echo "LICENSE drift: javascript/packages/flyql-vue/LICENSE differs from root"; exit 1; }
+	@diff -q LICENSE javascript/packages/flyql-react/LICENSE >/dev/null || { echo "LICENSE drift: javascript/packages/flyql-react/LICENSE differs from root"; exit 1; }
 	@test -f javascript/packages/flyql/README.md || { echo "missing javascript/packages/flyql/README.md"; exit 1; }
 	@test -f javascript/packages/flyql-vue/README.md || { echo "missing javascript/packages/flyql-vue/README.md"; exit 1; }
+	@test -f javascript/packages/flyql-react/README.md || { echo "missing javascript/packages/flyql-react/README.md"; exit 1; }
+	@diff -q javascript/packages/flyql-vue/src/flyql.css javascript/packages/flyql-react/src/flyql.css >/dev/null || { echo "CSS drift: flyql-react/src/flyql.css differs from flyql-vue/src/flyql.css"; exit 1; }
 	@echo "package metadata OK"
 
 .PHONY: generate-errors e2e-errno-parity check-package-metadata

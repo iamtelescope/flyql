@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+html, body {
+    height: 100%;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body, nav, footer {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+body { background-color: #f9fafb; color: #1f2937; }
+body:where(.dark, .dark *) { background-color: #1c1c1c; color: #ffffff; }
+
+/* FlyQL editor transparent inside cards */
+.flyql-editor, .flyql-columns { background: transparent !important; border: none !important; }
+
+/* FlyQL syntax in example chips — use the same CSS vars as the editor */
+.flyql-highlight .flyql-key { color: var(--flyql-key-color); }
+.flyql-highlight .flyql-operator { color: var(--flyql-operator-color); }
+.flyql-highlight .flyql-value,
+.flyql-highlight .flyql-string { color: var(--flyql-value-color); }
+.flyql-highlight .flyql-number { color: var(--flyql-number-color); }
+
+/* Schema sidebar type colors */
+.flyql-schema-type[data-type="string"] { color: var(--flyql-value-color); }
+.flyql-schema-type[data-type="int"],
+.flyql-schema-type[data-type="float"] { color: var(--flyql-number-color); }
+.flyql-schema-type[data-type="map"],
+.flyql-schema-type[data-type="json"] { color: var(--flyql-operator-color); }
+.flyql-schema-type[data-type="jsonstring"] { color: var(--flyql-renderer-color); }
+
+/* Demo-only `|tag` renderer — pill/badge styling for filter-data table cells.
+   Default is gray; explicit color args ('red' | 'green' | 'blue' | 'yellow') map
+   to themed pills. Colors use Tailwind-like neutral palettes for familiarity. */
+.flyql-demo-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+.flyql-demo-tag--gray   { background: #e5e7eb; color: #374151; }
+.flyql-demo-tag--red    { background: #fee2e2; color: #991b1b; }
+.flyql-demo-tag--green  { background: #dcfce7; color: #166534; }
+.flyql-demo-tag--blue   { background: #dbeafe; color: #1e40af; }
+.flyql-demo-tag--yellow { background: #fef9c3; color: #854d0e; }
+body:where(.dark, .dark *) .flyql-demo-tag--gray   { background: #374151; color: #d1d5db; }
+body:where(.dark, .dark *) .flyql-demo-tag--red    { background: #7f1d1d; color: #fecaca; }
+body:where(.dark, .dark *) .flyql-demo-tag--green  { background: #14532d; color: #bbf7d0; }
+body:where(.dark, .dark *) .flyql-demo-tag--blue   { background: #1e3a8a; color: #bfdbfe; }
+body:where(.dark, .dark *) .flyql-demo-tag--yellow { background: #78350f; color: #fde68a; }
+
+/* SQL syntax highlighting */
+.sql-hl-keyword { color: #0451a5; font-weight: 600; }
+.sql-hl-string { color: #8b0000; }
+.sql-hl-number { color: #098658; }
+.sql-hl-function { color: #795e26; }
+:root.dark .sql-hl-keyword { color: #569cd6; font-weight: 600; }
+:root.dark .sql-hl-string { color: #ce9178; }
+:root.dark .sql-hl-number { color: #b5cea8; }
+:root.dark .sql-hl-function { color: #dcdcaa; }

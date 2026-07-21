@@ -18,6 +18,7 @@ on:
           - python
           - javascript
           - vuejs
+          - reactjs
           - golang
 
 permissions: {}
@@ -38,7 +39,7 @@ jobs:
 
   validate-javascript:
     name: Validate JavaScript
-    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript' || inputs.target == 'vuejs'
+    if: inputs.target == 'all' || inputs.target == 'validate' || inputs.target == 'javascript' || inputs.target == 'vuejs' || inputs.target == 'reactjs'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -175,6 +176,52 @@ jobs:
 
       - name: Publish flyql-vue to npm
         working-directory: javascript/packages/flyql-vue
+        run: pnpm publish --access public --no-git-checks
+
+  flyql-react:
+    name: Publish flyql-react to npm
+    needs: [validate-javascript, flyql]
+    if: |
+      always() &&
+      needs.validate-javascript.result == 'success' &&
+      (needs.flyql.result == 'success' || needs.flyql.result == 'skipped') &&
+      (inputs.target == 'all' || inputs.target == 'javascript' || inputs.target == 'reactjs')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - name: Install dependencies
+        working-directory: javascript
+        run: pnpm install
+
+      - name: Pack and inspect tarball before publish
+        working-directory: javascript/packages/flyql-react
+        run: |
+          set -euo pipefail
+          pnpm pack --pack-destination /tmp
+          TARBALL=$(ls /tmp/flyql-react-*.tgz | head -1)
+          LIST=$(tar -tzf "$TARBALL")
+          grep -qE '^package/README\.md$' <<<"$LIST" || { echo "::error::README.md missing from flyql-react tarball"; exit 1; }
+          grep -qE '^package/LICENSE$'    <<<"$LIST" || { echo "::error::LICENSE missing from flyql-react tarball"; exit 1; }
+          echo "flyql-react tarball OK: $(echo "$LIST" | wc -l) entries"
+
+      - name: Publish flyql-react to npm
+        working-directory: javascript/packages/flyql-react
         run: pnpm publish --access public --no-git-checks
 
   golang:

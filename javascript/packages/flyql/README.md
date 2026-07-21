@@ -94,7 +94,20 @@ const json = parseToJson("message, status|upper", { transformers: true })
 console.log(json)
 ```
 
-> The Vue 3 editor ships as a separate package: [`flyql-vue`](https://www.npmjs.com/package/flyql-vue). See docs.flyql.dev for details.
+> Framework components ship as separate packages: [`flyql-vue`](https://www.npmjs.com/package/flyql-vue) (Vue 3) and [`flyql-react`](https://www.npmjs.com/package/flyql-react) (React). See docs.flyql.dev for details.
+
+### Editor engines
+
+`flyql/editor` exposes the framework-agnostic editor engines that power the
+`flyql-vue` and `flyql-react` components — tokenization-driven highlighting,
+autocomplete suggestions, diagnostics, and caret helpers:
+
+```js
+import { EditorEngine, ColumnsEngine } from 'flyql/editor'
+
+const engine = new EditorEngine(schemaColumns)
+const html = engine.getHighlightTokens("level=error and service=api")
+```
 
 ## Package Exports
 
@@ -109,6 +122,7 @@ console.log(json)
 | `flyql/generators/postgresql` | PostgreSQL SQL generation |
 | `flyql/generators/starrocks` | StarRocks SQL generation |
 | `flyql/highlight` | Syntax highlighting |
+| `flyql/editor` | Framework-agnostic editor engines |
 
 ## Links
 

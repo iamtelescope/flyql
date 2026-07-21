@@ -30,7 +30,7 @@ def validate_python(version, repo_root="."):
 
 def validate_javascript(version, repo_root="."):
     errors = []
-    for pkg in ("flyql", "flyql-vue"):
+    for pkg in ("flyql", "flyql-vue", "flyql-react"):
         path = f"{repo_root}/javascript/packages/{pkg}/package.json"
         with open(path) as f:
             package_version = json.load(f)["version"]

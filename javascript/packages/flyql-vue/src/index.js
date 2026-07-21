@@ -1,5 +1,4 @@
 export { default as FlyqlEditor } from './FlyqlEditor.vue'
 export { default as FlyqlColumns } from './FlyqlColumns.vue'
-export { EditorEngine } from './engine.js'
-export { ColumnsEngine } from './columns-engine.js'
+export { EditorEngine, ColumnsEngine } from 'flyql/editor'
 export { Column, ColumnSchema } from 'flyql/core'

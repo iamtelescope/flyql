@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeOutsideQuoteMask, renderWithDotMask } from '../src/path-dot.js'
+import { computeOutsideQuoteMask, renderWithDotMask } from '../../src/editor/path-dot.js'
 
 describe('path-dot', () => {
     describe('computeOutsideQuoteMask', () => {

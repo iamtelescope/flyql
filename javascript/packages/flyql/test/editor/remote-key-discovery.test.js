@@ -5,10 +5,10 @@ import {
     getOperatorSuggestions,
     getValueSuggestions,
     updateSuggestions,
-} from '../src/suggestions.js'
-import { EditorEngine } from '../src/engine.js'
-import { ColumnsEngine } from '../src/columns-engine.js'
-import { ColumnSchema } from 'flyql/core'
+} from '../../src/editor/suggestions.js'
+import { EditorEngine } from '../../src/editor/engine.js'
+import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema } from '../../src/core/index.js'
 
 // Schema with both JSONSchema children and schemaless object columns
 const MIXED_COLUMNS_PLAIN = {

@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
-import { resolve } from 'path'
-import { EditorEngine } from '../src/engine.js'
-import { Column, ColumnSchema, Range } from 'flyql/core'
-import { Type } from 'flyql'
+import { EditorEngine } from '../../src/editor/engine.js'
+import { Column, ColumnSchema } from '../../src/core/index.js'
+import { Type } from '../../src/index.js'
 
 function makeEngine() {
     const schema = ColumnSchema.fromColumns([new Column('service', Type.String, { matchName: 'service' })])
@@ -56,21 +54,5 @@ describe('EditorEngine — EOF suppression (Issue #3)', () => {
         expect(runQuery(engine, 'service ')).toEqual([])
         expect(runQuery(engine, 'service = ')).toEqual([])
         expect(runQuery(engine, '')).toEqual([])
-    })
-})
-
-describe('FlyqlEditor template — diagnostic description fallback (AC 16)', () => {
-    const EDITOR_DIR = resolve(import.meta.dirname, '../src')
-    const editorVue = readFileSync(resolve(EDITOR_DIR, 'FlyqlEditor.vue'), 'utf-8')
-    const columnsVue = readFileSync(resolve(EDITOR_DIR, 'FlyqlColumns.vue'), 'utf-8')
-
-    it('FlyqlEditor guards the description span with diag.error && diag.error.description', () => {
-        expect(editorVue).toContain('flyql-panel__diagnostic-desc')
-        expect(editorVue).toContain('diag.error && diag.error.description')
-    })
-
-    it('FlyqlColumns guards the description span with diag.error && diag.error.description', () => {
-        expect(columnsVue).toContain('flyql-panel__diagnostic-desc')
-        expect(columnsVue).toContain('diag.error && diag.error.description')
     })
 })

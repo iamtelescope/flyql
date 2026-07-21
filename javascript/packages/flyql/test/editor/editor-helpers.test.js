@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { truncateLabel, labelWasTruncated, insertAtSelection } from '../src/editor-helpers.js'
+import { truncateLabel, labelWasTruncated, insertAtSelection } from '../../src/editor/editor-helpers.js'
 
 describe('truncateLabel', () => {
     it('returns empty string unchanged', () => {

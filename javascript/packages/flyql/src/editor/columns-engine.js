@@ -14,14 +14,14 @@ import {
     TRANSFORMER_OPERATOR,
     COLUMNS_DELIMITER,
     COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG,
-} from 'flyql/columns'
+} from '../columns/index.js'
 
 // Errnos that should always surface as diagnostics even at EOF — the user
 // can't resolve them by continuing to type (an unclosed quote, for example,
 // stays broken until the closing quote is added).
 const ALWAYS_REPORT_ERRNOS = new Set([COLUMNS_ERR_UNEXPECTED_END_OF_QUOTED_ARG])
-import { defaultRegistry } from 'flyql/transformers'
-import { defaultRegistry as defaultRendererRegistryFn } from 'flyql/renderers'
+import { defaultRegistry } from '../transformers/index.js'
+import { defaultRegistry as defaultRendererRegistryFn } from '../renderers/index.js'
 import { EditorState } from './state.js'
 import { getNestedColumnSuggestions, resolveColumnDef, getKeyDiscoverySuggestions } from './suggestions.js'
 import { computeOutsideQuoteMask, renderWithDotMask } from './path-dot.js'
@@ -33,8 +33,8 @@ import {
     CODE_UNKNOWN_COLUMN,
     CODE_UNKNOWN_TRANSFORMER,
     CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
-} from 'flyql/core'
-import { Type } from 'flyql'
+} from '../core/index.js'
+import { Type } from '../index.js'
 
 /** Maps editor-input raw-type strings to canonical flyql.Type. */
 const EDITOR_TYPE_TO_FLYQL = {

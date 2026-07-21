@@ -261,6 +261,31 @@
     ],
     "flyql/tokenize": [
       "tokenize"
+    ],
+    "flyql/editor": [
+      "ColumnsEngine",
+      "DEFAULT_MAX_LEN",
+      "EditorEngine",
+      "EditorState",
+      "STATE_LABELS",
+      "computeOutsideQuoteMask",
+      "getBoolSuggestions",
+      "getColumnSuggestionsForValue",
+      "getInsertRange",
+      "getKeyDiscoverySuggestions",
+      "getKeySuggestions",
+      "getNestedColumnSuggestions",
+      "getOperatorSuggestions",
+      "getTransformerSuggestions",
+      "getValueSuggestions",
+      "insertAtSelection",
+      "labelWasTruncated",
+      "prepareSuggestionValues",
+      "renderWithDotMask",
+      "resolveColumnDef",
+      "signatureArgs",
+      "truncateLabel",
+      "updateSuggestions"
     ]
   },
   "golang": {

@@ -1,31 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
 
 const EDITOR_DIR = resolve(import.meta.dirname, '../src')
-
-const FRAMEWORK_IMPORTS = [
-    /from\s+['"]vue['"]/,
-    /from\s+['"]react['"]/,
-    /from\s+['"]@vue\//,
-    /from\s+['"]@angular\//,
-    /import\s+.*['"]vue['"]/,
-    /import\s+.*['"]react['"]/,
-    /require\s*\(\s*['"]vue['"]\s*\)/,
-    /require\s*\(\s*['"]react['"]\s*\)/,
-]
-
-function checkFileForFrameworkImports(filename) {
-    const content = readFileSync(resolve(EDITOR_DIR, filename), 'utf-8')
-    const violations = []
-    for (const pattern of FRAMEWORK_IMPORTS) {
-        const match = content.match(pattern)
-        if (match) {
-            violations.push(match[0])
-        }
-    }
-    return violations
-}
 
 describe('ARIA accessibility attributes (AC #6)', () => {
     const vueContent = readFileSync(resolve(EDITOR_DIR, 'FlyqlEditor.vue'), 'utf-8')
@@ -67,19 +44,35 @@ describe('ARIA accessibility attributes (AC #6)', () => {
     })
 })
 
-describe('engine module framework independence (AC #5)', () => {
-    it('engine.js has no framework imports', () => {
-        const violations = checkFileForFrameworkImports('engine.js')
-        expect(violations).toEqual([])
+describe('engines come from flyql/editor (AC #5)', () => {
+    const editorVue = readFileSync(resolve(EDITOR_DIR, 'FlyqlEditor.vue'), 'utf-8')
+    const columnsVue = readFileSync(resolve(EDITOR_DIR, 'FlyqlColumns.vue'), 'utf-8')
+    const indexJs = readFileSync(resolve(EDITOR_DIR, 'index.js'), 'utf-8')
+
+    it('FlyqlEditor imports the engine from flyql/editor', () => {
+        expect(editorVue).toContain("from 'flyql/editor'")
+        expect(editorVue).not.toMatch(/from\s+['"]\.\/(engine|editor-helpers|suggestions|state)\.js['"]/)
     })
 
-    it('suggestions.js has no framework imports', () => {
-        const violations = checkFileForFrameworkImports('suggestions.js')
-        expect(violations).toEqual([])
+    it('FlyqlColumns imports the engine from flyql/editor', () => {
+        expect(columnsVue).toContain("from 'flyql/editor'")
+        expect(columnsVue).not.toMatch(/from\s+['"]\.\/(columns-engine|editor-helpers|suggestions|state)\.js['"]/)
     })
 
-    it('state.js has no framework imports', () => {
-        const violations = checkFileForFrameworkImports('state.js')
-        expect(violations).toEqual([])
+    it('index.js re-exports EditorEngine and ColumnsEngine from flyql/editor', () => {
+        expect(indexJs).toMatch(/export\s+\{\s*EditorEngine,\s*ColumnsEngine\s*\}\s+from\s+'flyql\/editor'/)
+    })
+
+    it('no local engine files remain in flyql-vue', () => {
+        for (const file of [
+            'engine.js',
+            'columns-engine.js',
+            'suggestions.js',
+            'state.js',
+            'editor-helpers.js',
+            'path-dot.js',
+        ]) {
+            expect(existsSync(resolve(EDITOR_DIR, file)), `${file} should not exist`).toBe(false)
+        }
     })
 })

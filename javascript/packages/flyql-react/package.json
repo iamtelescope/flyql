@@ -1,0 +1,57 @@
+{
+    "name": "flyql-react",
+    "version": "1.0.1",
+    "description": "React editor components for FlyQL query language",
+    "type": "module",
+    "main": "./src/index.js",
+    "exports": {
+        ".": {
+            "import": "./src/index.js"
+        },
+        "./flyql.css": "./src/flyql.css"
+    },
+    "files": [
+        "src/**/*.js",
+        "src/**/*.jsx",
+        "src/**/*.css",
+        "README.md",
+        "LICENSE"
+    ],
+    "sideEffects": [
+        "*.css"
+    ],
+    "keywords": [
+        "flyql",
+        "react",
+        "editor",
+        "query"
+    ],
+    "author": "Ilia (HumanUser) Khomutov",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/iamtelescope/flyql.git",
+        "directory": "javascript/packages/flyql-react"
+    },
+    "bugs": {
+        "url": "https://github.com/iamtelescope/flyql/issues"
+    },
+    "homepage": "https://docs.flyql.dev",
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "flyql": "workspace:^"
+    },
+    "peerDependencies": {
+        "react": "^18.0.0 || ^19.0.0",
+        "react-dom": "^18.0.0 || ^19.0.0"
+    },
+    "devDependencies": {
+        "@vitest/coverage-v8": "^3.2.4",
+        "prettier": "^3.0.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "vitest": "^3.2.4"
+    }
+}

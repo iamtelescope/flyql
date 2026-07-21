@@ -1,6 +1,6 @@
 {
     "name": "flyql-react",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "React editor components for FlyQL query language",
     "type": "module",
     "main": "./src/index.js",

@@ -2,8 +2,8 @@
 title: Changelog
 ---
 
-## 2026.06.29
-Version: **1.0.1**
+## 2026.07.21
+Version: **1.0.2**
 
 Bug fixes:
 

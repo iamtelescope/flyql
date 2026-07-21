@@ -24,6 +24,7 @@ const SUBPATHS = [
     { name: 'flyql/renderers', mod: '../src/renderers/index.js' },
     { name: 'flyql/highlight', mod: '../src/highlight.js' },
     { name: 'flyql/tokenize', mod: '../src/tokenize.js' },
+    { name: 'flyql/editor', mod: '../src/editor/index.js' },
 ]
 
 describe('public API surface', () => {

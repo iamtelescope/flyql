@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { ColumnsEngine } from '../src/columns-engine.js'
-import { ColumnSchema, Diagnostic, Range } from 'flyql/core'
-import { Transformer, TransformerRegistry, defaultRegistry } from 'flyql/transformers'
-import { Renderer, RendererRegistry, ArgSpec } from 'flyql/renderers'
-import { Type } from 'flyql'
+import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema, Diagnostic, Range } from '../../src/core/index.js'
+import { Transformer, TransformerRegistry, defaultRegistry } from '../../src/transformers/index.js'
+import { Renderer, RendererRegistry, ArgSpec } from '../../src/renderers/index.js'
+import { Type } from '../../src/index.js'
 
 const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     level: { type: 'enum', suggest: true },
@@ -718,7 +718,7 @@ describe('ColumnsEngine', () => {
         it('has no framework imports', async () => {
             const { readFileSync } = await import('fs')
             const { resolve } = await import('path')
-            const content = readFileSync(resolve(import.meta.dirname, '../src/columns-engine.js'), 'utf-8')
+            const content = readFileSync(resolve(import.meta.dirname, '../../src/editor/columns-engine.js'), 'utf-8')
             expect(content).not.toMatch(/from\s+['"]vue['"]/)
             expect(content).not.toMatch(/from\s+['"]react['"]/)
         })

@@ -192,8 +192,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { ColumnsEngine } from './columns-engine.js'
-import { insertAtSelection, truncateLabel, labelWasTruncated, signatureArgs } from './editor-helpers.js'
+import { ColumnsEngine } from 'flyql/editor'
+import { insertAtSelection, truncateLabel, labelWasTruncated, signatureArgs } from 'flyql/editor'
 import './flyql.css'
 
 const props = defineProps({
@@ -781,117 +781,3 @@ function getParsedColumns() {
 
 defineExpose({ focus, blur, getQueryStatus, getParsedColumns, flushDiagnostics })
 </script>
-
-<style scoped>
-.flyql-columns {
-    position: relative;
-    background: var(--flyql-bg);
-    border: 1px solid var(--flyql-border);
-    border-radius: 8px;
-    transition: border-color 0.15s;
-}
-
-.flyql-columns--focused {
-    border-color: var(--flyql-border-focus);
-}
-
-.flyql-columns__icon {
-    position: absolute;
-    left: 10px;
-    top: 9px;
-    font-size: 13px;
-    color: var(--flyql-placeholder-color);
-    pointer-events: none;
-    z-index: 1;
-}
-
-.flyql-columns__container {
-    position: relative;
-}
-
-.flyql-columns__highlight,
-.flyql-columns__input {
-    font-family: var(--flyql-code-font-family);
-    font-size: var(--flyql-font-size);
-    line-height: 18px;
-    padding: 6px 8px 6px 32px;
-    margin: 0;
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    border: none;
-    outline: none;
-    box-sizing: border-box;
-    width: 100%;
-}
-
-.flyql-columns__highlight {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    overflow: hidden;
-    color: var(--flyql-text);
-    background: transparent;
-}
-
-.flyql-columns__input {
-    position: relative;
-    display: block;
-    resize: none;
-    overflow: hidden;
-    background: transparent;
-    color: transparent;
-    caret-color: var(--flyql-text);
-}
-
-.flyql-columns__input::placeholder {
-    color: var(--flyql-placeholder-color);
-}
-</style>
-
-<style>
-/* Columns highlighting classes (unscoped so they apply inside v-html) */
-.flyql-col-column {
-    color: var(--flyql-key-color);
-}
-
-.flyql-col-operator {
-    color: var(--flyql-operator-color);
-}
-
-.flyql-col-transformer {
-    color: var(--flyql-transformer-color);
-}
-
-.flyql-dark .flyql-col-transformer {
-    color: var(--flyql-transformer-color);
-}
-
-.flyql-col-argument {
-    color: var(--flyql-value-color);
-}
-
-.flyql-col-alias {
-    color: var(--flyql-operator-color);
-    font-style: italic;
-}
-
-.flyql-col-error {
-    color: var(--flyql-error-color);
-    text-decoration: wavy underline;
-}
-
-/* Columns panel badge styles */
-.flyql-panel__badge--transformer {
-    background: var(--flyql-transformer-color);
-    color: #fff;
-}
-
-.flyql-panel__badge--delimiter {
-    background: var(--flyql-placeholder-color);
-    color: #fff;
-}
-</style>

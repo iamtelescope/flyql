@@ -6,9 +6,9 @@ import {
     getOperatorSuggestions,
     getValueSuggestions,
     updateSuggestions,
-} from '../src/suggestions.js'
-import { ColumnsEngine } from '../src/columns-engine.js'
-import { ColumnSchema } from 'flyql/core'
+} from '../../src/editor/suggestions.js'
+import { ColumnsEngine } from '../../src/editor/columns-engine.js'
+import { ColumnSchema } from '../../src/core/index.js'
 
 const NESTED_COLUMNS_PLAIN = {
     level: { type: 'enum', suggest: true },

@@ -67,12 +67,12 @@ describe('FlyqlColumns component', () => {
     })
 
     describe('uses ColumnsEngine (not EditorEngine)', () => {
-        it('imports ColumnsEngine', () => {
-            expect(vueContent).toContain("from './columns-engine.js'")
+        it('imports ColumnsEngine from flyql/editor', () => {
+            expect(vueContent).toContain("import { ColumnsEngine } from 'flyql/editor'")
         })
 
         it('does not import EditorEngine', () => {
-            expect(vueContent).not.toContain("from './engine.js'")
+            expect(vueContent).not.toMatch(/import\s+\{[^}]*\bEditorEngine\b[^}]*\}\s+from\s+'flyql\/editor'/)
         })
     })
 
@@ -157,17 +157,20 @@ describe('FlyqlColumns component', () => {
         })
     })
 
-    describe('CSS theming', () => {
-        it('uses scoped styles for component', () => {
-            expect(vueContent).toContain('<style scoped>')
+    describe('CSS theming (styles unified in flyql.css)', () => {
+        const cssContent = readFileSync(resolve(EDITOR_DIR, 'flyql.css'), 'utf-8')
+
+        it('has no SFC style blocks (styles live in flyql.css)', () => {
+            expect(vueContent).not.toContain('<style')
         })
 
-        it('uses --flyql-bg variable', () => {
-            expect(vueContent).toContain('var(--flyql-bg)')
+        it('component styles use --flyql-bg variable', () => {
+            expect(cssContent).toContain('.flyql-columns')
+            expect(cssContent).toContain('var(--flyql-bg)')
         })
 
-        it('uses --flyql-border variable', () => {
-            expect(vueContent).toContain('var(--flyql-border)')
+        it('component styles use --flyql-border variable', () => {
+            expect(cssContent).toContain('var(--flyql-border)')
         })
 
         it('has own icon (grid, not search)', () => {
@@ -176,12 +179,12 @@ describe('FlyqlColumns component', () => {
         })
 
         it('has highlight token CSS classes', () => {
-            expect(vueContent).toContain('.flyql-col-column')
-            expect(vueContent).toContain('.flyql-col-operator')
-            expect(vueContent).toContain('.flyql-col-transformer')
-            expect(vueContent).toContain('.flyql-col-argument')
-            expect(vueContent).toContain('.flyql-col-alias')
-            expect(vueContent).toContain('.flyql-col-error')
+            expect(cssContent).toContain('.flyql-col-column')
+            expect(cssContent).toContain('.flyql-col-operator')
+            expect(cssContent).toContain('.flyql-col-transformer')
+            expect(cssContent).toContain('.flyql-col-argument')
+            expect(cssContent).toContain('.flyql-col-alias')
+            expect(cssContent).toContain('.flyql-col-error')
         })
     })
 
@@ -220,8 +223,8 @@ describe('FlyqlColumns component', () => {
     })
 
     describe('UX polish (undo + truncation + footer path)', () => {
-        it('imports editor-helpers', () => {
-            expect(vueContent).toContain("from './editor-helpers.js'")
+        it('imports editor helpers from flyql/editor', () => {
+            expect(vueContent).toMatch(/import\s+\{[^}]*insertAtSelection[^}]*\}\s+from\s+'flyql\/editor'/)
         })
 
         it('uses insertAtSelection for undo-safe insert', () => {
@@ -242,6 +245,13 @@ describe('FlyqlColumns component', () => {
 
         it('applies truncateLabel before highlightMatch in list rendering (F19)', () => {
             expect(vueContent).toContain('highlightMatch(item.displayLabel || truncateLabel(item.label), item.label)')
+        })
+    })
+
+    describe('diagnostic description fallback (AC 16)', () => {
+        it('guards the description span with diag.error && diag.error.description', () => {
+            expect(vueContent).toContain('flyql-panel__diagnostic-desc')
+            expect(vueContent).toContain('diag.error && diag.error.description')
         })
     })
 })

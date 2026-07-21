@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { EditorEngine } from '../src/engine.js'
-import { Diagnostic, Range, ColumnSchema } from 'flyql/core'
+import { EditorEngine } from '../../src/editor/engine.js'
+import { Diagnostic, Range, ColumnSchema } from '../../src/core/index.js'
 
 const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     status: {

@@ -30,6 +30,15 @@ export default [
         rules: { 'no-unused-expressions': 'off' },
     },
     {
+        files: ['src/editor/**/*.js'],
+        languageOptions: {
+            globals: {
+                document: 'readonly',
+                InputEvent: 'readonly',
+            },
+        },
+    },
+    {
         ignores: ['node_modules/', 'snippets/'],
     },
 ]

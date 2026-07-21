@@ -18,9 +18,9 @@ import {
     CODE_UNKNOWN_TRANSFORMER,
     ERR_INVALID_CHAR_IN_EXPECT_BOOL,
     Range,
-} from 'flyql/core'
-import { Type, tokenize } from 'flyql'
-import { defaultRegistry } from 'flyql/transformers'
+} from '../core/index.js'
+import { Type, tokenize } from '../index.js'
+import { defaultRegistry } from '../transformers/index.js'
 import { EditorState } from './state.js'
 import {
     updateSuggestions,

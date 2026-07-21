@@ -8,8 +8,8 @@ import {
     getTransformerSuggestions,
     getColumnSuggestionsForValue,
     getValueSuggestions,
-} from '../src/suggestions.js'
-import { ColumnSchema } from 'flyql/core'
+} from '../../src/editor/suggestions.js'
+import { ColumnSchema } from '../../src/core/index.js'
 
 const TEST_COLUMNS = ColumnSchema.fromPlainObject({
     status: { type: 'enum', suggest: true, autocomplete: true, values: ['debug', 'info'] },

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { EditorEngine } from '../src/engine.js'
-import { Transformer, defaultRegistry } from 'flyql/transformers'
-import { Type } from 'flyql'
-import { ColumnSchema } from 'flyql/core'
+import { EditorEngine } from '../../src/editor/engine.js'
+import { Transformer, defaultRegistry } from '../../src/transformers/index.js'
+import { Type } from '../../src/index.js'
+import { ColumnSchema } from '../../src/core/index.js'
 
 class FirstOctetTransformer extends Transformer {
     get name() {

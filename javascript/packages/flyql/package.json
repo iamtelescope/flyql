@@ -40,6 +40,9 @@
         },
         "./matcher": {
             "import": "./src/matcher/index.js"
+        },
+        "./editor": {
+            "import": "./src/editor/index.js"
         }
     },
     "files": [

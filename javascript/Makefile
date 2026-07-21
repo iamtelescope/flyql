@@ -6,12 +6,16 @@ install:
 fmt:
 	$(MAKE) -C packages/flyql fmt
 	$(MAKE) -C packages/flyql-vue fmt
+	$(MAKE) -C packages/flyql-react fmt
 fmt-test:
 	$(MAKE) -C packages/flyql fmt-test
 	$(MAKE) -C packages/flyql-vue fmt-test
+	$(MAKE) -C packages/flyql-react fmt-test
 test:
 	$(MAKE) -C packages/flyql test
 	$(MAKE) -C packages/flyql-vue test
+	$(MAKE) -C packages/flyql-react test
 coverage:
 	$(MAKE) -C packages/flyql coverage
 	$(MAKE) -C packages/flyql-vue coverage
+	$(MAKE) -C packages/flyql-react coverage

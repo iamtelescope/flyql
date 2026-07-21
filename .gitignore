@@ -169,7 +169,8 @@ node_modules/
 .vite/
 
 # Demo
-demo/dist/
+demo/vue/dist/
+demo/react/dist/
 
 # Astro build cache
 .astro/

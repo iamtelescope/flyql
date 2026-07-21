@@ -2,9 +2,9 @@
  * Suggestion generation from parser state + schema — pure JS, no framework dependencies.
  */
 
-import { Operator, VALID_KEY_VALUE_OPERATORS, isNumeric } from 'flyql/core'
-import { Type, typePermitsUnknownChildren } from 'flyql'
-import { defaultRegistry } from 'flyql/transformers'
+import { Operator, VALID_KEY_VALUE_OPERATORS, isNumeric } from '../core/index.js'
+import { Type, typePermitsUnknownChildren } from '../index.js'
+import { defaultRegistry } from '../transformers/index.js'
 
 const OPERATOR_NAMES = {
     [Operator.EQUALS]: 'equals',

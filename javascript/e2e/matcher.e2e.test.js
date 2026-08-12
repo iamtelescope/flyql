@@ -31,7 +31,10 @@ function loadTestCases() {
         !tc.flyql.includes('ago(') &&
         !tc.flyql.includes('now()') &&
         !tc.flyql.includes('today()') &&
-        !tc.flyql.includes('startOf(')
+        !tc.flyql.includes('startOf(') &&
+        // SQL NOT IN follows three-valued logic and drops NULL rows;
+        // the schema-free matcher matches them (see docs syntax/lists).
+        !tc.flyql.includes('nullable_field not in')
     )
 }
 

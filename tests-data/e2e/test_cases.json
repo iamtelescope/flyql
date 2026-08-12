@@ -1585,6 +1585,85 @@
       ]
     },
     {
+      "name": "nullable_allowlist_equals_valid",
+      "flyql": "nullable_field='value1'",
+      "expected_ids": [
+        1
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "nullable_allowlist_not_equals_valid",
+      "flyql": "nullable_field!='value1'",
+      "expected_ids": [
+        3,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "nullable_allowlist_like_pattern",
+      "flyql": "nullable_field like 'value%'",
+      "expected_ids": [
+        1,
+        3,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "nullable_allowlist_in_valid",
+      "flyql": "nullable_field in ['value1', 'value3']",
+      "expected_ids": [
+        1,
+        3
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "nullable_allowlist_not_in_three_valued",
+      "flyql": "nullable_field not in ['value1']",
+      "expected_ids": [
+        3,
+        6
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
+      "name": "nullable_allowlist_falsy_bare_key",
+      "flyql": "not nullable_field",
+      "expected_ids": [
+        2,
+        4,
+        5
+      ],
+      "databases": [
+        "clickhouse",
+        "postgresql",
+        "starrocks"
+      ]
+    },
+    {
       "name": "regex_case_insensitive",
       "flyql": "message~'(?i)HELLO'",
       "expected_ids": [

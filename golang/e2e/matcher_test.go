@@ -31,7 +31,10 @@ func shouldSkipForMatcher(flyql string) bool {
 	// query fragments whose normalized matcher expectations don't line up with the shared
 	// e2e test cases (the Go matcher supports temporal functions; these rows just aren't
 	// seeded for them).
-	for _, skip := range []string{"tags.", "metadata.", "meta_json.", "meta.'dc.region'", "meta.'0'", "meta.tags.", "json_meta", "hello*'", "'*@", "created_at<=", "ago(", "now()", "today()", "startOf("} {
+	// "nullable_field not in": SQL NOT IN follows three-valued logic and
+	// drops NULL rows; the schema-free matcher matches them. Documented in
+	// docs syntax/lists (NOT IN and SQL NULL).
+	for _, skip := range []string{"tags.", "metadata.", "meta_json.", "meta.'dc.region'", "meta.'0'", "meta.tags.", "json_meta", "hello*'", "'*@", "created_at<=", "ago(", "now()", "today()", "startOf(", "nullable_field not in"} {
 		if strings.Contains(flyql, skip) {
 			return true
 		}

@@ -75,7 +75,7 @@
     "nullable_field": {
       "name": "nullable_field",
       "type": "text",
-      "values": null
+      "values": ["value1", "value3", "value6"]
     },
     "foo.bar": {
       "name": "foo.bar",

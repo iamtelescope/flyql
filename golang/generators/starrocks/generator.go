@@ -413,7 +413,9 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		}
 	}
 
-	if len(column.Values) > 0 {
+	// The Values allowlist constrains equality values only: patterns
+	// (like/regex) and null presence predicates are not domain values.
+	if (expr.Operator == flyql.OpEquals || expr.Operator == flyql.OpNotEquals) && expr.ValueType != literal.Null && len(column.Values) > 0 {
 		valueStr := fmt.Sprintf("%v", expr.Value)
 		found := false
 		for _, v := range column.Values {
@@ -680,6 +682,36 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 	}
 }
 
+// validateInListAgainstAllowedValues checks in/not-in list elements against the
+// column's Values allowlist. Null elements and resolvable column references are
+// not domain values and are skipped.
+func validateInListAgainstAllowedValues(expr *flyql.Expression, allowed []string, columns map[string]*Column) error {
+	for i, v := range expr.Values {
+		if i < len(expr.ValuesTypes) {
+			if expr.ValuesTypes[i] == literal.Null {
+				continue
+			}
+			if expr.ValuesTypes[i] == literal.Column {
+				if _, resolved := resolveRhsColumnRef(fmt.Sprintf("%v", v), columns); resolved {
+					continue
+				}
+			}
+		}
+		valueStr := fmt.Sprintf("%v", v)
+		found := false
+		for _, av := range allowed {
+			if av == valueStr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("unknown value: %v", v)
+		}
+	}
+	return nil
+}
+
 func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	isNotIn := expr.Operator == flyql.OpNotIn
 
@@ -694,6 +726,12 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	column, ok := columns[columnName]
 	if !ok {
 		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	if len(column.Values) > 0 && !expr.Key.IsSegmented() {
+		if err := validateInListAgainstAllowedValues(expr, column.Values, columns); err != nil {
+			return "", err
+		}
 	}
 
 	isHeterogeneous := len(expr.ValuesTypes) > 0 && func() bool {
@@ -1176,20 +1214,6 @@ func likeExpressionToSQL(expr *flyql.Expression, columns map[string]*Column, reg
 			}
 		}
 		return formatLikeSQL(colRef, expr.Operator, rhsRef), nil
-	}
-
-	if len(column.Values) > 0 {
-		valueStr := fmt.Sprintf("%v", expr.Value)
-		found := false
-		for _, v := range column.Values {
-			if v == valueStr {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return "", fmt.Errorf("unknown value: %v", expr.Value)
-		}
 	}
 
 	if column.FlyQLType() != "" && !hasTransformers {

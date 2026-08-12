@@ -104,6 +104,24 @@
       "input": "status = 1 and status > 2",
       "expected_result": "success",
       "expected_sql": "\"status\" = 1 AND \"status\" > 2"
+    },
+    {
+      "name": "enum_equals_null",
+      "input": "enum_column=null",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" IS NULL"
+    },
+    {
+      "name": "enum_not_equals_null",
+      "input": "enum_column!=null",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" IS NOT NULL"
+    },
+    {
+      "name": "enum_regex_pattern_not_checked_against_values",
+      "input": "enum_column~'val.*'",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" ~ 'val.*'"
     }
   ]
 }

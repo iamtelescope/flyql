@@ -7,6 +7,14 @@
       "type": "String",
       "values": null
     },
+    "enum_column": {
+      "name": "enum_column",
+      "type": "String",
+      "values": [
+        "value1",
+        "value2"
+      ]
+    },
     "count": {
       "name": "count",
       "type": "LargeInt",

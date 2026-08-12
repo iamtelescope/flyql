@@ -297,7 +297,14 @@ def expression_to_sql_simple(
         else:
             return f"{identifier} {expression.operator} {rhs_ref}"
     else:
-        if column.values and str(expression.value) not in column.values:
+        # The values allowlist constrains equality values only: patterns
+        # (like/regex) and null presence predicates are not domain values.
+        if (
+            expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value)
+            and expression.value_type != LiteralKind.NULL
+            and column.values
+            and str(expression.value) not in column.values
+        ):
             raise FlyqlError(f"unknown value: {expression.value}")
 
         if column.flyql_type is not None and not expression.key.transformers:
@@ -486,6 +493,27 @@ def expression_to_sql_segmented(
         raise FlyqlError("path search for unsupported column type")
 
 
+def _validate_in_list_against_allowed_values(
+    expression: Expression, allowed: List[str], columns: Mapping[str, Column]
+) -> None:
+    """Check in/not-in list elements against the column's values allowlist.
+
+    Null elements and resolvable column references are not domain values
+    and are skipped.
+    """
+    if not expression.values:
+        return
+    for i, v in enumerate(expression.values):
+        if expression.values_types is not None and i < len(expression.values_types):
+            if expression.values_types[i] == LiteralKind.NULL:
+                continue
+            if expression.values_types[i] == LiteralKind.COLUMN:
+                if _resolve_rhs_column_ref(str(v), columns) is not None:
+                    continue
+        if str(v) not in allowed:
+            raise FlyqlError(f"unknown value: {v}")
+
+
 def in_expression_to_sql_where(
     expression: Expression, columns: Mapping[str, Column]
 ) -> str:
@@ -499,6 +527,9 @@ def in_expression_to_sql_where(
         raise FlyqlError(f"unknown column: {column_name}")
 
     column = columns[column_name]
+
+    if column.values and not expression.key.is_segmented:
+        _validate_in_list_against_allowed_values(expression, column.values, columns)
 
     is_heterogeneous = (
         expression.values_types is not None and len(set(expression.values_types)) > 1

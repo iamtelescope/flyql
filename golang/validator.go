@@ -304,6 +304,53 @@ func diagnoseExpression(expr *Expression, schema *ColumnSchema, registry *transf
 		}
 	}
 
+	// Values allowlist: applies to =/!= equality values and in/not-in list
+	// elements on non-segmented keys, mirroring the generators. Null
+	// literals, patterns (like/regex) and column references are not domain
+	// values and are never checked. Precedence: suppress when another
+	// diagnostic already fired for the range.
+	if col != nil && len(col.Values) > 0 && len(expr.Key.Segments) == 1 {
+		allowed := func(s string) bool {
+			for _, v := range col.Values {
+				if v == s {
+					return true
+				}
+			}
+			return false
+		}
+		if (expr.Operator == OpEquals || expr.Operator == OpNotEquals) &&
+			expr.ValueType != literal.Null && expr.ValueType != literal.Column &&
+			expr.ValueType != literal.Function && expr.ValueRange != nil {
+			valueStr := fmt.Sprintf("%v", expr.Value)
+			key := rangeKey{expr.ValueRange.Start, expr.ValueRange.End}
+			if _, seen := emittedRanges[key]; !seen && !allowed(valueStr) {
+				diags = append(diags, MakeDiag(*expr.ValueRange, CodeValueNotAllowed, SeverityError, fmt.Sprintf("unknown value: %s", valueStr)))
+				emittedRanges[key] = struct{}{}
+			}
+		}
+		if expr.Operator == OpIn || expr.Operator == OpNotIn {
+			for i, v := range expr.Values {
+				if i < len(expr.ValuesTypes) && (expr.ValuesTypes[i] == literal.Null || expr.ValuesTypes[i] == literal.Column) {
+					continue
+				}
+				if i >= len(expr.ValueRanges) {
+					continue
+				}
+				valueStr := fmt.Sprintf("%v", v)
+				if allowed(valueStr) {
+					continue
+				}
+				r := expr.ValueRanges[i]
+				key := rangeKey{r.Start, r.End}
+				if _, seen := emittedRanges[key]; seen {
+					continue
+				}
+				diags = append(diags, MakeDiag(r, CodeValueNotAllowed, SeverityError, fmt.Sprintf("unknown value: %s", valueStr)))
+				emittedRanges[key] = struct{}{}
+			}
+		}
+	}
+
 	return diags
 }
 

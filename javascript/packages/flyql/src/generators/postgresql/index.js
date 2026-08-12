@@ -18,7 +18,7 @@ export { Column, newColumn, normalizePostgreSQLType }
 export function toFlyQLSchema(cols) {
     const m = {}
     for (const c of cols) {
-        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName })
+        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName, values: c.values })
     }
     return new ColumnSchema(m)
 }

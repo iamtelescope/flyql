@@ -154,6 +154,15 @@ func (e *Evaluator) resolveColumn(expr *flyql.Expression) *flyql.Column {
 	return nil
 }
 
+func stringInAllowlist(s string, allowed []string) bool {
+	for _, v := range allowed {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func isFalsy(value any) bool {
 	if value == nil {
 		return true
@@ -292,6 +301,30 @@ func (e *Evaluator) evalExpression(expr *flyql.Expression, record *Record) (bool
 	// native time.Time values without schema flow through the legacy
 	// coerceToMillis path via the FUNCTION branch below).
 	col := e.resolveColumn(expr)
+
+	// Values allowlist: applies to =/!= equality values and in/not-in list
+	// elements on non-segmented keys, mirroring the generators. Null
+	// literals, patterns (like/regex) and column references are not domain
+	// values and are never checked.
+	if col != nil && len(col.Values) > 0 && !expr.Key.IsSegmented() {
+		if (expr.Operator == flyql.OpEquals || expr.Operator == flyql.OpNotEquals) &&
+			expr.ValueType != literal.Null && expr.ValueType != literal.Column && expr.ValueType != literal.Function {
+			if !stringInAllowlist(fmt.Sprintf("%v", expr.Value), col.Values) {
+				return false, fmt.Errorf("unknown value: %v", expr.Value)
+			}
+		}
+		if expr.Operator == flyql.OpIn || expr.Operator == flyql.OpNotIn {
+			for i, v := range expr.Values {
+				if i < len(expr.ValuesTypes) && (expr.ValuesTypes[i] == literal.Null || expr.ValuesTypes[i] == literal.Column) {
+					continue
+				}
+				if !stringInAllowlist(fmt.Sprintf("%v", v), col.Values) {
+					return false, fmt.Errorf("unknown value: %v", v)
+				}
+			}
+		}
+	}
+
 	var isDateCol, isDateTimeCol bool
 	if col != nil {
 		switch col.Type {

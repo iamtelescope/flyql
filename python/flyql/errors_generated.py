@@ -534,6 +534,7 @@ CODE_UNKNOWN_COLUMN_VALUE = "unknown_column_value"
 CODE_UNKNOWN_RENDERER = "unknown_renderer"
 CODE_UNKNOWN_TRANSFORMER = "unknown_transformer"
 CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN = "unknown_transformer_arg_column"
+CODE_VALUE_NOT_ALLOWED = "value_not_allowed"
 
 VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_ARG_COUNT: "transformer argument count mismatch",
@@ -549,6 +550,7 @@ VALIDATOR_MESSAGES: dict[str, str] = {
     CODE_UNKNOWN_RENDERER: "unknown renderer",
     CODE_UNKNOWN_TRANSFORMER: "unknown transformer",
     CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN: "unknown column in transformer argument",
+    CODE_VALUE_NOT_ALLOWED: "unknown value",
 }
 
 VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {
@@ -641,6 +643,13 @@ VALIDATOR_REGISTRY: dict[str, ErrorEntry] = {
         name="CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN",
         message="unknown column in transformer argument",
         description="The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.",
+        dynamic_message=True,
+    ),
+    CODE_VALUE_NOT_ALLOWED: ErrorEntry(
+        code=CODE_VALUE_NOT_ALLOWED,
+        name="CODE_VALUE_NOT_ALLOWED",
+        message="unknown value",
+        description="The value compared against a column with a Values allowlist is not in that allowlist. Applies to =/!= equality values and in/not-in list elements; null literals, patterns (like/regex) and column references are not domain values and are never checked.",
         dynamic_message=True,
     ),
 }

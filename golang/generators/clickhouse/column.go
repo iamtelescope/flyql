@@ -247,6 +247,7 @@ func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
 		if fc.MatchName == "" {
 			fc.MatchName = c.Name
 		}
+		fc.Values = c.Values
 		m[c.Name] = &fc
 	}
 	return flyql.NewColumnSchema(m)

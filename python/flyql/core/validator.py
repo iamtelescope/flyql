@@ -28,6 +28,7 @@ from datetime import date, datetime
 from typing import Any, List, Literal, Optional, Tuple
 
 from flyql.core.column import ColumnSchema
+from flyql.core.constants import Operator
 from flyql.core.expression import Expression
 from flyql.core.range import Range
 from flyql.core.tree import Node
@@ -51,6 +52,7 @@ from flyql.errors_generated import (
     CODE_UNKNOWN_COLUMN_VALUE,
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
+    CODE_VALUE_NOT_ALLOWED,
     VALIDATOR_REGISTRY,
     ErrorEntry,
 )
@@ -442,6 +444,62 @@ def _diagnose_expression(
                         )
                     )
                     emitted_ranges.add(key)
+
+    # Values allowlist: applies to =/!= equality values and in/not-in list
+    # elements on non-segmented keys, mirroring the generators. Null
+    # literals, patterns (like/regex) and column references are not domain
+    # values and are never checked. Precedence: suppress when another
+    # diagnostic already fired for the range.
+    if col is not None and col.values and len(expression.key.segments) == 1:
+        if (
+            expression.operator in (Operator.EQUALS.value, Operator.NOT_EQUALS.value)
+            and expression.value_type
+            not in (LiteralKind.NULL, LiteralKind.COLUMN, LiteralKind.FUNCTION)
+            and expression.value_range is not None
+        ):
+            value_str = str(expression.value)
+            key = (expression.value_range.start, expression.value_range.end)
+            if key not in emitted_ranges and value_str not in col.values:
+                diags.append(
+                    make_diag(
+                        range=expression.value_range,
+                        code=CODE_VALUE_NOT_ALLOWED,
+                        severity="error",
+                        message=f"unknown value: {value_str}",
+                    )
+                )
+                emitted_ranges.add(key)
+        if (
+            expression.operator in (Operator.IN.value, Operator.NOT_IN.value)
+            and expression.values is not None
+            and expression.value_ranges is not None
+        ):
+            for i, v in enumerate(expression.values):
+                if (
+                    expression.values_types is not None
+                    and i < len(expression.values_types)
+                    and expression.values_types[i]
+                    in (LiteralKind.NULL, LiteralKind.COLUMN)
+                ):
+                    continue
+                if i >= len(expression.value_ranges):
+                    continue
+                value_str = str(v)
+                if value_str in col.values:
+                    continue
+                r = expression.value_ranges[i]
+                key = (r.start, r.end)
+                if key in emitted_ranges:
+                    continue
+                diags.append(
+                    make_diag(
+                        range=r,
+                        code=CODE_VALUE_NOT_ALLOWED,
+                        severity="error",
+                        message=f"unknown value: {value_str}",
+                    )
+                )
+                emitted_ranges.add(key)
 
     return diags
 

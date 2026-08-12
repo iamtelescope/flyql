@@ -161,6 +161,7 @@ func ToFlyQLSchema(cols []*Column) *flyql.ColumnSchema {
 	m := make(map[string]*flyql.Column, len(cols))
 	for _, c := range cols {
 		fc := flyql.NewColumn(c.Name, c.FlyQLType())
+		fc.Values = c.Values
 		m[c.Name] = &fc
 	}
 	return flyql.NewColumnSchema(m)

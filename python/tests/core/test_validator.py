@@ -69,6 +69,7 @@ def make_column(
     type_str: str,
     *,
     match_name: str | None = None,
+    values: list | None = None,
 ) -> Column:
     from flyql.flyql_type import parse_flyql_type
 
@@ -76,6 +77,7 @@ def make_column(
         name=name,
         column_type=parse_flyql_type(type_str) if type_str else Type.Unknown,
         match_name=match_name,
+        values=values,
     )
 
 
@@ -86,7 +88,9 @@ def _parse_ast(query: str) -> Node:
 
 
 def _columns_from_spec(col_specs: list) -> list[Column]:
-    return [make_column(c["name"], c["type"]) for c in col_specs]
+    return [
+        make_column(c["name"], c["type"], values=c.get("values")) for c in col_specs
+    ]
 
 
 # ---------------------------------------------------------------------------

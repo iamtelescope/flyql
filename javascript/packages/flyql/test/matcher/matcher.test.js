@@ -26,7 +26,13 @@ function runMatcherTestSuite(fixtureName) {
                     const evaluator = new Evaluator({ columns: schema })
                     const ast = parse(tc.query).root
                     const record = new Record(tc.data)
-                    expect(evaluator.evaluate(ast, record)).toBe(tc.expected)
+                    if (tc.expected_error_contains) {
+                        expect(() => evaluator.evaluate(ast, record)).toThrow(tc.expected_error_contains)
+                    } else {
+                        expect(evaluator.evaluate(ast, record)).toBe(tc.expected)
+                    }
+                } else if (tc.expected_error_contains) {
+                    expect(() => match(tc.query, tc.data)).toThrow(tc.expected_error_contains)
                 } else {
                     expect(match(tc.query, tc.data)).toBe(tc.expected)
                 }
@@ -45,6 +51,7 @@ describe('Matcher', () => {
     runMatcherTestSuite('regex.json')
     runMatcherTestSuite('like.json')
     runMatcherTestSuite('date_datetime.json')
+    runMatcherTestSuite('values_allowlist.json')
 
     describe('basic matching', () => {
         it('matches string equals', () => {

@@ -506,6 +506,7 @@ export const CODE_UNKNOWN_COLUMN_VALUE = 'unknown_column_value'
 export const CODE_UNKNOWN_RENDERER = 'unknown_renderer'
 export const CODE_UNKNOWN_TRANSFORMER = 'unknown_transformer'
 export const CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN = 'unknown_transformer_arg_column'
+export const CODE_VALUE_NOT_ALLOWED = 'value_not_allowed'
 
 export const VALIDATOR_MESSAGES = Object.freeze({
     [CODE_ARG_COUNT]: 'transformer argument count mismatch',
@@ -521,6 +522,7 @@ export const VALIDATOR_MESSAGES = Object.freeze({
     [CODE_UNKNOWN_RENDERER]: 'unknown renderer',
     [CODE_UNKNOWN_TRANSFORMER]: 'unknown transformer',
     [CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN]: 'unknown column in transformer argument',
+    [CODE_VALUE_NOT_ALLOWED]: 'unknown value',
 })
 
 export const VALIDATOR_REGISTRY = Object.freeze({
@@ -595,6 +597,13 @@ export const VALIDATOR_REGISTRY = Object.freeze({
         'CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN',
         'unknown column in transformer argument',
         "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.",
+        true,
+    ),
+    [CODE_VALUE_NOT_ALLOWED]: new ErrorEntry(
+        CODE_VALUE_NOT_ALLOWED,
+        'CODE_VALUE_NOT_ALLOWED',
+        'unknown value',
+        'The value compared against a column with a Values allowlist is not in that allowlist. Applies to =/!= equality values and in/not-in list elements; null literals, patterns (like/regex) and column references are not domain values and are never checked.',
         true,
     ),
 })

@@ -153,6 +153,7 @@ const (
 	CodeUnknownColumnValue          = "unknown_column_value"
 	CodeUnknownTransformer          = "unknown_transformer"
 	CodeUnknownTransformerArgColumn = "unknown_transformer_arg_column"
+	CodeValueNotAllowed             = "value_not_allowed"
 )
 
 // validatorMessages maps non-renderer validator codes to canonical messages.
@@ -167,6 +168,7 @@ var validatorMessages = map[string]string{
 	CodeUnknownColumnValue:          "unknown column value",
 	CodeUnknownTransformer:          "unknown transformer",
 	CodeUnknownTransformerArgColumn: "unknown column in transformer argument",
+	CodeValueNotAllowed:             "unknown value",
 }
 
 // validatorRegistry maps non-renderer validator codes to ErrorEntry records.
@@ -181,6 +183,7 @@ var validatorRegistry = map[string]ErrorEntry{
 	CodeUnknownColumnValue:          {Code: CodeUnknownColumnValue, Name: "CODE_UNKNOWN_COLUMN_VALUE", Message: "unknown column value", Description: "", DynamicMessage: false},
 	CodeUnknownTransformer:          {Code: CodeUnknownTransformer, Name: "CODE_UNKNOWN_TRANSFORMER", Message: "unknown transformer", Description: "", DynamicMessage: false},
 	CodeUnknownTransformerArgColumn: {Code: CodeUnknownTransformerArgColumn, Name: "CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN", Message: "unknown column in transformer argument", Description: "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.", DynamicMessage: true},
+	CodeValueNotAllowed:             {Code: CodeValueNotAllowed, Name: "CODE_VALUE_NOT_ALLOWED", Message: "unknown value", Description: "The value compared against a column with a Values allowlist is not in that allowlist. Applies to =/!= equality values and in/not-in list elements; null literals, patterns (like/regex) and column references are not domain values and are never checked.", DynamicMessage: true},
 }
 
 // matcher diagnostic codes (string). Python-only in practice; shipped in all languages for registry parity.

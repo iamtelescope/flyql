@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	flyql "github.com/iamtelescope/flyql/golang"
@@ -23,11 +24,12 @@ type matcherTestFile struct {
 }
 
 type matcherTestCase struct {
-	Name     string         `json:"name"`
-	Query    string         `json:"query"`
-	Data     map[string]any `json:"data"`
-	Expected bool           `json:"expected"`
-	Columns  map[string]any `json:"columns,omitempty"`
+	Name                  string         `json:"name"`
+	Query                 string         `json:"query"`
+	Data                  map[string]any `json:"data"`
+	Expected              bool           `json:"expected"`
+	Columns               map[string]any `json:"columns,omitempty"`
+	ExpectedErrorContains string         `json:"expected_error_contains,omitempty"`
 }
 
 func TestMatcherEvaluatesCorrectly(t *testing.T) {
@@ -259,6 +261,7 @@ func TestMatcherFromDataFiles(t *testing.T) {
 		"regex.json",
 		"like.json",
 		"date_datetime.json",
+		"values_allowlist.json",
 	}
 
 	for _, file := range files {
@@ -292,6 +295,17 @@ func TestMatcherFromDataFiles(t *testing.T) {
 					evaluator := NewEvaluatorWithSchema(nil, "UTC", schema)
 					record := NewRecord(tc.Data)
 					got, evalErr := evaluator.Evaluate(result.Root, record)
+
+					if tc.ExpectedErrorContains != "" {
+						if evalErr == nil {
+							t.Fatalf("expected error containing %q, got none", tc.ExpectedErrorContains)
+						}
+						if !strings.Contains(evalErr.Error(), tc.ExpectedErrorContains) {
+							t.Errorf("error %q does not contain %q", evalErr.Error(), tc.ExpectedErrorContains)
+						}
+						return
+					}
+
 					if evalErr != nil {
 						t.Fatalf("evaluate error: %v", evalErr)
 					}

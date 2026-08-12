@@ -42,9 +42,9 @@ const SHARED_CASES = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8')).tests
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeColumn(name, typeStr, { matchName = null } = {}) {
+function makeColumn(name, typeStr, { matchName = null, values = [] } = {}) {
     const t = typeStr || Type.Unknown
-    return new Column(name, t, { matchName })
+    return new Column(name, t, { matchName, values })
 }
 
 function parseAst(query) {
@@ -54,7 +54,7 @@ function parseAst(query) {
 }
 
 function columnsFromSpec(colSpecs) {
-    return colSpecs.map((c) => makeColumn(c.name, c.type))
+    return colSpecs.map((c) => makeColumn(c.name, c.type, { values: c.values || [] }))
 }
 
 // ---------------------------------------------------------------------------

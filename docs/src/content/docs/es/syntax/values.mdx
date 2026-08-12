@@ -126,6 +126,32 @@ Los arrays se usan con <FlyqlToken type="operator">in</FlyqlToken> y <FlyqlToken
 
 Cada elemento lleva su propio tipo en el array `values_types`.
 
+## Lista de valores permitidos
+
+Una definición de columna puede declarar una lista de valores permitidos `values` — el conjunto cerrado de valores de dominio que la columna puede contener:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+Cuando hay una lista de valores permitidos, los generadores SQL, el matcher en memoria y el validador rechazan los valores fuera de la lista con `unknown value: <value>` (el validador emite un diagnóstico posicionado `value_not_allowed` en lugar de lanzar una excepción).
+
+La lista de valores permitidos restringe **solo los valores de igualdad**:
+
+| Expresión | ¿Se comprueba? | Por qué |
+|-----------|----------------|---------|
+| <FlyqlCode code={`status = 'active'`} inline /> | sí | valor de igualdad |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | sí | valor de igualdad |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | sí, por elemento | los elementos de la lista son valores de igualdad |
+| <FlyqlCode code={`status = null`} inline /> | no | predicado de presencia, genera `IS NULL` |
+| <FlyqlCode code={`status like 'act%'`} inline /> | no | patrón, no un valor de dominio |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | no | patrón, no un valor de dominio |
+| <FlyqlCode code={`status = other_column`} inline /> | no | referencia a columna, no un valor de dominio |
+
+Los elementos null y las referencias a columna dentro de listas <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> también se omiten.
+
+El string vacío **no** está exento: si una columna puede contener legítimamente `''`, añade `""` a su lista `values`. La forma de clave independiente falsy (<FlyqlCode code={`not status`} inline />) es una comprobación de presencia y nunca se valida contra la lista de valores permitidos.
+
 ## Expresiones truthy/falsy
 
 Una clave independiente sin operador comprueba si el campo tiene un valor truthy:

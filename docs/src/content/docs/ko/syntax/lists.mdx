@@ -99,6 +99,30 @@ SQL generator가 리스트를 처리할 때는, 리스트 값 타입이 대상 �
 
 세 가지 경우(동질 일치, 이종 우회, 동질 잘못된 타입 오류)에 대한 실행 가능한 엔드투엔드 데모는 [레시피 — IN 리스트 타입 일관성](/ko/syntax/recipes/#in-리스트-타입-일관성)을 참조하세요.
 
+## 값 허용 목록
+
+컬럼이 [`values` 허용 목록](/ko/syntax/values/#값-허용-목록)을 선언하면 모든 리스트 요소가 이를 기준으로 검증되며, 허용 목록에 없는 요소는 `unknown value: <value>`를 발생시킵니다:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+`values: ["active", "inactive"]`인 경우 `'bogus'`에서 실패합니다. null 요소와 컬럼 참조는 도메인 값이 아니므로 건너뜁니다.
+
+## NOT IN과 SQL NULL
+
+SQL은 3치 논리(three-valued logic)를 따릅니다: `col NOT IN (...)`은 `col`이 `NULL`인 행에 대해 true가 아니며, 그런 행은 결과에서 조용히 제외됩니다.
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+생성된 `resolution NOT IN ('fixed', 'wont_fix')`는 resolution이 SQL `NULL`인 행을 반환하지 **않습니다**. 이런 행을 포함하려면 명시적인 null 검사를 추가하세요:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+또는 빈 문자열까지 함께 처리하는 falsy 단독 키 형태를 사용하세요:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+인메모리 매처에는 이 함정이 없습니다. `not in`을 레코드 값에 대해 직접 평가하므로, 매처에서는 null/누락 값이 `not in` 리스트와 일치합니다. 동일한 쿼리가 두 경로를 모두 거칠 때는 이 차이를 염두에 두세요.
+
 ## 리스트 안의 파라미터
 
 파라미터 placeholder는 IN 리스트 안에서도 사용할 수 있으며, 리터럴 값과 자유롭게 섞어서 쓸 수 있습니다.

@@ -142,6 +142,32 @@ Array는 <FlyqlToken type="operator">in</FlyqlToken>과 <FlyqlToken type="operat
 
 각 요소는 `values_types` 배열에 자신의 타입을 가집니다.
 
+## 값 허용 목록
+
+컬럼 정의는 `values` 허용 목록(allowlist), 즉 해당 컬럼이 가질 수 있는 도메인 값의 닫힌 집합을 선언할 수 있습니다:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+허용 목록이 있으면 SQL 생성기, 인메모리 매처, 검증기 모두 허용 목록에 없는 값을 `unknown value: <value>`로 거부합니다 (검증기는 예외를 발생시키는 대신 위치 정보가 포함된 `value_not_allowed` 진단을 내보냅니다).
+
+허용 목록은 **동등 비교 값만** 제한합니다:
+
+| 표현식 | 검사 여부 | 이유 |
+|------------|-----------|-----|
+| <FlyqlCode code={`status = 'active'`} inline /> | 예 | 동등 비교 값 |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | 예 | 동등 비교 값 |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | 예, 요소별 검사 | 리스트 요소는 동등 비교 값 |
+| <FlyqlCode code={`status = null`} inline /> | 아니요 | 존재 여부 술어, `IS NULL` 생성 |
+| <FlyqlCode code={`status like 'act%'`} inline /> | 아니요 | 패턴이며 도메인 값이 아님 |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | 아니요 | 패턴이며 도메인 값이 아님 |
+| <FlyqlCode code={`status = other_column`} inline /> | 아니요 | 컬럼 참조이며 도메인 값이 아님 |
+
+<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> 리스트 안의 null 요소와 컬럼 참조도 마찬가지로 건너뜁니다.
+
+빈 문자열은 예외가 **아닙니다**: 컬럼이 정당하게 `''`를 가질 수 있다면 해당 컬럼의 `values` 목록에 `""`를 추가하세요. falsy 단독 키 형태(<FlyqlCode code={`not status`} inline />)는 존재 여부 검사이며 허용 목록으로 검증되지 않습니다.
+
 ## Truthy/Falsy 표현식
 
 연산자 없이 단독으로 쓰인 키는 해당 필드가 truthy 값인지 검사합니다.

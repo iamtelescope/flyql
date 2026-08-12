@@ -99,6 +99,30 @@ Der Teilstring `type mismatch in IN list:` ist über alle drei Sprachen und alle
 
 Eine ausführbare End-zu-End-Demonstration aller drei Fälle (homogener Match, heterogener Bypass, homogener Falsch-Typ-Fehler) findest du unter [Rezepte — Typkonsistenz in IN-Listen](/de/syntax/recipes/#typkonsistenz-in-in-listen).
 
+## Werte-Allowlist
+
+Wenn die Spalte eine [`values`-Allowlist](/de/syntax/values/#werte-allowlist) deklariert, wird jedes Listenelement gegen sie validiert, und ein Element außerhalb der Allowlist löst `unknown value: <value>` aus:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+Mit `values: ["active", "inactive"]` schlägt dies bei `'bogus'` fehl. Null-Elemente und Spaltenreferenzen sind keine Domänenwerte und werden übersprungen.
+
+## NOT IN und SQL NULL
+
+SQL folgt der dreiwertigen Logik: `col NOT IN (...)` ist für Zeilen, in denen `col` `NULL` ist, nicht wahr — diese Zeilen werden stillschweigend aus dem Ergebnis ausgeschlossen.
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+Das generierte `resolution NOT IN ('fixed', 'wont_fix')` liefert **keine** Zeilen mit einer SQL-`NULL`-Resolution. Um sie einzuschließen, füge eine explizite Null-Prüfung hinzu:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+oder verwende die falsy Bare-Key-Form, die auch leere Strings abdeckt:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+Der In-Memory-Matcher kennt diese Falle nicht — er wertet `not in` direkt gegen den Datensatzwert aus, sodass null/fehlende Werte dort mit `not in`-Listen matchen. Behalte diese Divergenz im Blick, wenn dieselbe Query beide Pfade durchläuft.
+
 ## Parameter in Listen
 
 Parameter-Platzhalter können innerhalb von IN-Listen auftreten und frei mit Literalwerten gemischt werden:

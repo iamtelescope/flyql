@@ -99,6 +99,30 @@ El subtexto `type mismatch in IN list:` es estable en los tres lenguajes y los t
 
 Para una demostración ejecutable end-to-end de los tres casos (coincidencia homogénea, bypass heterogéneo, error de tipo incorrecto homogéneo), ver [Recetas — Consistencia de tipos en listas IN](/es/syntax/recipes/#consistencia-de-tipos-en-listas-in).
 
+## Lista de valores permitidos
+
+Si la columna declara una [lista de valores permitidos `values`](/es/syntax/values/#lista-de-valores-permitidos), cada elemento de la lista se valida contra ella y un elemento fuera de la lista lanza `unknown value: <value>`:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+Con `values: ["active", "inactive"]` esto falla en `'bogus'`. Los elementos null y las referencias a columna no son valores de dominio y se omiten.
+
+## NOT IN y NULL de SQL
+
+SQL sigue una lógica de tres valores: `col NOT IN (...)` no es true para las filas donde `col` es `NULL` — esas filas se excluyen silenciosamente del resultado.
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+El SQL generado `resolution NOT IN ('fixed', 'wont_fix')` **no** devuelve filas cuya resolución es `NULL` en SQL. Para incluirlas, añade una comprobación explícita de null:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+o usa la forma de clave independiente falsy, que también cubre los strings vacíos:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+El matcher en memoria no comparte esta trampa — evalúa `not in` directamente contra el valor del registro, por lo que allí los valores null o inexistentes sí coinciden con las listas `not in`. Ten en cuenta esta divergencia cuando la misma consulta pase por ambas rutas.
+
 ## Parámetros en listas
 
 Los marcadores de parámetros pueden aparecer dentro de listas IN, mezclados libremente con valores literales:

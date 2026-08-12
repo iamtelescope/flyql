@@ -99,6 +99,30 @@ SQL 生成器在处理列表时会校验列表值类型是否与目标列类型�
 
 要查看完整的端到端示例（同质匹配、异构绕过、同质类型不匹配），请参见[配方 — IN 列表类型一致性](/zh/syntax/recipes/#in-列表类型一致性)。
 
+## 值允许列表
+
+如果列声明了 [`values` 允许列表](/zh/syntax/values/#值允许列表)，列表中的每个元素都会针对它进行验证，不在允许列表中的元素会抛出 `unknown value: <value>`：
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+在 `values: ["active", "inactive"]` 下，这条查询会在 `'bogus'` 上失败。空值元素和列引用不是域值，会被跳过。
+
+## NOT IN 与 SQL NULL
+
+SQL 遵循三值逻辑：对于 `col` 为 `NULL` 的行，`col NOT IN (...)` 不为真——这些行会被悄悄地从结果中排除。
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+生成的 `resolution NOT IN ('fixed', 'wont_fix')` **不会**返回 resolution 为 SQL `NULL` 的行。要包含这些行，请添加显式的空值检查：
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+或使用假值裸键形式，它还能同时覆盖空字符串：
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+内存中的 matcher 没有这个陷阱——它直接针对记录值求值 `not in`，因此在那里空值/缺失值可以匹配 `not in` 列表。当同一条查询同时经过这两条路径时，请留意这一差异。
+
 ## 列表中的参数
 
 参数占位符可以出现在 IN 列表中，与字面值自由混合：

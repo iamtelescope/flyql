@@ -99,6 +99,30 @@ The substring `type mismatch in IN list:` is stable across all three languages a
 
 For a runnable end-to-end demonstration of all three cases (homogeneous match, heterogeneous bypass, homogeneous wrong-type error), see [Recipes — IN-list Type Consistency](/syntax/recipes/#in-list-type-consistency).
 
+## Values Allowlist
+
+If the column declares a [`values` allowlist](/syntax/values/#values-allowlist), every list element is validated against it and an out-of-allowlist element raises `unknown value: <value>`:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+With `values: ["active", "inactive"]` this fails on `'bogus'`. Null elements and column references are not domain values and are skipped.
+
+## NOT IN and SQL NULL
+
+SQL follows three-valued logic: `col NOT IN (...)` is not true for rows where `col` is `NULL` — those rows are silently excluded from the result.
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+The generated `resolution NOT IN ('fixed', 'wont_fix')` does **not** return rows with a SQL `NULL` resolution. To include them, add an explicit null check:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+or use the falsy bare-key form, which also covers empty strings:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+The in-memory matcher does not share this trap — it evaluates `not in` directly against the record value, so null/missing values match `not in` lists there. Keep this divergence in mind when the same query runs through both paths.
+
 ## Parameters in Lists
 
 Parameter placeholders can appear inside IN-lists, mixed freely with literal values:

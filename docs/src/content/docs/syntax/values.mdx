@@ -142,6 +142,32 @@ Arrays are used with <FlyqlToken type="operator">in</FlyqlToken> and <FlyqlToken
 
 Each element carries its own type in the `values_types` array.
 
+## Values Allowlist
+
+A column definition may declare a `values` allowlist — the closed set of domain values the column can hold:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+When an allowlist is present, the SQL generators, the in-memory matcher, and the validator all reject out-of-allowlist values with `unknown value: <value>` (the validator emits a positioned `value_not_allowed` diagnostic instead of raising).
+
+The allowlist constrains **equality values only**:
+
+| Expression | Checked? | Why |
+|------------|----------|-----|
+| <FlyqlCode code={`status = 'active'`} inline /> | yes | equality value |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | yes | equality value |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | yes, per element | list elements are equality values |
+| <FlyqlCode code={`status = null`} inline /> | no | presence predicate, emits `IS NULL` |
+| <FlyqlCode code={`status like 'act%'`} inline /> | no | pattern, not a domain value |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | no | pattern, not a domain value |
+| <FlyqlCode code={`status = other_column`} inline /> | no | column reference, not a domain value |
+
+Null elements and column references inside <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> lists are likewise skipped.
+
+The empty string is **not** exempt: if a column can legitimately hold `''`, add `""` to its `values` list. The falsy bare-key form (<FlyqlCode code={`not status`} inline />) is a presence check and is never validated against the allowlist.
+
 ## Truthy/Falsy Expressions
 
 A standalone key without an operator checks if the field has a truthy value:

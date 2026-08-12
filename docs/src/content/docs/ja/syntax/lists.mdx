@@ -99,6 +99,30 @@ validator を呼び出す前に、generator は次の 3 つの条件をチェッ
 
 3 ケース（同質マッチ、異種型バイパス、同質型違いエラー）の実行可能なエンドツーエンドのデモは、[レシピ — IN リストの型整合性](/ja/syntax/recipes/#in-リストの型整合性) を参照してください。
 
+## 値の許可リスト
+
+カラムが [`values` 許可リスト](/ja/syntax/values/#値の許可リスト) を宣言している場合、すべてのリスト要素がそれに対して検証され、許可リスト外の要素は `unknown value: <value>` を送出します:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+`values: ["active", "inactive"]` の場合、これは `'bogus'` で失敗します。null 要素とカラム参照はドメイン値ではないためスキップされます。
+
+## NOT IN と SQL NULL
+
+SQL は三値論理に従います。`col NOT IN (...)` は `col` が `NULL` の行に対して true にならず、それらの行は黙って結果から除外されます。
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+生成される `resolution NOT IN ('fixed', 'wont_fix')` は、resolution が SQL `NULL` の行を返**しません**。それらを含めるには、明示的な null チェックを追加します:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+または、空文字列もカバーする falsy な単独キー形式を使います:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+インメモリ matcher にはこの罠はありません — `not in` をレコード値に対して直接評価するため、null や未存在の値も `not in` リストにマッチします。同じクエリが両方のパスを通る場合は、この挙動の違いに注意してください。
+
 ## リスト内のパラメータ
 
 パラメータプレースホルダは IN リスト内にも使え、リテラル値と自由に混在させることができます。

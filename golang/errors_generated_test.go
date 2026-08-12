@@ -138,6 +138,7 @@ var generatedValidatorConstants = map[string]string{
 	"CODE_UNKNOWN_COLUMN_VALUE":           CodeUnknownColumnValue,
 	"CODE_UNKNOWN_TRANSFORMER":            CodeUnknownTransformer,
 	"CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN": CodeUnknownTransformerArgColumn,
+	"CODE_VALUE_NOT_ALLOWED":              CodeValueNotAllowed,
 }
 
 var generatedValidatorMessages = map[string]string{
@@ -151,6 +152,7 @@ var generatedValidatorMessages = map[string]string{
 	"CODE_UNKNOWN_COLUMN_VALUE":           "unknown column value",
 	"CODE_UNKNOWN_TRANSFORMER":            "unknown transformer",
 	"CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN": "unknown column in transformer argument",
+	"CODE_VALUE_NOT_ALLOWED":              "unknown value",
 }
 
 var generatedValidatorRegistry = map[string]ErrorEntry{
@@ -164,6 +166,7 @@ var generatedValidatorRegistry = map[string]ErrorEntry{
 	"CODE_UNKNOWN_COLUMN_VALUE":           {Code: CodeUnknownColumnValue, Name: "CODE_UNKNOWN_COLUMN_VALUE", Message: "unknown column value", Description: "", DynamicMessage: false},
 	"CODE_UNKNOWN_TRANSFORMER":            {Code: CodeUnknownTransformer, Name: "CODE_UNKNOWN_TRANSFORMER", Message: "unknown transformer", Description: "", DynamicMessage: false},
 	"CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN": {Code: CodeUnknownTransformerArgColumn, Name: "CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN", Message: "unknown column in transformer argument", Description: "The argument to a transformer or renderer was a bare identifier interpreted as a field reference, but no column with that name exists in the schema. Either quote the value as a string literal (e.g. `tag('red')`) or use an existing column name.", DynamicMessage: true},
+	"CODE_VALUE_NOT_ALLOWED":              {Code: CodeValueNotAllowed, Name: "CODE_VALUE_NOT_ALLOWED", Message: "unknown value", Description: "The value compared against a column with a Values allowlist is not in that allowlist. Applies to =/!= equality values and in/not-in list elements; null literals, patterns (like/regex) and column references are not domain values and are never checked.", DynamicMessage: true},
 }
 
 var generatedMatcherConstants = map[string]string{

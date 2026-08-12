@@ -99,6 +99,30 @@ A subcadeia `type mismatch in IN list:` é estável nas três linguagens e nos t
 
 Para uma demonstração end-to-end executável dos três casos (correspondência homogênea, bypass heterogêneo, erro de tipo errado homogêneo), veja [Receitas — Consistência de Tipos em Listas IN](/pt-br/syntax/recipes/#consistência-de-tipos-em-listas-in).
 
+## Allowlist de Valores
+
+Se a coluna declara uma [allowlist `values`](/pt-br/syntax/values/#allowlist-de-valores), cada elemento da lista é validado contra ela e um elemento fora da allowlist lança `unknown value: <value>`:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+Com `values: ["active", "inactive"]`, isso falha em `'bogus'`. Elementos null e referências de coluna não são valores de domínio e são ignorados.
+
+## NOT IN e SQL NULL
+
+O SQL segue a lógica de três valores: `col NOT IN (...)` não é verdadeiro para linhas em que `col` é `NULL` — essas linhas são silenciosamente excluídas do resultado.
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+O `resolution NOT IN ('fixed', 'wont_fix')` gerado **não** retorna linhas com `resolution` SQL `NULL`. Para incluí-las, adicione uma verificação de null explícita:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+ou use a forma de chave isolada falsy, que também cobre strings vazias:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+O matcher em memória não compartilha essa armadilha — ele avalia `not in` diretamente contra o valor do registro, então valores null/ausentes correspondem a listas `not in` nesse caminho. Tenha essa divergência em mente quando a mesma consulta passa pelos dois caminhos.
+
 ## Parâmetros em Listas
 
 Placeholders de parâmetros podem aparecer dentro de listas IN, misturados livremente com valores literais:

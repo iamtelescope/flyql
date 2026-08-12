@@ -244,3 +244,23 @@ def test_date_datetime_matcher(test_case: dict) -> None:
         f"query={test_case['query']!r}, data={test_case['data']!r}: "
         f"got {result}, want {test_case['expected']}"
     )
+
+
+@pytest.mark.parametrize("test_case", load_matcher_test_data("values_allowlist.json"))
+def test_values_allowlist_matcher(test_case: dict) -> None:
+    root = parse(test_case["query"]).root
+    schema = None
+    if "columns" in test_case:
+        schema = ColumnSchema.from_plain_object(test_case["columns"])
+    evaluator = Evaluator(columns=schema)
+    record = Record(data=test_case["data"])
+    if "expected_error_contains" in test_case:
+        with pytest.raises(FlyqlError, match=test_case["expected_error_contains"]):
+            evaluator.evaluate(root, record)
+        return
+    result = evaluator.evaluate(root, record)
+    assert result is test_case["expected"], (
+        f"case={test_case['name']!r}: "
+        f"query={test_case['query']!r}, data={test_case['data']!r}: "
+        f"got {result}, want {test_case['expected']}"
+    )

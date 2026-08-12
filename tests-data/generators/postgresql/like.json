@@ -62,6 +62,18 @@
       "input": "message like \\",
       "expected_result": "success",
       "expected_sql": "\"message\" LIKE E'\\\\\\\\'"
+    },
+    {
+      "name": "enum_like_pattern_not_checked_against_values",
+      "input": "enum_column like 'val%'",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" LIKE 'val%'"
+    },
+    {
+      "name": "enum_ilike_pattern_not_checked_against_values",
+      "input": "enum_column ilike 'VAL%'",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" ILIKE 'VAL%'"
     }
   ]
 }

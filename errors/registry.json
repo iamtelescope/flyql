@@ -348,6 +348,12 @@
           "message": "invalid datetime literal",
           "description": "Emitted when a string literal compared against a Date or DateTime column cannot be parsed as iso8601. Severity (warning) is decided at the validator emission site (see Decision 8); not a registry field."
         },
+        "value_not_allowed": {
+          "name": "CODE_VALUE_NOT_ALLOWED",
+          "message": "unknown value",
+          "description": "The value compared against a column with a Values allowlist is not in that allowlist. Applies to =/!= equality values and in/not-in list elements; null literals, patterns (like/regex) and column references are not domain values and are never checked.",
+          "dynamic_message": true
+        },
         "unknown_renderer": {
           "name": "CODE_UNKNOWN_RENDERER",
           "message": "unknown renderer",

@@ -142,6 +142,32 @@ AST: `value_type: "column"`
 
 प्रत्येक तत्व `values_types` ऐरे में अपना प्रकार रखता है।
 
+## Values Allowlist
+
+कॉलम परिभाषा एक `values` allowlist घोषित कर सकती है — डोमेन मानों का वह बंद सेट जो कॉलम धारण कर सकता है:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+जब allowlist मौजूद होती है, तो SQL जनरेटर, इन-मेमोरी मैचर, और वैलिडेटर सभी allowlist से बाहर के मानों को `unknown value: <value>` के साथ अस्वीकार करते हैं (वैलिडेटर त्रुटि फेंकने के बजाय स्थिति-सहित `value_not_allowed` डायग्नोस्टिक उत्सर्जित करता है)।
+
+Allowlist केवल **समानता मानों** को सीमित करती है:
+
+| अभिव्यक्ति | जाँचा जाता है? | क्यों |
+|------------|----------|-----|
+| <FlyqlCode code={`status = 'active'`} inline /> | हाँ | समानता मान |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | हाँ | समानता मान |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | हाँ, प्रति तत्व | सूची तत्व समानता मान हैं |
+| <FlyqlCode code={`status = null`} inline /> | नहीं | उपस्थिति प्रेडिकेट, `IS NULL` उत्पन्न करता है |
+| <FlyqlCode code={`status like 'act%'`} inline /> | नहीं | पैटर्न, डोमेन मान नहीं |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | नहीं | पैटर्न, डोमेन मान नहीं |
+| <FlyqlCode code={`status = other_column`} inline /> | नहीं | कॉलम संदर्भ, डोमेन मान नहीं |
+
+<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> सूचियों के अंदर null तत्व और कॉलम संदर्भ भी इसी तरह छोड़ दिए जाते हैं।
+
+खाली स्ट्रिंग को छूट **नहीं** है: यदि कोई कॉलम वैध रूप से `''` धारण कर सकता है, तो उसकी `values` सूची में `""` जोड़ें। Falsy बेयर-की रूप (<FlyqlCode code={`not status`} inline />) एक उपस्थिति जाँच है और इसे कभी भी allowlist के विरुद्ध सत्यापित नहीं किया जाता।
+
 ## Truthy/Falsy अभिव्यक्तियाँ
 
 बिना ऑपरेटर वाली स्वतंत्र कुंजी जाँचती है कि फ़ील्ड का मान truthy है:

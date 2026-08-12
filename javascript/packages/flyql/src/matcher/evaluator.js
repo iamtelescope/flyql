@@ -397,6 +397,38 @@ export class Evaluator {
 
         // Determine temporal context (Decision 11/20)
         const col = this._resolveColumnForExpression(expr)
+
+        // Values allowlist: applies to =/!= equality values and in/not-in
+        // list elements on non-segmented keys, mirroring the generators.
+        // Null literals, patterns (like/regex) and column references are
+        // not domain values and are never checked.
+        if (col !== null && col.values && col.values.length > 0 && !expr.key.isSegmented) {
+            if (
+                (expr.operator === Operator.EQUALS || expr.operator === Operator.NOT_EQUALS) &&
+                expr.valueType !== LiteralKind.NULL &&
+                expr.valueType !== LiteralKind.COLUMN &&
+                expr.valueType !== LiteralKind.FUNCTION
+            ) {
+                if (!col.values.includes(String(expr.value))) {
+                    throw new FlyqlError(`unknown value: ${expr.value}`)
+                }
+            }
+            if ((expr.operator === Operator.IN || expr.operator === Operator.NOT_IN) && expr.values != null) {
+                for (let i = 0; i < expr.values.length; i++) {
+                    if (
+                        expr.valuesTypes != null &&
+                        i < expr.valuesTypes.length &&
+                        (expr.valuesTypes[i] === LiteralKind.NULL || expr.valuesTypes[i] === LiteralKind.COLUMN)
+                    ) {
+                        continue
+                    }
+                    if (!col.values.includes(String(expr.values[i]))) {
+                        throw new FlyqlError(`unknown value: ${expr.values[i]}`)
+                    }
+                }
+            }
+        }
+
         const isDateCol = col !== null && col.type === Type.Date
         const isDateTimeCol = col !== null && col.type === Type.DateTime
         const temporal = isDateCol || isDateTimeCol

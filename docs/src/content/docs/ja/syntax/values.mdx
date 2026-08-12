@@ -126,6 +126,32 @@ Array は <FlyqlToken type="operator">in</FlyqlToken> と <FlyqlToken type="oper
 
 各要素は `values_types` 配列にそれぞれの型を持ちます。
 
+## 値の許可リスト
+
+カラム定義では `values` 許可リスト（allowlist）— そのカラムが保持しうるドメイン値の閉じた集合 — を宣言できます:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+許可リストが存在する場合、SQL generator、インメモリ matcher、validator はいずれも許可リスト外の値を `unknown value: <value>` で拒否します（validator は例外を送出する代わりに、位置情報付きの `value_not_allowed` 診断を発行します）。
+
+許可リストが制約するのは**等値比較の値のみ**です:
+
+| 式 | チェック対象? | 理由 |
+|------------|-----|-----|
+| <FlyqlCode code={`status = 'active'`} inline /> | はい | 等値比較の値 |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | はい | 等値比較の値 |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | はい、要素ごと | リスト要素は等値比較の値 |
+| <FlyqlCode code={`status = null`} inline /> | いいえ | 存在述語であり、`IS NULL` を生成 |
+| <FlyqlCode code={`status like 'act%'`} inline /> | いいえ | パターンであり、ドメイン値ではない |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | いいえ | パターンであり、ドメイン値ではない |
+| <FlyqlCode code={`status = other_column`} inline /> | いいえ | カラム参照であり、ドメイン値ではない |
+
+<FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> リスト内の null 要素とカラム参照も同様にスキップされます。
+
+空文字列は例外では**ありません**。カラムが正当に `''` を保持しうる場合は、その `values` リストに `""` を追加してください。falsy な単独キー形式（<FlyqlCode code={`not status`} inline />）は存在チェックであり、許可リストに対して検証されることはありません。
+
 ## Truthy/Falsy 式
 
 演算子を持たない単独のキーは、そのフィールドが truthy な値を持つかどうかをチェックします。

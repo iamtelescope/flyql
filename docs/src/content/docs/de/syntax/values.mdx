@@ -142,6 +142,32 @@ Arrays werden mit den Operatoren <FlyqlToken type="operator">in</FlyqlToken> und
 
 Jedes Element trägt seinen eigenen Typ im Array `values_types`.
 
+## Werte-Allowlist
+
+Eine Spaltendefinition kann eine `values`-Allowlist deklarieren — die geschlossene Menge der Domänenwerte, die die Spalte enthalten kann:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+Wenn eine Allowlist vorhanden ist, lehnen die SQL-Generatoren, der In-Memory-Matcher und der Validator Werte außerhalb der Allowlist mit `unknown value: <value>` ab (der Validator gibt stattdessen eine positionierte `value_not_allowed`-Diagnose aus, anstatt eine Exception auszulösen).
+
+Die Allowlist beschränkt **ausschließlich Gleichheitswerte**:
+
+| Ausdruck | Geprüft? | Warum |
+|----------|----------|-------|
+| <FlyqlCode code={`status = 'active'`} inline /> | ja | Gleichheitswert |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | ja | Gleichheitswert |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | ja, pro Element | Listenelemente sind Gleichheitswerte |
+| <FlyqlCode code={`status = null`} inline /> | nein | Präsenz-Prädikat, erzeugt `IS NULL` |
+| <FlyqlCode code={`status like 'act%'`} inline /> | nein | Muster, kein Domänenwert |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | nein | Muster, kein Domänenwert |
+| <FlyqlCode code={`status = other_column`} inline /> | nein | Spaltenreferenz, kein Domänenwert |
+
+Null-Elemente und Spaltenreferenzen innerhalb von <FlyqlToken type="operator">in</FlyqlToken>- / <FlyqlToken type="operator">not in</FlyqlToken>-Listen werden ebenfalls übersprungen.
+
+Der leere String ist **nicht** ausgenommen: Wenn eine Spalte legitim `''` enthalten kann, füge `""` zu ihrer `values`-Liste hinzu. Die falsy Bare-Key-Form (<FlyqlCode code={`not status`} inline />) ist eine Präsenzprüfung und wird niemals gegen die Allowlist validiert.
+
 ## Truthy/Falsy-Ausdrücke
 
 Ein einzelner Schlüssel ohne Operator prüft, ob das Feld einen truthy Wert hat:

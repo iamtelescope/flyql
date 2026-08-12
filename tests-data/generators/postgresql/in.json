@@ -89,6 +89,30 @@
       "input": "message in [\"hello\\\"world\", \"normal\"]",
       "expected_result": "success",
       "expected_sql": "\"message\" IN ('hello\"world', 'normal')"
+    },
+    {
+      "name": "enum_in_valid_values",
+      "input": "enum_column in ['value1', 'value2']",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" IN ('value1', 'value2')"
+    },
+    {
+      "name": "enum_not_in_valid_values",
+      "input": "enum_column not in ['value2']",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" NOT IN ('value2')"
+    },
+    {
+      "name": "enum_in_null_element_not_checked_against_values",
+      "input": "enum_column in ['value1', null]",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" IN ('value1', NULL)"
+    },
+    {
+      "name": "enum_in_invalid_value_mixed",
+      "input": "enum_column in ['value1', 'bogus']",
+      "expected_result": "error",
+      "expected_error_contains": "unknown value"
     }
   ]
 }

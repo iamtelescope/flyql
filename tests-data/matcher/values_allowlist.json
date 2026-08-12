@@ -1,0 +1,121 @@
+{
+  "version": "1.0",
+  "description": "Values allowlist enforcement fixtures. With a schema whose column carries a values allowlist, =/!= equality values and in/not-in list elements outside the allowlist raise an evaluation error (parity with the SQL generators). Null literals, patterns (like/regex) and column references are not domain values and are never checked. Schema-free evaluation never enforces the allowlist.",
+  "test_suite": "values_allowlist",
+  "tests": [
+    {
+      "name": "allowed_equals_match",
+      "query": "status='active'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "allowed_equals_no_match",
+      "query": "status='inactive'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": false
+    },
+    {
+      "name": "not_allowed_equals_errors",
+      "query": "status='bogus'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "not_allowed_not_equals_errors",
+      "query": "status!='bogus'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "null_exempt",
+      "query": "status=null",
+      "data": { "other": 1 },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "like_pattern_exempt",
+      "query": "status like 'act%'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "regex_pattern_exempt",
+      "query": "status~'act.*'",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "column_ref_exempt",
+      "query": "status=other",
+      "data": { "status": "x", "other": "x" },
+      "columns": {
+        "status": { "type": "string", "values": ["active", "inactive"] },
+        "other": { "type": "string" }
+      },
+      "expected": true
+    },
+    {
+      "name": "in_allowed",
+      "query": "status in ['active', 'inactive']",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "in_not_allowed_element_errors",
+      "query": "status in ['active', 'bogus']",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "not_in_not_allowed_element_errors",
+      "query": "status not in ['bogus']",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "in_null_element_exempt",
+      "query": "status in ['active', null]",
+      "data": { "status": "active" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "numeric_value_allowed",
+      "query": "code=200",
+      "data": { "code": 200 },
+      "columns": { "code": { "type": "int", "values": ["200", "404"] } },
+      "expected": true
+    },
+    {
+      "name": "numeric_value_not_allowed_errors",
+      "query": "code=999",
+      "data": { "code": 200 },
+      "columns": { "code": { "type": "int", "values": ["200", "404"] } },
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "falsy_bare_key_workaround",
+      "query": "not status",
+      "data": { "status": "" },
+      "columns": { "status": { "type": "string", "values": ["active", "inactive"] } },
+      "expected": true
+    },
+    {
+      "name": "schema_free_control_not_enforced",
+      "query": "status='bogus'",
+      "data": { "status": "bogus" },
+      "expected": true
+    }
+  ]
+}

@@ -574,6 +574,152 @@
           "message_contains": "upper"
         }
       ]
+    },
+    {
+      "name": "value_allowed_equals",
+      "query": "status='active'",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_not_allowed_equals",
+      "query": "status='bogus'",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [
+        {
+          "code": "value_not_allowed",
+          "severity": "error",
+          "message_contains": "bogus"
+        }
+      ]
+    },
+    {
+      "name": "value_not_allowed_not_equals",
+      "query": "status!='bogus'",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [
+        {
+          "code": "value_not_allowed",
+          "severity": "error",
+          "message_contains": "bogus"
+        }
+      ]
+    },
+    {
+      "name": "value_null_exempt",
+      "query": "status=null",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_like_pattern_exempt",
+      "query": "status like 'act%'",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_regex_pattern_exempt",
+      "query": "status~'act.*'",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_column_ref_exempt",
+      "query": "status=other",
+      "columns": [
+        { "name": "status", "type": "string", "values": ["active", "inactive"] },
+        { "name": "other", "type": "string" }
+      ],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_unresolvable_bare_word_gets_column_diag",
+      "query": "status=bogusref",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [
+        {
+          "code": "unknown_column_value",
+          "severity": "error",
+          "message_contains": "bogusref"
+        }
+      ],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_in_list_allowed",
+      "query": "status in ['active', 'inactive']",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_in_list_not_allowed_element",
+      "query": "status in ['active', 'bogus']",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [
+        {
+          "code": "value_not_allowed",
+          "severity": "error",
+          "message_contains": "bogus"
+        }
+      ]
+    },
+    {
+      "name": "value_not_in_list_not_allowed_element",
+      "query": "status not in ['bogus']",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [
+        {
+          "code": "value_not_allowed",
+          "severity": "error",
+          "message_contains": "bogus"
+        }
+      ]
+    },
+    {
+      "name": "value_in_list_null_element_exempt",
+      "query": "status in ['active', null]",
+      "columns": [{ "name": "status", "type": "string", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_numeric_allowed",
+      "query": "code=200",
+      "columns": [{ "name": "code", "type": "string", "values": ["200", "404"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_numeric_not_allowed",
+      "query": "code=999",
+      "columns": [{ "name": "code", "type": "string", "values": ["200", "404"] }],
+      "expected_diagnostics": [
+        {
+          "code": "value_not_allowed",
+          "severity": "error",
+          "message_contains": "999"
+        }
+      ]
+    },
+    {
+      "name": "value_segmented_key_exempt",
+      "query": "data.field='bogus'",
+      "columns": [{ "name": "data", "type": "jsonstring", "values": ["active", "inactive"] }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
+    },
+    {
+      "name": "value_no_allowlist_control",
+      "query": "plain='anything'",
+      "columns": [{ "name": "plain", "type": "string" }],
+      "expected_diagnostics": [],
+      "absent_codes": ["value_not_allowed"]
     }
   ]
 }

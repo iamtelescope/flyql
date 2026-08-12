@@ -18,7 +18,7 @@ export { Column, newColumn, normalizePostgreSQLType }
 export function toFlyQLSchema(cols) {
     const m = {}
     for (const c of cols) {
-        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName })
+        m[c.name] = new FCol(c.name, c.flyqlType(), { matchName: c.matchName, values: c.values })
     }
     return new ColumnSchema(m)
 }
@@ -330,7 +330,14 @@ function expressionToSQLSimple(expr, columns, registry = null, options = {}) {
         }
     }
 
-    if (column.values && column.values.length > 0) {
+    // The values allowlist constrains equality values only: patterns
+    // (like/regex) and null presence predicates are not domain values.
+    if (
+        (expr.operator === Operator.EQUALS || expr.operator === Operator.NOT_EQUALS) &&
+        expr.valueType !== LiteralKind.NULL &&
+        column.values &&
+        column.values.length > 0
+    ) {
         const valueStr = String(expr.value)
         if (!column.values.includes(valueStr)) {
             throw new Error(`unknown value: ${expr.value}`)
@@ -503,6 +510,26 @@ function expressionToSQLSegmented(expr, columns) {
     }
 }
 
+// Checks in/not-in list elements against the column's values allowlist.
+// Null elements and resolvable column references are not domain values
+// and are skipped.
+function validateInListAgainstAllowedValues(expr, allowed, columns) {
+    for (let i = 0; i < expr.values.length; i++) {
+        const v = expr.values[i]
+        if (expr.valuesTypes && i < expr.valuesTypes.length) {
+            if (expr.valuesTypes[i] === LiteralKind.NULL) {
+                continue
+            }
+            if (expr.valuesTypes[i] === LiteralKind.COLUMN && resolveRhsColumnRef(String(v), columns) !== null) {
+                continue
+            }
+        }
+        if (!allowed.includes(String(v))) {
+            throw new Error(`unknown value: ${v}`)
+        }
+    }
+}
+
 function inExpressionToSQL(expr, columns) {
     const isNotIn = expr.operator === Operator.NOT_IN
 
@@ -514,6 +541,10 @@ function inExpressionToSQL(expr, columns) {
     const column = columns[columnName]
     if (!column) {
         throw new Error(`unknown column: ${columnName}`)
+    }
+
+    if (column.values && column.values.length > 0 && !expr.key.isSegmented) {
+        validateInListAgainstAllowedValues(expr, column.values, columns)
     }
 
     const isHeterogeneous = expr.valuesTypes && new Set(expr.valuesTypes).size > 1

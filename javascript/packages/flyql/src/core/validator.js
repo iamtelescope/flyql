@@ -1,6 +1,7 @@
 import { LiteralKind } from '../literal/literal_kind.js'
 import { Type, typePermitsUnknownChildren } from '../flyql_type.js'
 import { Range } from './range.js'
+import { Operator } from './constants.js'
 import { defaultRegistry } from '../transformers/registry.js'
 
 import {
@@ -17,6 +18,7 @@ import {
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
     CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+    CODE_VALUE_NOT_ALLOWED,
     ErrorEntry,
     VALIDATOR_REGISTRY,
 } from '../errors_generated.js'
@@ -34,6 +36,7 @@ export {
     CODE_UNKNOWN_RENDERER,
     CODE_UNKNOWN_TRANSFORMER,
     CODE_UNKNOWN_TRANSFORMER_ARG_COLUMN,
+    CODE_VALUE_NOT_ALLOWED,
     ErrorEntry,
 }
 
@@ -400,6 +403,53 @@ function _diagnoseExpression(expression, schema, registry) {
                     )
                     emittedRanges.add(key)
                 }
+            }
+        }
+    }
+
+    // Values allowlist: applies to =/!= equality values and in/not-in list
+    // elements on non-segmented keys, mirroring the generators. Null
+    // literals, patterns (like/regex) and column references are not domain
+    // values and are never checked. Precedence: suppress when another
+    // diagnostic already fired for the range.
+    if (col != null && col.values && col.values.length > 0 && expression.key.segments.length === 1) {
+        if (
+            (expression.operator === Operator.EQUALS || expression.operator === Operator.NOT_EQUALS) &&
+            expression.valueType !== LiteralKind.NULL &&
+            expression.valueType !== LiteralKind.COLUMN &&
+            expression.valueType !== LiteralKind.FUNCTION &&
+            expression.valueRange != null
+        ) {
+            const valueStr = String(expression.value)
+            const key = rangeKey(expression.valueRange)
+            if (!emittedRanges.has(key) && !col.values.includes(valueStr)) {
+                diags.push(
+                    makeDiag(expression.valueRange, `unknown value: ${valueStr}`, 'error', CODE_VALUE_NOT_ALLOWED),
+                )
+                emittedRanges.add(key)
+            }
+        }
+        if (
+            (expression.operator === Operator.IN || expression.operator === Operator.NOT_IN) &&
+            expression.values != null &&
+            expression.valueRanges != null
+        ) {
+            for (let i = 0; i < expression.values.length; i++) {
+                if (
+                    expression.valuesTypes != null &&
+                    i < expression.valuesTypes.length &&
+                    (expression.valuesTypes[i] === LiteralKind.NULL || expression.valuesTypes[i] === LiteralKind.COLUMN)
+                ) {
+                    continue
+                }
+                if (i >= expression.valueRanges.length) continue
+                const valueStr = String(expression.values[i])
+                if (col.values.includes(valueStr)) continue
+                const r = expression.valueRanges[i]
+                const key = rangeKey(r)
+                if (emittedRanges.has(key)) continue
+                diags.push(makeDiag(r, `unknown value: ${valueStr}`, 'error', CODE_VALUE_NOT_ALLOWED))
+                emittedRanges.add(key)
             }
         }
     }

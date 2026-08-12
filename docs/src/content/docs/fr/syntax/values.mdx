@@ -142,6 +142,32 @@ Les tableaux sont utilises avec les operateurs <FlyqlToken type="operator">in</F
 
 Chaque element possede son propre type dans le tableau `values_types`.
 
+## Liste de valeurs autorisées
+
+Une définition de colonne peut déclarer une liste de valeurs autorisées `values` — l'ensemble fermé des valeurs de domaine que la colonne peut contenir :
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+Lorsqu'une liste de valeurs autorisées est présente, les générateurs SQL, le matcher en mémoire et le validateur rejettent tous trois les valeurs hors liste avec `unknown value: <value>` (le validateur émet un diagnostic positionné `value_not_allowed` au lieu de lever une erreur).
+
+La liste de valeurs autorisées ne contraint que les **valeurs d'égalité** :
+
+| Expression | Vérifiée ? | Pourquoi |
+|------------|------------|----------|
+| <FlyqlCode code={`status = 'active'`} inline /> | oui | valeur d'égalité |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | oui | valeur d'égalité |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | oui, par élément | les éléments de liste sont des valeurs d'égalité |
+| <FlyqlCode code={`status = null`} inline /> | non | prédicat de présence, émet `IS NULL` |
+| <FlyqlCode code={`status like 'act%'`} inline /> | non | motif, pas une valeur de domaine |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | non | motif, pas une valeur de domaine |
+| <FlyqlCode code={`status = other_column`} inline /> | non | référence de colonne, pas une valeur de domaine |
+
+Les éléments null et les références de colonne dans les listes <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> sont également ignorés.
+
+La chaîne vide n'est **pas** exemptée : si une colonne peut légitimement contenir `''`, ajoutez `""` à sa liste `values`. La forme falsy à clé nue (<FlyqlCode code={`not status`} inline />) est une vérification de présence et n'est jamais validée contre la liste de valeurs autorisées.
+
 ## Expressions truthy/falsy
 
 Une cle autonome sans operateur verifie si le champ a une valeur vraie (truthy) :

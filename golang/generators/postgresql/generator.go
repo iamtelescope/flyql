@@ -432,6 +432,38 @@ func buildJSONBPathRaw(identifier string, pathParts []string, quoted []bool) str
 	return sb.String()
 }
 
+// validateInListAgainstAllowedValues checks in/not-in list elements against the
+// column's Values allowlist. Null elements and resolvable column references are
+// not domain values and are skipped.
+func validateInListAgainstAllowedValues(expr *flyql.Expression, allowed []string, columns map[string]*Column) error {
+	for i, v := range expr.Values {
+		if i < len(expr.ValuesTypes) {
+			if expr.ValuesTypes[i] == literal.Null {
+				continue
+			}
+			if expr.ValuesTypes[i] == literal.Column {
+				if valStr, ok := v.(string); ok {
+					if _, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+						continue
+					}
+				}
+			}
+		}
+		valueStr := fmt.Sprintf("%v", v)
+		found := false
+		for _, av := range allowed {
+			if av == valueStr {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("unknown value: %v", v)
+		}
+	}
+	return nil
+}
+
 func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (string, error) {
 	isNotIn := expr.Operator == flyql.OpNotIn
 
@@ -446,6 +478,12 @@ func inExpressionToSQL(expr *flyql.Expression, columns map[string]*Column) (stri
 	column, ok := columns[columnName]
 	if !ok {
 		return "", fmt.Errorf("unknown column: %s", columnName)
+	}
+
+	if len(column.Values) > 0 && !expr.Key.IsSegmented() {
+		if err := validateInListAgainstAllowedValues(expr, column.Values, columns); err != nil {
+			return "", err
+		}
 	}
 
 	isHeterogeneous := len(expr.ValuesTypes) > 0 && func() bool {
@@ -1149,7 +1187,44 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		return fmt.Sprintf("%s %s %s", colRef, expr.Operator, value), nil
 	}
 
-	if len(column.Values) > 0 {
+	// Check if the value is a COLUMN reference
+	if expr.ValueType == literal.Column {
+		if valStr, ok := expr.Value.(string); ok {
+			if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
+				refIdentifier := getIdentifier(column)
+				if len(expr.Key.Transformers) > 0 {
+					if err := validateTransformerChain(expr.Key.Transformers, registry); err != nil {
+						return "", err
+					}
+					var err error
+					refIdentifier, err = applyTransformerSQL(refIdentifier, expr.Key.Transformers, "postgresql", registry)
+					if err != nil {
+						return "", err
+					}
+				}
+				switch expr.Operator {
+				case flyql.OpRegex:
+					return fmt.Sprintf("%s ~ %s", refIdentifier, colRef), nil
+				case flyql.OpNotRegex:
+					return fmt.Sprintf("%s !~ %s", refIdentifier, colRef), nil
+				case flyql.OpLike:
+					return fmt.Sprintf("%s LIKE %s", refIdentifier, colRef), nil
+				case flyql.OpNotLike:
+					return fmt.Sprintf("%s NOT LIKE %s", refIdentifier, colRef), nil
+				case flyql.OpILike:
+					return fmt.Sprintf("%s ILIKE %s", refIdentifier, colRef), nil
+				case flyql.OpNotILike:
+					return fmt.Sprintf("%s NOT ILIKE %s", refIdentifier, colRef), nil
+				default:
+					return fmt.Sprintf("%s %s %s", refIdentifier, expr.Operator, colRef), nil
+				}
+			}
+		}
+	}
+
+	// The Values allowlist constrains equality values only: patterns
+	// (like/regex) and null presence predicates are not domain values.
+	if (expr.Operator == flyql.OpEquals || expr.Operator == flyql.OpNotEquals) && expr.ValueType != literal.Null && len(column.Values) > 0 {
 		valueStr := fmt.Sprintf("%v", expr.Value)
 		found := false
 		for _, v := range column.Values {
@@ -1178,30 +1253,6 @@ func expressionToSQLSimpleWithOptions(expr *flyql.Expression, columns map[string
 		identifier, err = applyTransformerSQL(identifier, expr.Key.Transformers, "postgresql", registry)
 		if err != nil {
 			return "", err
-		}
-	}
-
-	// Check if the value is a COLUMN reference
-	if expr.ValueType == literal.Column {
-		if valStr, ok := expr.Value.(string); ok {
-			if colRef, resolved := resolveRhsColumnRef(valStr, columns); resolved {
-				switch expr.Operator {
-				case flyql.OpRegex:
-					return fmt.Sprintf("%s ~ %s", identifier, colRef), nil
-				case flyql.OpNotRegex:
-					return fmt.Sprintf("%s !~ %s", identifier, colRef), nil
-				case flyql.OpLike:
-					return fmt.Sprintf("%s LIKE %s", identifier, colRef), nil
-				case flyql.OpNotLike:
-					return fmt.Sprintf("%s NOT LIKE %s", identifier, colRef), nil
-				case flyql.OpILike:
-					return fmt.Sprintf("%s ILIKE %s", identifier, colRef), nil
-				case flyql.OpNotILike:
-					return fmt.Sprintf("%s NOT ILIKE %s", identifier, colRef), nil
-				default:
-					return fmt.Sprintf("%s %s %s", identifier, expr.Operator, colRef), nil
-				}
-			}
 		}
 	}
 

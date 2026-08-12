@@ -50,6 +50,18 @@
       "input": "new_json.user..column='test'",
       "expected_result": "error",
       "expected_error_contains": "invalid JSON path"
+    },
+    {
+      "name": "enum_invalid_value_not_equals",
+      "input": "enum_column!='invalid_value'",
+      "expected_result": "error",
+      "expected_error_contains": "unknown value"
+    },
+    {
+      "name": "enum_in_invalid_value",
+      "input": "enum_column in ['invalid_value']",
+      "expected_result": "error",
+      "expected_error_contains": "unknown value"
     }
   ]
 }

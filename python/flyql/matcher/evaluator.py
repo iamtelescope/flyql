@@ -668,6 +668,37 @@ class Evaluator:
 
         # Determine temporal context (schema-driven + Python-only schemaless fallback)
         col = self._resolve_column_for_expression(expression)
+
+        # Values allowlist: applies to =/!= equality values and in/not-in
+        # list elements on non-segmented keys, mirroring the generators.
+        # Null literals, patterns (like/regex) and column references are
+        # not domain values and are never checked.
+        if col is not None and col.values and not expression.key.is_segmented:
+            if expression.operator in (
+                Operator.EQUALS.value,
+                Operator.NOT_EQUALS.value,
+            ) and expression.value_type not in (
+                LiteralKind.NULL,
+                LiteralKind.COLUMN,
+                LiteralKind.FUNCTION,
+            ):
+                if str(expression.value) not in col.values:
+                    raise FlyqlError(f"unknown value: {expression.value}")
+            if (
+                expression.operator in (Operator.IN.value, Operator.NOT_IN.value)
+                and expression.values is not None
+            ):
+                for i, v in enumerate(expression.values):
+                    if (
+                        expression.values_types is not None
+                        and i < len(expression.values_types)
+                        and expression.values_types[i]
+                        in (LiteralKind.NULL, LiteralKind.COLUMN)
+                    ):
+                        continue
+                    if str(v) not in col.values:
+                        raise FlyqlError(f"unknown value: {v}")
+
         is_date_col = col is not None and col.type == Type.Date
         is_datetime_col = col is not None and col.type == Type.DateTime
         if col is None:

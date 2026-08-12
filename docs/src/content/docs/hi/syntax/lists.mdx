@@ -99,6 +99,30 @@ import FlyqlToken from '../../../../components/FlyqlToken.astro'
 
 तीनों मामलों (सजातीय मिलान, विषम बायपास, सजातीय गलत-प्रकार त्रुटि) के लिए चलाने योग्य एंड-टू-एंड डेमो के लिए, देखें [रेसिपीज़ — IN-सूची प्रकार संगति](/hi/syntax/recipes/#in-सूची-प्रकार-संगति)।
 
+## Values Allowlist
+
+यदि कॉलम एक [`values` allowlist](/hi/syntax/values/#values-allowlist) घोषित करता है, तो प्रत्येक सूची तत्व उसके विरुद्ध सत्यापित होता है और allowlist से बाहर का तत्व `unknown value: <value>` त्रुटि उठाता है:
+
+<FlyqlCode code={`status in ['active', 'bogus']`} />
+
+`values: ["active", "inactive"]` के साथ यह `'bogus'` पर विफल होता है। Null तत्व और कॉलम संदर्भ डोमेन मान नहीं हैं और छोड़ दिए जाते हैं।
+
+## NOT IN और SQL NULL
+
+SQL त्रि-मूल्य तर्क (three-valued logic) का पालन करता है: `col NOT IN (...)` उन पंक्तियों के लिए true नहीं होता जहाँ `col` `NULL` है — वे पंक्तियाँ परिणाम से चुपचाप बाहर हो जाती हैं।
+
+<FlyqlCode code={`resolution not in ['fixed', 'wont_fix']`} />
+
+जनरेटेड `resolution NOT IN ('fixed', 'wont_fix')` SQL `NULL` resolution वाली पंक्तियाँ **नहीं** लौटाता। उन्हें शामिल करने के लिए, एक स्पष्ट null जाँच जोड़ें:
+
+<FlyqlCode code={`resolution = null or resolution not in ['fixed', 'wont_fix']`} />
+
+या falsy बेयर-की रूप का उपयोग करें, जो खाली स्ट्रिंग्स को भी कवर करता है:
+
+<FlyqlCode code={`not resolution or resolution not in ['fixed', 'wont_fix']`} />
+
+इन-मेमोरी मैचर में यह जाल नहीं है — वह `not in` का मूल्यांकन सीधे रिकॉर्ड मान के विरुद्ध करता है, इसलिए वहाँ null/अनुपस्थित मान `not in` सूचियों से मैच करते हैं। जब वही क्वेरी दोनों पथों से चलती है तो इस अंतर को ध्यान में रखें।
+
 ## सूचियों में पैरामीटर
 
 पैरामीटर प्लेसहोल्डर IN-सूचियों के अंदर लिटरल मानों के साथ स्वतंत्र रूप से मिश्रित होकर दिखाई दे सकते हैं:

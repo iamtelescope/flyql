@@ -126,6 +126,32 @@ Os arrays sao utilizados com os operadores <FlyqlToken type="operator">in</Flyql
 
 Cada elemento possui o seu proprio tipo no array `values_types`.
 
+## Allowlist de Valores
+
+Uma definição de coluna pode declarar uma allowlist `values` — o conjunto fechado de valores de domínio que a coluna pode conter:
+
+```python
+Column(name="status", column_type=Type.String, values=["active", "inactive"])
+```
+
+Quando uma allowlist está presente, os geradores SQL, o matcher em memória e o validador rejeitam os valores fora da allowlist com `unknown value: <value>` (o validador emite um diagnóstico posicionado `value_not_allowed` em vez de lançar uma exceção).
+
+A allowlist restringe **apenas valores de igualdade**:
+
+| Expressão | Verificada? | Porquê |
+|-----------|-------------|--------|
+| <FlyqlCode code={`status = 'active'`} inline /> | sim | valor de igualdade |
+| <FlyqlCode code={`status != 'bogus'`} inline /> | sim | valor de igualdade |
+| <FlyqlCode code={`status in ['active', 'bogus']`} inline /> | sim, por elemento | os elementos da lista são valores de igualdade |
+| <FlyqlCode code={`status = null`} inline /> | não | predicado de presença, emite `IS NULL` |
+| <FlyqlCode code={`status like 'act%'`} inline /> | não | padrão, não um valor de domínio |
+| <FlyqlCode code={`status ~ 'act.*'`} inline /> | não | padrão, não um valor de domínio |
+| <FlyqlCode code={`status = other_column`} inline /> | não | referência de coluna, não um valor de domínio |
+
+Elementos null e referências de coluna dentro de listas <FlyqlToken type="operator">in</FlyqlToken> / <FlyqlToken type="operator">not in</FlyqlToken> são igualmente ignorados.
+
+A string vazia **não** está isenta: se uma coluna pode legitimamente conter `''`, adicione `""` à sua lista `values`. A forma de chave isolada falsy (<FlyqlCode code={`not status`} inline />) é uma verificação de presença e nunca é validada contra a allowlist.
+
 ## Expressoes Truthy/Falsy
 
 Uma chave isolada sem operador verifica se o campo tem um valor truthy:

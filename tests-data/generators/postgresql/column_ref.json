@@ -88,6 +88,12 @@
       "input": "metadata.key=message",
       "expected_result": "success",
       "expected_sql": "\"metadata\"->'key' = \"message\""
+    },
+    {
+      "name": "enum_column_rhs_column_ref_not_checked_against_values",
+      "input": "enum_column=message",
+      "expected_result": "success",
+      "expected_sql": "\"enum_column\" = \"message\""
     }
   ]
 }

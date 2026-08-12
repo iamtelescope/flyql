@@ -136,8 +136,9 @@ func parseAST(t *testing.T, query string) *Node {
 // ---------------------------------------------------------------------------
 
 type validatorFixtureColumn struct {
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"`
+	Values []string `json:"values,omitempty"`
 }
 
 type validatorExpectedDiag struct {
@@ -203,7 +204,9 @@ func TestValidatorShared(t *testing.T) {
 		t.Run(tc.Name, func(t *testing.T) {
 			var cols []Column
 			for _, c := range tc.Columns {
-				cols = append(cols, makeColumn(c.Name, c.Type))
+				col := makeColumn(c.Name, c.Type)
+				col.Values = c.Values
+				cols = append(cols, col)
 			}
 
 			var registry *transformers.TransformerRegistry

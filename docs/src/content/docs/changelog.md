@@ -2,6 +2,29 @@
 title: Changelog
 ---
 
+## 2026.08.12
+Version: **1.1.0**
+
+The `values` allowlist on columns is now enforced consistently — and only where it makes sense — across the SQL generators, the in-memory matcher, and the validator. See [Values Allowlist](/syntax/values/#values-allowlist) for the full semantics.
+
+Behavioral changes:
+
+- **`in` / `not in` lists are validated against the allowlist.** Each list element on an allowlisted column is checked during SQL generation; an out-of-allowlist element now fails with `unknown value` instead of silently matching zero rows. Null elements and column references are exempt. Queries that previously generated SQL with typo'd list elements will now be rejected.
+- **The in-memory matcher enforces the allowlist.** When evaluating with a schema whose columns declare `values`, an out-of-allowlist `=` / `!=` value or `in`-list element raises `unknown value` (previously it evaluated silently, in parity-breaking contrast to the generators). Schema-free evaluation is unchanged.
+- **New validator diagnostic `value_not_allowed`.** `diagnose()` now emits a positioned error when an equality value or in-list element falls outside the column's allowlist. The dialect-to-core schema bridges (`ToFlyQLSchema` / `toFlyQLSchema`) now carry `values`, so bridged schemas participate in the diagnostic.
+
+To opt out of enforcement for a column, remove its `values` list from the schema.
+
+Bug fixes:
+
+- **`= null` works on allowlisted columns.** Null is a presence predicate, not a domain value: `col = null` / `col != null` on a column with a `values` allowlist now generate `IS NULL` / `IS NOT NULL` instead of failing with `unknown value`.
+- **Patterns are no longer checked against the allowlist.** `like` / `ilike` / `~` / `!~` patterns on allowlisted columns generate normally; previously any pattern not literally present in the allowlist was rejected, making pattern matching on such columns impossible.
+- **Go PostgreSQL generator resolves RHS column references before the allowlist check.** `col = other_column` on an allowlisted column now generates a column-to-column comparison on all generators; previously the Go PostgreSQL generator rejected it with `unknown value` while ClickHouse and StarRocks accepted it.
+
+Documentation:
+
+- New [Values Allowlist](/syntax/values/#values-allowlist) section and a [NOT IN and SQL NULL](/syntax/lists/#not-in-and-sql-null) note on three-valued logic, in all 11 locales.
+
 ## 2026.07.21
 Version: **1.0.2**
 

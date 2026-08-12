@@ -44,6 +44,9 @@ def load_test_cases() -> list[dict[str, Any]]:
                 "now()",
                 "today()",
                 "startOf(",
+                # SQL NOT IN follows three-valued logic and drops NULL rows;
+                # the schema-free matcher matches them (see docs syntax/lists).
+                "nullable_field not in",
             ]
         )
     ]

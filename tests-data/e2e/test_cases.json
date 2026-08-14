@@ -2241,6 +2241,29 @@
       "databases": [
         "clickhouse"
       ]
+    },
+    {
+      "name": "json_native_boolean_true",
+      "flyql": "meta_json.enabled=true",
+      "expected_ids": [
+        1,
+        3,
+        5
+      ],
+      "databases": [
+        "postgresql"
+      ]
+    },
+    {
+      "name": "json_native_boolean_false",
+      "flyql": "meta_json.enabled=false",
+      "expected_ids": [
+        2,
+        6
+      ],
+      "databases": [
+        "postgresql"
+      ]
     }
   ]
 }

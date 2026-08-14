@@ -1030,6 +1030,9 @@ func expressionToSQLSegmented(expr *flyql.Expression, columns map[string]*Column
 		case expr.ValueType == literal.String:
 			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
 			return fmt.Sprintf("(jsonb_typeof(%s) = 'string' AND %s %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
+		case expr.ValueType == literal.Boolean:
+			jsonbRaw := buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
+			return fmt.Sprintf("(jsonb_typeof(%s) = 'boolean' AND (%s)::boolean %s %s)", jsonbRaw, pathExpr, expr.Operator, value), nil
 		default:
 			return fmt.Sprintf("%s %s %s", pathExpr, expr.Operator, value), nil
 		}

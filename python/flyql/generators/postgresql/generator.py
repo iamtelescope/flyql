@@ -440,6 +440,14 @@ def expression_to_sql_segmented(
                 f"(jsonb_typeof({jsonb_raw}) = 'string' AND "
                 f"{path_expr} {expression.operator} {value})"
             )
+        elif isinstance(expression.value, bool):
+            jsonb_raw = _build_jsonb_path_raw(
+                cast_identifier, json_path, json_path_quoted
+            )
+            return (
+                f"(jsonb_typeof({jsonb_raw}) = 'boolean' AND "
+                f"({path_expr})::boolean {expression.operator} {value})"
+            )
         else:
             return f"{path_expr} {expression.operator} {value}"
 

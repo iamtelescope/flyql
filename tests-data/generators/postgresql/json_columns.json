@@ -344,6 +344,24 @@
       "input": "jsonb_column.name like 'test\\%value'",
       "expected_result": "success",
       "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'name') = 'string' AND \"jsonb_column\"->>'name' like E'test\\\\%value')"
+    },
+    {
+      "name": "jsonb_boolean_equals",
+      "input": "jsonb_column.enabled=true",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'enabled') = 'boolean' AND (\"jsonb_column\"->>'enabled')::boolean = true)"
+    },
+    {
+      "name": "jsonb_boolean_not_equals",
+      "input": "jsonb_column.enabled!=false",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'enabled') = 'boolean' AND (\"jsonb_column\"->>'enabled')::boolean != false)"
+    },
+    {
+      "name": "jsonb_boolean_nested_path",
+      "input": "jsonb_column.user.active=true",
+      "expected_result": "success",
+      "expected_sql": "(jsonb_typeof(\"jsonb_column\"->'user'->'active') = 'boolean' AND (\"jsonb_column\"->'user'->>'active')::boolean = true)"
     }
   ]
 }

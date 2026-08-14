@@ -456,6 +456,10 @@ function expressionToSQLSegmented(expr, columns) {
                 const jsonbRaw = buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
                 return `(jsonb_typeof(${jsonbRaw}) = 'string' AND ${pathExpr} ${expr.operator} ${value})`
             }
+            case typeof expr.value === 'boolean': {
+                const jsonbRaw = buildJSONBPathRaw(castIdentifier, jsonPath, jsonPathQuoted)
+                return `(jsonb_typeof(${jsonbRaw}) = 'boolean' AND (${pathExpr})::boolean ${expr.operator} ${value})`
+            }
             default:
                 return `${pathExpr} ${expr.operator} ${value}`
         }

@@ -2,6 +2,13 @@
 title: Changelog
 ---
 
+## 2026.08.14
+Version: **1.1.1**
+
+Bug fixes:
+
+- **Boolean comparisons on JSON paths in the PostgreSQL generator.** A bare boolean literal on a JSON path (`jsonb_column.enabled = true`) fell through to the default text comparison, generating invalid SQL (`text = boolean`), while a quoted boolean (`= 'true'`) was guarded by `jsonb_typeof = 'string'` and silently matched nothing against JSON booleans. Bare booleans now generate a `jsonb_typeof(...) = 'boolean'` guard with a `::boolean` cast, mirroring the number handling, in Go, Python, and JavaScript.
+
 ## 2026.08.12
 Version: **1.1.0**
 

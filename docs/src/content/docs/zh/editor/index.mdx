@@ -81,6 +81,8 @@ import 'flyql-vue/flyql.css'
 | `debug` | `Boolean` | `false` | 调试日志 |
 | `debounceMs` | `Number` | `300` | 异步补全延迟时间（毫秒） |
 | `dark` | `Boolean` | `false` | 启用暗色主题（参见[主题](/zh/editor/theming/)） |
+| `label` | `String` | `''` | 显示在字段内、查询文本左侧的文字 |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | 显示在标签之前的图标：字符串按文本渲染，组件原样渲染，`false` 则不显示 |
 
 **函数签名：**
 
@@ -88,6 +90,30 @@ import 'flyql-vue/flyql.css'
 - `onKeyDiscovery(columnName, segments)`：返回 `Promise<Array<{ name, type?, hasChildren? }>>`
 
 当返回结果中的 `incomplete` 为 `true` 时，表示当前列表是部分结果，编辑器会在下一次输入时继续请求更新。异步调用会自动防抖，并在发起新请求时取消旧请求。
+
+## 标签与图标
+
+`label` 与 `icon` 共用字段左侧、查询文本之前的位置。点击两者中的任意一个都会聚焦输入框；过长的标签会在字段宽度一半处以省略号截断，而不会挤压输入框。 文本 `label` 同时会成为输入框的可访问名称，替代组件默认的 `aria-label`。
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+需要更丰富的内容时，`icon` 和 `label` 插槽的优先级高于 props：
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## 事件
 

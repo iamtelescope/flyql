@@ -43,6 +43,51 @@ const dialects = [
     { key: 'sr', name: 'StarRocks', icon: srIcon, iconDark: null, dialectTypeKey: 'starrocks' },
 ]
 
+// ── Label / icon controls for the editors (the `label` and `icon` props) ──
+// `icon: null` keeps the component's built-in glyph, `false` drops the icon
+// entirely, and any other node is rendered as-is. The built-in glyphs are 13px
+// Feather-style strokes, so these match them rather than using emoji.
+const strokeIcon = (...paths) => (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {paths.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+)
+
+const iconOptions = [
+    { key: 'default', text: 'Built-in icon', value: null },
+    { key: 'filter', text: 'Filter', value: strokeIcon('M22 3H2l8 9.46V19l4 2v-8.54L22 3z') },
+    { key: 'terminal', text: 'Terminal', value: strokeIcon('M4 17l6-6-6-6', 'M12 19h8') },
+    { key: 'hash', text: 'Hash', value: strokeIcon('M4 9h16', 'M4 15h16', 'M10 3L8 21', 'M16 3l-2 18') },
+    { key: 'bolt', text: 'Bolt', value: strokeIcon('M13 2L3 14h9l-1 8 10-12h-9l1-8z') },
+    { key: 'none', text: 'No icon', value: false },
+]
+
+const CONTROL_CLS = 'px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors'
+
+function PrefixControls({ label, onLabel, iconKey, onIconKey, children }) {
+    return (
+        <div className="flex items-center gap-2">
+            <input
+                type="text"
+                value={label}
+                placeholder="label"
+                onChange={(e) => onLabel(e.target.value)}
+                className={CONTROL_CLS + ' w-32 placeholder-gray-400 dark:placeholder-gray-600'}
+            />
+            <select
+                value={iconKey}
+                onChange={(e) => onIconKey(e.target.value)}
+                className={CONTROL_CLS + ' dark:bg-gray-950 cursor-pointer'}
+            >
+                {iconOptions.map((opt) => (
+                    <option key={opt.key} value={opt.key}>{opt.text}</option>
+                ))}
+            </select>
+            {children}
+        </div>
+    )
+}
+
 const columnPresets = [
     { label: 'All columns', value: schemaColumns.map((c) => c.name).join(', ') },
 ]
@@ -131,6 +176,10 @@ export default function App() {
     const [query, setQuery] = useState(otelLogs.defaults.query)
     const [selectExpr, setSelectExpr] = useState(otelLogs.defaults.selectExpr)
     const [parsedColumnsCount, setParsedColumnsCount] = useState(5)
+    const [queryLabel, setQueryLabel] = useState('')
+    const [queryIconKey, setQueryIconKey] = useState('default')
+    const [columnsLabel, setColumnsLabel] = useState('')
+    const [columnsIconKey, setColumnsIconKey] = useState('default')
     const [outputTab, setOutputTab] = useState('sql')
     const [dialectIdx, setDialectIdx] = useState(0)
     const [sqlResults, setSqlResults] = useState([])
@@ -144,6 +193,9 @@ export default function App() {
     // parsedColumns never feed into the table so a keystroke in the columns editor
     // does not reshape the filtered data preview.
     const [snapshotColumns, setSnapshotColumns] = useState(() => [...DEFAULT_PARSED_COLUMNS])
+
+    const queryIcon = iconOptions.find((o) => o.key === queryIconKey).value
+    const columnsIcon = iconOptions.find((o) => o.key === columnsIconKey).value
 
     const parsedColumnsRef = useRef([...DEFAULT_PARSED_COLUMNS])
     // Live diagnostics — tracked while typing so they can be snapshotted at Run time.
@@ -337,12 +389,14 @@ export default function App() {
                         <div className="flex-1 min-w-0 lg:order-1">
                             {/* Columns editor */}
                             <div className="rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
-                                <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                                <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                                     <div className="flex items-center gap-2">
                                         <img src={logoSvg} alt="" className="h-4 w-4" />
                                         <span className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Columns</span>
                                     </div>
-                                    {selectExpr && <span className="text-xs text-gray-400 dark:text-gray-500">{parsedColumnsCount} column{parsedColumnsCount !== 1 ? 's' : ''}</span>}
+                                    <PrefixControls label={columnsLabel} onLabel={setColumnsLabel} iconKey={columnsIconKey} onIconKey={setColumnsIconKey}>
+                                        {selectExpr && <span className="text-xs text-gray-400 dark:text-gray-500">{parsedColumnsCount} column{parsedColumnsCount !== 1 ? 's' : ''}</span>}
+                                    </PrefixControls>
                                 </div>
                                 <div className="p-2">
                                     <FlyqlColumns
@@ -350,6 +404,8 @@ export default function App() {
                                         value={selectExpr}
                                         onChange={setSelectExpr}
                                         columns={editorColumns}
+                                        label={columnsLabel}
+                                        icon={columnsIcon}
                                         rendererRegistry={_rendererRegistry}
                                         dark={isDark}
                                         placeholder={otelLogs.defaults.columnsPlaceholder}
@@ -374,11 +430,12 @@ export default function App() {
 
                             {/* Query editor */}
                             <div className="mt-3 rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
-                                <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                                <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                                     <div className="flex items-center gap-2">
                                         <img src={logoSvg} alt="" className="h-4 w-4" />
                                         <span className="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Query</span>
                                     </div>
+                                    <PrefixControls label={queryLabel} onLabel={setQueryLabel} iconKey={queryIconKey} onIconKey={setQueryIconKey} />
                                 </div>
                                 <div className="p-2">
                                     <FlyqlEditor
@@ -386,6 +443,8 @@ export default function App() {
                                         value={query}
                                         onChange={setQuery}
                                         columns={editorColumns}
+                                        label={queryLabel}
+                                        icon={queryIcon}
                                         dark={isDark}
                                         placeholder={otelLogs.defaults.queryPlaceholder}
                                         onSubmit={runQuery}

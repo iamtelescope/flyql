@@ -48,6 +48,32 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | mount 時に自動フォーカス |
 | `debug` | `Boolean` | `false` | デバッグログ |
 | `dark` | `Boolean` | `false` | ダークテーマを有効化（[テーマ設定](/ja/editor/theming/) を参照） |
+| `label` | `String` | `''` | フィールド内、クエリの左側に表示されるテキスト |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | ラベルの前に表示されるアイコン。文字列はテキストとして、コンポーネントはそのまま描画され、`false` で非表示になります |
+
+## ラベルとアイコン
+
+`label` と `icon` はフィールド左側の同じ領域をクエリテキストの前で共有します。どちらをクリックしても入力にフォーカスが移り、長すぎるラベルは入力欄を圧迫せずフィールド幅の半分で省略記号に切り詰められます。 テキストの `label` は入力欄のアクセシブル名にもなり、コンポーネント既定の `aria-label` を置き換えます。
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+より自由な内容が必要な場合、`icon` と `label` スロットが props より優先されます:
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
+</template>
+```
 
 ## Events
 

@@ -88,6 +88,33 @@ const columns = ColumnSchema.fromPlainObject({
 | `ColumnSchema`, `Column` | Schema helpers (re-exported from `flyql/core`) |
 | `flyql-vue/flyql.css` | Theme variables, suggestion panel styles, and token highlighting |
 
+## Label and icon
+
+`label` and `icon` share the slot on the left of the field, ahead of the query text. Both components accept them; clicking either focuses the input, and a text `label` becomes the input's accessible name.
+
+```html
+<!-- text label, built-in glyph -->
+<FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+
+<!-- emoji icon, no label -->
+<FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+
+<!-- your own icon component, or `false` to drop the glyph entirely -->
+<FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+<FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+```
+
+For richer content use the `icon` and `label` slots — they take precedence over the props:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns">
+    <template #icon><MyIcon /></template>
+    <template #label><strong>Filter</strong></template>
+</FlyqlEditor>
+```
+
+A long label is truncated with an ellipsis at half the field width rather than squeezing the input. The label renders in the UI font (`--flyql-font-family`), baseline-corrected to sit on the query text's baseline.
+
 ## Theming
 
 The editor uses CSS custom properties (`--flyql-*` variables) for all visual styling. A built-in `dark` prop toggles the dark theme, and any variable can be overridden in your CSS to match your application's design.

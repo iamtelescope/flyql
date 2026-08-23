@@ -81,12 +81,38 @@ This provides theme variables, suggestion panel styles, and token highlighting.
 | `debug` | `Boolean` | `false` | Debug logging |
 | `debounceMs` | `Number` | `300` | Debounce delay (ms) for async autocomplete calls. Set to `0` to disable |
 | `dark` | `Boolean` | `false` | Enable dark theme ([see theming](/editor/theming/)) |
+| `label` | `String` | `''` | Text shown inside the field, to the left of the query |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon shown before the label: a string renders as text, a component renders as-is, `false` removes it |
 
 **Callback signatures:**
 - `onAutocomplete(key, value)` — returns `Promise<{ items: string[], incomplete?: boolean }>`
 - `onKeyDiscovery(columnName, segments)` — returns `Promise<Array<{ name, type?, hasChildren? }>>`
 
 When `incomplete` is `true` in the response, the editor knows the returned list is partial and will re-fetch on the next keystroke. Async calls are debounced (default 150ms) and in-flight requests are automatically cancelled when a new one starts.
+
+## Label and Icon
+
+`label` and `icon` share the slot on the left of the field, ahead of the query text. Clicking either focuses the input, and an overlong label is truncated with an ellipsis at half the field width instead of squeezing the input. A text `label` also becomes the input's accessible name, replacing the component's default `aria-label`.
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+The `icon` and `label` slots take precedence over the props when you need richer content:
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## Events
 

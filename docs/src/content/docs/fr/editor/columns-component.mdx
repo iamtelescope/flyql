@@ -48,6 +48,32 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | Focus automatique au montage |
 | `debug` | `Boolean` | `false` | Journalisation de debogage |
 | `dark` | `Boolean` | `false` | Activer le theme sombre ([voir theming](/fr/editor/theming/)) |
+| `label` | `String` | `''` | Texte affiché dans le champ, à gauche de la requête |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Icône affichée avant le libellé : une chaîne est rendue comme texte, un composant tel quel, `false` la supprime |
+
+## Libellé et icône
+
+`label` et `icon` partagent l'emplacement à gauche du champ, avant le texte de la requête. Un clic sur l'un ou l'autre donne le focus à la saisie, et un libellé trop long est tronqué par des points de suspension à la moitié de la largeur du champ plutôt que de comprimer la saisie. Un `label` textuel devient également le nom accessible de la saisie, remplaçant l'`aria-label` par défaut du composant.
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Les slots `icon` et `label` ont priorité sur les props lorsque vous avez besoin de contenu plus riche :
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
+</template>
+```
 
 ## Evenements
 

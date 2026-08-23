@@ -2,7 +2,8 @@
 
 all: test
 install:
-	go install honnef.co/go/tools/cmd/staticcheck@latest
+	# Pinned: staticcheck v0.8.x requires Go >= 1.26, CI builds on 1.25.
+	go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
 fmt:
 	go fmt ./...
 	cd e2e && go fmt ./...

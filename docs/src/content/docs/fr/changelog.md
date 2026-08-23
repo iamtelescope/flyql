@@ -2,6 +2,24 @@
 title: Journal des modifications
 ---
 
+## 2026.08.23
+Version : **1.2.0**
+
+Les composants d'édition acceptent désormais un libellé textuel à côté de l'icône existante, dans l'emplacement à gauche du champ. Voir [Composant éditeur](/fr/editor/#libelle-et-icone).
+
+Nouvelles fonctionnalités :
+
+- **Prop `label` sur `FlyqlEditor` et `FlyqlColumns`**, dans les paquets Vue et React. Le libellé est rendu dans le champ, avant le texte de la requête ; un libellé trop long est tronqué par des points de suspension à la moitié de la largeur du champ plutôt que de comprimer la saisie. Un clic dessus donne le focus à la saisie, et un libellé textuel devient le nom accessible du champ. Vue expose en plus un slot `label` pour du contenu plus riche.
+- **`icon` est maintenant une prop en Vue**, alors qu'elle n'existait que comme slot. Elle accepte une chaîne (rendue comme texte), un composant, ou `false` pour supprimer l'icône intégrée ; le slot `icon` reste prioritaire sur la prop. En React, la prop de rendu `icon` accepte également `false`.
+
+Changements de comportement :
+
+- **L'icône et le libellé partagent un nouvel élément flex de préfixe.** `.flyql-<root>__icon` n'est plus positionné en absolu : il se trouve dans `.flyql-<root>__prefix`, et le padding gauche de la saisie ne lui réserve plus de place. Les feuilles de style qui positionnaient l'icône elles-mêmes doivent être mises à jour ; celles qui se contentent de redéfinir des variables `--flyql-*` ne sont pas concernées.
+- **`--flyql-code-font-family` utilise désormais une vraie pile de polices** — `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` — au lieu du simple `monospace`, qui se résolvait en une police différente dans chaque navigateur (Menlo dans Chrome sur macOS, Courier dans Safari) et modifiait les métriques sur lesquelles s'alignent l'icône et le libellé. Définissez la variable explicitement pour conserver l'ancien comportement.
+- **La loupe intégrée a été décalée d'une unité de viewBox vers le bas** afin que son anneau, et non l'anneau plus le manche, soit centré sur le texte.
+
+Nouvelles variables de thème — `--flyql-label-color`, `--flyql-line-height`, `--flyql-prefix-gap`, `--flyql-icon-offset` et `--flyql-label-offset` — pilotent la couleur du libellé, la boîte de ligne de la saisie, l'espace entre icône, libellé et texte, et les deux corrections optiques. Voir [Thèmes](/fr/editor/theming/).
+
 ## 2026.08.14
 Version : **1.1.1**
 

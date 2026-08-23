@@ -2,6 +2,24 @@
 title: Registo de alterações
 ---
 
+## 2026.08.23
+Versão: **1.2.0**
+
+Os componentes do editor passaram a aceitar um rótulo de texto ao lado do ícone existente, no espaço à esquerda do campo. Ver [Componente do editor](/pt/editor/).
+
+Novas funcionalidades:
+
+- **Prop `label` em `FlyqlEditor` e `FlyqlColumns`**, tanto no pacote Vue como no React. O rótulo é apresentado dentro do campo, antes do texto da consulta; um rótulo demasiado longo é truncado com reticências a metade da largura do campo em vez de comprimir a entrada. Clicar nele foca a entrada, e um rótulo de texto passa a ser o nome acessível da entrada. O Vue disponibiliza ainda um slot `label` para conteúdo mais rico.
+- **`icon` é agora uma prop no Vue**, onde antes só existia como slot. Aceita uma string (apresentada como texto), um componente, ou `false` para remover o ícone incorporado; o slot `icon` continua a ter precedência sobre a prop. No React, a prop de render `icon` também aceita `false`.
+
+Alterações de comportamento:
+
+- **O ícone e o rótulo partilham um novo elemento flex de prefixo.** `.flyql-<root>__icon` deixou de ter posicionamento absoluto — passa a viver dentro de `.flyql-<root>__prefix`, e o padding esquerdo da entrada já não reserva espaço para ele. Folhas de estilo que posicionavam o ícone precisam de ser actualizadas; overrides que apenas redefinem variáveis `--flyql-*` não são afectados.
+- **`--flyql-code-font-family` passa a usar uma pilha de tipos de letra real** — `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` — em vez do simples `monospace`, que era resolvido para um tipo de letra diferente em cada navegador (Menlo no Chrome em macOS, Courier no Safari) e alterava as métricas com que o ícone e o rótulo se alinham. Defina a variável explicitamente para manter o comportamento anterior.
+- **O ícone de lupa incorporado desceu uma unidade do viewBox**, para que o seu anel — e não o anel mais a pega — fique centrado no texto.
+
+Novas variáveis de tema — `--flyql-label-color`, `--flyql-line-height`, `--flyql-prefix-gap`, `--flyql-icon-offset` e `--flyql-label-offset` — controlam a cor do rótulo, a caixa de linha da entrada, o espaço entre ícone, rótulo e texto, e as duas correcções ópticas. Ver [Temas](/pt/editor/theming/).
+
 ## 2026.08.14
 Versão: **1.1.1**
 

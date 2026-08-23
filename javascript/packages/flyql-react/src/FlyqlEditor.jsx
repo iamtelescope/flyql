@@ -53,6 +53,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
         dark = false,
         registry = null,
         icon = null,
+        label = '',
         onSubmit = null,
         onParseError = null,
         onFocus = null,
@@ -971,31 +972,49 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
               )
             : null
 
+    // Prefix slot (icon + label). `icon`: null/true renders the built-in glyph,
+    // `false` drops the icon entirely, a function is called as a render prop,
+    // and any other node is rendered as-is.
+    const showIcon = icon !== false
+    const showLabel = label !== null && label !== undefined && label !== false && label !== ''
+    // A visible text label is the field's accessible name; a node label falls
+    // back to the generic one, since its rendered text is not readable here.
+    const inputAriaLabel = typeof label === 'string' && label ? label : 'FlyQL query input'
+    const iconNode =
+        icon === null || icon === true ? (
+            <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <circle cx="11" cy="12" r="8" />
+                <line x1="21" y1="22" x2="16.65" y2="17.65" />
+            </svg>
+        ) : typeof icon === 'function' ? (
+            icon()
+        ) : (
+            icon
+        )
+
     return (
         <div className={'flyql-editor' + (focused ? ' flyql-editor--focused' : '') + (dark ? ' flyql-dark' : '')}>
-            <span className="flyql-editor__icon">
-                {icon !== null ? (
-                    typeof icon === 'function' ? (
-                        icon()
-                    ) : (
-                        icon
-                    )
-                ) : (
-                    <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                )}
-            </span>
+            {(showIcon || showLabel) && (
+                <span
+                    className="flyql-editor__prefix"
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                        textareaRef.current?.focus()
+                    }}
+                >
+                    {showIcon && <span className="flyql-editor__icon">{iconNode}</span>}
+                    {showLabel && <span className="flyql-editor__label">{label}</span>}
+                </span>
+            )}
             <div className="flyql-editor__container" ref={containerRef}>
                 <pre
                     className="flyql-editor__highlight"
@@ -1024,7 +1043,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
-                    aria-label="FlyQL query input"
+                    aria-label={inputAriaLabel}
                     role="combobox"
                     aria-expanded={focused && activated && suggestions.length > 0}
                     aria-activedescendant={

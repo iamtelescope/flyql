@@ -45,6 +45,7 @@ const FlyqlColumns = forwardRef(function FlyqlColumns(
         registry = null,
         rendererRegistry = null,
         icon = null,
+        label = '',
         loading = null,
         onSubmit = null,
         onParseError = null,
@@ -799,33 +800,51 @@ const FlyqlColumns = forwardRef(function FlyqlColumns(
               )
             : null
 
+    // Prefix slot (icon + label). `icon`: null/true renders the built-in glyph,
+    // `false` drops the icon entirely, a function is called as a render prop,
+    // and any other node is rendered as-is.
+    const showIcon = icon !== false
+    const showLabel = label !== null && label !== undefined && label !== false && label !== ''
+    // A visible text label is the field's accessible name; a node label falls
+    // back to the generic one, since its rendered text is not readable here.
+    const inputAriaLabel = typeof label === 'string' && label ? label : 'FlyQL columns expression input'
+    const iconNode =
+        icon === null || icon === true ? (
+            <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+            </svg>
+        ) : typeof icon === 'function' ? (
+            icon()
+        ) : (
+            icon
+        )
+
     return (
         <div className={'flyql-columns' + (focused ? ' flyql-columns--focused' : '') + (dark ? ' flyql-dark' : '')}>
-            <span className="flyql-columns__icon">
-                {icon !== null ? (
-                    typeof icon === 'function' ? (
-                        icon()
-                    ) : (
-                        icon
-                    )
-                ) : (
-                    <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <rect x="3" y="3" width="7" height="7" />
-                        <rect x="14" y="3" width="7" height="7" />
-                        <rect x="3" y="14" width="7" height="7" />
-                        <rect x="14" y="14" width="7" height="7" />
-                    </svg>
-                )}
-            </span>
+            {(showIcon || showLabel) && (
+                <span
+                    className="flyql-columns__prefix"
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                        textareaRef.current?.focus()
+                    }}
+                >
+                    {showIcon && <span className="flyql-columns__icon">{iconNode}</span>}
+                    {showLabel && <span className="flyql-columns__label">{label}</span>}
+                </span>
+            )}
             <div className="flyql-columns__container" ref={containerRef}>
                 <pre
                     className="flyql-columns__highlight"
@@ -854,7 +873,7 @@ const FlyqlColumns = forwardRef(function FlyqlColumns(
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
-                    aria-label="FlyQL columns expression input"
+                    aria-label={inputAriaLabel}
                     role="combobox"
                     aria-expanded={focused && activated && suggestions.length > 0}
                     aria-activedescendant={

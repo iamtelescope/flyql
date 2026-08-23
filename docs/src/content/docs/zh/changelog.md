@@ -2,6 +2,24 @@
 title: 更新日志
 ---
 
+## 2026.08.23
+版本：**1.2.0**
+
+编辑器组件新增了与图标并列的文本标签，位于字段左侧。参见[编辑器组件](/zh/editor/)。
+
+新功能：
+
+- **`FlyqlEditor` 与 `FlyqlColumns` 的 `label` 属性**，Vue 与 React 两个包均支持。标签渲染在字段内、查询文本之前；过长的标签会在字段宽度一半处以省略号截断，而不会挤压输入框。点击标签会聚焦输入框，文本标签同时成为输入框的可访问名称。Vue 还提供 `label` 插槽以放置更丰富的内容。
+- **Vue 中 `icon` 现在是属性**，此前仅有插槽。它接受字符串（按文本渲染）、组件，或 `false` 以移除内置图标；`icon` 插槽仍优先于属性。React 中现有的 `icon` 渲染属性同样接受 `false`。
+
+行为变更：
+
+- **图标与标签共用新的 flex 前缀元素。** `.flyql-<root>__icon` 不再使用绝对定位，而是位于 `.flyql-<root>__prefix` 内，输入框的左内边距也不再为其预留空间。自行定位该图标的样式表需要更新；仅重新映射 `--flyql-*` 变量的覆盖不受影响。
+- **`--flyql-code-font-family` 的默认值改为真实字体栈** —— `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`，取代原先的裸 `monospace`。后者在各浏览器中解析为不同字体（macOS 上 Chrome 为 Menlo，Safari 为 Courier），从而改变图标与标签对齐所依据的度量。如需保持旧行为，请显式设置该变量。
+- **内置放大镜图标在 viewBox 中下移了一个单位**，使其圆环（而非圆环加手柄）相对文本居中。
+
+新增主题变量 —— `--flyql-label-color`、`--flyql-line-height`、`--flyql-prefix-gap`、`--flyql-icon-offset` 与 `--flyql-label-offset` —— 分别控制标签颜色、输入行框、图标/标签/文本之间的间距，以及两处视觉对齐微调。参见[主题](/zh/editor/theming/)。
+
 ## 2026.08.14
 版本：**1.1.1**
 

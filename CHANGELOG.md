@@ -4,6 +4,24 @@ All notable changes to FlyQL are documented here. The format mirrors the changel
 
 FlyQL follows [Semantic Versioning](VERSIONING.md) starting with `1.0.0`. Versions `0.0.x` were pre-release development iterations and are not individually documented.
 
+## 2026.08.23
+Version: **1.2.0**
+
+The editor components gained a text label next to the existing icon, in the slot on the left of the field. See [Editor Component](/editor/#label-and-icon).
+
+New features:
+
+- **`label` prop on `FlyqlEditor` and `FlyqlColumns`**, in both the Vue and React packages. The label renders inside the field, ahead of the query text; an overlong one truncates with an ellipsis at half the field width instead of squeezing the input. Clicking it focuses the input, and a text label becomes the input's accessible name. Vue also exposes a `label` slot for richer content.
+- **`icon` is now a prop in Vue**, where it was slot-only. It accepts a string (rendered as text), a component, or `false` to drop the built-in glyph; the `icon` slot still takes precedence over the prop. In React the existing `icon` render prop now also accepts `false`.
+
+Behavioral changes:
+
+- **The icon and label share a new flex prefix element.** `.flyql-<root>__icon` is no longer absolutely positioned — it lives inside `.flyql-<root>__prefix`, and the input's left padding no longer reserves room for it. Stylesheets that positioned the icon themselves need updating; overrides that only remap `--flyql-*` variables are unaffected.
+- **`--flyql-code-font-family` now defaults to a real stack** — `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` — instead of bare `monospace`, which resolved to a different face in every browser (Menlo in Chrome on macOS, Courier in Safari) and changed the metrics the icon and label align against. Set the variable explicitly to keep the old behaviour.
+- **The built-in magnifier glyph shifted down one viewBox unit** so its ring, rather than the ring plus handle, is centred on the text.
+
+New theme variables — `--flyql-label-color`, `--flyql-line-height`, `--flyql-prefix-gap`, `--flyql-icon-offset` and `--flyql-label-offset` — expose the label colour, the input line box, the gap between icon, label and text, and the two optical alignment nudges. See [Theming](/editor/theming/).
+
 ## 2026.08.14
 Version: **1.1.1**
 

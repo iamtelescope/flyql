@@ -2,6 +2,24 @@
 title: Registro de cambios
 ---
 
+## 2026.08.23
+Versión: **1.2.0**
+
+Los componentes del editor ahora admiten una etiqueta de texto junto al icono existente, en el espacio a la izquierda del campo. Consulta [Componente del editor](/es/editor/#etiqueta-e-icono).
+
+Nuevas funcionalidades:
+
+- **Prop `label` en `FlyqlEditor` y `FlyqlColumns`**, tanto en el paquete de Vue como en el de React. La etiqueta se renderiza dentro del campo, delante del texto de la consulta; una etiqueta demasiado larga se trunca con puntos suspensivos a la mitad del ancho del campo en lugar de comprimir la entrada. Al hacer clic en ella se enfoca la entrada, y una etiqueta de texto pasa a ser el nombre accesible de la entrada. Vue expone además un slot `label` para contenido más rico.
+- **`icon` ahora es una prop en Vue**, donde antes solo existía como slot. Acepta una cadena (renderizada como texto), un componente o `false` para eliminar el icono integrado; el slot `icon` sigue teniendo prioridad sobre la prop. En React, la prop de render `icon` también acepta `false`.
+
+Cambios de comportamiento:
+
+- **El icono y la etiqueta comparten un nuevo elemento flex de prefijo.** `.flyql-<root>__icon` ya no está posicionado de forma absoluta: vive dentro de `.flyql-<root>__prefix`, y el relleno izquierdo de la entrada ya no reserva espacio para él. Las hojas de estilo que posicionaban el icono por su cuenta deben actualizarse; las que solo redefinen variables `--flyql-*` no se ven afectadas.
+- **`--flyql-code-font-family` ahora usa una pila de fuentes real** — `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` — en lugar de `monospace` a secas, que se resolvía a una fuente distinta en cada navegador (Menlo en Chrome en macOS, Courier en Safari) y cambiaba las métricas con las que se alinean el icono y la etiqueta. Define la variable explícitamente para conservar el comportamiento anterior.
+- **El icono integrado de lupa se desplazó una unidad del viewBox hacia abajo** para que su aro, y no el aro más el mango, quede centrado sobre el texto.
+
+Nuevas variables de tema — `--flyql-label-color`, `--flyql-line-height`, `--flyql-prefix-gap`, `--flyql-icon-offset` y `--flyql-label-offset` — controlan el color de la etiqueta, la caja de línea de la entrada, el espacio entre icono, etiqueta y texto, y los dos ajustes ópticos. Consulta [Temas](/es/editor/theming/).
+
 ## 2026.08.14
 Versión: **1.1.1**
 

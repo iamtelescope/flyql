@@ -81,12 +81,38 @@ import 'flyql-vue/flyql.css'
 | `debug` | `Boolean` | `false` | Logging de depuración |
 | `debounceMs` | `Number` | `300` | Retardo de debounce en ms para llamadas de autocompletado asíncronas. Usa `0` para desactivarlo |
 | `dark` | `Boolean` | `false` | Activa el tema oscuro ([ver temas](/es/editor/theming/)) |
+| `label` | `String` | `''` | Texto mostrado dentro del campo, a la izquierda de la consulta |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Icono mostrado antes de la etiqueta: una cadena se renderiza como texto, un componente tal cual, `false` lo elimina |
 
 **Firmas de los callbacks:**
 - `onAutocomplete(key, value)`: devuelve `Promise<{ items: string[], incomplete?: boolean }>`
 - `onKeyDiscovery(columnName, segments)`: devuelve `Promise<Array<{ name, type?, hasChildren? }>>`
 
 Cuando `incomplete` es `true` en la respuesta, el editor entiende que la lista devuelta es parcial y volverá a pedir datos en la siguiente pulsación. Las llamadas asíncronas usan debounce y las peticiones en curso se cancelan automáticamente cuando empieza una nueva.
+
+## Etiqueta e icono
+
+`label` e `icon` comparten el espacio a la izquierda del campo, delante del texto de la consulta. Al hacer clic en cualquiera de los dos se enfoca la entrada, y una etiqueta demasiado larga se trunca con puntos suspensivos a la mitad del ancho del campo en lugar de comprimir la entrada. Un `label` de texto también pasa a ser el nombre accesible de la entrada, reemplazando el `aria-label` predeterminado del componente.
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Los slots `icon` y `label` tienen prioridad sobre las props cuando necesitas contenido más rico:
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## Eventos
 

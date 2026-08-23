@@ -5,6 +5,7 @@
     --flyql-border: #d4d4d4;
     --flyql-border-focus: #075985;
     --flyql-placeholder-color: #a0a0a0;
+    --flyql-label-color: #6b6b6b;
 
     --flyql-key-color: #0451a5;
     --flyql-operator-color: #0089ab;
@@ -25,8 +26,12 @@
     --flyql-dropdown-item-active: #eef4fb;
 
     --flyql-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --flyql-code-font-family: monospace;
+    --flyql-code-font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --flyql-font-size: 13px;
+    --flyql-line-height: 18px;
+    --flyql-icon-offset: -1px;
+    --flyql-prefix-gap: 9px;
+    --flyql-label-offset: -1.5px;
 }
 
 .flyql-dark {
@@ -35,6 +40,7 @@
     --flyql-border: #525252;
     --flyql-border-focus: #0369a1;
     --flyql-placeholder-color: #676767;
+    --flyql-label-color: #9d9d9d;
 
     --flyql-key-color: #6e9fff;
     --flyql-operator-color: #0089ab;
@@ -665,6 +671,8 @@
 /* ── Editor component ── */
 .flyql-editor {
     position: relative;
+    display: flex;
+    align-items: flex-start;
     background: var(--flyql-bg);
     border: 1px solid var(--flyql-border);
     border-radius: 8px;
@@ -675,26 +683,70 @@
     border-color: var(--flyql-border-focus);
 }
 
+/* Icon and label share one flex slot to the left of the input. The input's
+   own padding-left supplies the gap to the first character, so the default
+   icon still lands 32px from the border like it did when absolutely placed. */
+.flyql-editor__prefix {
+    display: flex;
+    align-items: center;
+    /* Same gap as the input's padding-left, so the row reads
+       icon <gap> label <gap> text with one gap between each pair. */
+    gap: var(--flyql-prefix-gap);
+    flex: 0 0 auto;
+    max-width: 50%;
+    /* content-box + one line of min-height keeps the icon centred on the
+       input's first row whatever box-sizing reset the host page applies. */
+    box-sizing: content-box;
+    min-height: var(--flyql-line-height);
+    padding: 6px 0 6px 10px;
+    line-height: var(--flyql-line-height);
+    cursor: text;
+}
+
 .flyql-editor__icon {
-    position: absolute;
-    left: 10px;
-    top: 9px;
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    /* Optical alignment: centred on the cap box, not the line box. FlyQL
+       queries are dominated by CamelCase column names and digits, so the caps
+       are what the eye aligns against; centring on the line box leaves the
+       glyph ~1.25px below them. Positive values move the glyph down. */
+    position: relative;
+    top: var(--flyql-icon-offset);
+    font-size: var(--flyql-font-size);
     color: var(--flyql-placeholder-color);
     pointer-events: none;
-    z-index: 1;
+}
+
+.flyql-editor__label {
+    min-width: 0;
+    /* UI font. It has a taller ascent than the code font, so inside the shared
+       line box its baseline lands lower than the query text's; the offset puts
+       the two baselines back together. Negative moves the label up. */
+    font-family: var(--flyql-font-family);
+    font-size: var(--flyql-font-size);
+    line-height: var(--flyql-line-height);
+    position: relative;
+    top: var(--flyql-label-offset);
+    color: var(--flyql-label-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
 }
 
 .flyql-editor__container {
     position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .flyql-editor__highlight,
 .flyql-editor__input {
     font-family: var(--flyql-code-font-family);
     font-size: var(--flyql-font-size);
-    line-height: 18px;
-    padding: 6px 8px 6px 32px;
+    line-height: var(--flyql-line-height);
+    padding: 6px 8px 6px var(--flyql-prefix-gap);
     margin: 0;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -734,6 +786,8 @@
 /* ── Columns component ── */
 .flyql-columns {
     position: relative;
+    display: flex;
+    align-items: flex-start;
     background: var(--flyql-bg);
     border: 1px solid var(--flyql-border);
     border-radius: 8px;
@@ -744,26 +798,70 @@
     border-color: var(--flyql-border-focus);
 }
 
+/* Icon and label share one flex slot to the left of the input. The input's
+   own padding-left supplies the gap to the first character, so the default
+   icon still lands 32px from the border like it did when absolutely placed. */
+.flyql-columns__prefix {
+    display: flex;
+    align-items: center;
+    /* Same gap as the input's padding-left, so the row reads
+       icon <gap> label <gap> text with one gap between each pair. */
+    gap: var(--flyql-prefix-gap);
+    flex: 0 0 auto;
+    max-width: 50%;
+    /* content-box + one line of min-height keeps the icon centred on the
+       input's first row whatever box-sizing reset the host page applies. */
+    box-sizing: content-box;
+    min-height: var(--flyql-line-height);
+    padding: 6px 0 6px 10px;
+    line-height: var(--flyql-line-height);
+    cursor: text;
+}
+
 .flyql-columns__icon {
-    position: absolute;
-    left: 10px;
-    top: 9px;
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    /* Optical alignment: centred on the cap box, not the line box. FlyQL
+       queries are dominated by CamelCase column names and digits, so the caps
+       are what the eye aligns against; centring on the line box leaves the
+       glyph ~1.25px below them. Positive values move the glyph down. */
+    position: relative;
+    top: var(--flyql-icon-offset);
+    font-size: var(--flyql-font-size);
     color: var(--flyql-placeholder-color);
     pointer-events: none;
-    z-index: 1;
+}
+
+.flyql-columns__label {
+    min-width: 0;
+    /* UI font. It has a taller ascent than the code font, so inside the shared
+       line box its baseline lands lower than the query text's; the offset puts
+       the two baselines back together. Negative moves the label up. */
+    font-family: var(--flyql-font-family);
+    font-size: var(--flyql-font-size);
+    line-height: var(--flyql-line-height);
+    position: relative;
+    top: var(--flyql-label-offset);
+    color: var(--flyql-label-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
 }
 
 .flyql-columns__container {
     position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .flyql-columns__highlight,
 .flyql-columns__input {
     font-family: var(--flyql-code-font-family);
     font-size: var(--flyql-font-size);
-    line-height: 18px;
-    padding: 6px 8px 6px 32px;
+    line-height: var(--flyql-line-height);
+    padding: 6px 8px 6px var(--flyql-prefix-gap);
     margin: 0;
     white-space: pre-wrap;
     word-wrap: break-word;

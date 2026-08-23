@@ -34,18 +34,34 @@
                     <div class="flex-1 min-w-0 lg:order-1">
                         <!-- Columns editor -->
                         <div class="rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
-                            <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                            <div class="flex items-center justify-between flex-wrap gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                                 <div class="flex items-center gap-2">
                                     <img :src="logoSvg" alt="" class="h-4 w-4" />
                                     <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Columns</span>
                                 </div>
-                                <span v-if="selectExpr" class="text-xs text-gray-400 dark:text-gray-500">{{ parsedColumnsCount }} column{{ parsedColumnsCount !== 1 ? 's' : '' }}</span>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        v-model="columnsLabel"
+                                        type="text"
+                                        placeholder="label"
+                                        class="w-32 px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
+                                    />
+                                    <select
+                                        v-model="columnsIconKey"
+                                        class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-transparent dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors cursor-pointer"
+                                    >
+                                        <option v-for="opt in iconOptions" :key="opt.key" :value="opt.key">{{ opt.text }}</option>
+                                    </select>
+                                    <span v-if="selectExpr" class="text-xs text-gray-400 dark:text-gray-500">{{ parsedColumnsCount }} column{{ parsedColumnsCount !== 1 ? 's' : '' }}</span>
+                                </div>
                             </div>
                             <div class="p-2">
                                 <FlyqlColumns
                                     ref="columnsRef"
                                     v-model="selectExpr"
                                     :columns="editorColumns"
+                                    :label="columnsLabel"
+                                    :icon="columnsIcon"
                                     :renderer-registry="_rendererRegistry"
                                     :dark="isDark"
                                     :placeholder="otelLogs.defaults.columnsPlaceholder"
@@ -68,10 +84,24 @@
 
                         <!-- Query editor -->
                         <div class="mt-3 rounded-lg bg-white dark:bg-gray-950 overflow-hidden border border-gray-200 dark:border-gray-800">
-                            <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
+                            <div class="flex items-center justify-between flex-wrap gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-800">
                                 <div class="flex items-center gap-2">
                                     <img :src="logoSvg" alt="" class="h-4 w-4" />
                                     <span class="text-xs text-gray-500 dark:text-gray-400 font-mono tracking-wider">Query</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        v-model="queryLabel"
+                                        type="text"
+                                        placeholder="label"
+                                        class="w-32 px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-transparent text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors"
+                                    />
+                                    <select
+                                        v-model="queryIconKey"
+                                        class="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-gray-700 bg-transparent dark:bg-gray-950 text-gray-700 dark:text-gray-300 focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors cursor-pointer"
+                                    >
+                                        <option v-for="opt in iconOptions" :key="opt.key" :value="opt.key">{{ opt.text }}</option>
+                                    </select>
                                 </div>
                             </div>
                             <div class="p-2">
@@ -79,6 +109,8 @@
                                     ref="editorRef"
                                     v-model="query"
                                     :columns="editorColumns"
+                                    :label="queryLabel"
+                                    :icon="queryIcon"
                                     :dark="isDark"
                                     :placeholder="otelLogs.defaults.queryPlaceholder"
                                     @submit="runQuery"
@@ -293,7 +325,7 @@
 import '@fontsource/inter'
 import '@fontsource/inter/500.css'
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, h, onMounted } from 'vue'
 import { FlyqlEditor, FlyqlColumns, ColumnSchema } from '../../javascript/packages/flyql-vue/src/index.js'
 import { EditorEngine } from '../../javascript/packages/flyql/src/editor/engine.js'
 import { ColumnsEngine } from '../../javascript/packages/flyql/src/editor/columns-engine.js'
@@ -334,6 +366,44 @@ const dialects = [
     { key: 'pg', name: 'PostgreSQL', icon: pgIcon, iconDark: null, dialectTypeKey: 'postgresql' },
     { key: 'sr', name: 'StarRocks', icon: srIcon, iconDark: null, dialectTypeKey: 'starrocks' },
 ]
+
+// ── Label / icon controls for the editors (the `label` and `icon` props) ──
+// `icon: null` keeps the component's built-in glyph, `false` drops the icon
+// entirely, and anything else is rendered as a component. The built-in glyphs
+// are 13px Feather-style strokes, so these match them rather than using emoji.
+const strokeIcon = (...paths) =>
+    () =>
+        h(
+            'svg',
+            {
+                width: 13,
+                height: 13,
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                'stroke-width': 2,
+                'stroke-linecap': 'round',
+                'stroke-linejoin': 'round',
+            },
+            paths.map((d) => h('path', { d })),
+        )
+
+const iconOptions = [
+    { key: 'default', text: 'Built-in icon', value: null },
+    { key: 'filter', text: 'Filter', value: strokeIcon('M22 3H2l8 9.46V19l4 2v-8.54L22 3z') },
+    { key: 'terminal', text: 'Terminal', value: strokeIcon('M4 17l6-6-6-6', 'M12 19h8') },
+    { key: 'hash', text: 'Hash', value: strokeIcon('M4 9h16', 'M4 15h16', 'M10 3L8 21', 'M16 3l-2 18') },
+    { key: 'bolt', text: 'Bolt', value: strokeIcon('M13 2L3 14h9l-1 8 10-12h-9l1-8z') },
+    { key: 'none', text: 'No icon', value: false },
+]
+
+const queryLabel = ref('')
+const queryIconKey = ref('default')
+const columnsLabel = ref('')
+const columnsIconKey = ref('default')
+
+const queryIcon = computed(() => iconOptions.find((o) => o.key === queryIconKey.value).value)
+const columnsIcon = computed(() => iconOptions.find((o) => o.key === columnsIconKey.value).value)
 
 const columnPresets = [
     { label: 'All columns', value: schemaColumns.map((c) => c.name).join(', ') },

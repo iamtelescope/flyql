@@ -16,6 +16,7 @@ The FlyQL editor uses CSS custom properties (variables) for all visual styling. 
 | `--flyql-border` | `#d4d4d4` | `#525252` | Border color |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | Border color when focused |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Placeholder text |
+| `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | Label text in the field |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | Error highlight |
 
 ### Syntax Highlighting
@@ -40,9 +41,13 @@ The FlyQL editor uses CSS custom properties (variables) for all visual styling. 
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `--flyql-font-family` | `'Open Sans', sans-serif` | UI font |
-| `--flyql-code-font-family` | `monospace` | Code/query font |
+| `--flyql-font-family` | `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif` | UI font |
+| `--flyql-code-font-family` | `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` | Code/query font |
 | `--flyql-font-size` | `13px` | Base font size |
+| `--flyql-line-height` | `18px` | Line height of the input and its highlight overlay |
+| `--flyql-icon-offset` | `-1px` | Optical nudge that centres the prefix icon on the cap box (negative moves it up) |
+| `--flyql-prefix-gap` | `9px` | Gap between icon, label and the query text |
+| `--flyql-label-offset` | `-1.5px` | Baseline correction for the label, which uses the UI font (negative moves it up) |
 
 ## Light Theme
 

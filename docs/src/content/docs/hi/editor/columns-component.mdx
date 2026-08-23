@@ -48,6 +48,32 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | माउंट पर ऑटो-फ़ोकस |
 | `debug` | `Boolean` | `false` | डीबग लॉगिंग |
 | `dark` | `Boolean` | `false` | डार्क थीम सक्षम करें ([थीमिंग देखें](/hi/editor/theming/)) |
+| `label` | `String` | `''` | फ़ील्ड के अंदर, क्वेरी के बाईं ओर दिखाया जाने वाला टेक्स्ट |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | लेबल से पहले दिखाया जाने वाला आइकन: स्ट्रिंग टेक्स्ट के रूप में, कोई कंपोनेंट जैसा है वैसा, और `false` इसे हटा देता है |
+
+## लेबल और आइकन
+
+`label` और `icon` फ़ील्ड के बाईं ओर एक ही जगह साझा करते हैं, क्वेरी टेक्स्ट से पहले। दोनों में से किसी पर क्लिक करने से इनपुट फ़ोकस हो जाता है, और बहुत लंबा लेबल इनपुट को दबाने के बजाय फ़ील्ड की आधी चौड़ाई पर एलिप्सिस के साथ काट दिया जाता है। टेक्स्ट वाला `label` इनपुट का accessible name भी बन जाता है और कंपोनेंट के डिफ़ॉल्ट `aria-label` की जगह ले लेता है।
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+अधिक समृद्ध सामग्री के लिए `icon` और `label` स्लॉट props पर वरीयता लेते हैं:
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
+</template>
+```
 
 ## इवेंट
 

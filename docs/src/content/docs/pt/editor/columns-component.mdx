@@ -48,6 +48,32 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | Foco automático ao montar |
 | `debug` | `Boolean` | `false` | Registo de depuração |
 | `dark` | `Boolean` | `false` | Ativar tema escuro ([ver temas](/pt/editor/theming/)) |
+| `label` | `String` | `''` | Texto exibido dentro do campo, à esquerda da consulta |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Ícone exibido antes do rótulo: uma string é renderizada como texto, um componente tal como está, `false` remove-o |
+
+## Rótulo e ícone
+
+`label` e `icon` partilham o espaço à esquerda do campo, antes do texto da consulta. Clicar em qualquer um deles foca a entrada, e um rótulo demasiado longo é truncado com reticências a metade da largura do campo em vez de comprimir a entrada. Um `label` de texto passa também a ser o nome acessível da entrada, substituindo o `aria-label` predefinido do componente.
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Os slots `icon` e `label` têm precedência sobre as props quando precisa de conteúdo mais rico:
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
+</template>
+```
 
 ## Eventos
 

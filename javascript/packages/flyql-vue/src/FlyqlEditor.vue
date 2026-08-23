@@ -1,21 +1,33 @@
 <template>
     <div class="flyql-editor" :class="{ 'flyql-editor--focused': focused, 'flyql-dark': dark }" ref="editorRoot">
-        <span class="flyql-editor__icon">
-            <slot name="icon">
-                <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-            </slot>
+        <span
+            v-if="$slots.icon || icon !== false || $slots.label || label"
+            class="flyql-editor__prefix"
+            @mousedown.prevent="focus"
+        >
+            <span v-if="$slots.icon || icon !== false" class="flyql-editor__icon">
+                <slot name="icon">
+                    <component v-if="iconComponent" :is="iconComponent" />
+                    <template v-else-if="iconText">{{ iconText }}</template>
+                    <svg
+                        v-else
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <circle cx="11" cy="12" r="8" />
+                        <line x1="21" y1="22" x2="16.65" y2="17.65" />
+                    </svg>
+                </slot>
+            </span>
+            <span v-if="$slots.label || label" class="flyql-editor__label">
+                <slot name="label">{{ label }}</slot>
+            </span>
         </span>
         <div class="flyql-editor__container" ref="containerRef">
             <pre class="flyql-editor__highlight" ref="highlightRef" v-html="highlightedHtml" aria-hidden="true"></pre>
@@ -38,7 +50,7 @@
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
-                aria-label="FlyQL query input"
+                :aria-label="inputAriaLabel"
                 role="combobox"
                 :aria-expanded="focused && activated && suggestions.length > 0"
                 :aria-activedescendant="
@@ -247,7 +259,23 @@ const props = defineProps({
     debounceMs: { type: Number, default: 150 },
     dark: { type: Boolean, default: false },
     registry: { type: Object, default: null },
+    label: { type: String, default: '' },
+    icon: { type: [String, Object, Function, Boolean], default: null },
 })
+
+// Prefix slot (icon + label). `icon`: null/true renders the built-in glyph,
+// `false` drops the icon entirely, a string renders as text (an emoji, say),
+// and anything else is rendered as a component. The `icon`/`label` slots take
+// precedence over the props when both are supplied — the template reads
+// `$slots` directly because the slots object is not reactive.
+const iconComponent = computed(() =>
+    props.icon && typeof props.icon !== 'string' && typeof props.icon !== 'boolean' ? props.icon : null,
+)
+const iconText = computed(() => (typeof props.icon === 'string' ? props.icon : ''))
+
+// A visible text label is the field's accessible name; a slot label falls back
+// to the generic one, since its rendered text is not readable from here.
+const inputAriaLabel = computed(() => props.label || 'FlyQL query input')
 
 const emit = defineEmits(['update:modelValue', 'submit', 'parse-error', 'focus', 'blur', 'diagnostics'])
 

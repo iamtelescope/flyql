@@ -81,12 +81,38 @@ import 'flyql-vue/flyql.css'
 | `debug` | `Boolean` | `false` | デバッグログ |
 | `debounceMs` | `Number` | `300` | 非同期 autocomplete 呼び出しの debounce 時間（ms）。`0` で無効化 |
 | `dark` | `Boolean` | `false` | ダークテーマを有効化（[テーマ設定](/ja/editor/theming/) を参照） |
+| `label` | `String` | `''` | フィールド内、クエリの左側に表示されるテキスト |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | ラベルの前に表示されるアイコン。文字列はテキストとして、コンポーネントはそのまま描画され、`false` で非表示になります |
 
 **Callback シグネチャ:**
 - `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` を返します
 - `onKeyDiscovery(columnName, segments)` — `Promise<Array<{ name, type?, hasChildren? }>>` を返します
 
 レスポンスで `incomplete` が `true` の場合、editor は返されたリストが部分結果であると判断し、次のキー入力時に再取得します。非同期呼び出しには debounce が適用され、新しいリクエストが始まると進行中のリクエストは自動的にキャンセルされます。
+
+## ラベルとアイコン
+
+`label` と `icon` はフィールド左側の同じ領域をクエリテキストの前で共有します。どちらをクリックしても入力にフォーカスが移り、長すぎるラベルは入力欄を圧迫せずフィールド幅の半分で省略記号に切り詰められます。 テキストの `label` は入力欄のアクセシブル名にもなり、コンポーネント既定の `aria-label` を置き換えます。
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+より自由な内容が必要な場合、`icon` と `label` スロットが props より優先されます:
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## Events
 

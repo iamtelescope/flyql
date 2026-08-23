@@ -48,6 +48,32 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | Beim Mounten automatisch fokussieren |
 | `debug` | `Boolean` | `false` | Debug-Logging |
 | `dark` | `Boolean` | `false` | Dunkles Theme aktivieren ([siehe Theming](/de/editor/theming/)) |
+| `label` | `String` | `''` | Text im Feld, links von der Eingabe |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon vor dem Label: ein String wird als Text gerendert, eine Komponente unverändert, `false` entfernt es |
+
+## Label und Icon
+
+`label` und `icon` teilen sich den Bereich links im Feld, vor dem Abfragetext. Ein Klick darauf fokussiert die Eingabe; ein zu langes Label wird bei der halben Feldbreite mit Auslassungspunkten gekürzt, statt die Eingabe zu verkleinern. Ein Text-`label` wird außerdem zum zugänglichen Namen der Eingabe und ersetzt das Standard-`aria-label` der Komponente.
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Die Slots `icon` und `label` haben Vorrang vor den Props, wenn Sie reichhaltigere Inhalte brauchen:
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
+</template>
+```
 
 ## Events
 

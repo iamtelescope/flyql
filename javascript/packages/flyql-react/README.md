@@ -92,9 +92,15 @@ function App() {
 
 ## Component API
 
-`FlyqlEditor` props: `value`, `onChange`, `columns`, `parameters`, `onAutocomplete`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `debounceMs` (default 150), `dark`, `registry`, plus callbacks `onSubmit`, `onParseError`, `onFocus`, `onBlur`, `onDiagnostics` and an `icon` render prop. A `ref` exposes `focus()`, `blur()`, `getQueryStatus()`, and `flushDiagnostics()`.
+`FlyqlEditor` props: `value`, `onChange`, `columns`, `parameters`, `onAutocomplete`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `debounceMs` (default 150), `dark`, `registry`, `label`, plus callbacks `onSubmit`, `onParseError`, `onFocus`, `onBlur`, `onDiagnostics` and an `icon` render prop. A `ref` exposes `focus()`, `blur()`, `getQueryStatus()`, and `flushDiagnostics()`.
 
-`FlyqlColumns` props: `value`, `onChange`, `columns`, `capabilities`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `dark`, `registry`, `rendererRegistry`, plus callbacks `onSubmit`, `onParseError`, `onParsedChange`, `onFocus`, `onBlur`, `onDiagnostics` and a `loading` render prop. A `ref` additionally exposes `getParsedColumns()`.
+`FlyqlColumns` props: `value`, `onChange`, `columns`, `capabilities`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `dark`, `registry`, `rendererRegistry`, `label`, `icon`, plus callbacks `onSubmit`, `onParseError`, `onParsedChange`, `onFocus`, `onBlur`, `onDiagnostics` and a `loading` render prop. A `ref` additionally exposes `getParsedColumns()`.
+
+`label` and `icon` share the slot on the left of the field, ahead of the query text. `label` takes a string or any node; `icon` takes a node, a render function, or `false` to drop the built-in glyph. Clicking either focuses the input, and a text `label` becomes the input's accessible name. The label renders in the UI font (`--flyql-font-family`), baseline-corrected to sit on the query text's baseline.
+
+```jsx
+<FlyqlEditor value={query} onChange={setQuery} label="Filter" icon={false} />
+```
 
 > `capabilities` is read once when the component mounts (it configures the underlying engine's parser; the same is true of the Vue component). To change capabilities at runtime, remount the component with a `key`.
 

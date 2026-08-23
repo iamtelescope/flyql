@@ -81,12 +81,38 @@ import 'flyql-vue/flyql.css'
 | `debug` | `Boolean` | `false` | Registo de depuração |
 | `debounceMs` | `Number` | `300` | Atraso de debounce (ms) para chamadas assíncronas de autocompletar. Defina como `0` para desativar |
 | `dark` | `Boolean` | `false` | Ativar tema escuro ([ver temas](/pt/editor/theming/)) |
+| `label` | `String` | `''` | Texto exibido dentro do campo, à esquerda da consulta |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Ícone exibido antes do rótulo: uma string é renderizada como texto, um componente tal como está, `false` remove-o |
 
 **Assinaturas dos callbacks:**
 - `onAutocomplete(key, value)` — devolve `Promise<{ items: string[], incomplete?: boolean }>`
 - `onKeyDiscovery(columnName, segments)` — devolve `Promise<Array<{ name, type?, hasChildren? }>>`
 
 Quando `incomplete` é `true` na resposta, o editor sabe que a lista devolvida é parcial e voltará a buscar no próximo toque de tecla. As chamadas assíncronas são debounced (predefinição 150ms) e os pedidos em curso são automaticamente cancelados quando um novo começa.
+
+## Rótulo e ícone
+
+`label` e `icon` partilham o espaço à esquerda do campo, antes do texto da consulta. Clicar em qualquer um deles foca a entrada, e um rótulo demasiado longo é truncado com reticências a metade da largura do campo em vez de comprimir a entrada. Um `label` de texto passa também a ser o nome acessível da entrada, substituindo o `aria-label` predefinido do componente.
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Os slots `icon` e `label` têm precedência sobre as props quando precisa de conteúdo mais rico:
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## Eventos
 

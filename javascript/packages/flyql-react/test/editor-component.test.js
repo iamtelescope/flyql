@@ -11,7 +11,8 @@ describe('FlyqlEditor component', () => {
         })
 
         it('textarea has aria-label', () => {
-            expect(jsxContent).toContain('aria-label="FlyQL query input"')
+            expect(jsxContent).toContain('aria-label={inputAriaLabel}')
+            expect(jsxContent).toContain("'FlyQL query input'")
         })
 
         it('textarea has aria-expanded', () => {
@@ -110,5 +111,38 @@ describe('FlyqlEditor component', () => {
             expect(jsxContent).toContain('onCompositionEnd')
             expect(jsxContent).toContain('engine.state.composing')
         })
+    })
+})
+
+describe('prefix slot (icon + label)', () => {
+    it('declares the label prop next to the icon render prop', () => {
+        expect(jsxContent).toContain('icon = null,')
+        expect(jsxContent).toContain("label = '',")
+    })
+
+    it('renders icon and label inside a single prefix element', () => {
+        expect(jsxContent).toContain('className="flyql-editor__prefix"')
+        expect(jsxContent).toContain('className="flyql-editor__icon"')
+        expect(jsxContent).toContain('className="flyql-editor__label"')
+    })
+
+    it('drops the prefix entirely when there is neither icon nor label', () => {
+        expect(jsxContent).toContain('{(showIcon || showLabel) && (')
+        expect(jsxContent).toContain('const showIcon = icon !== false')
+        expect(jsxContent).toContain('const showLabel =')
+    })
+
+    it('falls back to the built-in glyph and supports an icon render prop', () => {
+        expect(jsxContent).toContain('icon === null || icon === true ? (')
+        expect(jsxContent).toContain("typeof icon === 'function' ? (")
+    })
+
+    it('focuses the input when the prefix is clicked', () => {
+        expect(jsxContent).toContain('textareaRef.current?.focus()')
+    })
+
+    it('lets a visible label be the accessible name of the input', () => {
+        expect(jsxContent).toContain('aria-label={inputAriaLabel}')
+        expect(jsxContent).toContain("typeof label === 'string' && label ? label : 'FlyQL query input'")
     })
 })

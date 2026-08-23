@@ -50,6 +50,8 @@ function onParsed(parsed) {
 | `autofocus` | `Boolean` | `false` | Auto-focus on mount |
 | `debug` | `Boolean` | `false` | Debug logging |
 | `dark` | `Boolean` | `false` | Enable dark theme ([see theming](/editor/theming/)) |
+| `label` | `String` | `''` | Text shown inside the field, to the left of the query |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon shown before the label: a string renders as text, a component renders as-is, `false` removes it |
 
 ### Example — with renderer registry
 
@@ -70,6 +72,30 @@ rendererRegistry.register(new HrefRenderer())
 
 <template>
   <FlyqlColumns v-model="query" :columns="schema" :renderer-registry="rendererRegistry" />
+</template>
+```
+
+## Label and Icon
+
+`label` and `icon` share the slot on the left of the field, ahead of the query text. Clicking either focuses the input, and an overlong label is truncated with an ellipsis at half the field width instead of squeezing the input. A text `label` also becomes the input's accessible name, replacing the component's default `aria-label`.
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns" label="Filter" />
+    <FlyqlColumns v-model="expr" :columns="columns" icon="🔎" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="MyIcon" />
+    <FlyqlColumns v-model="expr" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+The `icon` and `label` slots take precedence over the props when you need richer content:
+
+```vue
+<template>
+    <FlyqlColumns v-model="expr" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlColumns>
 </template>
 ```
 

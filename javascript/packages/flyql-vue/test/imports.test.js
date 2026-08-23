@@ -12,7 +12,8 @@ describe('ARIA accessibility attributes (AC #6)', () => {
     })
 
     it('textarea has aria-label', () => {
-        expect(vueContent).toContain('aria-label="FlyQL query input"')
+        expect(vueContent).toContain(':aria-label="inputAriaLabel"')
+        expect(vueContent).toContain("'FlyQL query input'")
     })
 
     it('textarea has aria-expanded', () => {

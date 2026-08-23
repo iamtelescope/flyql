@@ -81,12 +81,38 @@ import 'flyql-vue/flyql.css'
 | `debug` | `Boolean` | `false` | Отладочное логирование |
 | `debounceMs` | `Number` | `300` | Задержка (мс) для асинхронных запросов автодополнения. Установите `0` для отключения |
 | `dark` | `Boolean` | `false` | Включить тёмную тему ([см. темы](/ru/editor/theming/)) |
+| `label` | `String` | `''` | Текст внутри поля, слева от запроса |
+| `icon` | `String \| Object \| Function \| Boolean` | `null` | Иконка перед подписью: строка выводится как текст, компонент — как есть, `false` убирает её |
 
 **Сигнатуры функций обратного вызова:**
 - `onAutocomplete(key, value)` — возвращает `Promise<{ items: string[], incomplete?: boolean }>`
 - `onKeyDiscovery(columnName, segments)` — возвращает `Promise<Array<{ name, type?, hasChildren? }>>`
 
 Когда `incomplete` равно `true` в ответе, редактор понимает, что возвращённый список неполный, и повторно запросит данные при следующем нажатии клавиши. Асинхронные вызовы дебаунсятся (по умолчанию 150 мс), а текущие запросы автоматически отменяются при запуске нового.
+
+## Подпись и иконка
+
+`label` и `icon` занимают общее место слева в поле, перед текстом запроса. Клик по любому из них ставит фокус в поле ввода, а слишком длинная подпись обрезается многоточием на половине ширины поля, а не сжимает ввод. Текстовый `label` также становится доступным именем поля, заменяя стандартный `aria-label` компонента.
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns" label="Filter" />
+    <FlyqlEditor v-model="query" :columns="columns" icon="🔎" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="MyIcon" />
+    <FlyqlEditor v-model="query" :columns="columns" :icon="false" label="Filter" />
+</template>
+```
+
+Слоты `icon` и `label` имеют приоритет над пропсами, если нужно более сложное содержимое:
+
+```vue
+<template>
+    <FlyqlEditor v-model="query" :columns="columns">
+        <template #icon><MyIcon /></template>
+        <template #label><strong>Filter</strong></template>
+    </FlyqlEditor>
+</template>
+```
 
 ## События
 

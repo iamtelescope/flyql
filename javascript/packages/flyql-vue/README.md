@@ -135,6 +135,16 @@ Shift+Enter stops inserting a break, newlines arriving by paste, drop or IME are
 
 Clicking it emits `update:modelValue` with `''` like any other edit — the suggestion panel closes and diagnostics drop through the normal path — and returns focus to the input. Name it with `clear-button-label` (default `Clear`).
 
+## Suggestion panel placement
+
+The panel is teleported to `body` and stacks at `--flyql-panel-z-index` (default `100`). Inside a host overlay that outranks it, either raise the variable or point the panel at the overlay:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :panel-container="drawerEl" />
+```
+
+`panel-container` takes a selector or an element; the panel then renders inside it and inherits its stacking context, which also makes it a DOM descendant for outside-click handling. An unresolvable target falls back to `body`. The teleported node carries a `data-flyql-panel` attribute.
+
 ## Theming
 
 The editor uses CSS custom properties (`--flyql-*` variables) for all visual styling. A built-in `dark` prop toggles the dark theme, and any variable can be overridden in your CSS to match your application's design.

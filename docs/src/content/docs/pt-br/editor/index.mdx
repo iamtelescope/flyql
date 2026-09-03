@@ -86,6 +86,7 @@ import 'flyql-vue/flyql.css'
 | `multiline` | `Boolean` | `true` | Permitir entrada multilinha. Com `false`, as quebras de linha viram espaços e o campo permanece em uma linha |
 | `hasClear` | `Boolean` | `false` | Mostrar um botão de limpar na extremidade final; só aparece quando o campo tem valor |
 | `clearButtonLabel` | `String` | `'Clear'` | Nome acessível do botão de limpar |
+| `panelContainer` | `String \| Object` | `'body'` | Onde portar o painel de sugestões: um seletor ou um elemento. Padrão `body` |
 
 **Assinaturas dos callbacks:**
 - `onAutocomplete(key, value)` — retorna `Promise<{ items: string[], incomplete?: boolean }>`

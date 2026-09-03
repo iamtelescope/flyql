@@ -3,6 +3,19 @@ title: Registro de cambios
 ---
 
 ## 2026.08.25
+Versión: **1.4.0**
+
+Control sobre dónde acaba el panel de sugerencias en la página, para editores integrados dentro de una superposición del anfitrión.
+
+Nuevas funcionalidades:
+
+- **`--flyql-panel-z-index`** (por defecto `100`). La posición de apilamiento del panel era un literal, así que un anfitrión cuya superposición quedaba por encima solo podía resolver la colisión escribiendo una regla contra `.flyql-panel`. Los drawers y modales suelen situarse muy por encima de 100, lo que ocultaba el panel por completo mientras el editor seguía funcionando.
+- **Prop `panelContainer` en `FlyqlEditor` y `FlyqlColumns`** (por defecto `body`), en ambos paquetes. Acepta un selector o un elemento; el panel se porta allí en lugar de a `document.body` y hereda su contexto de apilamiento, sin necesidad de ajustar z-index. Un destino que no se puede resolver recae en `body`, y el destino se vuelve a resolver cada vez que el panel se abre, de modo que una superposición montada después del editor también funciona.
+- **Atributo `data-flyql-panel`** en el nodo portado, para que los anfitriones que cierran su superposición al pulsar fuera reconozcan el panel sin depender de un nombre de clase interno. Con `panelContainer` definido, el panel es descendiente de la superposición y no hace falta comprobación alguna.
+
+Nada cambia para los usuarios actuales: el panel se sigue portando a `document.body` y se sigue apilando en 100.
+
+## 2026.08.25
 Versión: **1.3.0**
 
 Puntos de enganche para integrar los editores en un sistema de diseño anfitrión: un modo de una sola línea, un botón de borrado y las medidas de caja que antes estaban fijadas en el código.

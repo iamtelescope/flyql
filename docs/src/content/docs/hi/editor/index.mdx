@@ -86,6 +86,7 @@ import 'flyql-vue/flyql.css'
 | `multiline` | `Boolean` | `true` | मल्टी-लाइन इनपुट की अनुमति दें। `false` होने पर न्यूलाइन स्पेस में बदल जाती हैं और फ़ील्ड एक ही लाइन में रहता है |
 | `hasClear` | `Boolean` | `false` | फ़ील्ड के अंत में क्लियर बटन दिखाएँ; यह तभी दिखता है जब फ़ील्ड में कोई मान हो |
 | `clearButtonLabel` | `String` | `'Clear'` | क्लियर बटन का accessible name |
+| `panelContainer` | `String \| Object` | `'body'` | सुझाव पैनल कहाँ पोर्टल किया जाए: सेलेक्टर या एलिमेंट। डिफ़ॉल्ट `body` |
 
 **कॉलबैक हस्ताक्षर:**
 - `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` लौटाता है

@@ -86,6 +86,7 @@ import 'flyql-vue/flyql.css'
 | `multiline` | `Boolean` | `true` | Mehrzeilige Eingabe erlauben. Bei `false` werden Zeilenumbrüche zu Leerzeichen und das Feld bleibt einzeilig |
 | `hasClear` | `Boolean` | `false` | Löschen-Button am rechten Rand anzeigen; erscheint nur, wenn das Feld einen Wert hat |
 | `clearButtonLabel` | `String` | `'Clear'` | Zugänglicher Name des Löschen-Buttons |
+| `panelContainer` | `String \| Object` | `'body'` | Wohin das Vorschlagsfeld portiert wird: Selektor oder Element. Standard ist `body` |
 
 **Callback-Signaturen:**
 - `onAutocomplete(key, value)` – gibt `Promise<{ items: string[], incomplete?: boolean }>` zurück

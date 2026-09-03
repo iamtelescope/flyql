@@ -25,6 +25,7 @@
     --flyql-dropdown-border: #d4d4d4;
     --flyql-dropdown-item-hover: #f7f7f7;
     --flyql-dropdown-item-active: #eef4fb;
+    --flyql-panel-z-index: 100;
 
     --flyql-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --flyql-code-font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -69,7 +70,9 @@
 /* ── Suggestion panel (teleported to body, shared by both editors) ── */
 .flyql-panel {
     position: fixed;
-    z-index: 100;
+    /* The panel is portalled to <body>, so it lands in the root stacking
+       context alongside any host overlay. Hosts set this to place it. */
+    z-index: var(--flyql-panel-z-index);
     width: 600px;
     max-width: 100vw;
     display: flex;

@@ -86,6 +86,7 @@ import 'flyql-vue/flyql.css'
 | `multiline` | `Boolean` | `true` | 여러 줄 입력을 허용합니다. `false`이면 줄바꿈이 공백으로 바뀌고 필드는 한 줄로 유지됩니다 |
 | `hasClear` | `Boolean` | `false` | 끝쪽에 지우기 버튼을 표시합니다. 값이 있을 때만 나타납니다 |
 | `clearButtonLabel` | `String` | `'Clear'` | 지우기 버튼의 접근성 이름 |
+| `panelContainer` | `String \| Object` | `'body'` | 제안 패널을 어디에 포털할지: 선택자 또는 엘리먼트. 기본값 `body` |
 
 **Callback 시그니처:**
 - `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` 반환

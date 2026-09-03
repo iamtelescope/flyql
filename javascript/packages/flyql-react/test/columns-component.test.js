@@ -186,3 +186,21 @@ describe('clear button (`hasClear`)', () => {
         expect(jsxContent).toContain('aria-label={clearButtonLabel}')
     })
 })
+
+describe('panel placement (`panelContainer`)', () => {
+    it('defaults to body', () => {
+        expect(jsxContent).toContain('panelContainer = null,')
+        expect(jsxContent).toContain('resolvePanelContainer()')
+    })
+
+    it('re-resolves the target on every render, degrading to body', () => {
+        // a host overlay may mount after the editor, and a selector may match
+        // nothing — neither should leave the panel portalled into nowhere
+        expect(jsxContent).toContain('document.querySelector(panelContainer) || document.body')
+        expect(jsxContent).toContain('return panelContainer || document.body')
+    })
+
+    it('marks the panel with a stable attribute for outside-click checks', () => {
+        expect(jsxContent).toContain('data-flyql-panel')
+    })
+})

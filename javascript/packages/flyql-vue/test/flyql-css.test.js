@@ -254,3 +254,12 @@ describe('flyql.css (clear button)', () => {
         })
     }
 })
+
+describe('flyql.css (panel stacking)', () => {
+    it('drives the panel z-index from a token', () => {
+        expect(extractBlock(':root')).toContain('--flyql-panel-z-index: 100;')
+        expect(extractBlock('.flyql-panel')).toContain('z-index: var(--flyql-panel-z-index);')
+        // no bare literal left for a host to have to out-specify
+        expect(extractBlock('.flyql-panel')).not.toContain('z-index: 100;')
+    })
+})

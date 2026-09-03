@@ -3,6 +3,19 @@ title: Journal des modifications
 ---
 
 ## 2026.08.25
+Version : **1.4.0**
+
+La maitrise de l'endroit ou le panneau de suggestions atterrit dans la page, pour les editeurs places dans un calque de l'hote.
+
+Nouvelles fonctionnalites :
+
+- **`--flyql-panel-z-index`** (`100` par defaut). La position d'empilement du panneau etait une valeur en dur : un hote dont le calque passait au-dessus ne pouvait corriger la collision qu'en ecrivant une regle sur `.flyql-panel`. Les drawers et modales se placent couramment bien au-dela de 100, ce qui masquait entierement le panneau alors que l'editeur continuait de fonctionner.
+- **Prop `panelContainer` sur `FlyqlEditor` et `FlyqlColumns`** (`body` par defaut), dans les deux paquets. Accepte un selecteur ou un element ; le panneau y est porte plutot que dans `document.body` et herite de son contexte d'empilement, sans aucun calcul de z-index. Une cible impossible a resoudre retombe sur `body`, et la cible est re-resolue a chaque ouverture : un calque monte apres l'editeur est donc pris en compte.
+- **Attribut `data-flyql-panel`** sur le noeud porte, pour que les hotes qui ferment leur calque au clic exterieur reconnaissent le panneau sans dependre d'un nom de classe interne. Avec `panelContainer`, le panneau est de toute facon un descendant du calque et la verification devient inutile.
+
+Rien ne change pour les utilisateurs actuels : le panneau est toujours porte dans `document.body` et s'empile toujours a 100.
+
+## 2026.08.25
 Version : **1.3.0**
 
 Des points d'ancrage pour integrer les editeurs dans un systeme de design hote : un mode une ligne, un bouton d'effacement et les mesures de boite jusque-la figees dans le code.

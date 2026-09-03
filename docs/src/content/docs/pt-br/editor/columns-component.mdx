@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | Ativar tema escuro ([veja temas](/pt-br/editor/theming/)) |
 | `label` | `String` | `''` | Texto exibido dentro do campo, à esquerda da consulta |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Ícone exibido antes do rótulo: uma string é renderizada como texto, um componente como está, `false` o remove |
+| `multiline` | `Boolean` | `true` | Permitir entrada multilinha. Com `false`, as quebras de linha viram espaços e o campo permanece em uma linha |
+| `hasClear` | `Boolean` | `false` | Mostrar um botão de limpar na extremidade final; só aparece quando o campo tem valor |
+| `clearButtonLabel` | `String` | `'Clear'` | Nome acessível do botão de limpar |
 
 ## Rótulo e ícone
 
@@ -81,7 +84,7 @@ Os slots `icon` e `label` têm precedência sobre as props quando você precisa 
 |-------|---------|-------------|
 | `update:modelValue` | `string` | Texto da expressão alterado (v-model) |
 | `update:parsed` | `ParsedColumn[]` | Array de colunas parseadas atualizado |
-| `submit` | — | Usuário pressionou Shift+Enter |
+| `submit` | — | Usuário pressionou Ctrl/Cmd+Enter |
 | `parse-error` | `string` | Mensagem de erro de parse |
 | `focus` | — | Componente recebeu foco |
 | `blur` | — | Componente perdeu foco |

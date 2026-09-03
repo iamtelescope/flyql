@@ -83,6 +83,9 @@ import 'flyql-vue/flyql.css'
 | `dark` | `Boolean` | `false` | Dunkles Theme aktivieren ([siehe Theming](/de/editor/theming/)) |
 | `label` | `String` | `''` | Text im Feld, links von der Eingabe |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon vor dem Label: ein String wird als Text gerendert, eine Komponente unverändert, `false` entfernt es |
+| `multiline` | `Boolean` | `true` | Mehrzeilige Eingabe erlauben. Bei `false` werden Zeilenumbrüche zu Leerzeichen und das Feld bleibt einzeilig |
+| `hasClear` | `Boolean` | `false` | Löschen-Button am rechten Rand anzeigen; erscheint nur, wenn das Feld einen Wert hat |
+| `clearButtonLabel` | `String` | `'Clear'` | Zugänglicher Name des Löschen-Buttons |
 
 **Callback-Signaturen:**
 - `onAutocomplete(key, value)` – gibt `Promise<{ items: string[], incomplete?: boolean }>` zurück
@@ -119,7 +122,7 @@ Die Slots `icon` und `label` haben Vorrang vor den Props, wenn Sie reichhaltiger
 | Event | Payload | Beschreibung |
 |-------|---------|--------------|
 | `update:modelValue` | `string` | Abfragetext wurde geändert (`v-model`) |
-| `submit` | — | Benutzer hat Shift+Enter gedrückt |
+| `submit` | — | Benutzer hat Ctrl/Cmd+Enter gedrückt |
 | `parse-error` | `string` | Parse-Fehlermeldung bei ungültiger Abfrage |
 | `focus` | — | Editor hat Fokus erhalten |
 | `blur` | — | Editor hat Fokus verloren |
@@ -201,4 +204,5 @@ Spalten mit `autocomplete: true` und statischen `values` verwenden diese Werte d
 | Pfeil hoch/runter | Zwischen Vorschlägen navigieren |
 | Enter / Tab | Ausgewählten Vorschlag übernehmen |
 | Escape | Vorschläge schließen |
-| Shift+Enter | Abfrage absenden (`submit`-Event) |
+| Ctrl/Cmd+Enter | Abfrage absenden (`submit`-Event) |
+| Shift+Enter | Zeilenumbruch einfügen (sofern `multiline` nicht `false` ist) |

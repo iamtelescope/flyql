@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | Activer le theme sombre ([voir theming](/fr/editor/theming/)) |
 | `label` | `String` | `''` | Texte affiché dans le champ, à gauche de la requête |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icône affichée avant le libellé : une chaîne est rendue comme texte, un composant tel quel, `false` la supprime |
+| `multiline` | `Boolean` | `true` | Autoriser la saisie multiligne. Avec `false`, les sauts de ligne deviennent des espaces et le champ reste sur une ligne |
+| `hasClear` | `Boolean` | `false` | Afficher un bouton d'effacement au bord droit ; il n'apparait que si le champ a une valeur |
+| `clearButtonLabel` | `String` | `'Clear'` | Nom accessible du bouton d'effacement |
 
 ## Libellé et icône
 
@@ -81,7 +84,7 @@ Les slots `icon` et `label` ont priorité sur les props lorsque vous avez besoin
 |-----------|---------|-------------|
 | `update:modelValue` | `string` | Le texte de l'expression a change (v-model) |
 | `update:parsed` | `ParsedColumn[]` | Tableau de colonnes analysees mis a jour |
-| `submit` | — | L'utilisateur a appuye sur Shift+Entree |
+| `submit` | — | L'utilisateur a appuye sur Ctrl/Cmd+Entree |
 | `parse-error` | `string` | Message d'erreur d'analyse |
 | `focus` | — | Le composant a recu le focus |
 | `blur` | — | Le composant a perdu le focus |

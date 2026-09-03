@@ -83,6 +83,9 @@ import 'flyql-vue/flyql.css'
 | `dark` | `Boolean` | `false` | Activa el tema oscuro ([ver temas](/es/editor/theming/)) |
 | `label` | `String` | `''` | Texto mostrado dentro del campo, a la izquierda de la consulta |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icono mostrado antes de la etiqueta: una cadena se renderiza como texto, un componente tal cual, `false` lo elimina |
+| `multiline` | `Boolean` | `true` | Permitir entrada multilínea. Con `false`, los saltos de línea se convierten en espacios y el campo se mantiene en una línea |
+| `hasClear` | `Boolean` | `false` | Mostrar un botón de borrado en el extremo final; solo aparece cuando el campo tiene valor |
+| `clearButtonLabel` | `String` | `'Clear'` | Nombre accesible del botón de borrado |
 
 **Firmas de los callbacks:**
 - `onAutocomplete(key, value)`: devuelve `Promise<{ items: string[], incomplete?: boolean }>`
@@ -119,7 +122,7 @@ Los slots `icon` y `label` tienen prioridad sobre las props cuando necesitas con
 | Evento | Payload | Descripción |
 |--------|---------|-------------|
 | `update:modelValue` | `string` | El texto de la consulta cambió (`v-model`) |
-| `submit` | — | El usuario pulsó Shift+Enter |
+| `submit` | — | El usuario pulsó Ctrl/Cmd+Enter |
 | `parse-error` | `string` | Mensaje de error de parseo cuando la consulta no es válida |
 | `focus` | — | El editor recibió foco |
 | `blur` | — | El editor perdió el foco |
@@ -201,4 +204,5 @@ Las columnas con `autocomplete: true` y `values` estáticos usan esos valores di
 | Flecha arriba/abajo | Navegar por las sugerencias |
 | Enter / Tab | Aceptar la sugerencia seleccionada |
 | Escape | Cerrar las sugerencias |
-| Shift+Enter | Enviar la consulta, emite el evento `submit` |
+| Ctrl/Cmd+Enter | Enviar la consulta, emite el evento `submit` |
+| Shift+Enter | Insertar un salto de línea (salvo que `multiline` sea `false`) |

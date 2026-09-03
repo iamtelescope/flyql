@@ -20,6 +20,11 @@ const defer = (fn) => setTimeout(fn, 0)
 // effect on every render.
 const EMPTY_PARAMETERS = []
 
+// Single-line mode collapses newlines rather than stripping them: a space is
+// one character wide too, so the caret does not jump when a pasted value is
+// rewritten under it.
+const collapseNewlines = (text) => text.replace(/\r\n?|\n/g, ' ')
+
 function badgeText(type) {
     switch (type) {
         case 'column':
@@ -54,6 +59,9 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
         registry = null,
         icon = null,
         label = '',
+        multiline = true,
+        hasClear = false,
+        clearButtonLabel = 'Clear',
         onSubmit = null,
         onParseError = null,
         onFocus = null,
@@ -324,9 +332,39 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
         })
     }
 
+    // Everything the user can put in the field arrives here — typing, paste,
+    // drop and IME commit — so single-line normalisation belongs here rather
+    // than in the key handler, which paste never reaches.
+    function readValue(el) {
+        if (multiline) return el.value
+        const collapsed = collapseNewlines(el.value)
+        if (collapsed !== el.value) {
+            const { selectionStart, selectionEnd } = el
+            el.value = collapsed
+            el.setSelectionRange(selectionStart, selectionEnd)
+        }
+        return collapsed
+    }
+
+    function handleClear() {
+        const ta = textareaRef.current
+        onChange?.('')
+        engine.setQuery('')
+        setActivated(false)
+        if (ta) {
+            ta.value = ''
+            ta.focus()
+            ta.setSelectionRange(0, 0)
+        }
+        defer(() => {
+            autoResize()
+            flushDiagnostics()
+        })
+    }
+
     function handleInput(e) {
         setActivated(true)
-        const newValue = e.target.value
+        const newValue = readValue(e.target)
         onChange?.(newValue)
         if (engine.state.composing) return
         defer(() => {
@@ -337,7 +375,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
 
     function onCompositionEnd(e) {
         engine.state.composing = false
-        const newValue = e.target.value
+        const newValue = readValue(e.target)
         onChange?.(newValue)
         defer(() => {
             triggerSuggestions()
@@ -443,6 +481,10 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
             if (ta) {
                 ta.selectionStart = 0
                 if (!e.shiftKey) ta.selectionEnd = 0
+                // preventDefault suppressed the browser's own scroll-into-view, and a
+                // programmatic selection never triggers one, so move the viewport by
+                // hand. Assigning scrollLeft fires `scroll`, which syncs the overlay.
+                ta.scrollLeft = 0
             }
             defer(() => {
                 triggerSuggestions()
@@ -457,6 +499,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
                 const len = ta.value.length
                 ta.selectionEnd = len
                 if (!e.shiftKey) ta.selectionStart = len
+                ta.scrollLeft = ta.scrollWidth
             }
             defer(() => {
                 triggerSuggestions()
@@ -477,6 +520,10 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
             return
         }
         if (e.shiftKey && e.key === 'Enter') {
+            if (!multiline) {
+                e.preventDefault()
+                return
+            }
             // Insert newline for multiline query support (AC #4)
             // Do not preventDefault — let the browser insert the newline naturally
             defer(() => {
@@ -976,6 +1023,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
     // `false` drops the icon entirely, a function is called as a render prop,
     // and any other node is rendered as-is.
     const showIcon = icon !== false
+    const showClear = hasClear && !!value
     const showLabel = label !== null && label !== undefined && label !== false && label !== ''
     // A visible text label is the field's accessible name; a node label falls
     // back to the generic one, since its rendered text is not readable here.
@@ -1002,7 +1050,14 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
         )
 
     return (
-        <div className={'flyql-editor' + (focused ? ' flyql-editor--focused' : '') + (dark ? ' flyql-dark' : '')}>
+        <div
+            className={
+                'flyql-editor' +
+                (focused ? ' flyql-editor--focused' : '') +
+                (multiline ? '' : ' flyql-editor--single-line') +
+                (dark ? ' flyql-dark' : '')
+            }
+        >
             {(showIcon || showLabel) && (
                 <span
                     className="flyql-editor__prefix"
@@ -1053,6 +1108,29 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
                     }
                 ></textarea>
             </div>
+            {showClear && (
+                <button
+                    type="button"
+                    className="flyql-editor__clear"
+                    aria-label={clearButtonLabel}
+                    title={clearButtonLabel}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handleClear}
+                >
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                    >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            )}
             {panel}
         </div>
     )

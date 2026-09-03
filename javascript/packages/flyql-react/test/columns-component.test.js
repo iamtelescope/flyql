@@ -130,3 +130,59 @@ describe('prefix slot (icon + label)', () => {
         expect(jsxContent).toContain("typeof label === 'string' && label ? label : 'FlyQL columns expression input'")
     })
 })
+
+describe('single-line mode (`multiline`)', () => {
+    it('declares the prop, defaulting to multiline', () => {
+        expect(jsxContent).toContain('multiline = true,')
+    })
+
+    it('marks the root so the CSS can stop the text wrapping', () => {
+        expect(jsxContent).toContain("(multiline ? '' : ' flyql-columns--single-line')")
+    })
+
+    it('normalises the value on the way in, not in the key handler', () => {
+        // paste, drop and IME never reach keydown
+        expect(jsxContent).toContain('const newValue = readValue(e.target)')
+        expect(jsxContent).toContain('function readValue(el) {')
+        expect(jsxContent).toContain('if (multiline) return el.value')
+    })
+
+    it('collapses newlines to a space so the caret does not move', () => {
+        expect(jsxContent).toContain("text.replace(/\\r\\n?|\\n/g, ' ')")
+        expect(jsxContent).toContain('el.setSelectionRange(selectionStart, selectionEnd)')
+    })
+})
+
+describe('clear button (`hasClear`)', () => {
+    it('declares the props, off by default', () => {
+        expect(jsxContent).toContain('hasClear = false,')
+        expect(jsxContent).toContain("clearButtonLabel = 'Clear',")
+    })
+
+    it('renders only when there is something to clear', () => {
+        expect(jsxContent).toContain('const showClear = hasClear && !!value')
+        expect(jsxContent).toContain('{showClear && (')
+    })
+
+    it('sits outside the scrolling input, as a sibling of the container', () => {
+        // anything inside the input would slide under the text in single-line mode
+        const button = jsxContent.indexOf('className="flyql-columns__clear"')
+        const container = jsxContent.indexOf('className="flyql-columns__container"')
+        expect(button).toBeGreaterThan(container)
+    })
+
+    it('empties through the normal value path and returns focus', () => {
+        expect(jsxContent).toContain("onChange?.('')")
+        expect(jsxContent).toContain('ta.focus()')
+        expect(jsxContent).toContain('setActivated(false)')
+        expect(jsxContent).toContain('flushDiagnostics()')
+    })
+
+    it('keeps the mousedown from stealing focus before the click lands', () => {
+        expect(jsxContent).toContain('onMouseDown={(e) => e.preventDefault()}')
+    })
+
+    it('carries an accessible name', () => {
+        expect(jsxContent).toContain('aria-label={clearButtonLabel}')
+    })
+})

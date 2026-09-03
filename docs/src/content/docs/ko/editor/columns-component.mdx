@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | 다크 테마 활성화 ([theming](/ko/editor/theming/) 참고) |
 | `label` | `String` | `''` | 필드 안, 쿼리 왼쪽에 표시되는 텍스트 |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | 라벨 앞에 표시되는 아이콘. 문자열은 텍스트로, 컴포넌트는 그대로 렌더링되며 `false`는 아이콘을 제거합니다 |
+| `multiline` | `Boolean` | `true` | 여러 줄 입력을 허용합니다. `false`이면 줄바꿈이 공백으로 바뀌고 필드는 한 줄로 유지됩니다 |
+| `hasClear` | `Boolean` | `false` | 끝쪽에 지우기 버튼을 표시합니다. 값이 있을 때만 나타납니다 |
+| `clearButtonLabel` | `String` | `'Clear'` | 지우기 버튼의 접근성 이름 |
 
 ## 라벨과 아이콘
 
@@ -81,7 +84,7 @@ function onParsed(parsed) {
 |-------|---------|------|
 | `update:modelValue` | `string` | 표현식 텍스트 변경 (`v-model`) |
 | `update:parsed` | `ParsedColumn[]` | parse된 컬럼 배열 업데이트 |
-| `submit` | — | 사용자가 Shift+Enter를 누름 |
+| `submit` | — | 사용자가 Ctrl/Cmd+Enter를 누름 |
 | `parse-error` | `string` | parse 오류 메시지 |
 | `focus` | — | 컴포넌트가 포커스를 얻음 |
 | `blur` | — | 컴포넌트가 포커스를 잃음 |

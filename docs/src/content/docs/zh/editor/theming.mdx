@@ -15,6 +15,7 @@ FlyQL 编辑器的视觉样式全部基于 CSS 自定义属性（变量）。你
 | `--flyql-text` | `#1e1e1e` | `#d4d4d4` | 文本颜色 |
 | `--flyql-border` | `#d4d4d4` | `#525252` | 边框颜色 |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | 聚焦时边框颜色 |
+| `--flyql-border-hover` | `var(--flyql-border)` | `var(--flyql-border)` | 悬停时的边框颜色；默认与静止时相同，未设置前悬停无变化 |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | 占位文本颜色 |
 | `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | 字段内标签文本颜色 |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | 错误高亮颜色 |
@@ -48,6 +49,14 @@ FlyQL 编辑器的视觉样式全部基于 CSS 自定义属性（变量）。你
 | `--flyql-icon-offset` | `-1px` | 将图标对齐到大写字母高度的微调值（负值上移） |
 | `--flyql-prefix-gap` | `9px` | 图标、标签与查询文本之间的间距 |
 | `--flyql-label-offset` | `-1.5px` | 使用 UI 字体的标签的基线校正（负值上移） |
+| `--flyql-label-font-weight` | `inherit` | 标签的字重 |
+
+### 布局
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-border-radius` | `8px` | 字段的圆角半径 |
+| `--flyql-padding-block` | `6px` | 垂直内边距 —— 同时调整输入框、高亮层与前缀 |
 
 ## 浅色主题
 

@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | डार्क थीम सक्षम करें ([थीमिंग देखें](/hi/editor/theming/)) |
 | `label` | `String` | `''` | फ़ील्ड के अंदर, क्वेरी के बाईं ओर दिखाया जाने वाला टेक्स्ट |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | लेबल से पहले दिखाया जाने वाला आइकन: स्ट्रिंग टेक्स्ट के रूप में, कोई कंपोनेंट जैसा है वैसा, और `false` इसे हटा देता है |
+| `multiline` | `Boolean` | `true` | मल्टी-लाइन इनपुट की अनुमति दें। `false` होने पर न्यूलाइन स्पेस में बदल जाती हैं और फ़ील्ड एक ही लाइन में रहता है |
+| `hasClear` | `Boolean` | `false` | फ़ील्ड के अंत में क्लियर बटन दिखाएँ; यह तभी दिखता है जब फ़ील्ड में कोई मान हो |
+| `clearButtonLabel` | `String` | `'Clear'` | क्लियर बटन का accessible name |
 
 ## लेबल और आइकन
 
@@ -81,7 +84,7 @@ function onParsed(parsed) {
 |-------|---------|-------------|
 | `update:modelValue` | `string` | एक्सप्रेशन टेक्स्ट बदला (v-model) |
 | `update:parsed` | `ParsedColumn[]` | पार्स्ड कॉलम ऐरे अपडेट हुआ |
-| `submit` | — | उपयोगकर्ता ने Shift+Enter दबाया |
+| `submit` | — | उपयोगकर्ता ने Ctrl/Cmd+Enter दबाया |
 | `parse-error` | `string` | पार्स त्रुटि संदेश |
 | `focus` | — | कम्पोनेंट ने फ़ोकस प्राप्त किया |
 | `blur` | — | कम्पोनेंट ने फ़ोकस खोया |

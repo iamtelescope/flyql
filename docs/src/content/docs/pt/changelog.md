@@ -2,6 +2,29 @@
 title: Registo de alterações
 ---
 
+## 2026.08.25
+Versão: **1.3.0**
+
+Pontos de ligação para integrar os editores num sistema de design anfitrião: um modo de uma linha, um botão de limpar e as medidas de caixa que antes estavam fixas no código.
+
+Novas funcionalidades:
+
+- **Prop `multiline` em `FlyqlEditor` e `FlyqlColumns`** (por omissão `true`), em ambos os pacotes. Com `false` o campo mantém-se numa linha: Shift+Enter deixa de inserir quebra, as quebras vindas de colagem, largada ou IME passam a espaços, e as consultas longas deslocam-se na horizontal em vez de mudarem de linha.
+- **Props `hasClear` e `clearButtonLabel`** (por omissão `false` e `'Clear'`). Um botão de limpar na extremidade final, visível apenas quando o campo tem valor. Clicar esvazia o campo pelo caminho normal de alteração — o painel de sugestões fecha e os diagnósticos desaparecem tal como numa eliminação manual — e devolve o foco à entrada.
+- **Novas variáveis de tema** `--flyql-border-radius`, `--flyql-padding-block`, `--flyql-label-font-weight` e `--flyql-border-hover`, para o raio dos cantos, o espaçamento vertical, o peso do rótulo e o contorno ao passar o rato. Todas mantêm os valores actuais, pelo que nada muda até o anfitrião as definir. Ver [Temas](/pt/editor/theming/).
+
+Correcções de erros:
+
+- **O espaço inicial já não desaparece ao deslocar.** Vivia no `padding-inline-start` da entrada, e o espaçamento de uma caixa com deslocamento horizontal só existe na posição 0, pelo que uma consulta deslocada passava por baixo do rótulo. Ambos os espaços horizontais estão agora em `.flyql-<root>__container`, que não se desloca.
+- **A camada de realce já não fica um pixel atrás do cursor no deslocamento máximo.** Um `width: 100%` anulava o seu desvio `right` — numa caixa posicionada de forma absoluta, `width` vence `right` — deixando as duas camadas de texto com amplitudes diferentes.
+- **`Home` e `End` movem a vista, não apenas o cursor.** Ambos definem a selecção depois de `preventDefault()`, o que suprime o deslocamento automático do navegador; numa consulta deslocável o cursor saía do ecrã e a tecla parecia não fazer nada.
+
+Documentação:
+
+- O evento `submit` e a tabela de teclado indicavam Shift+Enter; os componentes sempre o emitiram em Ctrl/Cmd+Enter. Corrigido nos 11 idiomas, documentando também o comportamento real de Shift+Enter.
+
+Anfitriões que substituam directamente o espaçamento de `.flyql-<root>__input` devem verificá-lo: o resultado é o mesmo, mas o espaçamento horizontal passou para o contentor.
+
 ## 2026.08.23
 Versão: **1.2.0**
 

@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | Включить тёмную тему ([см. темы](/ru/editor/theming/)) |
 | `label` | `String` | `''` | Текст внутри поля, слева от запроса |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Иконка перед подписью: строка выводится как текст, компонент — как есть, `false` убирает её |
+| `multiline` | `Boolean` | `true` | Разрешить многострочный ввод. При `false` переносы строк заменяются пробелами, а поле остаётся однострочным |
+| `hasClear` | `Boolean` | `false` | Показывать кнопку очистки у правого края; появляется, только когда в поле есть значение |
+| `clearButtonLabel` | `String` | `'Clear'` | Доступное имя кнопки очистки |
 
 ## Подпись и иконка
 
@@ -81,7 +84,7 @@ function onParsed(parsed) {
 |---------|--------|----------|
 | `update:modelValue` | `string` | Текст выражения изменился (v-model) |
 | `update:parsed` | `ParsedColumn[]` | Обновлён разобранный массив столбцов |
-| `submit` | — | Пользователь нажал Shift+Enter |
+| `submit` | — | Пользователь нажал Ctrl/Cmd+Enter |
 | `parse-error` | `string` | Сообщение об ошибке разбора |
 | `focus` | — | Компонент получил фокус |
 | `blur` | — | Компонент потерял фокус |

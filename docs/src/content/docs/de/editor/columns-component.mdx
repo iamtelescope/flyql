@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | Dunkles Theme aktivieren ([siehe Theming](/de/editor/theming/)) |
 | `label` | `String` | `''` | Text im Feld, links von der Eingabe |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon vor dem Label: ein String wird als Text gerendert, eine Komponente unverändert, `false` entfernt es |
+| `multiline` | `Boolean` | `true` | Mehrzeilige Eingabe erlauben. Bei `false` werden Zeilenumbrüche zu Leerzeichen und das Feld bleibt einzeilig |
+| `hasClear` | `Boolean` | `false` | Löschen-Button am rechten Rand anzeigen; erscheint nur, wenn das Feld einen Wert hat |
+| `clearButtonLabel` | `String` | `'Clear'` | Zugänglicher Name des Löschen-Buttons |
 
 ## Label und Icon
 
@@ -81,7 +84,7 @@ Die Slots `icon` und `label` haben Vorrang vor den Props, wenn Sie reichhaltiger
 |-------|---------|--------------|
 | `update:modelValue` | `string` | Ausdruckstext wurde geändert (`v-model`) |
 | `update:parsed` | `ParsedColumn[]` | Geparstes Spaltenarray wurde aktualisiert |
-| `submit` | — | Benutzer hat Shift+Enter gedrückt |
+| `submit` | — | Benutzer hat Ctrl/Cmd+Enter gedrückt |
 | `parse-error` | `string` | Parse-Fehlermeldung |
 | `focus` | — | Komponente hat Fokus erhalten |
 | `blur` | — | Komponente hat Fokus verloren |

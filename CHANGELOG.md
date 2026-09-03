@@ -4,6 +4,29 @@ All notable changes to FlyQL are documented here. The format mirrors the changel
 
 FlyQL follows [Semantic Versioning](VERSIONING.md) starting with `1.0.0`. Versions `0.0.x` were pre-release development iterations and are not individually documented.
 
+## 2026.08.25
+Version: **1.3.0**
+
+Hooks for embedding the editors inside a host design system: a single-line mode, a clear button, and the box metrics that were previously hard-coded.
+
+New features:
+
+- **`multiline` prop on `FlyqlEditor` and `FlyqlColumns`** (default `true`), in both packages. With `false` the field stays one line: Shift+Enter no longer inserts a break, newlines arriving by paste, drop or IME are collapsed to spaces, and long queries scroll sideways instead of wrapping.
+- **`hasClear` and `clearButtonLabel` props** (default `false` and `'Clear'`). A clear button at the trailing edge, rendered only when the field has a value. Clicking it empties the field through the normal value path — the suggestion panel closes and diagnostics drop exactly as on a manual delete — and returns focus to the input.
+- **New theme variables** `--flyql-border-radius`, `--flyql-padding-block`, `--flyql-label-font-weight` and `--flyql-border-hover`, covering corner radius, vertical padding, label weight and the hover border. All default to today's values, so nothing changes until a host sets them. See [Theming](/editor/theming/).
+
+Bug fixes:
+
+- **The leading gap no longer scrolls away.** It lived on the input's `padding-inline-start`, and padding on a horizontally scrollable box only exists at scroll offset 0, so a scrolled query ran underneath the label. Both horizontal gaps now sit on `.flyql-<root>__container`, which does not scroll.
+- **The highlight overlay no longer trails the caret at full scroll.** A `width: 100%` on the overlay overrode its `right` offset — width wins over `right` on an absolutely positioned box — leaving the two text layers with different scroll extents.
+- **`Home` and `End` move the view, not just the caret.** Both set the selection after `preventDefault()`, which suppresses the browser's own scroll-into-view, so on a scrolling query the caret went off screen and the keypress read as a no-op.
+
+Documentation:
+
+- The `submit` event and the keyboard table said Shift+Enter; the components have always emitted it on Ctrl/Cmd+Enter. Corrected in all 11 locales, with the actual Shift+Enter behaviour documented alongside it.
+
+Hosts that override the padding of `.flyql-<root>__input` directly should re-check it: the rendered result is unchanged, but horizontal padding now lives on the container.
+
 ## 2026.08.23
 Version: **1.2.0**
 

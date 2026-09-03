@@ -15,6 +15,7 @@ FlyQL editor は、見た目のスタイル全体に CSS カスタムプロパ�
 | `--flyql-text` | `#1e1e1e` | `#d4d4d4` | テキスト色 |
 | `--flyql-border` | `#d4d4d4` | `#525252` | ボーダー色 |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | フォーカス時のボーダー色 |
+| `--flyql-border-hover` | `var(--flyql-border)` | `var(--flyql-border)` | ホバー時の枠線色。既定は通常時と同じ色なので、設定するまでホバーは無反応です |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | プレースホルダーの文字色 |
 | `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | フィールド内のラベルの文字色 |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | エラーハイライト色 |
@@ -48,6 +49,14 @@ FlyQL editor は、見た目のスタイル全体に CSS カスタムプロパ�
 | `--flyql-icon-offset` | `-1px` | アイコンをキャップハイトに合わせる光学補正（負の値で上へ） |
 | `--flyql-prefix-gap` | `9px` | アイコン・ラベル・クエリ文字列の間隔 |
 | `--flyql-label-offset` | `-1.5px` | UI フォントのラベルのベースライン補正（負の値で上へ） |
+| `--flyql-label-font-weight` | `inherit` | ラベルの文字の太さ |
+
+### レイアウト
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-border-radius` | `8px` | フィールドの角丸半径 |
+| `--flyql-padding-block` | `6px` | 上下のパディング。入力欄・ハイライト表示・プレフィックスをまとめて動かします |
 
 ## Light テーマ
 

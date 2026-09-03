@@ -92,15 +92,19 @@ function App() {
 
 ## Component API
 
-`FlyqlEditor` props: `value`, `onChange`, `columns`, `parameters`, `onAutocomplete`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `debounceMs` (default 150), `dark`, `registry`, `label`, plus callbacks `onSubmit`, `onParseError`, `onFocus`, `onBlur`, `onDiagnostics` and an `icon` render prop. A `ref` exposes `focus()`, `blur()`, `getQueryStatus()`, and `flushDiagnostics()`.
+`FlyqlEditor` props: `value`, `onChange`, `columns`, `parameters`, `onAutocomplete`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `debounceMs` (default 150), `dark`, `registry`, `label`, `multiline`, `hasClear`, plus callbacks `onSubmit`, `onParseError`, `onFocus`, `onBlur`, `onDiagnostics` and an `icon` render prop. A `ref` exposes `focus()`, `blur()`, `getQueryStatus()`, and `flushDiagnostics()`.
 
-`FlyqlColumns` props: `value`, `onChange`, `columns`, `capabilities`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `dark`, `registry`, `rendererRegistry`, `label`, `icon`, plus callbacks `onSubmit`, `onParseError`, `onParsedChange`, `onFocus`, `onBlur`, `onDiagnostics` and a `loading` render prop. A `ref` additionally exposes `getParsedColumns()`.
+`FlyqlColumns` props: `value`, `onChange`, `columns`, `capabilities`, `onKeyDiscovery`, `placeholder`, `autofocus`, `debug`, `dark`, `registry`, `rendererRegistry`, `label`, `icon`, `multiline`, `hasClear`, plus callbacks `onSubmit`, `onParseError`, `onParsedChange`, `onFocus`, `onBlur`, `onDiagnostics` and a `loading` render prop. A `ref` additionally exposes `getParsedColumns()`.
 
 `label` and `icon` share the slot on the left of the field, ahead of the query text. `label` takes a string or any node; `icon` takes a node, a render function, or `false` to drop the built-in glyph. Clicking either focuses the input, and a text `label` becomes the input's accessible name. The label renders in the UI font (`--flyql-font-family`), baseline-corrected to sit on the query text's baseline.
 
 ```jsx
 <FlyqlEditor value={query} onChange={setQuery} label="Filter" icon={false} />
 ```
+
+`multiline` defaults to `true`. Set it to `false` for a field that must stay one line: Shift+Enter stops inserting a break, newlines arriving by paste, drop or IME are collapsed to spaces (same length, so the caret does not jump), and the text scrolls sideways instead of wrapping.
+
+`hasClear` adds a clear button at the trailing edge, shown only when the field has a value. Clicking it fires `onChange('')` like any other edit and returns focus to the input; name it with `clearButtonLabel` (default `'Clear'`).
 
 > `capabilities` is read once when the component mounts (it configures the underlying engine's parser; the same is true of the Vue component). To change capabilities at runtime, remount the component with a `key`.
 

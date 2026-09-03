@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | 启用暗色主题 |
 | `label` | `String` | `''` | 显示在字段内、查询文本左侧的文字 |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | 显示在标签之前的图标：字符串按文本渲染，组件原样渲染，`false` 则不显示 |
+| `multiline` | `Boolean` | `true` | 允许多行输入。为 `false` 时换行会被替换为空格，字段保持单行 |
+| `hasClear` | `Boolean` | `false` | 在字段末端显示清除按钮；仅当字段有值时出现 |
+| `clearButtonLabel` | `String` | `'Clear'` | 清除按钮的可访问名称 |
 
 ## 标签与图标
 
@@ -81,7 +84,7 @@ function onParsed(parsed) {
 |------|------|------|
 | `update:modelValue` | `string` | 表达式文本变化 |
 | `update:parsed` | `ParsedColumn[]` | 解析结果更新 |
-| `submit` | — | 用户按下 `Shift+Enter` |
+| `submit` | — | 用户按下 `Ctrl/Cmd+Enter` |
 | `parse-error` | `string` | 解析错误信息 |
 | `focus` | — | 输入框获得焦点 |
 | `blur` | — | 输入框失去焦点 |

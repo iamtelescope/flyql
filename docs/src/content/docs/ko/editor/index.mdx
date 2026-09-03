@@ -83,6 +83,9 @@ import 'flyql-vue/flyql.css'
 | `dark` | `Boolean` | `false` | 다크 테마 활성화 ([theming](/ko/editor/theming/) 참고) |
 | `label` | `String` | `''` | 필드 안, 쿼리 왼쪽에 표시되는 텍스트 |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | 라벨 앞에 표시되는 아이콘. 문자열은 텍스트로, 컴포넌트는 그대로 렌더링되며 `false`는 아이콘을 제거합니다 |
+| `multiline` | `Boolean` | `true` | 여러 줄 입력을 허용합니다. `false`이면 줄바꿈이 공백으로 바뀌고 필드는 한 줄로 유지됩니다 |
+| `hasClear` | `Boolean` | `false` | 끝쪽에 지우기 버튼을 표시합니다. 값이 있을 때만 나타납니다 |
+| `clearButtonLabel` | `String` | `'Clear'` | 지우기 버튼의 접근성 이름 |
 
 **Callback 시그니처:**
 - `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` 반환
@@ -119,7 +122,7 @@ import 'flyql-vue/flyql.css'
 | Event | Payload | 설명 |
 |-------|---------|------|
 | `update:modelValue` | `string` | 쿼리 텍스트 변경 (`v-model`) |
-| `submit` | — | 사용자가 Shift+Enter를 누름 |
+| `submit` | — | 사용자가 Ctrl/Cmd+Enter를 누름 |
 | `parse-error` | `string` | 쿼리가 유효하지 않을 때의 parse 오류 메시지 |
 | `focus` | — | editor가 포커스를 얻음 |
 | `blur` | — | editor가 포커스를 잃음 |
@@ -201,4 +204,5 @@ Editor는 서버 호출을 최소화하기 위해 상태 기반 autocomplete 흐
 | 위/아래 화살표 | 제안 목록 탐색 |
 | Enter / Tab | 선택한 제안 적용 |
 | Escape | 제안 닫기 |
-| Shift+Enter | 쿼리 제출 (`submit` event 발생) |
+| Ctrl/Cmd+Enter | 쿼리 제출 (`submit` event 발생) |
+| Shift+Enter | 줄바꿈 삽입 (`multiline`이 `false`가 아닌 경우) |

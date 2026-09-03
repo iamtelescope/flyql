@@ -1,5 +1,13 @@
 <template>
-    <div class="flyql-columns" :class="{ 'flyql-columns--focused': focused, 'flyql-dark': dark }" ref="editorRoot">
+    <div
+        class="flyql-columns"
+        :class="{
+            'flyql-columns--focused': focused,
+            'flyql-columns--single-line': !multiline,
+            'flyql-dark': dark,
+        }"
+        ref="editorRoot"
+    >
         <span
             v-if="$slots.icon || icon !== false || $slots.label || label"
             class="flyql-columns__prefix"
@@ -62,6 +70,28 @@
                 "
             ></textarea>
         </div>
+        <button
+            v-if="showClear"
+            type="button"
+            class="flyql-columns__clear"
+            :aria-label="clearButtonLabel"
+            :title="clearButtonLabel"
+            @mousedown.prevent
+            @click="handleClear"
+        >
+            <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+            >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+        </button>
         <!-- Suggestion panel -->
         <Teleport to="body">
             <div
@@ -221,6 +251,9 @@ const props = defineProps({
     rendererRegistry: { type: Object, default: null },
     label: { type: String, default: '' },
     icon: { type: [String, Object, Function, Boolean], default: null },
+    multiline: { type: Boolean, default: true },
+    hasClear: { type: Boolean, default: false },
+    clearButtonLabel: { type: String, default: 'Clear' },
 })
 
 // Prefix slot (icon + label). `icon`: null/true renders the built-in glyph,
@@ -228,6 +261,8 @@ const props = defineProps({
 // and anything else is rendered as a component. The `icon`/`label` slots take
 // precedence over the props when both are supplied — the template reads
 // `$slots` directly because the slots object is not reactive.
+const showClear = computed(() => props.hasClear && !!props.modelValue)
+
 const iconComponent = computed(() =>
     props.icon && typeof props.icon !== 'string' && typeof props.icon !== 'boolean' ? props.icon : null,
 )
@@ -468,9 +503,46 @@ function onCursorMove() {
     }, 0)
 }
 
+// Single-line mode collapses newlines rather than stripping them: a space is
+// one character wide too, so the caret does not jump when a pasted value is
+// rewritten under it.
+function collapseNewlines(text) {
+    return text.replace(/\r\n?|\n/g, ' ')
+}
+
+// Everything the user can put in the field arrives through `input` — typing,
+// paste, drop and IME commit — so single-line normalisation belongs here
+// rather than in the key handler, which paste never reaches.
+function readValue(el) {
+    if (props.multiline) return el.value
+    const collapsed = collapseNewlines(el.value)
+    if (collapsed !== el.value) {
+        const { selectionStart, selectionEnd } = el
+        el.value = collapsed
+        el.setSelectionRange(selectionStart, selectionEnd)
+    }
+    return collapsed
+}
+
+function handleClear() {
+    const ta = textareaRef.value
+    emit('update:modelValue', '')
+    engine.setQuery('')
+    activated.value = false
+    if (ta) {
+        ta.value = ''
+        ta.focus()
+        ta.setSelectionRange(0, 0)
+    }
+    nextTick(() => {
+        autoResize()
+        flushDiagnostics()
+    })
+}
+
 function onInput(e) {
     activated.value = true
-    const value = e.target.value
+    const value = readValue(e.target)
     emit('update:modelValue', value)
     if (engine.state.composing) return
     nextTick(() => {
@@ -482,7 +554,7 @@ function onInput(e) {
 
 function onCompositionEnd(e) {
     engine.state.composing = false
-    const value = e.target.value
+    const value = readValue(e.target)
     emit('update:modelValue', value)
     nextTick(() => {
         triggerSuggestions()

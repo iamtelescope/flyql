@@ -2,6 +2,29 @@
 title: Änderungsprotokoll
 ---
 
+## 2026.08.25
+Version: **1.3.0**
+
+Schnittstellen, um die Editoren in ein fremdes Designsystem einzubetten: ein einzeiliger Modus, ein Löschen-Button und die bisher fest verdrahteten Box-Maße.
+
+Neue Funktionen:
+
+- **`multiline`-Prop an `FlyqlEditor` und `FlyqlColumns`** (Standard `true`), in beiden Paketen. Mit `false` bleibt das Feld einzeilig: Shift+Enter fügt keinen Umbruch mehr ein, Zeilenumbrüche aus Einfügen, Drop oder IME werden zu Leerzeichen, und lange Abfragen scrollen seitwärts statt umzubrechen.
+- **`hasClear`- und `clearButtonLabel`-Props** (Standard `false` bzw. `'Clear'`). Ein Löschen-Button am rechten Rand, der nur erscheint, wenn das Feld einen Wert hat. Ein Klick leert das Feld über den normalen Wertpfad — Vorschlagsliste schließt, Diagnosen verschwinden wie beim manuellen Löschen — und gibt der Eingabe den Fokus zurück.
+- **Neue Theme-Variablen** `--flyql-border-radius`, `--flyql-padding-block`, `--flyql-label-font-weight` und `--flyql-border-hover` für Eckenradius, vertikalen Innenabstand, Label-Schriftstärke und Hover-Rahmen. Alle entsprechen den bisherigen Werten, es ändert sich also nichts, bis ein Host sie setzt. Siehe [Themes](/de/editor/theming/).
+
+Fehlerbehebungen:
+
+- **Der linke Abstand scrollt nicht mehr weg.** Er lag im `padding-inline-start` der Eingabe, und Padding an einer horizontal scrollbaren Box existiert nur bei Scroll-Position 0 — eine gescrollte Abfrage lief unter das Label. Beide horizontalen Abstände sitzen jetzt auf `.flyql-<root>__container`, das nicht scrollt.
+- **Die Highlight-Ebene hinkt dem Cursor bei vollem Scroll nicht mehr hinterher.** Ein `width: 100%` überschrieb ihren `right`-Offset — bei absolut positionierten Boxen gewinnt `width` gegen `right` —, wodurch die beiden Textebenen unterschiedliche Scrollweiten hatten.
+- **`Home` und `End` bewegen auch die Ansicht.** Beide setzen die Auswahl nach `preventDefault()`, was das browsereigene Scrollen zum Cursor unterdrückt; bei einer scrollenden Abfrage verschwand der Cursor aus dem Bild und der Tastendruck wirkte folgenlos.
+
+Dokumentation:
+
+- Das `submit`-Event und die Tastaturtabelle nannten Shift+Enter; die Komponenten senden es seit jeher bei Ctrl/Cmd+Enter. In allen 11 Sprachen korrigiert, samt der tatsächlichen Shift+Enter-Funktion.
+
+Hosts, die das Padding von `.flyql-<root>__input` direkt überschreiben, sollten es prüfen: das Ergebnis bleibt gleich, der horizontale Innenabstand liegt jetzt aber am Container.
+
 ## 2026.08.23
 Version: **1.2.0**
 

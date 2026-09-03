@@ -52,6 +52,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | Enable dark theme ([see theming](/editor/theming/)) |
 | `label` | `String` | `''` | Text shown inside the field, to the left of the query |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon shown before the label: a string renders as text, a component renders as-is, `false` removes it |
+| `multiline` | `Boolean` | `true` | Allow multi-line input. When `false`, newlines are collapsed to spaces and the field stays one line |
+| `hasClear` | `Boolean` | `false` | Show a clear button at the trailing edge; it appears only when the field has a value |
+| `clearButtonLabel` | `String` | `'Clear'` | Accessible name of the clear button |
 
 ### Example — with renderer registry
 
@@ -105,7 +108,7 @@ The `icon` and `label` slots take precedence over the props when you need richer
 |-------|---------|-------------|
 | `update:modelValue` | `string` | Expression text changed (v-model) |
 | `update:parsed` | `ParsedColumn[]` | Parsed column array updated |
-| `submit` | — | User pressed Shift+Enter |
+| `submit` | — | User pressed Ctrl/Cmd+Enter |
 | `parse-error` | `string` | Parse error message |
 | `focus` | — | Component gained focus |
 | `blur` | — | Component lost focus |

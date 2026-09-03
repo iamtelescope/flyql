@@ -50,6 +50,9 @@ function onParsed(parsed) {
 | `dark` | `Boolean` | `false` | ダークテーマを有効化（[テーマ設定](/ja/editor/theming/) を参照） |
 | `label` | `String` | `''` | フィールド内、クエリの左側に表示されるテキスト |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | ラベルの前に表示されるアイコン。文字列はテキストとして、コンポーネントはそのまま描画され、`false` で非表示になります |
+| `multiline` | `Boolean` | `true` | 複数行入力を許可します。`false` の場合、改行は空白に置き換えられ、フィールドは 1 行のままです |
+| `hasClear` | `Boolean` | `false` | 末尾にクリアボタンを表示します。値があるときだけ現れます |
+| `clearButtonLabel` | `String` | `'Clear'` | クリアボタンのアクセシブル名 |
 
 ## ラベルとアイコン
 
@@ -81,7 +84,7 @@ function onParsed(parsed) {
 |-------|---------|------|
 | `update:modelValue` | `string` | 式文字列が変化した（v-model） |
 | `update:parsed` | `ParsedColumn[]` | parse 済みカラム配列が更新された |
-| `submit` | — | ユーザーが Shift+Enter を押した |
+| `submit` | — | ユーザーが Ctrl/Cmd+Enter を押した |
 | `parse-error` | `string` | parse error メッセージ |
 | `focus` | — | コンポーネントがフォーカスを得た |
 | `blur` | — | コンポーネントがフォーカスを失った |

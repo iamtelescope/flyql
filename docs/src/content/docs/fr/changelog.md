@@ -2,6 +2,29 @@
 title: Journal des modifications
 ---
 
+## 2026.08.25
+Version : **1.3.0**
+
+Des points d'ancrage pour integrer les editeurs dans un systeme de design hote : un mode une ligne, un bouton d'effacement et les mesures de boite jusque-la figees dans le code.
+
+Nouvelles fonctionnalites :
+
+- **Prop `multiline` sur `FlyqlEditor` et `FlyqlColumns`** (`true` par defaut), dans les deux paquets. Avec `false`, le champ reste sur une ligne : Shift+Entree n'insere plus de saut, les sauts arrivant par collage, glisser-deposer ou IME deviennent des espaces, et les requetes longues defilent horizontalement au lieu de se replier.
+- **Props `hasClear` et `clearButtonLabel`** (`false` et `'Clear'` par defaut). Un bouton d'effacement au bord droit, affiche seulement si le champ a une valeur. Un clic vide le champ par le chemin de valeur habituel — le panneau de suggestions se ferme et les diagnostics disparaissent comme lors d'une suppression manuelle — et rend le focus a la saisie.
+- **Nouvelles variables de theme** `--flyql-border-radius`, `--flyql-padding-block`, `--flyql-label-font-weight` et `--flyql-border-hover`, pour le rayon des coins, la marge verticale, la graisse du libelle et la bordure au survol. Toutes reprennent les valeurs actuelles : rien ne change tant que l'hote ne les definit pas. Voir [Themes](/fr/editor/theming/).
+
+Corrections de bugs :
+
+- **L'espace de gauche ne disparait plus au defilement.** Il vivait dans le `padding-inline-start` de la saisie, et la marge interne d'une boite a defilement horizontal n'existe qu'a la position 0 : une requete defilee passait sous le libelle. Les deux espaces horizontaux sont desormais portes par `.flyql-<root>__container`, qui ne defile pas.
+- **La couche de coloration ne retarde plus d'un pixel sur le curseur.** Un `width: 100%` ecrasait son decalage `right` — sur une boite en position absolue, `width` l'emporte sur `right` — laissant aux deux couches de texte des amplitudes de defilement differentes.
+- **`Home` et `End` deplacent la vue, pas seulement le curseur.** Tous deux fixent la selection apres `preventDefault()`, ce qui supprime le defilement automatique du navigateur ; sur une requete defilante, le curseur sortait de l'ecran et la touche semblait sans effet.
+
+Documentation :
+
+- L'evenement `submit` et le tableau des raccourcis indiquaient Shift+Entree ; les composants l'emettent depuis toujours sur Ctrl/Cmd+Entree. Corrige dans les 11 langues, avec le comportement reel de Shift+Entree documente a cote.
+
+Les hotes qui surchargent directement la marge interne de `.flyql-<root>__input` devraient la reverifier : le rendu est inchange, mais la marge horizontale est maintenant portee par le conteneur.
+
 ## 2026.08.23
 Version : **1.2.0**
 

@@ -15,6 +15,7 @@ El editor de FlyQL usa propiedades personalizadas de CSS para todo el estilo vis
 | `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Color del texto |
 | `--flyql-border` | `#d4d4d4` | `#525252` | Color del borde |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | Color del borde al enfocar |
+| `--flyql-border-hover` | `var(--flyql-border)` | `var(--flyql-border)` | Color del borde al pasar el cursor; por defecto es el color en reposo, así que no hace nada hasta definirlo |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Texto del placeholder |
 | `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | Texto de la etiqueta en el campo |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | Resaltado de errores |
@@ -48,6 +49,14 @@ El editor de FlyQL usa propiedades personalizadas de CSS para todo el estilo vis
 | `--flyql-icon-offset` | `-1px` | Ajuste óptico que centra el icono en la altura de mayúsculas (negativo lo sube) |
 | `--flyql-prefix-gap` | `9px` | Espacio entre el icono, la etiqueta y el texto de la consulta |
 | `--flyql-label-offset` | `-1.5px` | Corrección de línea base de la etiqueta, que usa la fuente de la interfaz (negativo la sube) |
+| `--flyql-label-font-weight` | `inherit` | Grosor de la fuente de la etiqueta |
+
+### Disposición
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-border-radius` | `8px` | Radio de las esquinas del campo |
+| `--flyql-padding-block` | `6px` | Relleno vertical: mueve a la vez la entrada, su capa de resaltado y el prefijo |
 
 ## Tema claro
 

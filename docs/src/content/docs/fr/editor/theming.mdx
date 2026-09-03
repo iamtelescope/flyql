@@ -15,6 +15,7 @@ L'editeur FlyQL utilise des proprietes personnalisees CSS (variables) pour tout 
 | `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Couleur du texte |
 | `--flyql-border` | `#d4d4d4` | `#525252` | Couleur de la bordure |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | Couleur de la bordure au focus |
+| `--flyql-border-hover` | `var(--flyql-border)` | `var(--flyql-border)` | Couleur de bordure au survol ; par defaut celle au repos, le survol reste donc sans effet tant qu elle n est pas definie |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Texte de remplacement |
 | `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | Texte du libellé dans le champ |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | Surbrillance d'erreur |
@@ -48,6 +49,14 @@ L'editeur FlyQL utilise des proprietes personnalisees CSS (variables) pour tout 
 | `--flyql-icon-offset` | `-1px` | Correction optique qui centre l'icône sur la hauteur de capitale (négatif = vers le haut) |
 | `--flyql-prefix-gap` | `9px` | Espace entre l'icône, le libellé et le texte de la requête |
 | `--flyql-label-offset` | `-1.5px` | Correction de ligne de base du libellé, en police d'interface (négatif = vers le haut) |
+| `--flyql-label-font-weight` | `inherit` | Graisse de la police du libelle |
+
+### Disposition
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-border-radius` | `8px` | Rayon des coins du champ |
+| `--flyql-padding-block` | `6px` | Marge interne verticale : deplace ensemble la saisie, sa couche de coloration et le prefixe |
 
 ## Theme clair
 

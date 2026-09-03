@@ -83,6 +83,9 @@ import 'flyql-vue/flyql.css'
 | `dark` | `Boolean` | `false` | डार्क थीम सक्षम करें ([थीमिंग देखें](/hi/editor/theming/)) |
 | `label` | `String` | `''` | फ़ील्ड के अंदर, क्वेरी के बाईं ओर दिखाया जाने वाला टेक्स्ट |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | लेबल से पहले दिखाया जाने वाला आइकन: स्ट्रिंग टेक्स्ट के रूप में, कोई कंपोनेंट जैसा है वैसा, और `false` इसे हटा देता है |
+| `multiline` | `Boolean` | `true` | मल्टी-लाइन इनपुट की अनुमति दें। `false` होने पर न्यूलाइन स्पेस में बदल जाती हैं और फ़ील्ड एक ही लाइन में रहता है |
+| `hasClear` | `Boolean` | `false` | फ़ील्ड के अंत में क्लियर बटन दिखाएँ; यह तभी दिखता है जब फ़ील्ड में कोई मान हो |
+| `clearButtonLabel` | `String` | `'Clear'` | क्लियर बटन का accessible name |
 
 **कॉलबैक हस्ताक्षर:**
 - `onAutocomplete(key, value)` — `Promise<{ items: string[], incomplete?: boolean }>` लौटाता है
@@ -119,7 +122,7 @@ import 'flyql-vue/flyql.css'
 | इवेंट | पेलोड | विवरण |
 |-------|---------|-------------|
 | `update:modelValue` | `string` | क्वेरी टेक्स्ट बदला (v-model) |
-| `submit` | — | उपयोगकर्ता ने Shift+Enter दबाया |
+| `submit` | — | उपयोगकर्ता ने Ctrl/Cmd+Enter दबाया |
 | `parse-error` | `string` | क्वेरी अमान्य होने पर पार्स त्रुटि संदेश |
 | `focus` | — | एडिटर ने फ़ोकस प्राप्त किया |
 | `blur` | — | एडिटर ने फ़ोकस खोया |
@@ -201,4 +204,5 @@ async function onAutocomplete(key, value) {
 | Arrow Up/Down | सुझावों में नेविगेट करें |
 | Enter / Tab | चयनित सुझाव स्वीकार करें |
 | Escape | सुझाव बंद करें |
-| Shift+Enter | क्वेरी सबमिट करें (`submit` इवेंट उत्सर्जित करता है) |
+| Ctrl/Cmd+Enter | क्वेरी सबमिट करें (`submit` इवेंट उत्सर्जित करता है) |
+| Shift+Enter | नई लाइन जोड़ें (जब तक `multiline` `false` न हो) |

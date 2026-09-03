@@ -115,6 +115,26 @@ For richer content use the `icon` and `label` slots — they take precedence ove
 
 A long label is truncated with an ellipsis at half the field width rather than squeezing the input. The label renders in the UI font (`--flyql-font-family`), baseline-corrected to sit on the query text's baseline.
 
+## Single-line mode
+
+`multiline` defaults to `true`. Set it to `false` for a field that must stay one line — a toolbar filter, say:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" :multiline="false" />
+```
+
+Shift+Enter stops inserting a break, newlines arriving by paste, drop or IME are collapsed to spaces (same length, so the caret does not jump), and the text scrolls sideways instead of wrapping.
+
+## Clear button
+
+`hasClear` adds a clear button at the trailing edge, shown only when the field has a value:
+
+```html
+<FlyqlEditor v-model="query" :columns="columns" has-clear />
+```
+
+Clicking it emits `update:modelValue` with `''` like any other edit — the suggestion panel closes and diagnostics drop through the normal path — and returns focus to the input. Name it with `clear-button-label` (default `Clear`).
+
 ## Theming
 
 The editor uses CSS custom properties (`--flyql-*` variables) for all visual styling. A built-in `dark` prop toggles the dark theme, and any variable can be overridden in your CSS to match your application's design.

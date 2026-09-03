@@ -15,6 +15,7 @@ Der FlyQL-Editor verwendet CSS-Custom-Properties (Variablen) für das gesamte vi
 | `--flyql-text` | `#1e1e1e` | `#d4d4d4` | Textfarbe |
 | `--flyql-border` | `#d4d4d4` | `#525252` | Rahmenfarbe |
 | `--flyql-border-focus` | `#075985` | `#0369a1` | Rahmenfarbe bei Fokus |
+| `--flyql-border-hover` | `var(--flyql-border)` | `var(--flyql-border)` | Rahmenfarbe beim Hover; entspricht standardmäßig der Ruhefarbe, Hover bleibt also ohne Wirkung, bis sie gesetzt wird |
 | `--flyql-placeholder-color` | `#a0a0a0` | `#676767` | Platzhaltertext |
 | `--flyql-label-color` | `#6b6b6b` | `#9d9d9d` | Label-Text im Feld |
 | `--flyql-error-color` | `#ff0000` | `#f48771` | Fehlerhervorhebung |
@@ -48,6 +49,14 @@ Der FlyQL-Editor verwendet CSS-Custom-Properties (Variablen) für das gesamte vi
 | `--flyql-icon-offset` | `-1px` | Optische Korrektur, die das Präfix-Icon auf die Versalhöhe zentriert (negativ = nach oben) |
 | `--flyql-prefix-gap` | `9px` | Abstand zwischen Icon, Label und Abfragetext |
 | `--flyql-label-offset` | `-1.5px` | Baseline-Korrektur für das Label in der UI-Schriftart (negativ = nach oben) |
+| `--flyql-label-font-weight` | `inherit` | Schriftstärke des Labels |
+
+### Layout
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `--flyql-border-radius` | `8px` | Eckenradius des Feldes |
+| `--flyql-padding-block` | `6px` | Vertikaler Innenabstand — verschiebt Eingabe, Highlight-Overlay und Präfix gemeinsam |
 
 ## Light-Theme
 

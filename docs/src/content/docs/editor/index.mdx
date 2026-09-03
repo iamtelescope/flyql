@@ -83,6 +83,9 @@ This provides theme variables, suggestion panel styles, and token highlighting.
 | `dark` | `Boolean` | `false` | Enable dark theme ([see theming](/editor/theming/)) |
 | `label` | `String` | `''` | Text shown inside the field, to the left of the query |
 | `icon` | `String \| Object \| Function \| Boolean` | `null` | Icon shown before the label: a string renders as text, a component renders as-is, `false` removes it |
+| `multiline` | `Boolean` | `true` | Allow multi-line input. When `false`, newlines are collapsed to spaces and the field stays one line |
+| `hasClear` | `Boolean` | `false` | Show a clear button at the trailing edge; it appears only when the field has a value |
+| `clearButtonLabel` | `String` | `'Clear'` | Accessible name of the clear button |
 
 **Callback signatures:**
 - `onAutocomplete(key, value)` — returns `Promise<{ items: string[], incomplete?: boolean }>`
@@ -119,7 +122,7 @@ The `icon` and `label` slots take precedence over the props when you need richer
 | Event | Payload | Description |
 |-------|---------|-------------|
 | `update:modelValue` | `string` | Query text changed (v-model) |
-| `submit` | — | User pressed Shift+Enter |
+| `submit` | — | User pressed Ctrl/Cmd+Enter |
 | `parse-error` | `string` | Parse error message when query is invalid |
 | `focus` | — | Editor gained focus |
 | `blur` | — | Editor lost focus |
@@ -201,4 +204,5 @@ Columns with `autocomplete: true` and static `values` use those values directly 
 | Arrow Up/Down | Navigate suggestions |
 | Enter / Tab | Accept selected suggestion |
 | Escape | Dismiss suggestions |
-| Shift+Enter | Submit query (emits `submit` event) |
+| Ctrl/Cmd+Enter | Submit query (emits `submit` event) |
+| Shift+Enter | Insert a newline (unless `multiline` is `false`) |

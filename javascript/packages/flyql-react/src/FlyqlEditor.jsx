@@ -62,6 +62,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
         multiline = true,
         hasClear = false,
         clearButtonLabel = 'Clear',
+        panelContainer = null,
         onSubmit = null,
         onParseError = null,
         onFocus = null,
@@ -780,11 +781,22 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
 
     // ── Render ──
 
+    // Resolved on every render rather than captured once, so a host overlay that
+    // mounts after the editor is still picked up, and a selector that matches
+    // nothing degrades to <body> instead of portalling into nowhere.
+    function resolvePanelContainer() {
+        if (typeof panelContainer === 'string') {
+            return document.querySelector(panelContainer) || document.body
+        }
+        return panelContainer || document.body
+    }
+
     const panel =
         focused && activated
             ? createPortal(
                   <div
                       ref={panelRef}
+                      data-flyql-panel=""
                       className={'flyql-panel' + (dark ? ' flyql-dark' : '')}
                       onMouseDown={(e) => e.preventDefault()}
                       style={{ left: panelLeft + 'px', top: panelTop + 'px' }}
@@ -1015,7 +1027,7 @@ const FlyqlEditor = forwardRef(function FlyqlEditor(
                           </div>
                       )}
                   </div>,
-                  document.body,
+                  resolvePanelContainer(),
               )
             : null
 

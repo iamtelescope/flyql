@@ -361,3 +361,25 @@ describe('clear button (`hasClear`)', () => {
         expect(vueContent).toContain(':aria-label="clearButtonLabel"')
     })
 })
+
+describe('panel placement (`panelContainer`)', () => {
+    it('defaults to body', () => {
+        expect(vueContent).toContain("panelContainer: { type: [String, Object], default: 'body' },")
+        expect(vueContent).toContain('<Teleport :to="panelTarget">')
+    })
+
+    it('re-resolves the target on every open', () => {
+        // a host overlay may mount after the editor; Teleport otherwise
+        // resolves once at mount and throws on a missing target
+        expect(vueContent).toContain('void focused.value')
+        expect(vueContent).toContain('void activated.value')
+    })
+
+    it('degrades to body when a selector matches nothing', () => {
+        expect(vueContent).toContain("document.querySelector(target)) || 'body'")
+    })
+
+    it('marks the panel with a stable attribute for outside-click checks', () => {
+        expect(vueContent).toContain('data-flyql-panel')
+    })
+})

@@ -3,6 +3,19 @@ title: Registo de alterações
 ---
 
 ## 2026.08.25
+Versão: **1.4.0**
+
+Controlo sobre onde o painel de sugestões fica na página, para editores embebidos dentro de uma sobreposição do anfitrião.
+
+Novas funcionalidades:
+
+- **`--flyql-panel-z-index`** (por omissão `100`). A posição de empilhamento do painel era um literal, pelo que um anfitrião cuja sobreposição ficava acima só podia resolver a colisão escrevendo uma regra sobre `.flyql-panel`. Drawers e modais situam-se habitualmente bem acima de 100, o que escondia o painel por completo enquanto o editor continuava a funcionar.
+- **Prop `panelContainer` em `FlyqlEditor` e `FlyqlColumns`** (por omissão `body`), em ambos os pacotes. Aceita um selector ou um elemento; o painel passa a ser portado para lá em vez de `document.body` e herda o seu contexto de empilhamento, sem aritmética de z-index. Um destino que não possa ser resolvido recai em `body`, e o destino é resolvido de novo sempre que o painel abre, pelo que uma sobreposição montada depois do editor também funciona.
+- **Atributo `data-flyql-panel`** no nó portado, para que anfitriões que fecham a sobreposição num clique exterior reconheçam o painel sem depender de um nome de classe interno. Com `panelContainer` definido, o painel é descendente da sobreposição e a verificação deixa de ser necessária.
+
+Nada muda para os utilizadores actuais: o painel continua a ser portado para `document.body` e continua empilhado em 100.
+
+## 2026.08.25
 Versão: **1.3.0**
 
 Pontos de ligação para integrar os editores num sistema de design anfitrião: um modo de uma linha, um botão de limpar e as medidas de caixa que antes estavam fixas no código.

@@ -3,6 +3,19 @@ title: Changelog
 ---
 
 ## 2026.08.25
+Version: **1.4.0**
+
+Control over where the suggestion panel lands in the page, for editors embedded inside a host overlay.
+
+New features:
+
+- **`--flyql-panel-z-index`** (default `100`). The panel's stacking position was a literal, so a host whose overlay outranked it could only fix the collision by writing a rule against `.flyql-panel`. Drawers and modals commonly sit well above 100, which hid the panel entirely while the editor kept working — the query still parsed, suggestions were still computed, but nothing was visible.
+- **`panelContainer` prop on `FlyqlEditor` and `FlyqlColumns`** (default `body`), in both packages. Takes a selector or an element; the panel is portalled there instead of `document.body` and inherits that element's stacking context, so no z-index arithmetic is needed. A target that cannot be resolved falls back to `body`, and the target is re-resolved each time the panel opens, so a host overlay mounting after the editor is still picked up.
+- **`data-flyql-panel` attribute** on the portalled node, so hosts that dismiss an overlay on outside-`mousedown` can recognise the panel without depending on an internal class name. With `panelContainer` set the panel is a descendant of the overlay and needs no such check at all.
+
+Nothing changes for existing users: the panel still portals to `document.body` and still stacks at 100.
+
+## 2026.08.25
 Version: **1.3.0**
 
 Hooks for embedding the editors inside a host design system: a single-line mode, a clear button, and the box metrics that were previously hard-coded.

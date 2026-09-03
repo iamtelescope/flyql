@@ -93,10 +93,11 @@
             </svg>
         </button>
         <!-- Suggestion panel -->
-        <Teleport to="body">
+        <Teleport :to="panelTarget">
             <div
                 v-if="focused && activated"
                 ref="panelRef"
+                data-flyql-panel
                 class="flyql-panel"
                 :class="{ 'flyql-dark': dark }"
                 @mousedown.prevent="onPanelMousedown"
@@ -254,6 +255,7 @@ const props = defineProps({
     multiline: { type: Boolean, default: true },
     hasClear: { type: Boolean, default: false },
     clearButtonLabel: { type: String, default: 'Clear' },
+    panelContainer: { type: [String, Object], default: 'body' },
 })
 
 // Prefix slot (icon + label). `icon`: null/true renders the built-in glyph,
@@ -262,6 +264,19 @@ const props = defineProps({
 // precedence over the props when both are supplied — the template reads
 // `$slots` directly because the slots object is not reactive.
 const showClear = computed(() => props.hasClear && !!props.modelValue)
+
+// The panel's portal target. Resolved on every open rather than once at mount,
+// so a host overlay that mounts after the editor is still picked up, and a
+// selector that matches nothing degrades to <body> instead of throwing.
+const panelTarget = computed(() => {
+    void focused.value
+    void activated.value
+    const target = props.panelContainer
+    if (typeof target === 'string') {
+        return (typeof document !== 'undefined' && document.querySelector(target)) || 'body'
+    }
+    return target || 'body'
+})
 
 const iconComponent = computed(() =>
     props.icon && typeof props.icon !== 'string' && typeof props.icon !== 'boolean' ? props.icon : null,

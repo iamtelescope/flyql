@@ -3,6 +3,19 @@ title: Änderungsprotokoll
 ---
 
 ## 2026.08.25
+Version: **1.4.0**
+
+Kontrolle darüber, wo das Vorschlagsfeld auf der Seite landet — für Editoren, die in einem Overlay des Hosts stecken.
+
+Neue Funktionen:
+
+- **`--flyql-panel-z-index`** (Standard `100`). Die Stapelposition des Felds war ein fester Wert, sodass ein Host mit höher liegendem Overlay die Kollision nur über eine eigene Regel auf `.flyql-panel` beheben konnte. Drawer und Modals liegen üblicherweise deutlich über 100 und verdeckten das Feld vollständig, während der Editor weiterarbeitete.
+- **`panelContainer`-Prop an `FlyqlEditor` und `FlyqlColumns`** (Standard `body`), in beiden Paketen. Nimmt einen Selektor oder ein Element; das Feld wird dorthin statt nach `document.body` portiert und erbt dessen Stapelkontext, ganz ohne z-index-Rechnerei. Ein nicht auflösbares Ziel fällt auf `body` zurück, und das Ziel wird bei jedem Öffnen neu aufgelöst — ein Overlay, das nach dem Editor gemountet wird, greift also trotzdem.
+- **`data-flyql-panel`-Attribut** am portierten Knoten, damit Hosts, die ihr Overlay bei einem Klick außerhalb schließen, das Feld erkennen, ohne einen internen Klassennamen zu kennen. Mit gesetztem `panelContainer` ist das Feld ohnehin ein Nachfahre des Overlays und braucht die Prüfung gar nicht.
+
+Für bestehende Nutzer ändert sich nichts: das Feld wird weiterhin nach `document.body` portiert und liegt weiterhin bei 100.
+
+## 2026.08.25
 Version: **1.3.0**
 
 Schnittstellen, um die Editoren in ein fremdes Designsystem einzubetten: ein einzeiliger Modus, ein Löschen-Button und die bisher fest verdrahteten Box-Maße.

@@ -86,6 +86,7 @@ import 'flyql-vue/flyql.css'
 | `multiline` | `Boolean` | `true` | Разрешить многострочный ввод. При `false` переносы строк заменяются пробелами, а поле остаётся однострочным |
 | `hasClear` | `Boolean` | `false` | Показывать кнопку очистки у правого края; появляется, только когда в поле есть значение |
 | `clearButtonLabel` | `String` | `'Clear'` | Доступное имя кнопки очистки |
+| `panelContainer` | `String \| Object` | `'body'` | Куда портировать панель подсказок: селектор или элемент. По умолчанию `body` |
 
 **Сигнатуры функций обратного вызова:**
 - `onAutocomplete(key, value)` — возвращает `Promise<{ items: string[], incomplete?: boolean }>`
